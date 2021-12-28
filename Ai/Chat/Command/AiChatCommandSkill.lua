@@ -1,0 +1,37 @@
+--{{{ Dependencies
+local Math = require "gamesense/Nyx/v1/Api/Math"
+local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+--}}}
+
+--{{{ Modules
+local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiStateEngage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEngage"
+--}}}
+
+--{{{ AiChatCommandSkill
+--- @class AiChatCommandSkill : AiChatCommand
+local AiChatCommandSkill = {
+    cmd = "skill",
+    requiredArgs = 1,
+    isAdminOnly = true
+}
+
+--- @param ai AiController
+--- @param sender Player
+--- @param args string[]
+--- @return void
+function AiChatCommandSkill:invoke(ai, sender, args)
+    if not self:isValid(ai, sender, args) then
+        return
+    end
+
+    local skill = Math.clamp(tonumber(args[1]), 0, 4)
+    local engage = ai:getState(AiStateEngage)
+
+    engage:setAimSkill(skill)
+
+    ai.nodegraph:log("Updated skill level to %sx", skill)
+end
+
+return Nyx.class("AiChatCommandSkill", AiChatCommandSkill, AiChatCommand)
+--}}}

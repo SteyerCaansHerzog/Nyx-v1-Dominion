@@ -1,0 +1,78 @@
+Names/
+    Callsign/
+        Hawk: "Hawk"
+        King: "King"
+        Noble: "Noble"
+        Roller: "Roller"
+        Sword: "Sword"
+        Unity: "Unity"
+
+    Target/
+        Orange: "Orange"
+        Yellow: "Yellow"
+        Green: "Green"
+        Blue: "Blue"
+        Purple: "Purple"
+
+    Number/
+        One: "One"
+        Two: "Two"
+        Three: "Three"
+        Four: "Four"
+        Five: "Five"
+        Six: "Six"
+        Seven: "Seven"
+        Eight: "Eight"
+        Nine: "Nine"
+
+Misc/
+    Utility/
+        Empty: "" -- Empty audio
+        Pause: " " -- Short silence
+
+    Expletive/
+        Fuck: "Fuck!"
+        Shit: "Shit!"
+        OhFuck: "Oh fuck!"
+        OhShit: "Oh shit!"
+
+Triggers/
+    EnemyKilledByClient/
+        1: "{Target} is destroyed!"
+        2: "{Target} eliminated."
+        3: "He's down."
+        4: "Got him!"
+        5: "Target neutralized."
+
+    TeammateKilledByClient
+    ClientKilledByEnemy
+    ClientKilledByTeammate
+    EnemyHurtByClient
+    TeammateHurtByClient
+    ClientHurtByEnemy
+    ClientHurtByTeammate
+    RequestTeammatesToRotate
+
+    HearNearbyEnemies/
+        1: "{Expletive} {Callsign} reporting hostiles near my position."
+        2: "{Expletive} I have contacts on me!"
+        3: "{Expletive} I got contacts!"
+
+    NotifyTeamOfBombCarrier
+    NotifyTeamOfBomb
+    RoundStart
+    RoundStartPistolFirstHalf
+    RoundStartPistolSecondHalf
+    RoundStartWonPrevious
+    RoundStartLostPrevious
+    RoundStartMatchPointToTeam
+    RoundStartMatchPointToOpposition
+    RoundStartMatchPointFinalRound
+    RoundEnd
+    RoundEndWon
+    RoundEndLost
+    RoundEndHalftime
+    WarmupGreeting
+    WarmupIdle
+    GameEndWon
+    GameEndLost

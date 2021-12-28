@@ -1,0 +1,38 @@
+--{{{ Dependencies
+local Client = require "gamesense/Nyx/v1/Api/Client"
+local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+--}}}
+
+--{{{ Modules
+local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiStateDefend = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefend"
+--}}}
+
+--{{{ AiChatCommandScramble
+--- @class AiChatCommandScramble : AiChatCommand
+local AiChatCommandScramble = {
+    cmd = "scramble",
+    requiredArgs = 0,
+    isAdminOnly = false
+}
+
+--- @param ai AiController
+--- @param sender Player
+--- @param args string[]
+--- @return void
+function AiChatCommandScramble:invoke(ai, sender, args)
+    if not self:isValid(ai, sender, args) then
+        return
+    end
+
+    local defend = ai:getState(AiStateDefend)
+
+    local site = Client.getChance(2) and "a" or "b"
+
+    Client.fireAfter(Client.getRandomFloat(1, 2), function()
+        defend:activate(ai, site, false, false)
+    end)
+end
+
+return Nyx.class("AiChatCommandScramble", AiChatCommandScramble, AiChatCommand)
+--}}}
