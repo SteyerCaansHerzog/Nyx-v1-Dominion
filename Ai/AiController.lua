@@ -4,9 +4,9 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
 local CsgoWeapons = require "gamesense/csgo_weapons"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
-local ISurface = require "gamesense/Aviarita/ISurface"
+local ISurface = require "gamesense/Nyx/v1/Api/ISurface"
 local Math = require "gamesense/Nyx/v1/Api/Math"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Server = require "gamesense/Nyx/v1/Api/Server"
@@ -111,7 +111,7 @@ function AiController:initFields()
     self.antiBlockDuration = Client.getRandomFloat(1, 2)
     self.antiFlyTimer = Timer:new():start()
     self.antiFlyValues = {}
-    self.autoClosePopupsTimer = Timer:new():startAndElapse()
+    self.autoClosePopupsTimer = Timer:new():startThenElapse()
     self.canBuyThisRound = true
     self.canInspectWeapon = true
     self.canInspectWeaponTime = Client.getRandomFloat(50, 90)
@@ -613,7 +613,7 @@ end
 
 --- @return void
 function AiController:setClientLoaderLock()
-    writefile("gamesense/Nyx1/Dominion/Resource/Data/ClientLoaderLock", "1")
+    writefile("lua/gamesense/Nyx/v1/Dominion/Resource/Data/ClientLoaderLock", "1")
 end
 
 --- @param eid number
@@ -692,7 +692,7 @@ function AiController:renderUi()
 
     if maxRounds == 30 then
         roundType = "Long"
-    elseif maxRounds == 15 then
+    elseif maxRounds == 16 then
         roundType = "Short"
     end
 
@@ -909,7 +909,23 @@ function AiController:activities(ai)
         local ammo = weapon:m_iClip1()
         local maxAmmo = csgoWeapon.primary_clip_size
 
-        if ammo / maxAmmo < 0.66 then
+        local reloadRatio = 0.9
+
+        if AiUtility.closestEnemy then
+            local closestEnemyDistance = origin:getDistance(AiUtility.closestEnemy:getOrigin())
+
+            if closestEnemyDistance > 1024 then
+                reloadRatio = 0.75
+            elseif closestEnemyDistance > 512 then
+                reloadRatio = 0.2
+            elseif closestEnemyDistance > 256 then
+                reloadRatio = 0.1
+            elseif closestEnemyDistance > 0 then
+                reloadRatio = 0
+            end
+        end
+
+        if ammo / maxAmmo < reloadRatio then
             ai.cmd.in_reload = 1
         end
     end
@@ -973,7 +989,7 @@ function AiController:antiFlash(ai)
             return
         end
 
-        self.flashbangVisibleTimer:startIfPaused()
+        self.flashbangVisibleTimer:ifPausedThenStart()
 
         if self.flashbangVisibleTimer:isElapsed(0.25) then
             ai.view:lookAt(eyeOrigin:getAngle(self.activeFlashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 4)
@@ -1037,7 +1053,7 @@ function AiController:antiBlock(ai)
         return
     end
 
-    self.unblockTimer:startIfPaused()
+    self.unblockTimer:ifPausedThenStart()
 
     if self.unblockTimer:isElapsedThenStop(self.antiBlockDuration) then
         self.unblockDirection = Client.getChance(2) and "Left" or "Right"
@@ -1288,4 +1304,3 @@ end
 
 return Nyx.class("AiController", AiController)
 --}}}
-

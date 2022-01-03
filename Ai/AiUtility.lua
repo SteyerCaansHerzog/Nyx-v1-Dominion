@@ -2,7 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Time = require "gamesense/Nyx/v1/Api/Time"
@@ -74,6 +74,7 @@ local AiWeaponNames = {
 --- @field weaponPriority AiWeaponPriority
 --- @field weaponNames string[]
 --- @field mainWeapons number[]
+--- @field isLastAlive boolean
 local AiUtility = {
     mainWeapons = {
         Weapons.FAMAS, Weapons.GALIL, Weapons.M4A1, Weapons.AUG, Weapons.AK47, Weapons.AWP, Weapons.SG553, Weapons.SCAR20, Weapons.G3SG1, Weapons.SSG08
@@ -208,11 +209,13 @@ function AiUtility:initEvents()
         self.teammates = {}
         self.visibleEnemies = {}
         self.closestEnemy = nil
+        self.isLastAlive = true
 
         for _, teammate in Player.find(function(p)
             return p:isTeammate() and p:isAlive() and not p:isClient()
         end) do
             self.teammates[teammate.eid] = teammate
+            self.isLastAlive = false
         end
 
         local closestEnemy
@@ -270,7 +273,7 @@ function AiUtility:initEvents()
         if next(AiUtility.visibleEnemies) then
             self.lastVisibleEnemyTimer:stop()
         else
-            self.lastVisibleEnemyTimer:startIfPaused()
+            self.lastVisibleEnemyTimer:ifPausedThenStart()
         end
 
         local bomb = AiUtility.plantedBomb

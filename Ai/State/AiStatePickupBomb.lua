@@ -2,7 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
@@ -75,7 +75,7 @@ function AiStatePickupBomb:assess()
     local owner = bomb:m_hOwnerEntity()
 
     if not owner and bomb:m_vecVelocity():getMagnitude() <= 10 then
-        self.pickupBombTimer:startIfPaused()
+        self.pickupBombTimer:ifPausedThenStart()
 
         if self.pickupBombTimer:isElapsed(2) then
             return AiState.priority.PICKUP_BOMB

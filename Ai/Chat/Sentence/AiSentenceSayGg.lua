@@ -2,7 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
@@ -63,7 +63,7 @@ function AiSentenceSayGg:__init()
             local gameRules = Entity.getGameRules()
             local roundsPlayed = gameRules:m_totalRoundsPlayed()
             
-            if roundsPlayed == cvar.mp_maxrounds:get_int() / 2 then
+            if roundsPlayed == math.ceil(cvar.mp_maxrounds:get_int() / 2) then
                 self:speak("GH")
             end
         end)

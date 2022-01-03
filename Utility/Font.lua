@@ -1,5 +1,5 @@
 --{{{ Dependencies
-local ISurface = require "gamesense/Aviarita.ISurface"
+local ISurface = require "gamesense/Nyx/v1/Api/ISurface"
 --}}}
 
 return {

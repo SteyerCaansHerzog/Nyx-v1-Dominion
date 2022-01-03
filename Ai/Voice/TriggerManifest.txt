@@ -1,28 +1,59 @@
-speakEnemyKilledByClient
-speakTeammateKilledByClient
-speakClientKilledByEnemy
-speakClientKilledByTeammate
-speakEnemyHurtByClient
-speakTeammateHurtByClient
-speakClientHurtByEnemy
-speakClientHurtByTeammate
-speakRequestTeammatesToRotate
-speakHearNearbyEnemies
-speakNotifyTeamOfBombCarrier
-speakNotifyTeamOfBomb
-speakRoundStart
-speakRoundStartPistolFirstHalf
-speakRoundStartPistolSecondHalf
-speakRoundStartWonPrevious
-speakRoundStartLostPrevious
-speakRoundStartMatchPointToTeam
-speakRoundStartMatchPointToOpposition
-speakRoundStartMatchPointFinalRound
-speakRoundEnd
-speakRoundEndWon
-speakRoundEndLost
-speakRoundEndHalftime
-speakWarmupGreeting
-speakWarmupIdle
-speakGameEndWon
-speakGameEndLost
+List of different recording groups:
+- CannotDefuseBomb - i can't defuse
+- ClientDefusingBomb - i'm defusing
+- ClientHurtByEnemy - i'm tagged
+- ClientHurtByTeammate - you shot me idiot
+- ClientKilledByEnemy_Owned - fucking hell!
+- ClientKilledByEnemy_Generic - i'm down
+- ClientKilledByTeammate - bro you're stupid
+- ClientPlantingBomb - i'm planting
+- ClientThrowingFlashbang - flashing
+- ClientThrowingHeGrenade - grenade
+- ClientThrowingIncendiary - molotov
+- ClientThrowingSmoke - smoking
+- EnemyDefusingBomb - they're defusing
+- EnemyHurtByClient - i tagged him
+- EnemyKilledByClient_Grenade - kobe!
+- EnemyKilledByClient_Owned - get fucked!
+- EnemyKilledByClient_Generic - got him
+- EnemyPlantingBomb - they're planting
+- GameEndLost - shit gg
+- GameEndWon - nice gg
+- HearNearbyEnemies - enemies here
+- NotifyTeamOfBomb - i got the bomb
+- NotifyTeamOfBombCarrier - bomb carrier here
+- NotifyFlashbanged - i'm blind!
+- RequestTeammatesToRotate_A - go a
+- RequestTeammatesToRotate_B - rotate b please!
+- RequestTeammatesToPush_A - i'm taking the bomb to a
+- RequestTeammatesToPush_B - i'm taking the bomb b
+- RoundEndHalftime - good half
+- RoundEndLost - nice try
+- RoundEndWon - good job
+- RoundStartLostPrevious - we'll get them this time
+- RoundStartMatchPointFinalRound - good luck
+- RoundStartMatchPointToOpposition - we need to win this
+- RoundStartMatchPointToTeam - okay we got this
+- RoundStartPistolFirstHalf - good luck
+- RoundStartPistolSecondHalf - good luck
+- RoundStartWonPrevious - keep it up guys
+- TeammateKilledByClient_Inferno - bro why you in my molotov?
+- TeammateKilledByClient_Blind - sorry i was blind
+- TeammateKilledByClient_Generic - i'm sorry bro
+- TeammateKilledByClient - fuck, sorry
+- WarmupGreeting - hey guys
+- WarmupIdle - so how are you all?
+
+Create each voice recording with the following file names:
+- CannotDefuseBomb_1.wav
+- CannotDefuseBomb_2.wav
+- ClientThrowingSmoke_1.wav
+- ClientThrowingSmoke_2.wav
+
+Save the files as 22050hz .wav files. Place them in 1 folder.
+
+Create between 20-40 recordings for each group. For recording groups that you know will be used more often (such as EnemyKilledByClient), make more recordings.
+
+You can say the exact same words multiple times, with or without different tones or cadence.
+
+The examples next to the recording group names are just examples. Say anything you like. Add some jokes or meme recordings. Say many different things.

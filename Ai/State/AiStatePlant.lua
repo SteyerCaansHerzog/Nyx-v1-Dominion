@@ -2,7 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
@@ -39,7 +39,7 @@ end
 function AiStatePlant:__init()
     self.plantDelayTimer = Timer:new()
     self.plantDelayTime = 0.33
-    self.tellSiteTimer = Timer:new():startAndElapse()
+    self.tellSiteTimer = Timer:new():startThenElapse()
     self.pickRandomSiteTimer = Timer:new()
 
     Callbacks.init(function()
@@ -111,7 +111,7 @@ function AiStatePlant:assess(nodegraph)
     if isOnPlant and isCovered then
         return AiState.priority.PLANT_COVERED
     elseif isOnSite and isCovered then
-        return AiState.priority.PLANT_COVERED
+        return AiState.priority.PLANT_ACTIVE
     end
 
     if playerOrigin:getDistance(site.origin) < 1024 then
@@ -155,7 +155,7 @@ function AiStatePlant:activate(ai, site)
         task = string.format("Plant on %s site [%i]", node.site:upper(), node.id),
         onComplete = function()
             ai.nodegraph:log("Planting on %s site [%i]", node.site:upper(), node.id)
-            self.plantDelayTimer:startIfPaused()
+            self.plantDelayTimer:ifPausedThenStart()
 
             self.mustPathfind = false
         end
@@ -167,6 +167,10 @@ function AiStatePlant:activate(ai, site)
         local color = self.plantAt == "a" and ai.radio.color.BLUE or ai.radio.color.PURPLE
 
         ai.radio:speak(ai.radio.message.FOLLOW_ME, 1, 0.5, 1, "I'm %staking%s the %sbomb%s to %sbombsite %s%s.", ai.radio.color.YELLOW, ai.radio.color.DEFAULT, ai.radio.color.GOLD, ai.radio.color.DEFAULT, color, self.plantAt:upper(), ai.radio.color.DEFAULT)
+
+        if not AiUtility.isLastAlive then
+            ai.voice.pack:speakRequestTeammatesToPush(self.plantAt)
+        end
     end
 end
 

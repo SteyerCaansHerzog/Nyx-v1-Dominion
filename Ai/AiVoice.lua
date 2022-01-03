@@ -2,15 +2,18 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
+local Timer = require "gamesense/Nyx/v1/Api/Timer"
+
 --}}}
 
 --{{{ Modules
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiVoicePackEmpty = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackEmpty"
-local AiVoicePackGeneric = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackGeneric"
+local AiVoicePackSteyer = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackSteyer"
 --}}}
 
 --{{{ AiVoice
@@ -18,10 +21,11 @@ local AiVoicePackGeneric = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePa
 --- @field pack AiVoicePack
 --- @field packs AiVoicePack[]
 --- @field clientWonLastRound boolean
+--- @field flashbangTimer Timer
 local AiVoice = {
     packs = {
         empty = AiVoicePackEmpty,
-        generic = AiVoicePackGeneric
+        steyer = AiVoicePackSteyer
     }
 }
 
@@ -34,15 +38,22 @@ end
 --- @return void
 function AiVoice:__init()
     self.pack = self.packs.empty
+    self.flashbangTimer = Timer:new():startThenElapse()
+
+    Callbacks.runCommand(function()
+        if Client.isFlashed() and self.flashbangTimer:isElapsedThenRestart(10) then
+            self.pack:speakNotifyFlashbanged()
+        end
+    end)
 
     Callbacks.levelInit(function()
-    	Client.fireAfter(Client.getRandomFloat(5, 15), function()
+    	Client.fireAfter(Client.getRandomFloat(10, 20), function()
             if Entity.getGameRules():m_bWarmupPeriod() == 1 then
                 self.pack:speakWarmupGreeting()
             end
     	end)
 
-        Client.fireAfter(Client.getRandomFloat(16, 35), function()
+        Client.fireAfter(Client.getRandomFloat(22, 40), function()
             if Entity.getGameRules():m_bWarmupPeriod() == 1 then
                 self.pack:speakWarmupIdle()
             end
@@ -50,11 +61,7 @@ function AiVoice:__init()
     end)
 
     Callbacks.roundStart(function()
-        local freezetime = cvar.mp_freezetime:get_float()
-        local minDelay = freezetime * 0.4
-        local maxDelay = freezetime * 0.8
-
-        Client.fireAfter(Client.getRandomFloat(minDelay, maxDelay), function()
+        Client.onNextTick(function()
             local roundsPlayed = Entity.getGameRules():m_totalRoundsPlayed()
             local scoreData = Table.fromPanorama(Panorama.GameStateAPI.GetScoreDataJSO())
             local tWins = scoreData.teamdata.TERRORIST.score
@@ -72,31 +79,34 @@ function AiVoice:__init()
 
             self.pack:speakRoundStart()
 
+            local maxRounds = cvar.mp_maxrounds:get_int()
+            local halfTime = math.ceil(maxRounds / 2)
+
             if roundsPlayed == 0 then
                 self.pack:speakRoundStartPistolFirstHalf()
 
                 return
             end
 
-            if roundsPlayed == 15 then
+            if roundsPlayed == halfTime - 1 then
                 self.pack:speakRoundStartPistolSecondHalf()
 
                 return
             end
 
-            if roundsPlayed == 29 then
+            if roundsPlayed == maxRounds - 1 then
                 self.pack:speakRoundStartMatchPointFinalRound()
 
                 return
             end
 
-            if teamWins == 15 then
+            if teamWins == halfTime then
                 self.pack:speakRoundStartMatchPointToTeam()
 
                 return
             end
 
-            if oppositionWins == 15 then
+            if oppositionWins == halfTime then
                 self.pack:speakRoundStartMatchPointToOpposition()
 
                 return
@@ -111,21 +121,24 @@ function AiVoice:__init()
     end)
 
     Callbacks.roundEnd(function(e)
-        local restartDelay = cvar.mp_round_restart_delay:get_float()
-        local minDelay = restartDelay * 0.1
-        local maxDelay = restartDelay * 0.66
+        Client.onNextTick(function()
+            local player = Player.getClient()
+            local team = player:m_iTeamNum()
 
-        Client.fireAfter(Client.getRandomFloat(minDelay, maxDelay), function()
+            self.clientWonLastRound = e.winner == team
+
             local isWinner = e.winner == Player.getClient():m_iTeamNum()
             local roundsPlayed = Entity.getGameRules():m_totalRoundsPlayed()
-            local roundsNeededToWin = cvar.mp_maxrounds:get_int() / 2
+            local maxRounds = cvar.mp_maxrounds:get_int()
+            local halfTime = math.floor(maxRounds / 2)
+            local roundsNeededToWin = halfTime + 1
             local scoreData = Table.fromPanorama(Panorama.GameStateAPI.GetScoreDataJSO())
             local tWins = scoreData.teamdata.TERRORIST.score
             local ctWins = scoreData.teamdata.CT.score
             local teamWins
             local oppositionWins
 
-            if Player.getClient():isTerrorist() then
+            if player:isTerrorist() then
                 teamWins = tWins
                 oppositionWins = ctWins
             else
@@ -147,7 +160,7 @@ function AiVoice:__init()
 
             self.pack:speakRoundEnd()
 
-            if roundsPlayed == 14 then
+            if roundsPlayed == halfTime then
                 self.pack:speakRoundEndHalftime()
 
                 return
@@ -162,6 +175,10 @@ function AiVoice:__init()
     end)
 
     Callbacks.playerDeath(function(e)
+        if AiUtility.isLastAlive or Entity.getGameRules():m_bWarmupPeriod() == 1 then
+            return
+        end
+
         if e.attacker:isClient() then
             if e.victim:isEnemy() then
                 self.pack:speakEnemyKilledByClient(e)
@@ -192,6 +209,10 @@ function AiVoice:__init()
     end)
 
     Callbacks.playerHurt(function(e)
+        if AiUtility.isLastAlive or Entity.getGameRules():m_bWarmupPeriod() == 1 then
+            return
+        end
+
         if e.attacker:isClient() then
             if e.victim:isEnemy() then
                 self.pack:speakEnemyHurtByClient(e)
@@ -220,6 +241,62 @@ function AiVoice:__init()
             end
         end
     end)
+
+    Callbacks.bombBeginDefuse(function(e)
+        if AiUtility.isLastAlive then
+            return
+        end
+
+        if e.player:isClient() then
+            self.pack:speakClientDefusingBomb()
+        end
+
+        local player = Player.getClient()
+
+        if e.player:isEnemy() and player:isAlive() and player:getOrigin():getDistance(e.player:getOrigin()) < 1500 then
+            self.pack:speakEnemyDefusingBomb()
+        end
+    end)
+
+    Callbacks.bombBeginPlant(function(e)
+        if AiUtility.isLastAlive then
+            return
+        end
+
+        if e.player:isClient() then
+            self.pack:speakClientPlantingBomb()
+        end
+
+        local player = Player.getClient()
+
+        if e.player:isEnemy() and player:isAlive() and player:getOrigin():getDistance(e.player:getOrigin()) < 1500 then
+            self.pack:speakEnemyPlantingBomb()
+        end
+    end)
+
+    Callbacks.weaponFire(function(e)
+        if AiUtility.isLastAlive then
+            return
+        end
+
+        if e.player:isClient() then
+            local methods = {
+                weapon_flashbang = "speakClientThrowingFlashbang",
+                weapon_hegrenade = "speakClientThrowingHeGrenade",
+                weapon_smokegrenade = "speakClientThrowingSmoke",
+                weapon_incgrenade = "speakClientThrowingIncendiary",
+                weapon_molotov = "speakClientThrowingIncendiary",
+            }
+
+            local method = methods[e.weapon]
+
+            if method then
+                self.pack[method](self.pack)
+            end
+        end
+    end)
+
+
 end
 
 return Nyx.class("AiVoice", AiVoice)

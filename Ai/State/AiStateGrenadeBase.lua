@@ -2,7 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Color = require "gamesense/Nyx/v1/Api/Color"
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
@@ -39,8 +39,8 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field usedNodes Timer[]
 local AiStateGrenadeBase = {
     name = "GrenadeBase",
-    globalCooldownTimer = Timer:new():startAndElapse(),
-    cooldownTimer = Timer:new():startAndElapse(),
+    globalCooldownTimer = Timer:new():startThenElapse(),
+    cooldownTimer = Timer:new():startThenElapse(),
     usedNodes = {}
 }
 
@@ -246,7 +246,7 @@ function AiStateGrenadeBase:think(ai)
     end
 
     if distance < 46 then
-        self.throwTimer:startIfPaused()
+        self.throwTimer:ifPausedThenStart()
     end
 
     if distance < 150 then
@@ -289,10 +289,12 @@ function AiStateGrenadeBase:getNodes(nodegraph)
         elseif AiUtility.bombCarrier then
             local bombCarrierOrigin = AiUtility.bombCarrier:m_vecOrigin()
 
-            if bombCarrierOrigin:getDistance(nodegraph:getSiteNode("a").origin) < 512 then
-                isSiteTaken = true
-            elseif bombCarrierOrigin:getDistance(nodegraph:getSiteNode("b").origin) < 512 then
-                isSiteTaken = true
+            if bombCarrierOrigin then
+                if bombCarrierOrigin:getDistance(nodegraph:getSiteNode("a").origin) < 750 then
+                    isSiteTaken = true
+                elseif bombCarrierOrigin:getDistance(nodegraph:getSiteNode("b").origin) < 750 then
+                    isSiteTaken = true
+                end
             end
         end
 

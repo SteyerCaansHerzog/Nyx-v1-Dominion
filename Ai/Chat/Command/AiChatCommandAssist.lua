@@ -1,5 +1,5 @@
 --{{{ Dependencies
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3

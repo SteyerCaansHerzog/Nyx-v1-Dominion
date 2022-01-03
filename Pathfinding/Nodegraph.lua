@@ -5,7 +5,7 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Math = require "gamesense/Nyx/v1/Api/Math"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Render = require "gamesense/Nyx/v1/Api/Render"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -113,7 +113,7 @@ function Nodegraph:initEvents()
             return
         end
 
-        self.jumpCooldown = Timer:new():startAndElapse()
+        self.jumpCooldown = Timer:new():startThenElapse()
         self.crouchTimer = Timer:new()
         self.stuckTimer = Timer:new()
         self.unstuckTimer = Timer:new()
@@ -344,7 +344,7 @@ function Nodegraph:reactivateAllNodes()
 end
 
 --- @param reason string
---- @return
+--- @return void
 function Nodegraph:clearPath(reason)
     self.path = nil
     self.pathCurrent = 0
@@ -361,9 +361,9 @@ function Nodegraph:clearPath(reason)
     self.pathEnd = nil
     self.pathMap = nil
 
-    self.jumpCooldown = Timer:new():startAndElapse()
+    self.jumpCooldown = Timer:new():startThenElapse()
     self.crouchTimer = Timer:new()
-    self.useCooldown = Timer:new():startAndElapse()
+    self.useCooldown = Timer:new():startThenElapse()
     self.stuckTimer = Timer:new()
     self.lastPathfindTimer = Timer:new()
 
@@ -497,7 +497,7 @@ function Nodegraph:getFilename()
 
     map = map:gsub("/", "_")
 
-    return string.format("gamesense/Nyx1/Dominion/Pathfinding/Nodegraphs/%s.json", map)
+    return string.format("lua/gamesense/Nyx/v1/Dominion/Pathfinding/Nodegraphs/%s.json", map)
 end
 
 --- @param origin Vector3
@@ -918,7 +918,7 @@ function Nodegraph:move(cmd)
 
     -- Attempt to unstuck ourselves
     if self.pathfindFails > 0 then
-        self.unstuckTimer:startIfPaused()
+        self.unstuckTimer:ifPausedThenStart()
 
         cmd.forwardmove = self.moveSpeed or 450
         --cmd.move_yaw = self.unstuckAngles.y
@@ -997,10 +997,10 @@ function Nodegraph:move(cmd)
     local canJump = self.canJump
 
     self.canJump = true
-    
+
     -- Jump over obstacles
-    if canJump and self.jumpCooldown:isElapsedThenRestart(0.3) and distance < 48 and (node.type == Node.types.JUMP) then
-        if node.origin.z - origin.z > 25 then
+    if canJump and self.jumpCooldown:isElapsedThenRestart(0.4) and distance < 48 and (node.type == Node.types.JUMP) then
+        if node.origin.z - origin.z > 20 then
             cmd.in_jump = 1
         end
     end
@@ -1033,7 +1033,7 @@ function Nodegraph:move(cmd)
             self.stuckTimer:start()
         elseif self.stuckTimer:isStarted() and speed >= 100 then
             self.stuckTimer:stop()
-        elseif self.stuckTimer:isElapsedThenRestart(1) then
+        elseif self.stuckTimer:isElapsedThenRestart(1.5) then
             self:rePathfind()
 
             local closestJumpNode = self:getClosestNodeOf(origin, Node.types.JUMP)

@@ -1,7 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -22,6 +22,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field patrolNode Node
 --- @field patrollingOnBehalfOf Player
 --- @field hasNotifiedTeamOfBomb boolean
+--- @field cooldownTimer Timer
 local AiStatePatrol = {
     name = "Patrol",
     canDelayActivation = true,
@@ -36,6 +37,8 @@ end
 
 --- @return void
 function AiStatePatrol:__init()
+    self.cooldownTimer = Timer:new():startThenElapse()
+
     Callbacks.roundStart(function()
     	self:reset()
     end)
@@ -118,6 +121,10 @@ function AiStatePatrol:think(ai)
                     Client.cmd("say_team /assist")
 
                     self.hasNotifiedTeamOfBomb = true
+
+                    if not AiUtility.isLastAlive and self.cooldownTimer:isElapsedThenRestart(25) then
+                        ai.voice.pack:speakNotifyTeamOfBomb()
+                    end
                 end
             end
         end

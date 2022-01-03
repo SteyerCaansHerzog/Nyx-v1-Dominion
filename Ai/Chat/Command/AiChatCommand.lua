@@ -1,7 +1,7 @@
 --{{{ Dependencies
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Table = require "gamesense/Nyx/v1/Api/Table"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules

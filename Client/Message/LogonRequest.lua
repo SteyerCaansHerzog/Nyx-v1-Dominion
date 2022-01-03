@@ -1,5 +1,5 @@
 --{{{ Dependencies
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ LogonRequest

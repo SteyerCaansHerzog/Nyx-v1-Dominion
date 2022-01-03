@@ -2,7 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -38,11 +38,11 @@ function AiStateEvade:__init()
     self.shotBoltActionRifleTimer = Timer:new()
     self.shotBoltActionRifleTime = 1
     self.reloadLookAngles = Client.getCameraAngles()
-    self.changeAngleTimer = Timer:new():startAndElapse()
+    self.changeAngleTimer = Timer:new():startThenElapse()
 
     Callbacks.weaponFire(function(e)
         if e.player:isClient() and e.player:hasWeapons({ Weapons.AWP, Weapons.SSG08}) then
-            self.shotBoltActionRifleTimer:startIfPaused()
+            self.shotBoltActionRifleTimer:ifPausedThenStart()
         end
     end)
 end
@@ -82,11 +82,14 @@ function AiStateEvade:assess()
         return AiState.priority.EVADE
     end
 
-    if player:isReloading() and player:getReloadProgress() < 0.66 then
+    if player:isReloading() and player:getReloadProgress() < 0.5 then
         return AiState.priority.EVADE
     end
 
-    if (next(AiUtility.visibleEnemies) or (AiUtility.lastVisibleEnemyTimer:isStarted() and not AiUtility.lastVisibleEnemyTimer:isElapsed(2))) and (Time.getCurtime() - player:m_flNextAttack()) <= 0 then
+    if (next(AiUtility.visibleEnemies) or (AiUtility.lastVisibleEnemyTimer:isStarted() and not AiUtility.lastVisibleEnemyTimer:isElapsed(2)))
+        and (Time.getCurtime() - player:m_flNextAttack()) <= 0
+        and player:getWeapon().classname ~= "CC4"
+    then
         return AiState.priority.EVADE
     end
 

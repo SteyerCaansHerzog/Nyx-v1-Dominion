@@ -6,7 +6,7 @@ local CsgoWeapons = require "gamesense/csgo_weapons"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -82,6 +82,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field watchOrigin Vector3
 --- @field watchTime number
 --- @field watchTimer Timer
+--- @field setBestTargetTimer Timer
 local AiStateEngage = {
     name = "Engage"
 }
@@ -109,16 +110,17 @@ function AiStateEngage:initFields()
     self.ignorePlayerAfter = 25
     self.onGroundTimer = Timer:new()
     self.onGroundTime = 0.1
-    self.ignoreDormancyTimer = Timer:new():startAndElapse()
+    self.ignoreDormancyTimer = Timer:new():startThenElapse()
     self.ignoreDormancyTime = 6.5
     self.isIgnoringDormancy = false
     self.isSneaking = false
-    self.shootAtOriginTimer = Timer:new():startAndElapse()
-    self.blockTimer = Timer:new():startAndElapse()
+    self.shootAtOriginTimer = Timer:new():startThenElapse()
+    self.blockTimer = Timer:new():startThenElapse()
     self.blockTime = 0.25
     self.lastSoundTimer = Timer:new():start()
     self.preAimOriginDelayed = Vector3:new()
-    self.preAimOriginTimer = Timer:new():startAndElapse()
+    self.preAimOriginTimer = Timer:new():startThenElapse()
+    self.setBestTargetTimer = Timer:new():startThenElapse()
 
     self.noticedPlayerTimers = {}
 
@@ -141,14 +143,14 @@ function AiStateEngage:initFields()
     self.aimAdjustmentYaw = 0
     self.currentReactionTime = 0
     self.scopedTimer = Timer:new()
-    self.tellRotateTimer = Timer:new():startAndElapse()
+    self.tellRotateTimer = Timer:new():startThenElapse()
     self.walkCheckTimer = Timer:new():start()
     self.walkCheckCount = 0
-    self.hitboxOffsetTimer = Timer:new():startAndElapse()
-    self.enemySpottedCooldown = Timer:new():startAndElapse()
+    self.hitboxOffsetTimer = Timer:new():startThenElapse()
+    self.enemySpottedCooldown = Timer:new():startThenElapse()
     self.preAimAroundCornersTimer = Timer:new()
     self.preAimAroundCornersTime = 1
-    self.updatePreAimOriginTimer = Timer:new():startAndElapse()
+    self.updatePreAimOriginTimer = Timer:new():startThenElapse()
     self.updatePreAimOriginTime = 1.2
 
     Menu.enableAimbot = Menu.group:checkbox("    > Enable Aimbot"):setParent(Menu.enableAi)
@@ -237,7 +239,7 @@ function AiStateEngage:initEvents()
         end
 
         if player:m_bIsScoped() == 1 then
-            self.scopedTimer:startIfPaused()
+            self.scopedTimer:ifPausedThenStart()
         else
             self.scopedTimer:stop()
         end
@@ -380,16 +382,43 @@ function AiStateEngage:activate(ai)
 
         if AiUtility.bombCarrier and AiUtility.bombCarrier:is(self.bestTarget) and player:isCounterTerrorist() then
             ai.radio:speak(ai.radio.message.ENEMY_SPOTTED, 1, 0.5, 1, "I have the %sbomb carrier%s near me.", ai.radio.color.GOLD, ai.radio.color.DEFAULT)
-            ai.voice.pack:speakNotifyTeamOfBombCarrier()
+
+            if not AiUtility.isLastAlive then
+                ai.voice.pack:speakNotifyTeamOfBombCarrier()
+            end
         else
             ai.radio:speak(ai.radio.message.ENEMY_SPOTTED, 2, 0.5, 1, "I am %sengaging%s enemies near me.", ai.radio.color.YELLOW, ai.radio.color.DEFAULT)
-            ai.voice.pack:speakHearNearbyEnemies()
+
+            if not AiUtility.isLastAlive then
+                ai.voice.pack:speakHearNearbyEnemies()
+            end
         end
     end
 end
 
 --- @return void
 function AiStateEngage:deactivate() end
+
+--- @return void
+function AiStateEngage:reset()
+    self.reactionTimer:stop()
+    self.sprayTimer:stop()
+    self.watchTimer:stop()
+    self.watchOrigin = nil
+    self.bestTarget = nil
+
+    self.noticedPlayerTimers = {}
+
+    for i = 1, 64 do
+        self.noticedPlayerTimers[i] = Timer:new()
+    end
+
+    self.lastSeenTimers = {}
+
+    for i = 1, 64 do
+        self.lastSeenTimers[i] = Timer:new()
+    end
+end
 
 --- @param ai AiOptions
 --- @return void
@@ -474,7 +503,9 @@ function AiStateEngage:tellRotate(ai)
 
         ai.radio:speak(ai.radio.message.HELP, 1, 1, 2, "Please %srotate%s to %sbombsite %s%s!", ai.radio.color.YELLOW, ai.radio.color.DEFAULT, color , nearestBombSite:upper(), ai.radio.color.DEFAULT)
 
-        ai.voice.pack:speakRequestTeammatesToRotate(nearestBombSite)
+        if not AiUtility.isLastAlive then
+            ai.voice.pack:speakRequestTeammatesToRotate(nearestBombSite)
+        end
     end
 end
 
@@ -583,9 +614,9 @@ function AiStateEngage:setBestTarget()
         self.preAimOriginTimer:elapse()
     end
 
-    self.bestTarget = selectedEnemy
-
     self:setWeaponStats(selectedEnemy)
+
+    self.bestTarget = selectedEnemy
 end
 
 --- @class AiStateEngageWeaponStats
@@ -1057,27 +1088,6 @@ function AiStateEngage:engage(ai)
     end
 end
 
---- @return void
-function AiStateEngage:reset()
-    self.reactionTimer:stop()
-    self.sprayTimer:stop()
-    self.watchTimer:stop()
-    self.watchOrigin = nil
-    self.bestTarget = nil
-
-    self.noticedPlayerTimers = {}
-
-    for i = 1, 64 do
-        self.noticedPlayerTimers[i] = Timer:new()
-    end
-
-    self.lastSeenTimers = {}
-
-    for i = 1, 64 do
-        self.lastSeenTimers[i] = Timer:new()
-    end
-end
-
 --- @param ai AiOptions
 --- @return void
 function AiStateEngage:attack(ai)
@@ -1176,8 +1186,8 @@ function AiStateEngage:attack(ai)
             self.watchOrigin = hitbox
         end
 
-        self.watchTimer:startIfPaused()
-        self.enemyVisibleTimer:startIfPaused()
+        self.watchTimer:ifPausedThenStart()
+        self.enemyVisibleTimer:ifPausedThenStart()
     else
         self.enemyVisibleTimer:stop()
     end
@@ -1197,8 +1207,8 @@ function AiStateEngage:attack(ai)
     end
 
     -- Begin reaction timer
-    if AiUtility.visibleEnemies[enemy.eid] and fov < 45 then
-        self.reactionTimer:startIfPaused()
+    if AiUtility.visibleEnemies[enemy.eid] and shootFov < 36 then
+        self.reactionTimer:ifPausedThenStart()
     end
 
     -- Auto-stop
@@ -1230,7 +1240,7 @@ function AiStateEngage:attack(ai)
             Client.unscope()
         end
 
-        if shootFov < 8 then
+        if shootFov < 12 then
             self:noticeEnemy(enemy,4096, "In shoot FoV")
             self:shoot(ai, hitbox, shootFov, enemy)
 
@@ -1712,7 +1722,7 @@ function AiStateEngage:setAimSkill(skill)
     local skills = {
         [0] = {
             reactionTime = 0.3,
-            anticipationTime = 0.1,
+            anticipationTime = 0.01,
             sprayTime = 0.45,
             aimSpeed = 4,
             slowAimSpeed = 4,
@@ -1721,7 +1731,7 @@ function AiStateEngage:setAimSkill(skill)
         },
         [1] = {
             reactionTime = 0.2,
-            anticipationTime = 0.05,
+            anticipationTime = 0.01,
             sprayTime = 0.45,
             aimSpeed = 6,
             slowAimSpeed = 6,
@@ -1730,7 +1740,7 @@ function AiStateEngage:setAimSkill(skill)
         },
         [2] = {
             reactionTime = 0.1,
-            anticipationTime = 0.05,
+            anticipationTime = 0.01,
             sprayTime = 0.45,
             aimSpeed = 8,
             slowAimSpeed = 8,
@@ -1739,7 +1749,7 @@ function AiStateEngage:setAimSkill(skill)
         },
         [3] = {
             reactionTime = 0.075,
-            anticipationTime = 0.05,
+            anticipationTime = 0.01,
             sprayTime = 0.45,
             aimSpeed = 10,
             slowAimSpeed = 10,
@@ -1748,7 +1758,7 @@ function AiStateEngage:setAimSkill(skill)
         },
         [4] = {
             reactionTime = 0.05,
-            anticipationTime = 0.05,
+            anticipationTime = 0.01,
             sprayTime = 0.45,
             aimSpeed = 12,
             slowAimSpeed = 10,

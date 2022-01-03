@@ -1,12 +1,13 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Voice = require "gamesense/Nyx/v1/Api/Voice"
 --}}}
 
 --{{{ Definitions
 --- @class AiVoicePackSpeakOptions
+--- @field chance number
 --- @field interrupt boolean
 --- @field lock boolean
 --- @field ignoreLock boolean
@@ -20,8 +21,9 @@ local Voice = require "gamesense/Nyx/v1/Api/Voice"
 --- @field packPath string
 --- @field defaultSpeakOptions AiVoicePackSpeakOptions
 local AiVoicePack = {
-    rootPath = "gamesense/Nyx1/Dominion/Resource/Audio/Voice/%s/%s.wav",
+    rootPath = "lua/gamesense/Nyx/v1/Dominion/Resource/Audio/Voice/%s/%s.wav",
     defaultSpeakOptions = {
+        chance = 1,
         interrupt = false,
         lock = true,
         ignoreLock = false,
@@ -34,6 +36,11 @@ local AiVoicePack = {
 --- @return AiVoicePack
 function AiVoicePack:new(fields)
 	return Nyx.new(self, fields)
+end
+
+--- @return void
+function AiVoicePack:__init()
+    self:unlock()
 end
 
 --- @param line string
@@ -73,24 +80,32 @@ end
 
 --- @return void
 function AiVoicePack:lock()
-    writefile("gamesense/Nyx1/Dominion/Resource/Data/AiRadioLock", "1")
+    writefile("gamesense/Nyx/v1/Dominion/Resource/Data/AiRadioLock", "1")
 end
 
 --- @return void
 function AiVoicePack:unlock()
-    writefile("gamesense/Nyx1/Dominion/Resource/Data/AiRadioLock", "0")
+    writefile("gamesense/Nyx/v1/Dominion/Resource/Data/AiRadioLock", "0")
 end
 
 --- @return void
 function AiVoicePack:isLocked()
-    return readfile("gamesense/Nyx1/Dominion/Resource/Data/AiRadioLock") == "1"
+    return readfile("gamesense/Nyx/v1/Dominion/Resource/Data/AiRadioLock") == "1"
 end
 
 --- @param lines string[]
 --- @param options AiVoicePackSpeakOptions
 --- @return void
 function AiVoicePack:speak(lines, options)
-    options = Table.setMissing(options, self.defaultSpeakOptions)
+    if not options then
+        options = {}
+    end
+
+    Table.setMissing(options, self.defaultSpeakOptions)
+
+    if not Client.getChance(options.chance) then
+        return
+    end
 
     if not options.ignoreLock and self:isLocked() then
         return
@@ -100,12 +115,17 @@ function AiVoicePack:speak(lines, options)
         self:lock()
     end
 
-    Client.fireAfter(Client.getRandomFloat(options.minDelay, options.maxDelay), function()
-    	local duration = Voice.playRandom(lines, options.interrupt)
+    local delay = Client.getRandomFloat(options.minDelay, options.maxDelay)
 
-        Client.fireAfter(duration, function()
-        	self:unlock()
-        end)
+    Client.fireAfter(delay, function()
+        local line = self:getFile(Table.getRandom(lines))
+    	local duration = Voice.play(line, options.interrupt)
+
+        if duration then
+            Client.fireAfter(duration, function()
+                self:unlock()
+            end)
+        end
     end)
 end
 
@@ -113,7 +133,15 @@ end
 --- @param options AiVoicePackSpeakOptions
 --- @return void
 function AiVoicePack:speakSequence(sequence, options)
-    options = Table.setMissing(options, self.defaultSpeakOptions)
+    if not options then
+        options = {}
+    end
+
+    Table.setMissing(options, self.defaultSpeakOptions)
+
+    if not Client.getChance(options.chance) then
+        return
+    end
 
     if not options.ignoreLock and self:isLocked() then
         return
@@ -148,7 +176,15 @@ end
 --- @param options AiVoicePackSpeakOptions
 --- @return void
 function AiVoicePack:speakRandomSequence(sequences, options)
-    options = Table.setMissing(options, self.defaultSpeakOptions)
+    if not options then
+        options = {}
+    end
+
+    Table.setMissing(options, self.defaultSpeakOptions)
+
+    if not Client.getChance(options.chance) then
+        return
+    end
 
     if not options.ignoreLock and self:isLocked() then
         return
@@ -178,6 +214,19 @@ function AiVoicePack:speakRandomSequence(sequences, options)
             self:unlock()
         end)
     end)
+end
+
+--- @param name string
+--- @param quantity number
+--- @return string[]
+function AiVoicePack:getGroup(name, quantity)
+    local result = {}
+
+    for i = 1, quantity do
+        result[i] = string.format("%s_%i", name, i)
+    end
+
+    return result
 end
 
 --{{{ Kills
@@ -216,12 +265,18 @@ function AiVoicePack:speakClientHurtByEnemy(event) end
 function AiVoicePack:speakClientHurtByTeammate(event) end
 --}}}
 
---{{{ Awareness
+--{{{ AI
 --- Must be implemented by AI.
 ---
 --- @param bombsite string
 --- @return void
 function AiVoicePack:speakRequestTeammatesToRotate(bombsite) end
+
+--- Must be implemented by AI.
+---
+--- @param bombsite string
+--- @return void
+function AiVoicePack:speakRequestTeammatesToPush(bombsite) end
 
 --- Must be implemented by AI. Triggered when enemy becomes aware of enemies and has decided to engage them.
 ---
@@ -237,6 +292,9 @@ function AiVoicePack:speakNotifyTeamOfBombCarrier() end
 ---
 --- @return void
 function AiVoicePack:speakNotifyTeamOfBomb() end
+
+--- @return void
+function AiVoicePack:speakNotifyFlashbanged() end
 --}}}
 
 --{{{ Round Start
@@ -293,6 +351,35 @@ function AiVoicePack:speakGameEndWon() end
 
 --- @return void
 function AiVoicePack:speakGameEndLost() end
+--}}}
+
+--{{{ Utility
+--- @return void
+function AiVoicePack:speakClientDefusingBomb() end
+
+--- @return void
+function AiVoicePack:speakEnemyDefusingBomb() end
+
+--- @return void
+function AiVoicePack:speakCannotDefuseBomb() end
+
+--- @return void
+function AiVoicePack:speakClientPlantingBomb() end
+
+--- @return void
+function AiVoicePack:speakEnemyPlantingBomb() end
+
+--- @return void
+function AiVoicePack:speakClientThrowingFlashbang() end
+
+--- @return void
+function AiVoicePack:speakClientThrowingSmoke() end
+
+--- @return void
+function AiVoicePack:speakClientThrowingHeGrenade() end
+
+--- @return void
+function AiVoicePack:speakClientThrowingIncendiary() end
 --}}}
 
 return Nyx.class("AiVoicePack", AiVoicePack)

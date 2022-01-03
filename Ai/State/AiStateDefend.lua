@@ -1,7 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
@@ -51,9 +51,9 @@ end
 function AiStateDefend:__init()
     self.defendTimer = Timer:new()
     self.defendTime = Client.getRandomFloat(2, 6)
-    self.speakCooldownTimer = Timer:new(30):startAndElapse()
+    self.speakCooldownTimer = Timer:new(30):startThenElapse()
     self.jiggleTimer = Timer:new():start()
-    self.jiggleTime = 0.33
+    self.jiggleTime = 0.66
     self.jiggleDirection = "Left"
 
     Callbacks.init(function()
@@ -61,7 +61,7 @@ function AiStateDefend:__init()
     end)
 
     Callbacks.roundStart(function()
-        self.speakCooldownTimer:startAndElapse()
+        self.speakCooldownTimer:startThenElapse()
         self.isDefending = false
         self.isDefendingBomb = false
         self.isDefendingDefuser = false
@@ -249,7 +249,7 @@ function AiStateDefend:think(ai)
         local lookOrigin = self.node.origin:clone():offset(0, 0, 64)
         local lookAtOrigin = lookOrigin:getTraceLine(lookOrigin + self.node.direction:getForward() * Vector3.MAX_DISTANCE, Client.getEid())
 
-        self.defendTimer:startIfPaused()
+        self.defendTimer:ifPausedThenStart()
 
         ai.view:lookAt(lookAtOrigin, 5)
 
@@ -275,7 +275,6 @@ function AiStateDefend:think(ai)
 
         if self.isJiggling then
             if self.jiggleTimer:isElapsedThenRestart(self.jiggleTime) then
-                self.jiggleTime = Client.getRandomFloat(0.3, 0.36)
                 self.jiggleDirection = self.jiggleDirection == "Left" and "Right" or "Left"
             end
 

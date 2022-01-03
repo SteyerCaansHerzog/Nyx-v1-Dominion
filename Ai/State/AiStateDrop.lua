@@ -1,6 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local Nyx = require "gamesense/Nyx/v1/Api/Framework"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
@@ -63,7 +63,7 @@ function AiStateDrop:think(ai)
     ai.view:lookAt(hitbox, 8)
 
     if Client.getCameraAngles():getMaxDiff(Client.getEyeOrigin():getAngle(hitbox)) < 8 then
-        self.droppingGearTimer:startIfPaused()
+        self.droppingGearTimer:ifPausedThenStart()
 
         if self.droppingGearTimer:isElapsedThenStop(0.1) then
             Client.dropGear()
