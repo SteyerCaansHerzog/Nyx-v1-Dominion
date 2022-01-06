@@ -69,7 +69,7 @@ function AiVoice:__init()
             local teamWins
             local oppositionWins
 
-            if Player.getClient():isTerrorist() then
+            if AiUtility.client:isTerrorist() then
                 teamWins = tWins
                 oppositionWins = ctWins
             else
@@ -122,12 +122,12 @@ function AiVoice:__init()
 
     Callbacks.roundEnd(function(e)
         Client.onNextTick(function()
-            local player = Player.getClient()
+            local player = AiUtility.client
             local team = player:m_iTeamNum()
 
             self.clientWonLastRound = e.winner == team
 
-            local isWinner = e.winner == Player.getClient():m_iTeamNum()
+            local isWinner = e.winner == AiUtility.client:m_iTeamNum()
             local roundsPlayed = Entity.getGameRules():m_totalRoundsPlayed()
             local maxRounds = cvar.mp_maxrounds:get_int()
             local halfTime = math.floor(maxRounds / 2)
@@ -251,7 +251,7 @@ function AiVoice:__init()
             self.pack:speakClientDefusingBomb()
         end
 
-        local player = Player.getClient()
+        local player = AiUtility.client
 
         if e.player:isEnemy() and player:isAlive() and player:getOrigin():getDistance(e.player:getOrigin()) < 1500 then
             self.pack:speakEnemyDefusingBomb()
@@ -267,7 +267,7 @@ function AiVoice:__init()
             self.pack:speakClientPlantingBomb()
         end
 
-        local player = Player.getClient()
+        local player = AiUtility.client
 
         if e.player:isEnemy() and player:isAlive() and player:getOrigin():getDistance(e.player:getOrigin()) < 1500 then
             self.pack:speakEnemyPlantingBomb()

@@ -18,6 +18,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AStar = require "gamesense/Nyx/v1/Dominion/Pathfinding/AStar"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
@@ -137,7 +138,7 @@ function Nodegraph:initEvents()
     end)
 
     Callbacks.runCommand(function()
-        local playerOrigin = Player.getClient():getOrigin()
+        local playerOrigin = AiUtility.client:getOrigin()
         --- @type Node
         local closestNode
         local closestDistance = math.huge
@@ -654,7 +655,7 @@ function Nodegraph:renderNodegraph()
             Vector3:new(-boxOffset, -boxOffset, 4),
         }
 
-        local origin = Player.getClient():getOrigin()
+        local origin = AiUtility.client:getOrigin()
 
         for _, searchNode in pairs(self.nodes) do
             if origin:getDistance(searchNode.origin) < 256 then
@@ -708,8 +709,8 @@ function Nodegraph:renderNodegraph()
                 node.origin:drawLine(connection.origin, lineColor, 0.25)
             end
 
-            local thickness = node.active and 20 or 6
-            local radius, thickness = Render.scaleCircle(node.origin, 40, thickness)
+            local thickness = node.active and 15 or 6
+            local radius, thickness = Render.scaleCircle(node.origin, 33, thickness)
 
             node.origin:drawCircleOutline(radius, thickness, color)
 
@@ -723,7 +724,7 @@ function Nodegraph:renderNodegraph()
                 site = string.format(" (%s)", node.site:upper())
             end
 
-            local text = string.format("%i %s%s", node.id, Node.typesCode[node.type], site)
+            local text = string.format("%s%s", Node.typesCode[node.type], site)
 
             node.origin:clone():offset(0, 0, 14):drawSurfaceText(Font.SMALL, color, "c", text)
 
@@ -768,7 +769,7 @@ function Nodegraph:pathfind(origin, options)
 
     options = options or {}
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local playerOrigin = player:getOrigin()
 
     local pathStart = Node:new({
@@ -946,7 +947,7 @@ function Nodegraph:move(cmd)
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local origin = player:getOrigin()
     local node = self.path[self.pathCurrent]
 

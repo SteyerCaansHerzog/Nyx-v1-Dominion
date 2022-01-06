@@ -8,6 +8,9 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
+
+local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
+local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
 
 --{{{ Enums
@@ -52,29 +55,31 @@ local AiWeaponNames = {
 
 --{{{ AiUtility
 --- @class AiUtility : Class
---- @field visibleEnemies Player[]
---- @field lastVisibleEnemyTimer Timer
---- @field enemies Player[]
---- @field enemiesAlive number
+--- @field bomb Entity
 --- @field bombCarrier Player
---- @field teammates Player[]
---- @field enemyDistances number[]
---- @field enemyFovs number[]
---- @field closestEnemy Player
---- @field dormantAt number[]
---- @field hasBomb Player
 --- @field bombDetonationTime number
 --- @field canDefuse boolean
---- @field bomb Entity
+--- @field client Player
+--- @field closestEnemy Player
+--- @field dormantAt number[]
+--- @field enemies Player[]
+--- @field enemiesAlive number
+--- @field enemyDistances number[]
+--- @field enemyFovs number[]
+--- @field enemyHitboxes table<number, Vector3[]>
+--- @field hasBomb Player
+--- @field isLastAlive boolean
+--- @field isPlanting boolean
+--- @field isRoundOver boolean
+--- @field lastVisibleEnemyTimer Timer
+--- @field mainWeapons number[]
+--- @field mainWeapons number[]
 --- @field plantedBomb Entity
 --- @field roundTimer Timer
---- @field isRoundOver boolean
---- @field isPlanting boolean
---- @field mainWeapons number[]
---- @field weaponPriority AiWeaponPriority
+--- @field teammates Player[]
+--- @field visibleEnemies Player[]
 --- @field weaponNames string[]
---- @field mainWeapons number[]
---- @field isLastAlive boolean
+--- @field weaponPriority AiWeaponPriority
 local AiUtility = {
     mainWeapons = {
         Weapons.FAMAS, Weapons.GALIL, Weapons.M4A1, Weapons.AUG, Weapons.AK47, Weapons.AWP, Weapons.SG553, Weapons.SCAR20, Weapons.G3SG1, Weapons.SSG08
@@ -91,6 +96,7 @@ end
 
 --- @return void
 function AiUtility:initFields()
+    self.client = Player.getClient()
     self.visibleEnemies = {}
     self.lastVisibleEnemyTimer = Timer:new()
     self.enemyDistances = Table.populateForMaxPlayers(math.huge)
@@ -197,6 +203,7 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.runCommand(function()
+        self.client = Player.getClient()
         self.bomb = Entity.findOne("CC4")
         self.plantedBomb = Entity.findOne("CPlantedC4")
 
@@ -248,9 +255,9 @@ function AiUtility:initEvents()
             local visibleHitboxes = 0
 
             for _, hitbox in pairs(enemy:getHitboxPositions()) do
-                local _, _, eid = eyeOrigin:getTraceLine(hitbox, playerEid)
+                local _, fraction, eid = eyeOrigin:getTraceLine(hitbox, playerEid)
 
-                if eid == enemy.eid then
+                if eid == enemy.eid or fraction == 1 then
                     if enemy:m_bIsDefusing() == 1 then
                         visibleHitboxes = visibleHitboxes + 1
                     else

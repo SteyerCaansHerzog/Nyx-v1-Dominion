@@ -8,6 +8,10 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
 
+--{{{ Modules
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+--}}}
+
 --{{{ Enums
 --- @class AiRadioMessage
 local AiRadioMessage = {
@@ -132,7 +136,7 @@ function AiRadio:initEvents()
         end
 
         if e.victim:isTeammate() then
-            if Player.getClient():getOrigin():getDistance(e.victim:getOrigin()) < 750 then
+            if AiUtility.client:getOrigin():getDistance(e.victim:getOrigin()) < 750 then
                 self:speak(AiRadioMessage.PINNED_DOWN, 2, 0.5, 1, "%s%s%s is down!", AiRadioColor.LIME, e.victim:getName(), AiRadioColor.DEFAULT)
             end
         end

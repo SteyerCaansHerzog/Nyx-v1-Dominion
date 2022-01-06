@@ -11,6 +11,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
@@ -163,7 +164,7 @@ function NodegraphEditor:createNodes()
     end
 
     if self.keyAddSpotNode:wasPressed() then
-        local origin = Player.getClient():getOrigin():offset(0, 0, 18)
+        local origin = AiUtility.client:getOrigin():offset(0, 0, 18)
 
         self:createNode(origin, true)
     end

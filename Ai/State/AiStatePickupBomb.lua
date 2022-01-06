@@ -9,6 +9,7 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 
 --{{{ Modules
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
@@ -62,7 +63,7 @@ function AiStatePickupBomb:assess()
         return AiState.priority.IGNORE
     end
 
-    if not Player.getClient():isTerrorist() then
+    if not AiUtility.client:isTerrorist() then
         return AiState.priority.IGNORE
     end
 

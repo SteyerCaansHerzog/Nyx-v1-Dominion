@@ -52,7 +52,7 @@ function AiStatePickupItems:assess()
         return self.currentPriority
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local origin = player:getOrigin()
     local bomb = AiUtility.plantedBomb
 
@@ -138,7 +138,7 @@ end
 --- @param items number[]
 --- @return Entity
 function AiStatePickupItems:getNearbyItems(items)
-    local player = Player.getClient()
+    local player = AiUtility.client
     local origin = player:getOrigin()
 
     for _, item in Entity.find(items) do repeat
@@ -190,7 +190,7 @@ function AiStatePickupItems:think(ai)
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local origin = player:getOrigin()
     local weaponOrigin = self.item:m_vecOrigin()
     local distance = origin:getDistance(weaponOrigin)

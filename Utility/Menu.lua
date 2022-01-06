@@ -58,7 +58,7 @@ function DominionMenu:__init()
     end)
 
     self.limitFps = menu:checkbox("> Limit FPS"):setParent(self.master):addCallback(function(item)
-        local fps = item:get() and 70 or 0
+        local fps = item:get() and 64 or 0
 
         cvar.fps_max:set_int(fps)
     end)

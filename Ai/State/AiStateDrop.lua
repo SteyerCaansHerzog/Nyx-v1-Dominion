@@ -58,29 +58,29 @@ function AiStateDrop:think(ai)
     ai.controller.canLookAwayFromFlash = false
     ai.controller.canUseGear = false
 
-    local hitbox = self.requestingPlayer:getHitboxPosition(Player.hitbox.HEAD)
+    local hitbox = self.requestingPlayer:getOrigin():offset(0, 0, 64)
 
     ai.view:lookAt(hitbox, 8)
 
-    if Client.getCameraAngles():getMaxDiff(Client.getEyeOrigin():getAngle(hitbox)) < 8 then
+    local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), hitbox)
+
+    if fov < 4 then
         self.droppingGearTimer:ifPausedThenStart()
 
-        if self.droppingGearTimer:isElapsedThenStop(0.1) then
+        if self.droppingGearTimer:isElapsedThenStop(0.33) then
             Client.dropGear()
 
             self.isDroppingGear = false
 
-            Client.fireAfter(Client.getRandomFloat(1, 2), function()
-                local player = Player.getClient()
+            Client.fireAfter(Client.getRandomFloat(2, 2.5), function()
+                local player = AiUtility.client
 
-                if player:hasWeapons(AiUtility.mainWeapons) then
-                    return
-                end
-
-                if player:m_iAccount() >= 3200 then
-                    Client.cmd("buy m4a4; buy ak47; buy m4a1_silencer")
-                else
-                    Client.cmd("buy deagle")
+                if not player:hasWeapons(AiUtility.mainWeapons) then
+                    if player:m_iAccount() >= 3200 then
+                        Client.cmd("buy m4a4; buy ak47; buy m4a1_silencer")
+                    else
+                        Client.cmd("buy deagle")
+                    end
                 end
             end)
         end

@@ -49,7 +49,7 @@ function AiChatCommandGo:invoke(ai, sender, args)
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local check = ai:getState(AiStateCheck)
     local sweep = ai:getState(AiStateSweep)
     local push = ai:getState(AiStatePush)

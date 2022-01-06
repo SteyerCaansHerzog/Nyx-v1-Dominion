@@ -6,6 +6,7 @@ local Player = require "gamesense/Nyx/v1/Api/Player"
 --}}}
 
 --{{{ Modules
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
 local AiStateDrop = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDrop"
 --}}}
@@ -31,13 +32,13 @@ function AiChatCommandBomb:invoke(ai, sender, args)
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if not player:isAlive() then
         return
     end
 
-    if player:getOrigin():getDistance(sender:getOrigin()) > 512 then
+    if player:getOrigin():getDistance(sender:getOrigin()) > 800 then
         return
     end
 

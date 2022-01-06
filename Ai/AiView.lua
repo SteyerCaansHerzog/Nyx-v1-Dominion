@@ -122,7 +122,7 @@ function AiView:setViewAngles()
     end
 
     if self.canUseCheckNode then
-        local player = Player.getClient()
+        local player = AiUtility.client
         local origin = player:getOrigin()
         local closestCheckNode = self.nodegraph:getClosestNodeOf(origin, Node.types.CHECK)
 
@@ -172,7 +172,7 @@ function AiView:think(cmd)
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local origin = player:getOrigin()
     local aimPunchAngles = player:m_aimPunchAngle()
     local lookAtAngles = self.viewAngles:clone()
@@ -250,7 +250,7 @@ end
 --- @param node Node
 --- @return boolean
 function AiView:isPlayerBlocked(node)
-    local playerOrigin = Player.getClient():getOrigin()
+    local playerOrigin = AiUtility.client:getOrigin()
     local collisionOrigin = playerOrigin + Client.getCameraAngles():getForward() * 16
     local collisionBounds = collisionOrigin:getBounds(48, 48, 128, Vector3.align.BOTTOM)
 

@@ -59,7 +59,7 @@ function AiStateEvade:assess()
         return AiState.priority.IGNORE
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if Client.isFlashed() then
         if not AiUtility.isPlanting and player:m_bIsDefusing() == 0 then
@@ -67,7 +67,7 @@ function AiStateEvade:assess()
         end
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local playerOrigin = player:getOrigin()
 
     for _, inferno in Entity.find("CInferno") do
@@ -99,7 +99,7 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateEvade:activate(ai)
-    local player = Player.getClient()
+    local player = AiUtility.client
     local playerOrigin = player:getOrigin()
     --- @type Node[]
     local possibleNodes = {}

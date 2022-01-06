@@ -40,7 +40,7 @@ function AiStateDefuse:__init()
 
     Callbacks.bombPlanted(function()
         Client.fireAfter(0.1, function()
-            local player = Player.getClient()
+            local player = AiUtility.client
             local playerOrigin = player:getOrigin()
             local bomb = AiUtility.plantedBomb
 
@@ -71,7 +71,7 @@ end
 
 --- @return void
 function AiStateDefuse:assess()
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if not player:isCounterTerrorist() then
         return AiState.priority.IGNORE
@@ -158,7 +158,7 @@ function AiStateDefuse:think(ai)
     end
 
     local bombOrigin = bomb:m_vecOrigin()
-    local distance = Player.getClient():getOrigin():getDistance(bombOrigin)
+    local distance = AiUtility.client:getOrigin():getDistance(bombOrigin)
 
     if distance < 64 then
         self.isDefusing = true

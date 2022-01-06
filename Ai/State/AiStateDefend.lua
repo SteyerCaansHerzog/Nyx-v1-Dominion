@@ -85,7 +85,7 @@ function AiStateDefend:assess(nodegraph)
         --return AiState.priority.IGNORE
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local bomb = AiUtility.plantedBomb
 
     if player:isCounterTerrorist() then
@@ -121,7 +121,7 @@ function AiStateDefend:activate(ai, site, swapPair, useClosestSite)
     if bomb then
         site = ai.nodegraph:getNearestBombSite(bomb:m_vecOrigin())
     elseif useClosestSite then
-        site = ai.nodegraph:getNearestBombSite(Player.getClient():getOrigin())
+        site = ai.nodegraph:getNearestBombSite(AiUtility.client:getOrigin())
     end
 
     --- @type Node
@@ -153,7 +153,7 @@ function AiStateDefend:activate(ai, site, swapPair, useClosestSite)
     })
 
     if self.speakCooldownTimer:isElapsedThenRestart(self.speakCooldownTimer.time) then
-        local player = Player.getClient()
+        local player = AiUtility.client
         local playerOrigin = player:getOrigin()
         local color = node.site == "a" and ai.radio.color.BLUE or ai.radio.color.PURPLE
 
@@ -179,7 +179,7 @@ function AiStateDefend:think(ai)
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local distance = player:getOrigin():offset(0, 0, 18):getDistance(self.node.origin)
 
     if distance < 256 then
@@ -291,7 +291,7 @@ end
 --- @param site string|Node
 --- @return Node
 function AiStateDefend:getActivityNode(ai, site)
-    local team = Player.getClient():m_iTeam()
+    local team = AiUtility.client:m_iTeam()
 
     if not site then
         site = self.defendingSite

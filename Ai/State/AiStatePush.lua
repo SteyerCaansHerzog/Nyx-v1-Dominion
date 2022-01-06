@@ -37,7 +37,7 @@ end
 
 --- @return void
 function AiStatePush:assess()
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if player:isTerrorist() and not self.isDeactivated then
         if not AiUtility.roundTimer:isStarted() or not AiUtility.roundTimer:isElapsed(15) then

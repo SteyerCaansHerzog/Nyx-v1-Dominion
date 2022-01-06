@@ -391,7 +391,7 @@ function AiController:autoBuy()
             return
         end
 
-        local player = Player.getClient()
+        local player = AiUtility.client
         local grenadeLimit = Client.getRandomInt(1, player:isCounterTerrorist() and 2 or 3)
 
         for _, weapon in pairs(AiUtility.mainWeapons) do
@@ -477,7 +477,7 @@ end
 
 --- @return void
 function AiController:forceBuy()
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     for _, weapon in pairs(AiUtility.mainWeapons) do
         if player:hasWeapon(weapon) then
@@ -636,7 +636,7 @@ function AiController:renderUi()
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local uiPos = Vector2:new(20, 20)
     local fontColor = Color:hsla(0, 0, 0.95)
     local spacerColor = Color:hsla(0, 0, 0.66)
@@ -715,7 +715,7 @@ function AiController:renderUi()
     uiPos:offset(0, offset)
 
     local fps = Client.getFpsDelayed()
-    local tickError = math.ceil(((1 / globals.tickinterval()) / fps) - 1)
+    local tickErrorPct = math.max(0, (1 - (fps / (1 / globals.tickinterval())))) * 100
     local hue = Math.pct(Math.clamp(fps, 0, 70), 70) * 120
     local fpsColor = Color:hsla(hue, 0.8, 0.6)
 
@@ -735,8 +735,8 @@ function AiController:renderUi()
     end
 
     uiPos:drawSurfaceText(Font.MEDIUM, fpsColor, "l", string.format(
-        "Tick Error: %i",
-        tickError
+        "Tick Loss: %.1f%%",
+        tickErrorPct
     ))
 
     uiPos:offset(0, offset)
@@ -872,7 +872,7 @@ function AiController:activities(ai)
         end
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local origin = player:getOrigin()
 
     if player:isReloading() then
@@ -1030,7 +1030,7 @@ function AiController:antiBlock(ai)
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if player:m_vecVelocity():getMagnitude() > 100 then
         return
@@ -1105,7 +1105,7 @@ function AiController:antiFly(cmd)
         lastValue = value
     until true end
 
-    local onGround = Player.getClient():getFlag(Player.flags.FL_ONGROUND)
+    local onGround = AiUtility.client:getFlag(Player.flags.FL_ONGROUND)
 
     if not onGround and fails > 10 then
         cmd.in_jump = 1
@@ -1173,7 +1173,7 @@ function AiController:unscope()
         return
     end
 
-    local isScoped = Player.getClient():m_bIsScoped() == 1
+    local isScoped = AiUtility.client:m_bIsScoped() == 1
 
     if isScoped and not self.unscopeTimer:isStarted() then
         self.unscopeTimer:start()
@@ -1227,7 +1227,7 @@ function AiController:think(cmd)
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if not player:isAlive() then
         return

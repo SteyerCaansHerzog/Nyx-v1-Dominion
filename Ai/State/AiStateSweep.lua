@@ -6,6 +6,7 @@ local Player = require "gamesense/Nyx/v1/Api/Player"
 
 --{{{ Modules
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
@@ -68,7 +69,7 @@ function AiStateSweep:getObjective(ai, site)
     if site then
         objective = site == "a" and ai.nodegraph.objectiveA or ai.nodegraph.objectiveB
     else
-        local origin = Player.getClient():getOrigin()
+        local origin = AiUtility.client:getOrigin()
         local distanceA = origin:getDistance(ai.nodegraph.objectiveA.origin)
         local distanceB = origin:getDistance(ai.nodegraph.objectiveB.origin)
 

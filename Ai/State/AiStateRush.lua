@@ -8,6 +8,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 
 --{{{ Modules
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
@@ -33,7 +34,7 @@ end
 
 --- @return void
 function AiStateRush:assess()
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if not player:isCounterTerrorist() then
         return AiState.priority.IGNORE

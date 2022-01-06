@@ -85,7 +85,7 @@ function AiStateGrenadeBase:assess(nodegraph)
         return AiState.priority.IGNORE
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local playerOrigin = player:getOrigin()
     local playerCenter = playerOrigin:offset(0, 0, 40)
 
@@ -216,7 +216,7 @@ function AiStateGrenadeBase:think(ai)
         evade.isBlocked = true
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local playerOrigin = player:getOrigin()
 
     self.isInThrow = false
@@ -277,7 +277,7 @@ end
 --- @param nodegraph Nodegraph
 --- @return Node[]
 function AiStateGrenadeBase:getNodes(nodegraph)
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if player:isCounterTerrorist() then
         return nodegraph[self.defendNode]

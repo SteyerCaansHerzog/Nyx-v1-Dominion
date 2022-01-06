@@ -85,7 +85,7 @@ function AiStatePlant:assess(nodegraph)
         return AiState.priority.IGNORE
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local playerOrigin = player:getOrigin()
     local siteName = nodegraph:getNearestBombSite(playerOrigin)
     local site = nodegraph:getSiteNode(siteName)
@@ -125,7 +125,7 @@ end
 --- @param site string
 --- @return void
 function AiStatePlant:activate(ai, site)
-    local player = Player.getClient()
+    local player = AiUtility.client
     local origin = player:getOrigin()
 
     if site then
@@ -181,7 +181,7 @@ function AiStatePlant:think(ai)
         self:activate(ai)
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if player:getOrigin():getDistance(self.node.origin) < 80 then
         ai.controller.canUseKnife = false

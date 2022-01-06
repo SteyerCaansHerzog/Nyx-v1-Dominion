@@ -73,13 +73,13 @@ function AiStatePatrol:assess()
 
     local bomb = AiUtility.bomb
 
-    if Player.getClient():isCounterTerrorist() and bomb and not self.hasNotifiedTeamOfBomb then
-        local eyeOrigin = Player.getClient():getEyeOrigin()
+    if AiUtility.client:isCounterTerrorist() and bomb and not self.hasNotifiedTeamOfBomb then
+        local eyeOrigin = AiUtility.client:getEyeOrigin()
         local bombOrigin = bomb:m_vecOrigin()
         local _, _, eid = eyeOrigin:getTraceLine(bombOrigin, Client.getEid())
 
         if eid == bomb.eid then
-            self:beginPatrol(bombOrigin, Player.getClient())
+            self:beginPatrol(bombOrigin, AiUtility.client)
 
             return AiState.priority.PATROL_BOMB
         end
@@ -153,7 +153,7 @@ function AiStatePatrol:think(ai)
     end
 
     if self.isOnPatrol then
-        local player = Player.getClient()
+        local player = AiUtility.client
         local origin = player:getOrigin()
 
         if origin:getDistance(self.patrolOrigin) < 1024 then
@@ -166,7 +166,7 @@ end
 --- @param ai AiOptions
 --- @return Node
 function AiStatePatrol:getPatrolNode(ai)
-    local player = Player.getClient()
+    local player = AiUtility.client
     local origin = player:getOrigin()
     local filterOrigin = self.patrolOrigin
 

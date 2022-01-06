@@ -44,7 +44,7 @@ function AiStateEvacuate:assess()
         end
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if player:isCounterTerrorist() then
         if player:m_bIsDefusing() == 1 then
@@ -95,7 +95,7 @@ function AiStateEvacuate:think(ai)
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if player:getOrigin():getDistance(self.node.origin) < 200 then
         ai.view:look(self.node.direction, 7)
@@ -108,7 +108,7 @@ end
 --- @return Node
 function AiStateEvacuate:getHideNode(ai, site)
     local bombSite = site == "A" and ai.nodegraph.objectiveA or ai.nodegraph.objectiveB
-    local checkOrigin = site and bombSite.origin or Player.getClient():getOrigin()
+    local checkOrigin = site and bombSite.origin or AiUtility.client:getOrigin()
     local nodes = {}
 
     for _, node in pairs(ai.nodegraph.nodes) do

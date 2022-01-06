@@ -66,6 +66,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field reactionTimer Timer
 --- @field recoilControl number
 --- @field scopedTimer Timer
+--- @field setBestTargetTimer Timer
 --- @field shootAtOrigin Vector3
 --- @field shootAtOriginTimer Timer
 --- @field skill number
@@ -82,7 +83,6 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field watchOrigin Vector3
 --- @field watchTime number
 --- @field watchTimer Timer
---- @field setBestTargetTimer Timer
 local AiStateEngage = {
     name = "Engage"
 }
@@ -174,7 +174,7 @@ function AiStateEngage:initEvents()
             return
         end
 
-        if Player.getClient():getOrigin():getDistance(e.player:getOrigin()) > 512 then
+        if AiUtility.client:getOrigin():getDistance(e.player:getOrigin()) > 512 then
             return
         end
 
@@ -190,7 +190,7 @@ function AiStateEngage:initEvents()
             return
         end
 
-        if Player.getClient():getOrigin():getDistance(e.player:getOrigin()) > 512 then
+        if AiUtility.client:getOrigin():getDistance(e.player:getOrigin()) > 512 then
             return
         end
 
@@ -209,7 +209,7 @@ function AiStateEngage:initEvents()
     end)
 
     Callbacks.runCommand(function()
-        local player = Player.getClient()
+        local player = AiUtility.client
         local bomb = AiUtility.plantedBomb
 
         if player:isCounterTerrorist() and bomb then
@@ -292,7 +292,7 @@ function AiStateEngage:initEvents()
             return
         end
 
-        if Player.getClient():getOrigin():getDistance(e.origin) > 128 then
+        if AiUtility.client:getOrigin():getDistance(e.origin) > 128 then
             return
         end
 
@@ -322,7 +322,7 @@ function AiStateEngage:initEvents()
             self.blockTimer:start()
         end
 
-        if e.victim:isTeammate() and Player.getClient():getOrigin():getDistance(e.victim:getOrigin()) < 1250 then
+        if e.victim:isTeammate() and AiUtility.client:getOrigin():getDistance(e.victim:getOrigin()) < 1250 then
             self:noticeEnemy(e.attacker, 1250, "Teammate killed")
         end
 
@@ -378,7 +378,7 @@ function AiStateEngage:activate(ai)
     self.canCrouch = Client.getChance(2)
 
     if self.enemySpottedCooldown:isElapsedThenRestart(60) then
-        local player = Player.getClient()
+        local player = AiUtility.client
 
         if AiUtility.bombCarrier and AiUtility.bombCarrier:is(self.bestTarget) and player:isCounterTerrorist() then
             ai.radio:speak(ai.radio.message.ENEMY_SPOTTED, 1, 0.5, 1, "I have the %sbomb carrier%s near me.", ai.radio.color.GOLD, ai.radio.color.DEFAULT)
@@ -427,7 +427,7 @@ function AiStateEngage:think(ai)
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if player:isHoldingWeapon(Weapons.C4) then
         Client.equipWeapon()
@@ -445,7 +445,7 @@ function AiStateEngage:tellRotate(ai)
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if not player:isCounterTerrorist() then
         return
@@ -513,7 +513,7 @@ end
 --- @param range number
 --- @return void
 function AiStateEngage:noticeEnemy(player, range)
-    if not Player.getClient():isAlive() or not self.ignoreDormancyTimer:isElapsed(self.ignoreDormancyTime) then
+    if not AiUtility.client:isAlive() or not self.ignoreDormancyTimer:isElapsed(self.ignoreDormancyTime) then
         return
     end
 
@@ -527,7 +527,7 @@ function AiStateEngage:noticeEnemy(player, range)
         return
     end
 
-    if Player.getClient():getOrigin():getDistance(enemyOrigin) > range then
+    if AiUtility.client:getOrigin():getDistance(enemyOrigin) > range then
         return
     end
 
@@ -578,7 +578,7 @@ function AiStateEngage:setBestTarget()
     local selectedEnemy
     local lowestFov = math.huge
     local closestDistance = math.huge
-    local player = Player.getClient()
+    local player = AiUtility.client
     local origin = player:getOrigin()
 
     for _, enemy in pairs(AiUtility.enemies) do
@@ -636,7 +636,7 @@ function AiStateEngage:setWeaponStats(enemy)
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local weapon = player:getWeapon()
     local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
 
@@ -658,7 +658,7 @@ function AiStateEngage:setWeaponStats(enemy)
             closeRange = 512,
             priorityHitbox = Player.hitbox.NECK,
             evaluate = function()
-            	return player:isHoldingLmg()
+                return player:isHoldingLmg()
             end
         },
         {
@@ -858,7 +858,7 @@ function AiStateEngage:render()
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if not player:isAlive() then
         return
@@ -984,7 +984,7 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateEngage:walk(ai)
-    local player = Player.getClient()
+    local player = AiUtility.client
     local canWalk
     local playerEid = Client.getEid()
 
@@ -994,13 +994,13 @@ function AiStateEngage:walk(ai)
 
         predictedEyeOrigin = eyeOrigin:getTraceLine(predictedEyeOrigin, playerEid)
 
-        local _, _, eid = predictedEyeOrigin:getTraceLine(self.bestTarget:getHitboxPosition(Player.hitbox.NECK), playerEid)
+        local _, fraction, eid = predictedEyeOrigin:getTraceLine(self.bestTarget:getHitboxPosition(Player.hitbox.NECK), playerEid)
         local enemyOrigin = AiUtility.closestEnemy:getOrigin()
         local distance = eyeOrigin:getDistance(enemyOrigin)
 
         if player:isCounterTerrorist() and AiUtility.plantedBomb and distance > 350 then
             canWalk = false
-        elseif eid == self.bestTarget.eid then
+        elseif eid == self.bestTarget.eid or fraction == 1 then
             canWalk = false
         elseif distance < 1200 then
             canWalk = true
@@ -1104,7 +1104,7 @@ function AiStateEngage:attack(ai)
         ai.controller.canUnscope = false
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     -- Ensure bot is holding a weapon
     if not player:isHoldingGun() then
@@ -1118,7 +1118,7 @@ function AiStateEngage:attack(ai)
     if self.sprayTimer:isStarted() and not self.sprayTimer:isElapsed(self.sprayTime) then
         ai.controller.canReload = false
 
-        self:shoot(ai, self.watchOrigin)
+        self:shoot(ai, self.watchOrigin, 3, self.bestTarget)
     end
 
     -- Reset reaction delay
@@ -1224,6 +1224,12 @@ function AiStateEngage:attack(ai)
         ai.controller.canLookAwayFromFlash = false
     end
 
+    -- Make sure the default mouse movement isn't active while the enemy is visible but the reaction timer hasn't elapsed.
+    if AiUtility.visibleEnemies[enemy.eid] and shootFov < 40 then
+        ai.view:lookAt(hitbox, 1.5)
+        Client.draw(Vector3.drawCircleOutline, hitbox, 8, 2, Color:hsla(40, 1, 0.5, 200))
+    end
+
     -- React to visible enemy
     if self.reactionTimer:isElapsed(self.currentReactionTime) and AiUtility.visibleEnemies[enemy.eid] then
         -- Inhibit checking corners
@@ -1261,24 +1267,112 @@ function AiStateEngage:attack(ai)
     end
 end
 
+--- @param ai AiOptions
+--- @param hitbox Vector3
+--- @param fov number
+--- @param enemy Player
+--- @return void
+function AiStateEngage:shoot(ai, hitbox, fov, enemy)
+    if not hitbox then
+        return
+    end
+
+    if self.hitboxOffsetTimer:isElapsedThenRestart(0.66) then
+        self.hitboxOffset = Vector3:newRandom(-self.aimOffset, self.aimOffset) + Vector3:new(0, 0, -self.aimOffset / 2)
+    end
+
+    local eyeOrigin = Client.getEyeOrigin()
+    local player = AiUtility.client
+    local aimAt = hitbox + self.hitboxOffset
+    local viewAngles = eyeOrigin:getAngle(aimAt)
+
+    if enemy then
+        if enemy:isDormant() then
+            return
+        end
+
+        local _, fraction, eid = eyeOrigin:getTraceLine(hitbox, Client.getEid())
+
+        if eid ~= enemy.eid and fraction ~= 1 then
+            return
+        end
+    end
+
+    ai.view:lookAt(aimAt, self.aimSpeed)
+    Client.draw(Vector3.drawCircle, hitbox, 10, Color:hsla(0, 1, 0.5, 150))
+
+    -- Do not shoot teammates
+    local weapon = Entity:create(player:m_hActiveWeapon())
+    local ammo = weapon:m_iClip1()
+    local _, _, eid = Client.getCameraTraceLine(eyeOrigin + viewAngles:getForward() * Vector3.MAX_DISTANCE)
+
+    if eid and Player.isPlayer(eid) and Player:new(eid):isTeammate() then
+        return
+    end
+
+    if player:m_vecVelocity():getMagnitude() > 100 then
+        return
+    end
+
+    if player:isHoldingSniper() then
+        local fireUnderVelocity = CsgoWeapons[weapon:m_iItemDefinitionIndex()].max_player_speed / 5
+
+        local fireDelay = 0.3
+
+        if eyeOrigin:getDistance(hitbox) > 750 then
+            fireDelay = 0.4
+        end
+
+        if player:m_vecVelocity():getMagnitude() < fireUnderVelocity and
+            self.scopedTimer:isElapsed(fireDelay) and
+            player:m_bIsScoped() == 1 and
+            (fov and fov < 3)
+        then
+            ai.cmd.in_attack = 1
+        end
+    else
+        ai.view.recoilControl = self.recoilControl
+
+        if ammo and ammo > 0 then
+            if self.tapFireTimer:isElapsedThenRestart(self.tapFireTime) then
+                ai.cmd.in_attack = 1
+            end
+        end
+    end
+end
+
 --- @param enemy Player
 --- @return Vector3
 function AiStateEngage:getHitbox(enemy)
     --- @type Vector3
     local targetHitbox
-    local hitboxes = Player.hitbox
+    local hitboxes = {
+        Player.hitbox.HEAD,
+        Player.hitbox.NECK,
+        Player.hitbox.SPINE_3,
+        Player.hitbox.SPINE_2,
+        Player.hitbox.SPINE_2,
+        Player.hitbox.SPINE_1,
+        Player.hitbox.SPINE_0,
+        Player.hitbox.PELVIS,
+        Player.hitbox.LEFT_UPPER_ARM,
+        Player.hitbox.LEFT_UPPER_LEG,
+        Player.hitbox.RIGHT_UPPER_ARM,
+        Player.hitbox.RIGHT_UPPER_LEG,
+    }
 
     local eid = Client.getEid()
     local eyeOrigin = Client.getEyeOrigin()
 
     for hitboxId, hitbox in pairs(enemy:getHitboxPositions(hitboxes)) do
-        local _, _, hitEid = eyeOrigin:getTraceLine(hitbox, eid)
+        local _, fraction, hitEid = eyeOrigin:getTraceLine(hitbox, eid)
+        local isVisible = hitEid == enemy.eid or fraction == 1
 
-        if hitboxId == self.priorityHitbox and hitEid == enemy.eid then
+        if hitboxId == self.priorityHitbox and isVisible then
             targetHitbox = hitbox
 
             break
-        elseif hitEid == enemy.eid then
+        elseif isVisible then
             targetHitbox = hitbox
         end
     end
@@ -1309,7 +1403,7 @@ function AiStateEngage:shootThroughSmokes(ai, enemy)
         local shootFov = Math.clamp(Math.pct(eyeOrigin:getDistance(self.shootAtOrigin), 512), 0, 90) * fov
 
         if self.noticedPlayerTimers[enemy.eid]:get() < 2 then
-            self:shoot(ai, self.shootAtOrigin, shootFov)
+            self:shoot(ai, self.shootAtOrigin, shootFov, self.bestTarget)
         else
             ai.view:lookAt(self.shootAtOrigin, self.slowAimSpeed)
         end
@@ -1329,7 +1423,7 @@ function AiStateEngage:ferrariPeek(ai)
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
     local playerEid = Client.getEid()
     local playerOrigin = player:getOrigin()
     local traceOrigin = player:getOrigin():offset(0, 0, 46)
@@ -1371,9 +1465,9 @@ function AiStateEngage:ferrariPeek(ai)
                 Player.hitbox.LEFT_LOWER_ARM,
                 Player.hitbox.RIGHT_LOWER_ARM,
             })) do
-                local _, _, eid = traceOrigin:getTraceLine(hitbox, playerEid)
+                local _, fraction, eid = traceOrigin:getTraceLine(hitbox, playerEid)
 
-                if eid == enemy.eid then
+                if eid == enemy.eid or fraction == 1 then
                     isVisible = true
 
                     break
@@ -1403,72 +1497,44 @@ function AiStateEngage:preAimThroughCorners(ai)
         return
     end
 
-    local isVisible = false
-
-    -- enemy is already visible
     if AiUtility.visibleEnemies[target.eid] then
-        isVisible = true
+        return
     end
 
-    local player = Player.getClient()
-    local eid = Client.getEid()
+    local player = AiUtility.client
+    local playerEid = Client.getEid()
     local playerOrigin = player:getOrigin()
+    local hitboxes = target:getHitboxPositions()
 
-    if not isVisible then
-        local playerVelocity = player:m_vecVelocity()
-        local box = playerOrigin:getBox(16, 16, 72, Vector3.align.BOTTOM)
+    -- Don't pre-aim if the enemy is about to peek us.
+    local targetVelocity = target:m_vecVelocity() * 0.4
 
-        -- don't generate multiple boxes if we're standing still.
-        -- adjusted this since we never really need more than 1 step.
-        local steps = 1
+    for _, hitbox in pairs(hitboxes) do
+        hitbox = hitbox + targetVelocity
 
-        -- our "smear" of boxes producing a series of boxes extending out in our movement direction.
-        local smear = {}
+        local _, fraction, eid = playerOrigin:getTraceLine(hitbox, playerEid)
 
-        -- how far the smear extends.
-        local distance = 0.1
-
-        -- create the smear in reverse-distance order, as the farthest box is most likely to see the enemy.
-        for i = steps, 1, -1 do
-            for _, vertex in pairs(box) do
-                table.insert(smear, vertex + playerVelocity * distance * i)
-            end
+        if eid == target.eid or fraction == 1 then
+            return
         end
+    end
 
-        local hitboxes = target:getHitboxPositions({
-            Player.hitbox.HEAD,
-            Player.hitbox.PELVIS,
-            Player.hitbox.LEFT_LOWER_ARM,
-            Player.hitbox.RIGHT_LOWER_ARM,
-            Player.hitbox.LEFT_UPPER_LEG,
-            Player.hitbox.RIGHT_UPPER_LEG,
-        })
+    -- Determine if we're about to peek the target.
+    local testOrigin = Client.getEyeOrigin() + (player:m_vecVelocity() * 0.4)
+    local isPeeking = false
 
-        for _, hitbox in pairs(hitboxes) do
-            hitbox = hitbox + target:m_vecVelocity() * 0.3
+    for _, hitbox in pairs(hitboxes) do
+        local _, fraction, eid = testOrigin:getTraceLine(hitbox, playerEid)
 
-            local _, fraction = hitbox:getTraceLine(playerOrigin, eid)
+        if eid == target.eid or fraction == 1 then
+            isPeeking = true
 
-            if fraction == 1 then
-                return
-            end
+            break
         end
+    end
 
-        for _, vertex in pairs(smear) do
-            if isVisible then
-                break
-            end
-
-            for _, hitbox in pairs(hitboxes) do
-                local _, fraction, eid = vertex:getTraceLine(hitbox, eid)
-
-                if fraction == 1 or eid == target.eid then
-                    isVisible = true
-
-                    break
-                end
-            end
-        end
+    if not isPeeking then
+        return
     end
 
     if self.updatePreAimOriginTimer:isElapsedThenRestart(self.updatePreAimOriginTime) then
@@ -1483,19 +1549,10 @@ function AiStateEngage:preAimThroughCorners(ai)
         )
     end
 
-    if self.preAimTarget and not self.bestTarget:is(self.preAimTarget) then
-        self.preAimAroundCornersTimer:stop()
-    end
+    self.preAimTarget = self.bestTarget
 
-    if isVisible then
-        self.preAimAroundCornersTimer:start()
-    end
-
-    if self.preAimAroundCornersTimer:isStarted() and not self.preAimAroundCornersTimer:isElapsed(self.preAimAroundCornersTime) then
-        self.preAimTarget = self.bestTarget
-
-        ai.view:lookAt(self.preAimCornerOrigin, self.slowAimSpeed)
-    end
+    ai.view:lookAt(self.preAimCornerOrigin, self.slowAimSpeed)
+    Client.draw(Vector3.drawCircleOutline, self.preAimCornerOrigin, 16, 4, Color:hsla(100, 1, 0.5, 200))
 end
 
 --- @param ai AiOptions
@@ -1505,7 +1562,7 @@ function AiStateEngage:preAimAboutCorners(ai)
         return
     end
 
-    local playerOrigin = Player.getClient():getOrigin()
+    local playerOrigin = AiUtility.client:getOrigin()
     local distance = playerOrigin:getDistance2(self.bestTarget:getOrigin())
 
     -- Pre-aim angle
@@ -1556,6 +1613,7 @@ function AiStateEngage:preAimAboutCorners(ai)
         self.watchTimer:start()
 
         ai.view:lookAt(closestVertex, self.slowAimSpeed)
+        Client.draw(Vector3.drawCircleOutline, closestVertex, 12, 2, Color:hsla(200, 1, 0.5, 200))
     end
 end
 
@@ -1570,79 +1628,16 @@ function AiStateEngage:watchAngle(ai)
         return
     end
 
+    if self.bestTarget and self.bestTarget:isDormant() then
+        return
+    end
+
     if self.watchTimer:isElapsedThenStop(self.watchTime) and self.sprayTimer:isElapsedThenStop(self.sprayTime) then
         self.watchOrigin = nil
     end
 
     ai.view:lookAt(self.watchOrigin, self.aimSpeed)
-end
-
---- @param ai AiOptions
---- @param hitbox Vector3
---- @param fov number
---- @param enemy Player
---- @return void
-function AiStateEngage:shoot(ai, hitbox, fov, enemy)
-    if not hitbox then
-        return
-    end
-
-    if self.hitboxOffsetTimer:isElapsedThenRestart(0.66) then
-        self.hitboxOffset = Vector3:newRandom(-self.aimOffset, self.aimOffset) + Vector3:new(0, 0, -self.aimOffset / 2)
-    end
-
-    local eyeOrigin = Client.getEyeOrigin()
-    local player = Player.getClient()
-    local aimAt = hitbox + self.hitboxOffset
-    local viewAngles = eyeOrigin:getAngle(aimAt)
-
-    if enemy then
-        local _, _, eid = eyeOrigin:getTraceLine(hitbox, Client.getEid())
-
-        if eid ~= enemy.eid then
-            return
-        end
-    end
-
-    ai.view:lookAt(aimAt, self.aimSpeed)
-
-    -- Do not shoot teammates
-    local weapon = Entity:create(player:m_hActiveWeapon())
-    local ammo = weapon:m_iClip1()
-    local _, _, eid = Client.getCameraTraceLine(eyeOrigin + viewAngles:getForward() * Vector3.MAX_DISTANCE)
-
-    if eid and Player.isPlayer(eid) and Player:new(eid):isTeammate() then
-        return
-    end
-
-    if player:m_vecVelocity():getMagnitude() > 100 then
-        return
-    end
-
-    if player:isHoldingSniper() then
-        local fireUnderVelocity = CsgoWeapons[weapon:m_iItemDefinitionIndex()].max_player_speed / 5
-
-        local fireDelay = 0.3
-
-        if eyeOrigin:getDistance(hitbox) > 750 then
-            fireDelay = 0.4
-        end
-
-        if player:m_vecVelocity():getMagnitude() < fireUnderVelocity and
-            self.scopedTimer:isElapsed(fireDelay) and
-            player:m_bIsScoped() == 1 and
-            (fov and fov < 3) then
-            ai.cmd.in_attack = 1
-        end
-    else
-        ai.view.recoilControl = self.recoilControl
-
-        if ammo and ammo > 0 then
-            if self.tapFireTimer:isElapsedThenRestart(self.tapFireTime) then
-                ai.cmd.in_attack = 1
-            end
-        end
-    end
+    Client.draw(Vector3.drawCircleOutline, self.watchOrigin, 16, 2, Color:hsla(310, 1, 0.5, 200))
 end
 
 --- @param ai AiOptions
@@ -1692,7 +1687,7 @@ function AiStateEngage:autoStop(ai)
         return
     end
 
-    local player = Player.getClient()
+    local player = AiUtility.client
 
     if player:isHoldingSniper() then
         ai.nodegraph.moveSpeed = 0
@@ -1722,7 +1717,7 @@ function AiStateEngage:setAimSkill(skill)
     local skills = {
         [0] = {
             reactionTime = 0.3,
-            anticipationTime = 0.01,
+            anticipateTime = 0.1,
             sprayTime = 0.45,
             aimSpeed = 4,
             slowAimSpeed = 4,
@@ -1730,8 +1725,8 @@ function AiStateEngage:setAimSkill(skill)
             aimOffset = 20,
         },
         [1] = {
-            reactionTime = 0.2,
-            anticipationTime = 0.01,
+            reactionTime = 0.125,
+            anticipateTime = 0.066,
             sprayTime = 0.45,
             aimSpeed = 6,
             slowAimSpeed = 6,
@@ -1740,7 +1735,7 @@ function AiStateEngage:setAimSkill(skill)
         },
         [2] = {
             reactionTime = 0.1,
-            anticipationTime = 0.01,
+            anticipateTime = 0.02,
             sprayTime = 0.45,
             aimSpeed = 8,
             slowAimSpeed = 8,
@@ -1749,7 +1744,7 @@ function AiStateEngage:setAimSkill(skill)
         },
         [3] = {
             reactionTime = 0.075,
-            anticipationTime = 0.01,
+            anticipateTime = 0.01,
             sprayTime = 0.45,
             aimSpeed = 10,
             slowAimSpeed = 10,
@@ -1758,7 +1753,7 @@ function AiStateEngage:setAimSkill(skill)
         },
         [4] = {
             reactionTime = 0.05,
-            anticipationTime = 0.01,
+            anticipateTime = 0.01,
             sprayTime = 0.45,
             aimSpeed = 12,
             slowAimSpeed = 10,
@@ -1768,26 +1763,6 @@ function AiStateEngage:setAimSkill(skill)
     }
 
     for k, v in pairs(skills[skill]) do
-        self[k] = v
-    end
-end
-
---- @param skill number
---- @return void
-function AiStateEngage:setAimSkillOld(skill)
-    skill = Math.clamp(skill * 0.01, 0, 1)
-
-    local skillValues = {
-        reactionTime = Math.clamp((1 - skill) * 0.2, 0.05, 0.2),
-        anticipationTime = Math.clamp((1 - skill) * 0.066, 0.15, 0.066),
-        sprayTime = Math.clamp((1 - skill) * 1, 0.5, 1),
-        aimSpeed = Math.clamp(22 * skill, 4, 22),
-        slowAimSpeed = Math.clamp(15 * skill, 3, 15),
-        recoilControl = Math.clamp((2 - skill) * 2, 1.8, 2),
-        aimOffset = Math.clamp((1 - skill) * 15, 0.1, 10)
-    }
-
-    for k, v in pairs(skillValues) do
         self[k] = v
     end
 end
