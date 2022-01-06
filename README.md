@@ -1,4 +1,4 @@
-# Nyx.to Dominion AI (v1.6.0)
+# Nyx.to Dominion AI (v1.6.2)
 Competitive matchmaking bot for CS:GO.
 
 # Dependencies
