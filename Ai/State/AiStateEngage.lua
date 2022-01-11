@@ -42,6 +42,8 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field enemySpottedCooldown Timer
 --- @field enemyVisibleTime number
 --- @field enemyVisibleTimer Timer
+--- @field ferrariPeekStuckTimer Timer
+--- @field ferrariPeekCooldownTimer Timer
 --- @field hitboxOffset Vector3
 --- @field hitboxOffsetTimer Timer
 --- @field ignoreDormancyTime number
@@ -121,6 +123,8 @@ function AiStateEngage:initFields()
     self.preAimOriginDelayed = Vector3:new()
     self.preAimOriginTimer = Timer:new():startThenElapse()
     self.setBestTargetTimer = Timer:new():startThenElapse()
+    self.ferrariPeekStuckTimer = Timer:new()
+    self.ferrariPeekCooldownTimer = Timer:new():startThenElapse()
 
     self.noticedPlayerTimers = {}
 
@@ -155,7 +159,7 @@ function AiStateEngage:initFields()
 
     Menu.enableAimbot = Menu.group:checkbox("    > Enable Aimbot"):setParent(Menu.enableAi)
     Menu.visualiseAimbot = Menu.group:checkbox("    > Visualise Aimbot"):setParent(Menu.enableAimbot)
-    Menu.aimSkillLevel = Menu.group:slider("    > Aim Skill Level", 0, 4, {
+    Menu.aimSkillLevel = Menu.group:slider("    > Aim Skill Level", 0, 10, {
         default = 2,
         unit = "x"
     }):addCallback(function(item)
@@ -496,7 +500,7 @@ function AiStateEngage:tellRotate(ai)
         local nearestBombSite = ai.nodegraph:getNearestBombSite(tellEnemy:getOrigin())
 
         if Menu.useChatCommands:get() then
-            Messenger.send(string.format("/go %s", nearestBombSite), true)
+            Messenger.send(string.format(" go %s", nearestBombSite), true)
         end
 
         local color = nearestBombSite == "a" and ai.radio.color.BLUE or ai.radio.color.PURPLE
@@ -1007,7 +1011,7 @@ function AiStateEngage:walk(ai)
         end
     end
 
-    if self.walkCheckTimer:isElapsedThenRestart(0.1) then
+    if self.walkCheckTimer:isElapsedThenRestart(0.15) then
         self.walkCheckCount = Math.clamp(self.walkCheckCount - 1, 0, 20)
     end
 
@@ -1226,8 +1230,8 @@ function AiStateEngage:attack(ai)
 
     -- Make sure the default mouse movement isn't active while the enemy is visible but the reaction timer hasn't elapsed.
     if AiUtility.visibleEnemies[enemy.eid] and shootFov < 40 then
-        ai.view:lookAt(hitbox, 1.5)
-        Client.draw(Vector3.drawCircleOutline, hitbox, 8, 2, Color:hsla(40, 1, 0.5, 200))
+        ai.view:lookAtLocation(hitbox, 1.5)
+        Client.draw(Vector3.drawCircleOutline, hitbox, 12, 2, Color:hsla(50, 1, 0.5, 200))
     end
 
     -- React to visible enemy
@@ -1256,13 +1260,13 @@ function AiStateEngage:attack(ai)
             self.watchTimer:start()
             self.lastSeenTimers[enemy.eid]:start()
         elseif fov < 40 then
-            ai.view:lookAt(hitbox, self.aimSpeed * 0.8)
+            ai.view:lookAtLocation(hitbox, self.aimSpeed * 0.8)
 
             self.watchTimer:start()
             self.lastSeenTimers[enemy.eid]:start()
             self:noticeEnemy(enemy,4096, "In React FoV")
         elseif fov >= 40 and self:hasNoticedEnemy(enemy) then
-            ai.view:lookAt(hitbox, self.slowAimSpeed)
+            ai.view:lookAtLocation(hitbox, self.slowAimSpeed)
         end
     end
 end
@@ -1298,7 +1302,7 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
         end
     end
 
-    ai.view:lookAt(aimAt, self.aimSpeed)
+    ai.view:lookAtLocation(aimAt, self.aimSpeed)
     Client.draw(Vector3.drawCircle, hitbox, 10, Color:hsla(0, 1, 0.5, 150))
 
     -- Do not shoot teammates
@@ -1316,11 +1320,17 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
 
     if player:isHoldingSniper() then
         local fireUnderVelocity = CsgoWeapons[weapon:m_iItemDefinitionIndex()].max_player_speed / 5
+        local distance = eyeOrigin:getDistance(hitbox)
+        local fireDelay = 1
 
-        local fireDelay = 0.3
-
-        if eyeOrigin:getDistance(hitbox) > 750 then
+        if distance > 1500 then
             fireDelay = 0.4
+        elseif distance > 1000 then
+            fireDelay = 0.3
+        elseif distance > 500 then
+            fireDelay = 0.25
+        else
+            fireDelay = 0.1
         end
 
         if player:m_vecVelocity():getMagnitude() < fireUnderVelocity and
@@ -1405,7 +1415,7 @@ function AiStateEngage:shootThroughSmokes(ai, enemy)
         if self.noticedPlayerTimers[enemy.eid]:get() < 2 then
             self:shoot(ai, self.shootAtOrigin, shootFov, self.bestTarget)
         else
-            ai.view:lookAt(self.shootAtOrigin, self.slowAimSpeed)
+            ai.view:lookAtLocation(self.shootAtOrigin, self.slowAimSpeed)
         end
 
         return true
@@ -1426,65 +1436,97 @@ function AiStateEngage:ferrariPeek(ai)
     local player = AiUtility.client
     local playerEid = Client.getEid()
     local playerOrigin = player:getOrigin()
-    local traceOrigin = player:getOrigin():offset(0, 0, 46)
     local enemyOrigin = enemy:getOrigin()
     local angleToEnemy = playerOrigin:getAngle(enemyOrigin)
+    local forward = angleToEnemy:getForward()
+
     local directions = {
-        "Left",
-        "Right"
+        angleToEnemy:getLeft(),
+        angleToEnemy:getRight()
     }
-    local steps = 4
-    local step = 16
+
+    local startPoints = {
+        forward * 16 + Vector3:new(0, 0, 18),
+        forward * 16 + Vector3:new(0, 0, 64),
+        forward * -16 + Vector3:new(0, 0, 18),
+        forward * -16 + Vector3:new(0, 0, 64)
+    }
+
+    local isVisible = false
+    local steps = 2
+    local stepDistance = 16
     --- @type Angle
     local moveAngles
 
-    for _, direction in pairs(directions) do
-        if moveAngles then
+    local iDebug = 0
+    local successes = 0
+
+    for _, startPoint in pairs(startPoints) do
+        if isVisible then
             break
         end
 
-        --- @type Vector3
-        local traceDrection = Nyx.call(angleToEnemy, string.format("get%s", direction))
 
-        for i = 1, steps do
-            local traceOrigin, fraction = traceOrigin:getTraceLine(traceOrigin + (traceDrection * i * step), playerEid)
-
-            if fraction ~= 1 then
+        for _, direction in pairs(directions) do
+            if isVisible then
                 break
             end
 
-            local isVisible = false
-
-            for _, hitbox in pairs(enemy:getHitboxPositions({
-                Player.hitbox.HEAD,
-                Player.hitbox.SPINE_0,
-                Player.hitbox.SPINE_2,
-                Player.hitbox.PELVIS,
-                Player.hitbox.LEFT_LOWER_LEG,
-                Player.hitbox.RIGHT_LOWER_LEG,
-                Player.hitbox.LEFT_LOWER_ARM,
-                Player.hitbox.RIGHT_LOWER_ARM,
-            })) do
-                local _, fraction, eid = traceOrigin:getTraceLine(hitbox, playerEid)
-
-                if eid == enemy.eid or fraction == 1 then
-                    isVisible = true
-
+            for i = 1, steps do
+                if isVisible then
                     break
                 end
-            end
 
-            if isVisible then
-                moveAngles = playerOrigin:getAngle(traceOrigin)
+                local startOffset = playerOrigin + startPoint
+                local traceOrigin = startOffset + (direction * i * stepDistance)
+                local _, fraction = startOffset:getTraceLine(traceOrigin, playerEid)
+                iDebug = iDebug + 1
 
-                break
+                if fraction == 1 then
+                    for _, hitbox in pairs(enemy:getHitboxPositions({
+                        Player.hitbox.HEAD,
+                        Player.hitbox.LEFT_LOWER_LEG,
+                        Player.hitbox.RIGHT_LOWER_LEG,
+                        Player.hitbox.LEFT_LOWER_ARM,
+                        Player.hitbox.RIGHT_LOWER_ARM,
+                    })) do
+                        local _, fraction, eid = traceOrigin:getTraceLine(hitbox, playerEid)
+
+                        iDebug = iDebug + 1
+
+                        if eid == enemy.eid or fraction == 1 then
+                            successes = successes + 1
+
+                            if successes >= 3 then
+                                isVisible = true
+                                moveAngles = playerOrigin:getAngle(traceOrigin)
+
+                                break
+                            end
+
+                            break
+                        end
+                    end
+                end
             end
         end
     end
 
     if moveAngles then
-        ai.nodegraph.moveSpeed = 450
-        ai.nodegraph.moveYaw = moveAngles.y
+        if player:m_vecVelocity():getMagnitude() < 50 then
+            self.ferrariPeekStuckTimer:ifPausedThenStart()
+        else
+            self.ferrariPeekStuckTimer:stop()
+        end
+
+        if self.ferrariPeekStuckTimer:isElapsedThenStop(1) then
+            self.ferrariPeekCooldownTimer:start()
+        end
+
+        if self.ferrariPeekCooldownTimer:isElapsed(5) then
+            ai.nodegraph.moveSpeed = 450
+            ai.nodegraph.moveYaw = moveAngles.y
+        end
     end
 end
 
@@ -1551,8 +1593,8 @@ function AiStateEngage:preAimThroughCorners(ai)
 
     self.preAimTarget = self.bestTarget
 
-    ai.view:lookAt(self.preAimCornerOrigin, self.slowAimSpeed)
-    Client.draw(Vector3.drawCircleOutline, self.preAimCornerOrigin, 16, 4, Color:hsla(100, 1, 0.5, 200))
+    ai.view:lookAtLocation(self.preAimCornerOrigin, self.slowAimSpeed)
+    Client.draw(Vector3.drawCircleOutline, self.preAimCornerOrigin, 16, 2, Color:hsla(100, 1, 0.5, 150))
 end
 
 --- @param ai AiOptions
@@ -1562,59 +1604,80 @@ function AiStateEngage:preAimAboutCorners(ai)
         return
     end
 
-    local playerOrigin = AiUtility.client:getOrigin()
-    local distance = playerOrigin:getDistance2(self.bestTarget:getOrigin())
-
-    -- Pre-aim angle
-    local radius = math.min(128, distance * 0.66)
-    local density = math.max(2, 750 / distance)
-    local idealCount = 45
-    local count = idealCount / density
-    local countInto = 180 / idealCount
-    local bands = 1
-    local offsets = 6
-    local eyeOrigin = Client.getEyeOrigin()
-    local enemy = self.bestTarget
-    local startPitch = eyeOrigin:getAngle(enemy:getEyeOrigin()).p + (bands * offsets) / 2
-
     if self.preAimOriginTimer:isElapsedThenRestart(0.5) then
-        self.preAimOrigin = enemy:getOrigin():offset(0, 0, 60)
+        self.preAimOrigin = self.bestTarget:getOrigin():offset(0, 0, 60)
     end
 
-    local start = eyeOrigin:getAngle(self.preAimOrigin):getRight():getAngle(Vector3:new())
+    if AiUtility.visibleEnemies[self.bestTarget.eid] then
+        return
+    end
 
+    local player = Player.getClient()
+    local eyeOrigin = Client.getEyeOrigin()
+
+    local bands = {
+        {
+            distance = 32,
+            points = 8
+        },
+        {
+            distance = 64,
+            points = 16
+        },
+        {
+            distance = 128,
+            points = 32
+        }
+    }
+
+    local bandDirection = eyeOrigin:getAngle(self.preAimOrigin):set(0):offset(nil, 90)
+    local isVisible = false
     --- @type Vector3
     local closestVertex
-    local closestDistance = math.huge
+    local closestVertexDistance = math.huge
 
-    for i = 1, bands do
-        for j = 1, count  do
-            local vertexIdeal = self.preAimOrigin + start:clone():offset((i * offsets) - startPitch, j * density * countInto):getForward() * radius
+    for _, band in pairs(bands) do
+        if isVisible then
+            break
+        end
 
-            local vertex = self.preAimOrigin:getTraceLine(vertexIdeal, enemy.eid)
-            local _, fraction = eyeOrigin:getTraceLine(vertex, Client.getEid())
+        local vertexInterval = 180 / band.points
 
-            if fraction == 1 and not eyeOrigin:isRayIntersectingSmoke(vertex) then
-                local distance = eyeOrigin:getDistance(vertex)
+        for i = 1, band.points do
+            local direction = Angle:new(0, vertexInterval * i) + (bandDirection)
+            local vertex = self.preAimOrigin + (direction:getForward() * band.distance)
+            local _, fraction = self.preAimOrigin:getTraceLine(vertex, self.bestTarget.eid)
 
-                if distance < closestDistance then
-                    closestDistance = distance
-                    closestVertex = vertex
+            if fraction == 1 then
+                local _, fraction = vertex:getTraceLine(eyeOrigin, player.eid)
+
+                if fraction == 1 then
+                    local distance = eyeOrigin:getDistance(vertex)
+
+                    if distance < closestVertexDistance then
+                        closestVertex = vertex
+                        closestVertexDistance = distance
+
+                        isVisible = true
+                    end
                 end
             end
         end
     end
 
-    if closestVertex then
-        ai.controller.canUnscope = false
-
-        self.watchOrigin = closestVertex
-
-        self.watchTimer:start()
-
-        ai.view:lookAt(closestVertex, self.slowAimSpeed)
-        Client.draw(Vector3.drawCircleOutline, closestVertex, 12, 2, Color:hsla(200, 1, 0.5, 200))
+    if not closestVertex then
+        return
     end
+
+    self.watchOrigin = closestVertex
+
+    self.watchTimer:start()
+
+    ai.controller.canUnscope = false
+
+    ai.view:lookAtLocation(closestVertex, self.slowAimSpeed)
+
+    Client.draw(Vector3.drawCircleOutline, closestVertex, 12, 2, Color:hsla(200, 1, 0.5, 200))
 end
 
 --- @param ai AiOptions
@@ -1636,8 +1699,8 @@ function AiStateEngage:watchAngle(ai)
         self.watchOrigin = nil
     end
 
-    ai.view:lookAt(self.watchOrigin, self.aimSpeed)
-    Client.draw(Vector3.drawCircleOutline, self.watchOrigin, 16, 2, Color:hsla(310, 1, 0.5, 200))
+    ai.view:lookAtLocation(self.watchOrigin, self.aimSpeed)
+    Client.draw(Vector3.drawCircleOutline, self.watchOrigin, 16, 2, Color:hsla(300, 1, 0.5, 200))
 end
 
 --- @param ai AiOptions
@@ -1716,50 +1779,104 @@ function AiStateEngage:setAimSkill(skill)
 
     local skills = {
         [0] = {
-            reactionTime = 0.3,
-            anticipateTime = 0.1,
-            sprayTime = 0.45,
-            aimSpeed = 4,
-            slowAimSpeed = 4,
-            recoilControl = 2.4,
-            aimOffset = 20,
+            reactionTime = 0.4,
+            anticipateTime = 0.2,
+            sprayTime = 0.5,
+            aimSpeed = 3,
+            slowAimSpeed = 3,
+            recoilControl = 2.5,
+            aimOffset = 20
         },
         [1] = {
-            reactionTime = 0.125,
-            anticipateTime = 0.066,
-            sprayTime = 0.45,
-            aimSpeed = 6,
-            slowAimSpeed = 6,
-            recoilControl = 2,
-            aimOffset = 15,
+            reactionTime = 0.3,
+            anticipateTime = 0.15,
+            sprayTime = 0.5,
+            aimSpeed = 4,
+            slowAimSpeed = 3,
+            recoilControl = 2.5,
+            aimOffset = 16
         },
         [2] = {
-            reactionTime = 0.1,
-            anticipateTime = 0.02,
-            sprayTime = 0.45,
-            aimSpeed = 8,
-            slowAimSpeed = 8,
-            recoilControl = 2,
-            aimOffset = 10,
+            reactionTime = 0.25,
+            anticipateTime = 0.1,
+            sprayTime = 0.5,
+            aimSpeed = 4,
+            slowAimSpeed = 3,
+            recoilControl = 2.2,
+            aimOffset = 14
         },
         [3] = {
-            reactionTime = 0.075,
-            anticipateTime = 0.01,
-            sprayTime = 0.45,
-            aimSpeed = 10,
-            slowAimSpeed = 10,
-            recoilControl = 2,
-            aimOffset = 5,
+            reactionTime = 0.2,
+            anticipateTime = 0.05,
+            sprayTime = 0.5,
+            aimSpeed = 5,
+            slowAimSpeed = 4,
+            recoilControl = 2.2,
+            aimOffset = 12
         },
         [4] = {
-            reactionTime = 0.05,
-            anticipateTime = 0.01,
-            sprayTime = 0.45,
-            aimSpeed = 12,
-            slowAimSpeed = 10,
+            reactionTime = 0.2,
+            anticipateTime = 0.05,
+            sprayTime = 0.5,
+            aimSpeed = 6,
+            slowAimSpeed = 4,
             recoilControl = 2,
-            aimOffset = 0,
-        }
+            aimOffset = 10
+        },
+        [5] = {
+            reactionTime = 0.16,
+            anticipateTime = 0.05,
+            sprayTime = 0.5,
+            aimSpeed = 6,
+            slowAimSpeed = 4,
+            recoilControl = 2,
+            aimOffset = 8
+        },
+        [6] = {
+            reactionTime = 0.14,
+            anticipateTime = 0.05,
+            sprayTime = 0.5,
+            aimSpeed = 8,
+            slowAimSpeed = 6,
+            recoilControl = 2,
+            aimOffset = 8
+        },
+        [7] = {
+            reactionTime = 0.12,
+            anticipateTime = 0.05,
+            sprayTime = 0.33,
+            aimSpeed = 10,
+            slowAimSpeed = 8,
+            recoilControl = 2,
+            aimOffset = 6
+        },
+        [8] = {
+            reactionTime = 0.1,
+            anticipateTime = 0.05,
+            sprayTime = 0.33,
+            aimSpeed = 10,
+            slowAimSpeed = 8,
+            recoilControl = 2,
+            aimOffset = 4
+        },
+        [9] = {
+            reactionTime = 0.1,
+            anticipateTime = 0.05,
+            sprayTime = 0.33,
+            aimSpeed = 12,
+            slowAimSpeed = 8,
+            recoilControl = 2,
+            aimOffset = 2
+        },
+        [10] = {
+            reactionTime = 0.0,
+            anticipateTime = 0.00,
+            sprayTime = 0.33,
+            aimSpeed = 12,
+            slowAimSpeed = 8,
+            recoilControl = 2,
+            aimOffset = 0
+        },
     }
 
     for k, v in pairs(skills[skill]) do

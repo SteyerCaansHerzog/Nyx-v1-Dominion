@@ -4,15 +4,19 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
-local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
-
 --}}}
 
 --{{{ Modules
+local DominionMenu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local AiVoicePackAdrian = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackAdrian"
+local AiVoicePackConnor = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackConnor"
 local AiVoicePackEmpty = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackEmpty"
+local AiVoicePackJeffrey = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackJeffrey"
+local AiVoicePackLaurentio = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackLaurentio"
+local AiVoicePackMatteo = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackMatteo"
 local AiVoicePackSteyer = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackSteyer"
 --}}}
 
@@ -20,12 +24,18 @@ local AiVoicePackSteyer = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePac
 --- @class AiVoice : Class
 --- @field pack AiVoicePack
 --- @field packs AiVoicePack[]
+--- @field packsListboxMap AiVoicePack[]
 --- @field clientWonLastRound boolean
 --- @field flashbangTimer Timer
 local AiVoice = {
     packs = {
-        empty = AiVoicePackEmpty,
-        steyer = AiVoicePackSteyer
+        AiVoicePackEmpty,
+        AiVoicePackSteyer,
+        AiVoicePackMatteo,
+        AiVoicePackLaurentio,
+        AiVoicePackAdrian,
+        AiVoicePackConnor,
+        AiVoicePackJeffrey,
     }
 }
 
@@ -37,7 +47,21 @@ end
 
 --- @return void
 function AiVoice:__init()
-    self.pack = self.packs.empty
+    local packs = {}
+    local packNames = {}
+
+    for id, pack in pairs(self.packs) do
+        packs[id] = pack:new()
+        packNames[id] = pack.name
+    end
+
+    self.packs = packs
+    self.packsListboxMap = packNames
+
+    DominionMenu.group:listbox("    > Voice Pack", packNames):addCallback(function(item)
+    	self.pack = self.packs[item:get() + 1]
+    end):setParent(DominionMenu.enableAi)
+
     self.flashbangTimer = Timer:new():startThenElapse()
 
     Callbacks.runCommand(function()
@@ -88,7 +112,7 @@ function AiVoice:__init()
                 return
             end
 
-            if roundsPlayed == halfTime - 1 then
+            if roundsPlayed == halfTime then
                 self.pack:speakRoundStartPistolSecondHalf()
 
                 return
@@ -175,71 +199,81 @@ function AiVoice:__init()
     end)
 
     Callbacks.playerDeath(function(e)
-        if AiUtility.isLastAlive or Entity.getGameRules():m_bWarmupPeriod() == 1 then
-            return
-        end
+        Client.onNextTick(function()
+            if Entity.getGameRules():m_bWarmupPeriod() == 1 then
+                return
+            end
 
-        if e.attacker:isClient() then
-            if e.victim:isEnemy() then
-                self.pack:speakEnemyKilledByClient(e)
+            if AiUtility.isLastAlive then
+                self.pack:speakLastAlive()
 
                 return
             end
 
-            if e.victim:isTeammate() then
-                self.pack:speakTeammateKilledByClient(e)
+            if e.attacker:isClient() then
+                if e.victim:isEnemy() then
+                    self.pack:speakEnemyKilledByClient(e)
 
-                return
+                    return
+                end
+
+                if e.victim:isTeammate() then
+                    self.pack:speakTeammateKilledByClient(e)
+
+                    return
+                end
             end
-        end
 
-        if e.victim:isClient() then
-            if e.attacker:isEnemy() then
-                self.pack:speakClientKilledByEnemy(e)
+            if e.victim:isClient() then
+                if e.attacker:isEnemy() then
+                    self.pack:speakClientKilledByEnemy(e)
 
-                return
+                    return
+                end
+
+                if e.attacker:isTeammate() then
+                    self.pack:speakClientKilledByTeammate(e)
+
+                    return
+                end
             end
-
-            if e.attacker:isTeammate() then
-                self.pack:speakClientKilledByTeammate(e)
-
-                return
-            end
-        end
+        end)
     end)
 
     Callbacks.playerHurt(function(e)
-        if AiUtility.isLastAlive or Entity.getGameRules():m_bWarmupPeriod() == 1 then
-            return
-        end
-
-        if e.attacker:isClient() then
-            if e.victim:isEnemy() then
-                self.pack:speakEnemyHurtByClient(e)
-
+        Client.onNextTick(function()
+            if AiUtility.isLastAlive or Entity.getGameRules():m_bWarmupPeriod() == 1 then
                 return
             end
 
-            if e.victim:isTeammate() then
-                self.pack:speakTeammateHurtByClient(e)
+            if e.attacker:isClient() then
+                if e.victim:isEnemy() then
+                    self.pack:speakEnemyHurtByClient(e)
 
-                return
+                    return
+                end
+
+                if e.victim:isTeammate() then
+                    self.pack:speakTeammateHurtByClient(e)
+
+                    return
+                end
             end
-        end
 
-        if e.victim:isClient() then
-            if e.attacker:isEnemy() then
-                self.pack:speakClientHurtByEnemy(e)
+            if e.victim:isClient() then
+                if e.attacker:isEnemy() then
+                    self.pack:speakClientHurtByEnemy(e)
 
-                return
+                    return
+                end
+
+                if e.attacker:isTeammate() then
+                    self.pack:speakClientHurtByTeammate(e)
+
+                    return
+                end
             end
-
-            if e.attacker:isTeammate() then
-                self.pack:speakClientHurtByTeammate(e)
-
-                return
-            end
-        end
+        end)
     end)
 
     Callbacks.bombBeginDefuse(function(e)

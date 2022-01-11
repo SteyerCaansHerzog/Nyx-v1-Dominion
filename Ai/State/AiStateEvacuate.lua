@@ -98,7 +98,7 @@ function AiStateEvacuate:think(ai)
     local player = AiUtility.client
 
     if player:getOrigin():getDistance(self.node.origin) < 200 then
-        ai.view:look(self.node.direction, 7)
+        ai.view:lookInDirection(self.node.direction, 7)
         ai.controller.canUseKnife = false
     end
 end

@@ -251,7 +251,7 @@ function AiStateDefend:think(ai)
 
         self.defendTimer:ifPausedThenStart()
 
-        ai.view:lookAt(lookAtOrigin, 5)
+        ai.view:lookAtLocation(lookAtOrigin, 2)
 
         ai.controller.isWalking = true
 

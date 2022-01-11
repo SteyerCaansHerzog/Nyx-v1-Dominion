@@ -54,13 +54,19 @@ end
 
 --- @param ai AiOptions
 --- @return void
+function AiStateDrop:activate(ai)
+    ai.voice.pack:speakGifting()
+end
+
+--- @param ai AiOptions
+--- @return void
 function AiStateDrop:think(ai)
     ai.controller.canLookAwayFromFlash = false
     ai.controller.canUseGear = false
 
     local hitbox = self.requestingPlayer:getOrigin():offset(0, 0, 64)
 
-    ai.view:lookAt(hitbox, 8)
+    ai.view:lookAtLocation(hitbox, 8)
 
     local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), hitbox)
 

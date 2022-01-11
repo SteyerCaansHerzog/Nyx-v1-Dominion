@@ -15,8 +15,7 @@ local Config = {
         "76561198105632069", -- ?
     },
     debug = false,
-    joinServer = false,
-    autoClosePopups = true
+    joinServer = false
 }
 
 return Nyx.class("Config", Config)

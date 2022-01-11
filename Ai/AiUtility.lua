@@ -14,10 +14,8 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Enums
---- @class AiWeaponPriority
-local AiWeaponPriority = {
-    [Weapons.SCAR20] = 7,
-    [Weapons.G3SG1] = 7,
+--- @class AiWeaponPriorityGeneral
+local AiWeaponPriorityGeneral = {
     [Weapons.AK47] = 6,
     [Weapons.AWP] = 6,
     [Weapons.AUG] = 5,
@@ -32,6 +30,27 @@ local AiWeaponPriority = {
     [Weapons.SG553] = 5,
     [Weapons.UMP45] = 3,
     [Weapons.MAC10] = 2,
+    [Weapons.DEAGLE] = 2,
+    [Weapons.NEGEV] = 1
+}
+
+--- @class AiWeaponPriorityClutch
+local AiWeaponPriorityClutch = {
+    [Weapons.AK47] = 7,
+    [Weapons.AUG] = 6,
+    [Weapons.M4A1] = 6,
+    [Weapons.AWP] = 5,
+    [Weapons.FAMAS] = 4,
+    [Weapons.GALIL] = 4,
+    [Weapons.BIZON] = 3,
+    [Weapons.MP7] = 3,
+    [Weapons.MP9] = 3,
+    [Weapons.P90] = 3,
+    [Weapons.SSG08] = 3,
+    [Weapons.SG553] = 5,
+    [Weapons.UMP45] = 3,
+    [Weapons.MAC10] = 2,
+    [Weapons.DEAGLE] = 2,
     [Weapons.NEGEV] = 1
 }
 
@@ -79,12 +98,12 @@ local AiWeaponNames = {
 --- @field teammates Player[]
 --- @field visibleEnemies Player[]
 --- @field weaponNames string[]
---- @field weaponPriority AiWeaponPriority
+--- @field weaponPriority AiWeaponPriorityGeneral
 local AiUtility = {
     mainWeapons = {
         Weapons.FAMAS, Weapons.GALIL, Weapons.M4A1, Weapons.AUG, Weapons.AK47, Weapons.AWP, Weapons.SG553, Weapons.SCAR20, Weapons.G3SG1, Weapons.SSG08
     },
-    weaponPriority = AiWeaponPriority,
+    weaponPriority = AiWeaponPriorityGeneral,
     weaponNames = AiWeaponNames
 }
 
@@ -207,6 +226,12 @@ function AiUtility:initEvents()
         self.bomb = Entity.findOne("CC4")
         self.plantedBomb = Entity.findOne("CPlantedC4")
 
+        if self.plantedBomb then
+            self.weaponPriority = AiWeaponPriorityClutch
+        else
+            self.weaponPriority = AiWeaponPriorityGeneral
+        end
+
         local origin = Client.getOrigin()
         local eyeOrigin = Client.getEyeOrigin()
         local cameraAngles = Client.getCameraAngles()
@@ -254,15 +279,17 @@ function AiUtility:initEvents()
 
             local visibleHitboxes = 0
 
-            for _, hitbox in pairs(enemy:getHitboxPositions()) do
-                local _, fraction, eid = eyeOrigin:getTraceLine(hitbox, playerEid)
+            if not enemy:isDormant() then
+                for _, hitbox in pairs(enemy:getHitboxPositions()) do
+                    local _, fraction, eid = eyeOrigin:getTraceLine(hitbox, playerEid)
 
-                if eid == enemy.eid or fraction == 1 then
-                    if enemy:m_bIsDefusing() == 1 then
-                        visibleHitboxes = visibleHitboxes + 1
-                    else
-                        if not eyeOrigin:isRayIntersectingSmoke(hitbox) then
+                    if eid == enemy.eid or fraction == 1 then
+                        if enemy:m_bIsDefusing() == 1 then
                             visibleHitboxes = visibleHitboxes + 1
+                        else
+                            if not eyeOrigin:isRayIntersectingSmoke(hitbox) then
+                                visibleHitboxes = visibleHitboxes + 1
+                            end
                         end
                     end
                 end

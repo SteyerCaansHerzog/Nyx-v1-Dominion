@@ -13,6 +13,7 @@ local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 --- @field enableHud MenuItem
 --- @field limitFps MenuItem
 --- @field autoAcceptMatches MenuItem
+--- @field autoClosePopups MenuItem
 --- @field useChatCommands MenuItem
 --- @field performanceMode MenuItem
 ---
@@ -27,6 +28,7 @@ local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 --- @field nodeType MenuItem
 ---
 --- @field enableAi MenuItem
+--- @field voicePack MenuItem
 --- @field enableView MenuItem
 --- @field visualisePathfinding MenuItem
 --- @field enableAutoBuy MenuItem
@@ -64,6 +66,7 @@ function DominionMenu:__init()
     end)
 
     self.autoAcceptMatches = menu:checkbox("> Auto-accept Matches"):setParent(self.master)
+    self.autoClosePopups = menu:checkbox("> Auto-close Popups"):setParent(self.master)
 
     local function loop()
         if self.autoAcceptMatches:get() then

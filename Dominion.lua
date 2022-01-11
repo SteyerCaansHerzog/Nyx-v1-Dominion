@@ -2,14 +2,14 @@
 ---
 --- AI service for CS:GO. Play competitive matchmaking with intuitive bots.
 ---
---- @author Steyer Caans Herzog, Nyx.to <kessie@nyx.to>
---- @domain https://nyx.to/dominion
+--- author Steyer Caans Herzog, Nyx.to <kessie@nyx.to>
+--- domain https://nyx.to/dominion
 ---
---- @language LuaJIT
---- @version v1.6.0
---- @license Proprietary
+--- language LuaJIT
+--- version v1.6.0
+--- license Proprietary
 ---
---- @dependencies
+--- dependencies
 ---     gamesense/nyx
 ---     gamesense/csgo_weapons
 
@@ -25,6 +25,7 @@ local AiController = require "gamesense/Nyx/v1/Dominion/Ai/AiController"
 local AiStateCheck = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateCheck"
 local AiStateDefend = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefend"
 local AiStateDefuse = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefuse"
+local AiStateDeveloper = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDeveloper"
 local AiStateDrop = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDrop"
 local AiStateEngage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEngage"
 local AiStateEvacuate = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEvacuate"
@@ -89,6 +90,7 @@ AiController:new({
         AiStateCheck,
         AiStateDefend,
         AiStateDefuse,
+        AiStateDeveloper,
         AiStateDrop,
         AiStateEngage,
         AiStateEvacuate,

@@ -166,8 +166,10 @@ function AiStateDefuse:think(ai)
         self.isDefusing = false
     end
 
-    if distance < 256 then
-        ai.view:lookAt(bombOrigin:clone():offset(5, -3, 14), 4)
+    if AiUtility.client:m_bIsDefusing() == 1 then
+        ai.view:lookInDirection(Client.getCameraAngles(), 6)
+    elseif distance < 256 then
+        ai.view:lookAtLocation(bombOrigin:clone():offset(5, -3, 14), 4.5)
     end
 
     if self.isDefusing then

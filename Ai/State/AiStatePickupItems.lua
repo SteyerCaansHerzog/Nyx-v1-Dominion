@@ -185,6 +185,10 @@ end
 --- @return void
 function AiStatePickupItems:think(ai)
     if self.item:m_vecOrigin() == nil or self.item:m_hOwnerEntity() then
+        if Entity.getGameRules():m_bFreezePeriod() == 1 and self.item:m_hOwnerEntity() == AiUtility.client.eid then
+            ai.voice.pack:speakGratitude()
+        end
+
         self.item = nil
 
         return
@@ -231,8 +235,8 @@ function AiStatePickupItems:think(ai)
 
     ai.view.canUseCheckNode = false
 
-    if self.lookAtItem and distance < 256 then
-        ai.view:lookAt(weaponOrigin, 5.5)
+    if self.lookAtItem and distance < 200 then
+        ai.view:lookAtLocation(weaponOrigin, 6.5)
     end
 
     if distance < 128 and self.useCooldown:isElapsedThenRestart(0.1) then

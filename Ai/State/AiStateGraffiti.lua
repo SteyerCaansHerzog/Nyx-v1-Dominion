@@ -74,7 +74,7 @@ function AiStateGraffiti:think(ai)
 
     newCameraAngles.p = 80
 
-    ai.view:look(newCameraAngles, 6)
+    ai.view:lookInDirection(newCameraAngles, 6)
 
     if Client.getCameraAngles().p > 75 then
         self.killCount = 0

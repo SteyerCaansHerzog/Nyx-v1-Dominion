@@ -996,19 +996,24 @@ function Nodegraph:move(cmd)
 
     -- Can jump
     local canJump = self.canJump
+    local jumpNode = node
 
     self.canJump = true
 
     -- Jump over obstacles
-    if canJump and self.jumpCooldown:isElapsedThenRestart(0.4) and distance < 48 and (node.type == Node.types.JUMP) then
-        if node.origin.z - origin.z > 20 then
+    if canJump and self.jumpCooldown:isElapsedThenRestart(0.4) and distance < 54 and (jumpNode.type == Node.types.JUMP) then
+        if jumpNode.origin.z - origin.z > 18 then
             cmd.in_jump = 1
+
+            self.pathCurrent = self.pathCurrent + 1
         end
     end
 
     -- Jump gaps
-    if canJump and node.type == Node.types.GAP and distance < 40 then
+    if canJump and jumpNode.type == Node.types.GAP and distance < 40 then
         cmd.in_jump = 1
+
+        self.pathCurrent = self.pathCurrent + 1
     end
 
     -- Move onto next node
@@ -1016,18 +1021,10 @@ function Nodegraph:move(cmd)
         self.pathCurrent = self.pathCurrent + 1
     end
 
-    if node.type == Node.types.JUMP or node.type == Node.types.GAP then
-        local delta = origin - node.origin
-
-        if delta.z > 0 and delta.z < 64 then
-            self.pathCurrent = self.pathCurrent + 1
-        end
-    end
-
     -- Re-pathfind when stuck
     local gameRules = Entity.getGameRules()
 
-    if gameRules:m_bFreezePeriod() ~= 1 then
+    if gameRules:m_bFreezePeriod() ~= 1 and player:getFlag(Player.flags.FL_ONGROUND) then
         local speed = player:m_vecVelocity():set(nil, nil, 0):getMagnitude()
 
         if not self.stuckTimer:isStarted() and speed < 100 then

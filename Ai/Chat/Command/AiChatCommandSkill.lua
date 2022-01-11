@@ -25,7 +25,7 @@ function AiChatCommandSkill:invoke(ai, sender, args)
         return
     end
 
-    local skill = Math.clamp(tonumber(args[1]), 0, 4)
+    local skill = Math.clamp(tonumber(args[1]), 0, 10)
     local engage = ai:getState(AiStateEngage)
 
     engage:setAimSkill(skill)

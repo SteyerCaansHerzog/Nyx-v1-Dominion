@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -113,16 +114,17 @@ function AiStatePatrol:think(ai)
             if bomb then
                 local bombOrigin = bomb:m_vecOrigin()
 
-                ai.view:lookAt(bombOrigin, 6)
+                ai.view:lookAtLocation(bombOrigin, 6)
 
                 local deltaAngles = Client.getEyeOrigin():getAngle(bombOrigin):getAbsDiff(Client.getCameraAngles())
 
                 if deltaAngles.p < 20 and deltaAngles.y < 20 then
-                    Client.cmd("say_team /assist")
-
                     self.hasNotifiedTeamOfBomb = true
 
                     if not AiUtility.isLastAlive and self.cooldownTimer:isElapsedThenRestart(25) then
+
+                        Messenger.send(" assist", true)
+
                         ai.voice.pack:speakNotifyTeamOfBomb()
                     end
                 end

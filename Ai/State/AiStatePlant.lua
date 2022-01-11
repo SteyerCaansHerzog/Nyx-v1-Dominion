@@ -162,7 +162,7 @@ function AiStatePlant:activate(ai, site)
     })
 
     if self.tellSiteTimer:isElapsedThenRestart(25) and Menu.useChatCommands:get() then
-        Messenger.send(string.format("/go %s", self.plantAt), true)
+        Messenger.send(string.format(" go %s", self.plantAt), true)
 
         local color = self.plantAt == "a" and ai.radio.color.BLUE or ai.radio.color.PURPLE
 

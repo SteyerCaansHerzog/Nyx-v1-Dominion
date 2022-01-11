@@ -13,6 +13,7 @@ local Voice = require "gamesense/Nyx/v1/Api/Voice"
 --- @field ignoreLock boolean
 --- @field minDelay number
 --- @field maxDelay number
+--- @field condition fun(): boolean
 --}}}
 
 --{{{ AiVoicePack
@@ -20,6 +21,8 @@ local Voice = require "gamesense/Nyx/v1/Api/Voice"
 --- @field rootPath string
 --- @field packPath string
 --- @field defaultSpeakOptions AiVoicePackSpeakOptions
+--- @field name string
+--- @field dynamicGroups string[]
 local AiVoicePack = {
     rootPath = "lua/gamesense/Nyx/v1/Dominion/Resource/Audio/Voice/%s/%s.wav",
     defaultSpeakOptions = {
@@ -41,6 +44,8 @@ end
 --- @return void
 function AiVoicePack:__init()
     self:unlock()
+
+    self.dynamicGroups = {}
 end
 
 --- @param line string
@@ -97,6 +102,10 @@ end
 --- @param options AiVoicePackSpeakOptions
 --- @return void
 function AiVoicePack:speak(lines, options)
+    if not lines then
+        return
+    end
+
     if not options then
         options = {}
     end
@@ -118,13 +127,15 @@ function AiVoicePack:speak(lines, options)
     local delay = Client.getRandomFloat(options.minDelay, options.maxDelay)
 
     Client.fireAfter(delay, function()
-        local line = self:getFile(Table.getRandom(lines))
-    	local duration = Voice.play(line, options.interrupt)
+        if not options.condition or (options.condition and options.condition()) then
+            local line = self:getFile(Table.getRandom(lines))
+            local duration = Voice.play(line, options.interrupt)
 
-        if duration then
-            Client.fireAfter(duration, function()
-                self:unlock()
-            end)
+            if duration then
+                Client.fireAfter(duration, function()
+                    self:unlock()
+                end)
+            end
         end
     end)
 end
@@ -225,6 +236,35 @@ function AiVoicePack:getGroup(name, quantity)
     for i = 1, quantity do
         result[i] = string.format("%s_%i", name, i)
     end
+
+    return result
+end
+
+--- @param name string
+--- @return string[]
+function AiVoicePack:getGroupDynamic(name)
+    if self.dynamicGroups[name] then
+        return self.dynamicGroups[name]
+    end
+
+    local result = {}
+
+    for i = 1, 256 do
+        local name = string.format("%s_%i", name, i)
+        local filepath = self:getFile(name)
+
+        if not readfile(filepath) then
+            break
+        end
+
+        result[i] = name
+    end
+
+    if Table.isEmpty(result) then
+        return nil
+    end
+
+    self.dynamicGroups[name] = result
 
     return result
 end
@@ -380,6 +420,26 @@ function AiVoicePack:speakClientThrowingHeGrenade() end
 
 --- @return void
 function AiVoicePack:speakClientThrowingIncendiary() end
+--}}}
+
+--{{{ Comments
+--- @return void
+function AiVoicePack:speakLastAlive() end
+
+--- @return void
+function AiVoicePack:speakGifting() end
+
+--- @return void
+function AiVoicePack:speakGratitude() end
+
+--- @return void
+function AiVoicePack:speakAgreement() end
+
+--- @return void
+function AiVoicePack:speakDisagreement() end
+
+--- @return void
+function AiVoicePack:speakNoProblem() end
 --}}}
 
 return Nyx.class("AiVoicePack", AiVoicePack)

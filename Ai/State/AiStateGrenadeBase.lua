@@ -253,7 +253,7 @@ function AiStateGrenadeBase:think(ai)
         ai.nodegraph.moveYaw = playerOrigin:getAngle(self.node.origin).y
         ai.controller.canAntiBlock = false
 
-        ai.view:look(self.node.direction, 5)
+        ai.view:lookInDirection(self.node.direction, 5)
 
         local deltaAngles = self.node.direction:getAbsDiff(Client.getCameraAngles())
 

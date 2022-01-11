@@ -123,8 +123,6 @@ function AiController:initFields()
     self.freezetimeTimer = Timer:new()
     self.isFreezetime = true
     self.lookAroundTimer = Timer:new():start()
-    self.radio = AiRadio:new()
-    self.voice = AiVoice:new()
     self.reloadDelay = Client.getRandomFloat(2, 2.9)
     self.unblockDirection = Client.getChance(2) and "Left" or "Right"
     self.unblockNodesTimer = Timer:new()
@@ -147,6 +145,9 @@ function AiController:initFields()
     Menu.visualisePathfinding = Menu.group:checkbox("    > Visualise Pathfinding"):setParent(Menu.enableAi)
     Menu.enableView = Menu.group:checkbox("    > Enable View"):setParent(Menu.enableAi)
     Menu.enableAutoBuy = Menu.group:checkbox("    > Enable Auto-Buy"):setParent(Menu.enableAi)
+
+    self.radio = AiRadio:new()
+    self.voice = AiVoice:new()
 
     local states = {}
 
@@ -226,7 +227,7 @@ function AiController:initEvents()
             end
         end
 
-        if Config.autoClosePopups and self.autoClosePopupsTimer:isElapsedThenRestart(1) then
+        if Menu.autoClosePopups:get() and self.autoClosePopupsTimer:isElapsedThenRestart(2) then
             panorama.loadstring('UiToolkitAPI.CloseAllVisiblePopups()', 'CSGOMainMenu')()
             Panorama.InventoryAPI.AcknowledgeNewItems()
         end
@@ -446,7 +447,7 @@ function AiController:autoBuy()
             canBuyUtility = true
         elseif canBuyRifle then
             local isBuyingCheapRifle = balance - (team == 2 and 3700 or 4200) < 0
-            local isBuyingScopedRifle = balance > 4500 and Client.getChance(4)
+            local isBuyingScopedRifle = balance > 4500 and Client.getChance(3)
 
             if isBuyingCheapRifle then
                 Client.cmd("buy famas; buy galilar")
@@ -992,7 +993,7 @@ function AiController:antiFlash(ai)
         self.flashbangVisibleTimer:ifPausedThenStart()
 
         if self.flashbangVisibleTimer:isElapsed(0.25) then
-            ai.view:lookAt(eyeOrigin:getAngle(self.activeFlashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 4)
+            ai.view:lookAtLocation(eyeOrigin:getAngle(self.activeFlashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 4)
         end
 
         return
@@ -1160,7 +1161,7 @@ function AiController:lookAround(ai)
         self.lookAroundAngles = eyeOrgin:getAngle(farVertices[Client.getRandomInt(1, #farVertices)])
     end
 
-    ai.view:look(self.lookAroundAngles, 6)
+    ai.view:lookInDirection(self.lookAroundAngles, 6)
 end
 
 --- @return void

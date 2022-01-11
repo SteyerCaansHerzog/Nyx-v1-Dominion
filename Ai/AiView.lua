@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Time = require "gamesense/Nyx/v1/Api/Time"
@@ -18,22 +19,23 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 
 --{{{ AiView
 --- @class AiView : Class
+--- @field aimPunchAngles Angle
+--- @field canUseCheckNode boolean
 --- @field enabled boolean
---- @field viewAngles Angle
---- @field targetViewAngles Angle
---- @field noiseAngles Angle
---- @field noiseTimer Timer
---- @field noiseInterval number
+--- @field isViewLocked boolean
+--- @field lookAtAngles Angle
 --- @field lookSpeed number
 --- @field lookSpeedModifier number
---- @field overrideViewAngles Angle
 --- @field nodegraph Nodegraph
---- @field aimPunchAngles Angle
---- @field lookAtAngles Angle
+--- @field noiseAngles Angle
+--- @field noiseInterval number
+--- @field noiseTimer Timer
+--- @field overrideViewAngles Angle
 --- @field recoilControl number
+--- @field targetViewAngles Angle
 --- @field useCooldown Timer
---- @field isViewLocked boolean
---- @field canUseCheckNode boolean
+--- @field viewAngles Angle
+--- @field viewPitchOffset number
 local AiView = {}
 
 --- @param fields AiView
@@ -53,13 +55,14 @@ function AiView:initFields()
     self.viewAngles = Client.getCameraAngles()
     self.noiseAngles = Angle:new()
     self.noiseTimer = Timer:new():start()
-    self.noiseInterval = 0
+    self.noiseInterval = 1.5
     self.lookSpeed = 0
     self.lookSpeedModifier = 1
     self.aimPunchAngles = Angle:new(0, 0)
     self.lookAtAngles = Client.getCameraAngles()
     self.recoilControl = 2
     self.useCooldown = Timer:new():start()
+    self.viewPitchOffset = 0
 end
 
 --- @return void
@@ -99,8 +102,10 @@ function AiView:setViewAngles()
         end
 
         if self.noiseTimer:isElapsedThenRestart(self.noiseInterval) then
-            if not self.overrideViewAngles then
-                self.lookSpeed = Client.getRandomFloat(2, 5)
+            self.lookSpeed = Client.getRandomFloat(2, 3)
+
+            if Entity.getGameRules():m_bFreezePeriod() == 0 then
+                self.noiseAngles:set(Client.getRandomFloat(-1, 2.25), Client.getRandomFloat(-2, 2))
             end
         end
 
@@ -191,12 +196,12 @@ function AiView:think(cmd)
     -- Shoot out cover
     local shootNode = self.nodegraph:getClosestNodeOf(origin, {Node.types.SHOOT, Node.types.CROUCH_SHOOT})
 
-    if shootNode and origin:getDistance(shootNode.origin) < 32 then
+    if shootNode and origin:getDistance(shootNode.origin) < 48 then
         local yawDelta = math.abs(shootNode.direction.y - lookAtAngles.y)
 
         if yawDelta < 135 and self:isPlayerBlocked(shootNode) then
             self.overrideViewAngles = shootNode.direction
-            self.lookSpeed = 10
+            self.lookSpeed = 4
             self.isViewLocked = true
 
             if yawDelta < 15 then
@@ -208,12 +213,12 @@ function AiView:think(cmd)
     -- Use doors
     local node = self.nodegraph:getClosestNodeOf(origin, Node.types.DOOR)
 
-    if node and origin:getDistance(node.origin) < 64 then
+    if node and origin:getDistance(node.origin) < 128 then
         local yawDelta = math.abs(node.direction.y - lookAtAngles.y)
 
         if yawDelta < 135 and self:isPlayerBlocked(node) then
             self.overrideViewAngles = node.direction
-            self.lookSpeed = 10
+            self.lookSpeed = 4
             self.isViewLocked = true
 
             if self.useCooldown:isElapsedThenRestart(0.33) and yawDelta < 15 then
@@ -226,7 +231,7 @@ end
 --- @param origin Vector3
 --- @param speed number
 --- @return void
-function AiView:lookAt(origin, speed)
+function AiView:lookAtLocation(origin, speed)
     if self.isViewLocked then
         return
     end
@@ -238,7 +243,7 @@ end
 --- @param angle Angle
 --- @param speed number
 --- @return void
-function AiView:look(angle, speed)
+function AiView:lookInDirection(angle, speed)
     if self.isViewLocked then
         return
     end

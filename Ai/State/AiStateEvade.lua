@@ -178,7 +178,7 @@ function AiStateEvade:think(ai)
 
     ai.view.canUseCheckNode = false
 
-    ai.view:look(self.reloadLookAngles, 3)
+    ai.view:lookInDirection(self.reloadLookAngles, 3)
 end
 
 return Nyx.class("AiStateEvade", AiStateEvade, AiState)

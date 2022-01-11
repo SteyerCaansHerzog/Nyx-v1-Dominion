@@ -37,6 +37,10 @@ function AiChatCommandGo:invoke(ai, sender, args)
         return
     end
 
+    if not AiUtility.client:isAlive() then
+        return
+    end
+
     local objective = args[1]
     local validObjectives = {
         a = true,
@@ -60,6 +64,8 @@ function AiChatCommandGo:invoke(ai, sender, args)
     if AiUtility.roundTimer:isStarted() and AiUtility.roundTimer:isElapsed(15) then
         AiStateGrenadeBase.globalCooldownTimer:start()
     end
+
+    ai.voice.pack:speakAgreement()
 
     Client.fireAfter(Client.getRandomFloat(1, 2), function()
         check:reset()
@@ -91,22 +97,20 @@ function AiChatCommandGo:invoke(ai, sender, args)
                 defend.defendingSite = objective
 
                 defend:activate(ai, objective)
-            end
-        end
 
-        if objective == "a" or objective == "b" then
-            local siteNode = ai.nodegraph:getSiteNode(objective)
-            local team = player:m_iTeamNum()
-            local text
+                local siteNode = ai.nodegraph:getSiteNode(objective)
+                local team = player:m_iTeamNum()
+                local text
 
-            if team == 2 then
-                text = "I'm %sgoing%s there now."
-            else
-                text = "I'm %srotating%s there now."
-            end
+                if team == 2 then
+                    text = "I'm %sgoing%s there now."
+                else
+                    text = "I'm %srotating%s there now."
+                end
 
-            if player:getOrigin():getDistance(siteNode.origin) > 1024 then
-                ai.radio:speak(ai.radio.message.AGREE, 1, 0.33, 1, text, ai.radio.color.YELLOW, ai.radio.color.DEFAULT)
+                if player:getOrigin():getDistance(siteNode.origin) > 1024 then
+                    ai.radio:speak(ai.radio.message.AGREE, 1, 0.33, 1, text, ai.radio.color.YELLOW, ai.radio.color.DEFAULT)
+                end
             end
         end
     end)
