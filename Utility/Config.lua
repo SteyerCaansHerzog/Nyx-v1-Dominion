@@ -13,6 +13,7 @@ local Config = {
         "76561199102984662", -- 0DTE
         "76561198373386496", -- Braff
         "76561198105632069", -- ?
+        "76561198991038413" -- dusty
     },
     debug = false,
     joinServer = false

@@ -1041,14 +1041,14 @@ function AiController:antiBlock(ai)
 
     local player = AiUtility.client
 
-    if player:m_vecVelocity():getMagnitude() > 100 then
+    if player:m_vecVelocity():getMagnitude() > 120 then
         return
     end
 
     local isBlocked = false
     local origin = player:getOrigin()
     local collisionOrigin = origin + Client.getCameraAngles():getForward() * 32
-    local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 48, 48, 64)
+    local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 48, 48, 128)
 
     for _, teammate in pairs(AiUtility.teammates) do
         if teammate:getOrigin():offset(0, 0, 36):isInBounds(collisionBounds) then
