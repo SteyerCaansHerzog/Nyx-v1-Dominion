@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Color = require "gamesense/Nyx/v1/Api/Color"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
@@ -184,8 +185,11 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStatePickupItems:think(ai)
-    if self.item:m_vecOrigin() == nil or self.item:m_hOwnerEntity() then
-        if Entity.getGameRules():m_bFreezePeriod() == 1 and self.item:m_hOwnerEntity() == AiUtility.client.eid then
+    local owner = self.item:m_hOwnerEntity()
+    local isDefuseKit = self.item.classname == "CEconEntity"
+
+    if (isDefuseKit and AiUtility.client:m_bHasDefuser() == 1) or self.item:m_vecOrigin() == nil or owner then
+        if Entity.getGameRules():m_bFreezePeriod() == 1 and owner == AiUtility.client.eid then
             ai.voice.pack:speakGratitude()
         end
 

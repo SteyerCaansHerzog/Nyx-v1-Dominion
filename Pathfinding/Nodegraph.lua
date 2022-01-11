@@ -646,40 +646,41 @@ function Nodegraph:renderNodegraph()
     end
 
     if Menu.visualiseDirectPathing:get() then
-        local boxOffset = 16
-
-        local box = {
-            Vector3:new(boxOffset, boxOffset, 4),
-            Vector3:new(boxOffset, -boxOffset, 4),
-            Vector3:new(-boxOffset, boxOffset, 4),
-            Vector3:new(-boxOffset, -boxOffset, 4),
-        }
-
-        local origin = AiUtility.client:getOrigin()
+        local origin = AiUtility.client:getOrigin():offset(0, 0, 18)
 
         for _, searchNode in pairs(self.nodes) do
             if origin:getDistance(searchNode.origin) < 256 then
-                local isPathable = self:isJumpNodeValid(origin, searchNode)
+                local bounds = Vector3:newBounds(Vector3.align.CENTER, 16, 16, 4)
 
-                for _, vertex in pairs(box) do
-                    local offset = origin + vertex
-                    local target = searchNode.origin + vertex * 0.5
-                    local _, fraction = offset:getTraceLine(target, Client.getEid())
+                local a = origin + bounds[1]
+                local b = origin + bounds[2]
 
-                    if fraction ~= 1 then
-                        isPathable = false
-                        offset:drawLine(target, Color:hsla(0, 0.8, 0.6, 100), 0.25)
-                    else
-                        offset:drawLine(target, Color:hsla(100, 0.8, 0.6, 100), 0.25)
-                    end
-                end
+                a:drawCircle(4, Color:rgba())
+                b:drawCircle(4, Color:rgba())
+
+                local trace = Trace.getHullToPosition(origin, searchNode.origin, bounds, {
+                    skip = function(eid)
+                        local entity = Entity:create(eid)
+
+                        if entity.classname ~= "CWorld" then
+                            return true
+                        end
+                    end,
+                    mask = Trace.mask.PLAYERSOLID,
+                    contents = Trace.contents.SOLID,
+                    type = Trace.type.EVERYTHING
+                })
 
                 local color
 
-                if isPathable then
-                    color = Color:hsla(100, 0.8, 0.6)
-                else
+                if trace.isIntersectingGeometry then
+                    origin:drawLine(searchNode.origin, Color:hsla(0, 0.8, 0.6, 100), 0.25)
+
                     color = Color:hsla(0, 0.8, 0.6)
+                else
+                    origin:drawLine(searchNode.origin, Color:hsla(100, 0.8, 0.6, 100), 0.25)
+
+                    color = Color:hsla(100, 0.8, 0.6)
                 end
 
                 local radius, thickness = Render.scaleCircle(searchNode.origin, 60, 10)
@@ -843,15 +844,6 @@ end
 --- @param pathLine boolean
 --- @return void
 function Nodegraph:setConnections(node, pathLine)
-    local boxOffset = 16
-
-    local box = {
-        Vector3:new(boxOffset, boxOffset, 4),
-        Vector3:new(boxOffset, -boxOffset, 4),
-        Vector3:new(-boxOffset, boxOffset, 4),
-        Vector3:new(-boxOffset, -boxOffset, 4),
-    }
-
     node.connections = {}
 
     for _, searchNode in pairs(self.nodes) do
@@ -878,27 +870,21 @@ function Nodegraph:setConnections(node, pathLine)
                     isPathable = false
                 end
             else
-                for _, vertex in pairs(box) do
-                    local origin = node.origin + vertex
-                    local target = searchNode.origin + vertex * 0.8
-                    local trace = Trace.getLineToPosition(origin, target, {
-                        skip = function(eid)
-                            local entity = Entity:create(eid)
+                local trace = Trace.getHullToPosition(node.origin, searchNode.origin, Vector3:newBounds(Vector3.align.CENTER, 8, 8, 4), {
+                    skip = function(eid)
+                        local entity = Entity:create(eid)
 
-                            if entity.classname ~= "CWorld" then
-                                return true
-                            end
-                        end,
-                        mask = Trace.mask.PLAYERSOLID,
-                        contents = Trace.contents.SOLID,
-                        type = Trace.type.EVERYTHING
-                    })
+                        if entity.classname ~= "CWorld" then
+                            return true
+                        end
+                    end,
+                    mask = Trace.mask.PLAYERSOLID,
+                    contents = Trace.contents.SOLID,
+                    type = Trace.type.EVERYTHING
+                })
 
-                    if trace.isIntersectingGeometry then
-                        isPathable = false
-
-                        break
-                    end
+                if trace.isIntersectingGeometry then
+                    isPathable = false
                 end
             end
 

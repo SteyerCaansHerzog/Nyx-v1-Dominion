@@ -413,7 +413,15 @@ function AiController:autoBuy()
         if roundsPlayed == 0 or roundsPlayed == halftimeRounds then
             Client.cmd("buy p250")
 
-            self:buyGrenades(2)
+            if player:isCounterTerrorist() then
+                if Client.getChance(3) then
+                    Client.cmd("buy defuser")
+                else
+                    self:buyGrenades(2)
+                end
+            else
+                self:buyGrenades(2)
+            end
 
             return
         end
@@ -1040,7 +1048,7 @@ function AiController:antiBlock(ai)
     local isBlocked = false
     local origin = player:getOrigin()
     local collisionOrigin = origin + Client.getCameraAngles():getForward() * 32
-    local collisionBounds = collisionOrigin:getBounds(46, 46, 72, Vector3.align.BOTTOM)
+    local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 48, 48, 64)
 
     for _, teammate in pairs(AiUtility.teammates) do
         if teammate:getOrigin():offset(0, 0, 36):isInBounds(collisionBounds) then

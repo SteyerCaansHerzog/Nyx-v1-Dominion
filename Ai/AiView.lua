@@ -257,7 +257,7 @@ end
 function AiView:isPlayerBlocked(node)
     local playerOrigin = AiUtility.client:getOrigin()
     local collisionOrigin = playerOrigin + Client.getCameraAngles():getForward() * 16
-    local collisionBounds = collisionOrigin:getBounds(48, 48, 128, Vector3.align.BOTTOM)
+    local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 48, 48, 128)
 
     for _, teammate in pairs(AiUtility.teammates) do
         if teammate:getOrigin():offset(0, 0, 36):isInBounds(collisionBounds) then

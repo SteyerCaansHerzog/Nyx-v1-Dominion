@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
@@ -82,6 +83,10 @@ end
 --- @return void
 function AiStatePlant:assess(nodegraph)
     if not Client.hasBomb() then
+        return AiState.priority.IGNORE
+    end
+
+    if Entity.getGameRules():m_bFreezePeriod() == 1 then
         return AiState.priority.IGNORE
     end
 
@@ -182,8 +187,13 @@ function AiStatePlant:think(ai)
     end
 
     local player = AiUtility.client
+    local distance = player:getOrigin():getDistance(self.node.origin)
 
-    if player:getOrigin():getDistance(self.node.origin) < 80 then
+    if distance < 64 then
+        ai.view:lookInDirection(self.node.direction, 3)
+    end
+
+    if distance < 80 then
         ai.controller.canUseKnife = false
 
         if not player:isHoldingWeapon(Weapons.C4) then

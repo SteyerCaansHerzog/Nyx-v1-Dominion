@@ -87,7 +87,7 @@ function AiStateGrenadeBase:assess(nodegraph)
 
     local player = AiUtility.client
     local playerOrigin = player:getOrigin()
-    local playerCenter = playerOrigin:offset(0, 0, 40)
+    local playerCenter = playerOrigin:offset(0, 0, 48)
 
     --- @type Node
     local closestNode
@@ -123,7 +123,7 @@ function AiStateGrenadeBase:assess(nodegraph)
         local distance = playerOrigin:getDistance(grenadeNode.origin)
 
         if distance < 512 and distance < closestDistance then
-            local bounds = grenadeNode.origin:getBounds(400, 400, 72, Vector3.align.BOTTOM)
+            local bounds = grenadeNode.origin:getBounds(Vector3.align.BOTTOM, 400, 400, 72)
 
             if playerCenter:isInBounds(bounds) then
                 closestDistance = distance
@@ -132,7 +132,7 @@ function AiStateGrenadeBase:assess(nodegraph)
         end
     until true end
 
-    if self.inBehaviorTimer:isElapsedThenStop(8) then
+    if self.inBehaviorTimer:isElapsedThenStop(5) then
         AiStateGrenadeBase.cooldownTimer:start()
 
         self.node = nil

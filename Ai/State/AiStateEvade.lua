@@ -21,6 +21,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field shotBoltActionRifleTimer Timer
 --- @field shotBoltActionRifleTime number
 --- @field changeAngleTimer Timer
+--- @field changeAngleTime number
 --- @field reloadLookAngles Vector3
 --- @field isBlocked boolean
 local AiStateEvade = {
@@ -39,6 +40,7 @@ function AiStateEvade:__init()
     self.shotBoltActionRifleTime = 1
     self.reloadLookAngles = Client.getCameraAngles()
     self.changeAngleTimer = Timer:new():startThenElapse()
+    self.changeAngleTime = 1
 
     Callbacks.weaponFire(function(e)
         if e.player:isClient() and e.player:hasWeapons({ Weapons.AWP, Weapons.SSG08}) then
@@ -161,7 +163,9 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateEvade:think(ai)
-    if self.changeAngleTimer:isElapsedThenRestart(0.35) then
+    if self.changeAngleTimer:isElapsedThenRestart(self.changeAngleTime) then
+        self.changeAngleTime = Client.getRandomFloat(0.33, 1.33)
+
         local cameraAngles
 
         if next(AiUtility.visibleEnemies) and AiUtility.visibleEnemies[AiUtility.closestEnemy.eid] then
@@ -171,14 +175,14 @@ function AiStateEvade:think(ai)
         end
 
         cameraAngles.p = cameraAngles.p + Client.getRandomFloat(-2, 2)
-        cameraAngles.y = cameraAngles.y + Client.getRandomFloat(-6, 6)
+        cameraAngles.y = cameraAngles.y + Client.getRandomFloat(-16, 16)
 
         self.reloadLookAngles = cameraAngles
     end
 
     ai.view.canUseCheckNode = false
 
-    ai.view:lookInDirection(self.reloadLookAngles, 3)
+    ai.view:lookInDirection(self.reloadLookAngles, 2)
 end
 
 return Nyx.class("AiStateEvade", AiStateEvade, AiState)

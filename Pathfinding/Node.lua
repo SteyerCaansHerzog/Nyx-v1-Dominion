@@ -77,6 +77,7 @@ local NodeDirectional = {
     [NodeType.FLASHBANG_HOLD] = true,
     [NodeType.MOLOTOV_HOLD] = true,
     [NodeType.HE_GRENADE_HOLD] = true,
+    [NodeType.PLANT] = true
 }
 
 local NodePaired = {

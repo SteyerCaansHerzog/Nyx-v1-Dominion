@@ -596,7 +596,10 @@ function AiVoicePackGenericBase:speakAgreement()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 1.5,
-		maxDelay = 3
+		maxDelay = 3,
+		condition = function()
+			return AiUtility.client:isAlive()
+		end
 	})
 end
 
@@ -611,7 +614,10 @@ function AiVoicePackGenericBase:speakNoProblem()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0.5,
-		maxDelay = 2
+		maxDelay = 2,
+		condition = function()
+			return AiUtility.client:isAlive()
+		end
 	})
 end
 --}}}
