@@ -36,6 +36,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --{{{ AiController
 --- @class AiController : Class
 --- @field activeFlashbang Entity
+--- @field antiBlockLookAngles Vector3
 --- @field antiAfkEnabled boolean
 --- @field antiAfkLookAngles Angle
 --- @field antiAfkMoveYaw number
@@ -124,9 +125,9 @@ function AiController:initFields()
     self.isFreezetime = true
     self.lookAroundTimer = Timer:new():start()
     self.reloadDelay = Client.getRandomFloat(2, 2.9)
-    self.unblockDirection = Client.getChance(2) and "Left" or "Right"
+    self.unblockDirection = "Left"
     self.unblockNodesTimer = Timer:new()
-    self.unblockTimer = Timer:new()
+    self.unblockTimer = Timer:new():elapse()
     self.unscopeTime = 2
     self.unscopeTimer = Timer:new()
 
@@ -174,6 +175,7 @@ function AiController:initFields()
     })
 
     self:setClientLoaderLock()
+    self:openAndEquipGraffitis()
 end
 
 --- @return void
@@ -344,6 +346,34 @@ function AiController:initEvents()
 
         self:chatCommands(e)
     end)
+end
+
+--- @return void
+function AiController:openAndEquipGraffitis()
+    Panorama.InventoryAPI.SetInventorySortAndFilters("inv_sort_age", false, "", "", "")
+
+    local totalItems = Panorama.InventoryAPI.GetInventoryCount() - 1
+    local openedGraffiti = {}
+    local unopenedGraffiti = {}
+
+    for i = 0, totalItems do
+        local idx = Panorama.InventoryAPI.GetInventoryItemIDByIndex(i)
+        local set = Panorama.InventoryAPI.GetItemDefinitionName(idx)
+
+        if set == "spray" then
+            table.insert(unopenedGraffiti, idx)
+        elseif set == "spraypaint" then
+            table.insert(openedGraffiti, idx)
+        end
+    end
+
+    Panorama.LoadoutAPI.EquipItemInSlot("noteam", Table.getRandom(openedGraffiti), "spray0")
+
+    for id, spray in pairs(unopenedGraffiti) do
+        Client.fireAfter(id, function()
+            Panorama.InventoryAPI.UseTool(spray, spray)
+        end)
+    end
 end
 
 --- @param limit number
@@ -1047,34 +1077,53 @@ function AiController:antiBlock(ai)
 
     local isBlocked = false
     local origin = player:getOrigin()
-    local collisionOrigin = origin + Client.getCameraAngles():getForward() * 32
-    local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 48, 48, 128)
+    local collisionOrigin = origin:clone():offset(0, 0, -32) + (Client.getCameraAngles():set(0):getForward() * 64)
+    local collisionBounds = collisionOrigin:getBounds(Vector3.align.BOTTOM, 48, 48, 96)
+    --- @type Player
+    local blockingTeammate
 
     for _, teammate in pairs(AiUtility.teammates) do
         if teammate:getOrigin():offset(0, 0, 36):isInBounds(collisionBounds) then
             isBlocked = true
+
+            blockingTeammate = teammate
 
             break
         end
     end
 
     if not isBlocked then
+        self.antiBlockLookAngles = nil
+
         return
+    end
+
+    if not self.antiBlockLookAngles then
+        self.antiBlockLookAngles = Client.getEyeOrigin():getAngle(blockingTeammate:getEyeOrigin())
     end
 
     self.unblockTimer:ifPausedThenStart()
 
     if self.unblockTimer:isElapsedThenStop(self.antiBlockDuration) then
-        self.unblockDirection = Client.getChance(2) and "Left" or "Right"
-        self.antiBlockDuration = Client.getRandomFloat(0.5, 0.75)
+        if not self.unblockDirection then
+            self.unblockDirection = Client.getChance(2) and "Left" or "Right"
+        elseif self.unblockDirection == "Left" then
+            self.unblockDirection = "Right"
+        else
+            self.unblockDirection = "Left"
+        end
+
+        self.antiBlockDuration = Client.getRandomFloat(1, 1.25)
     end
 
     local directionMethod = string.format("get%s", self.unblockDirection)
     local eyeOrigin = Client.getEyeOrigin()
     local movementAngles = Angle:new(ai.cmd.pitch, ai.cmd.yaw)
-    local leftOffset = eyeOrigin + movementAngles[directionMethod](movementAngles)
+    local directionOffset = eyeOrigin + movementAngles[directionMethod](movementAngles)
 
-    ai.nodegraph.moveYaw = eyeOrigin:getAngle(leftOffset).y
+    ai.nodegraph.moveYaw = eyeOrigin:getAngle(directionOffset).y
+
+    ai.view:lookInDirection(self.antiBlockLookAngles, 3)
 end
 
 --- @param cmd SetupCommandEvent
