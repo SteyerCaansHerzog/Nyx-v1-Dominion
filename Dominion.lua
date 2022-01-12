@@ -23,6 +23,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 local AiController = require "gamesense/Nyx/v1/Dominion/Ai/AiController"
 
 local AiStateCheck = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateCheck"
+local AiStateChickenInteraction = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateChickenInteraction"
 local AiStateDefend = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefend"
 local AiStateDefuse = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefuse"
 local AiStateDeveloper = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDeveloper"
@@ -98,6 +99,7 @@ AiController:new({
         AiStateFlashbang,
         AiStateGraffiti,
         AiStateHeGrenade,
+        AiStateChickenInteraction,
         AiStateMolotov,
         AiStatePatrol,
         AiStatePickupBomb,
