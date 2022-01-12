@@ -37,7 +37,7 @@ function AiChatCommandGo:invoke(ai, sender, args)
         return
     end
 
-    if sender:is(AiUtility.client) or not AiUtility.client:isAlive() then
+    if not AiUtility.client:isAlive() then
         return
     end
 

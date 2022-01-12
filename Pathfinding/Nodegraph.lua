@@ -646,14 +646,19 @@ function Nodegraph:renderNodegraph()
     end
 
     if Menu.visualiseDirectPathing:get() then
-        local playerOrigin = Player.getClient():getOrigin():offset(0, 0, 16)
-        local bounds = Vector3:newBounds(Vector3.align.CENTER, 16, 16, 4)
+        local origin = AiUtility.client:getOrigin():offset(0, 0, 18)
 
         for _, searchNode in pairs(self.nodes) do
-            if playerOrigin:getDistance(searchNode.origin) < 256 then
-                local isPathable = self:isJumpNodeValid(playerOrigin, searchNode)
+            if origin:getDistance(searchNode.origin) < 256 then
+                local bounds = Vector3:newBounds(Vector3.align.CENTER, 16, 16, 4)
 
-                local trace = Trace.getHullToPosition(playerOrigin, searchNode.origin, bounds, {
+                local a = origin + bounds[1]
+                local b = origin + bounds[2]
+
+                a:drawCircle(4, Color:rgba())
+                b:drawCircle(4, Color:rgba())
+
+                local trace = Trace.getHullToPosition(origin, searchNode.origin, bounds, {
                     skip = function(eid)
                         local entity = Entity:create(eid)
 
@@ -662,26 +667,24 @@ function Nodegraph:renderNodegraph()
                         end
                     end,
                     mask = Trace.mask.PLAYERSOLID,
+                    contents = Trace.contents.SOLID,
                     type = Trace.type.EVERYTHING
                 })
 
-                isPathable = not trace.isIntersectingGeometry
-
                 local color
 
-                if isPathable then
-                    color = Color:hsla(100, 0.8, 0.6)
+                if trace.isIntersectingGeometry then
+                    origin:drawLine(searchNode.origin, Color:hsla(0, 0.8, 0.6, 100), 0.25)
 
-                    playerOrigin:drawLine(searchNode.origin, Color:hsla(100, 0.8, 0.6, 100), 0.25)
-                else
                     color = Color:hsla(0, 0.8, 0.6)
+                else
+                    origin:drawLine(searchNode.origin, Color:hsla(100, 0.8, 0.6, 100), 0.25)
 
-                    playerOrigin:drawLine(searchNode.origin, Color:hsla(0, 0.8, 0.6, 100), 0.25)
+                    color = Color:hsla(100, 0.8, 0.6)
                 end
 
                 local radius, thickness = Render.scaleCircle(searchNode.origin, 60, 10)
 
-                trace.endPosition:drawCircle(6, color)
                 searchNode.origin:drawCircleOutline(radius, thickness, color)
             end
         end
@@ -722,7 +725,7 @@ function Nodegraph:renderNodegraph()
                 site = string.format(" (%s)", node.site:upper())
             end
 
-            local text = string.format("[%s] %s%s", node.id, Node.typesCode[node.type], site)
+            local text = string.format("%s%s", Node.typesCode[node.type], site)
 
             node.origin:clone():offset(0, 0, 14):drawSurfaceText(Font.SMALL, color, "c", text)
 
@@ -791,7 +794,7 @@ function Nodegraph:pathfind(origin, options)
     self:setConnections(pathStart, false)
 
     if not next(pathStart.connections) then
-        self:setConnections(pathStart, false)
+        self:setConnections(pathStart, true)
     end
 
     self:setConnections(pathEnd, options.ignore, true)
@@ -841,15 +844,6 @@ end
 --- @param pathLine boolean
 --- @return void
 function Nodegraph:setConnections(node, pathLine)
-    local boxOffset = 16
-
-    local box = {
-        Vector3:new(boxOffset, boxOffset, 4),
-        Vector3:new(boxOffset, -boxOffset, 4),
-        Vector3:new(-boxOffset, boxOffset, 4),
-        Vector3:new(-boxOffset, -boxOffset, 4),
-    }
-
     node.connections = {}
 
     for _, searchNode in pairs(self.nodes) do
@@ -876,9 +870,7 @@ function Nodegraph:setConnections(node, pathLine)
                     isPathable = false
                 end
             else
-                local bounds = Vector3:newBounds(Vector3.align.CENTER, 16, 16, 4)
-
-                local trace = Trace.getHullToPosition(node.origin, searchNode.origin, bounds, {
+                local trace = Trace.getHullToPosition(node.origin, searchNode.origin, Vector3:newBounds(Vector3.align.CENTER, 8, 8, 4), {
                     skip = function(eid)
                         local entity = Entity:create(eid)
 
@@ -887,10 +879,13 @@ function Nodegraph:setConnections(node, pathLine)
                         end
                     end,
                     mask = Trace.mask.PLAYERSOLID,
+                    contents = Trace.contents.SOLID,
                     type = Trace.type.EVERYTHING
                 })
 
-                isPathable = not trace.isIntersectingGeometry
+                if trace.isIntersectingGeometry then
+                    isPathable = false
+                end
             end
 
             if isPathable then

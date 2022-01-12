@@ -13,7 +13,6 @@ local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 --- @field killCount number
 --- @field lastKillTimer Timer
 --- @field lastKillCutoff number
---- @field graffitiDelayTimer Timer
 local AiStateGraffiti = {
     name = "Graffiti"
 }
@@ -29,7 +28,6 @@ function AiStateGraffiti:__init()
     self.killCount = 0
     self.lastKillTimer = Timer:new()
     self.lastKillCutoff = 6
-    self.graffitiDelayTimer = Timer:new()
 
     Callbacks.playerDeath(function(e)
         if not e.attacker:isClient() or e.victim:isTeammate() then
@@ -63,12 +61,6 @@ function AiStateGraffiti:assess()
     -- Kill count is reset after lastKillTimer expires.
     -- Bots should spray when they get a 3K or better within the cutoff time.
     if self.killCount < 3 then
-        return AiState.priority.IGNORE
-    end
-
-    self.graffitiDelayTimer:ifPausedThenStart()
-
-    if not self.graffitiDelayTimer:isElapsedThenStop(1) then
         return AiState.priority.IGNORE
     end
 
