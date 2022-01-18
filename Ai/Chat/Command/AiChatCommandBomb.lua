@@ -22,7 +22,7 @@ local AiChatCommandBomb = {
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return void
+--- @return nil
 function AiChatCommandBomb:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return
@@ -46,9 +46,7 @@ function AiChatCommandBomb:invoke(ai, sender, args)
         return
     end
 
-    local drop = ai:getState(AiStateDrop)
-
-    drop:dropGear(sender, "bomb")
+    ai.states.drop:dropGear(sender, "bomb")
 end
 
 return Nyx.class("AiChatCommandBomb", AiChatCommandBomb, AiChatCommand)

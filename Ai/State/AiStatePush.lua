@@ -26,7 +26,7 @@ function AiStatePush:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiStatePush:__init()
     Callbacks.roundStart(function()
         self.isDefendingBomb = false
@@ -35,12 +35,12 @@ function AiStatePush:__init()
     end)
 end
 
---- @return void
+--- @return nil
 function AiStatePush:assess()
     local player = AiUtility.client
 
-    if player:isTerrorist() and not self.isDeactivated then
-        if not AiUtility.roundTimer:isStarted() or not AiUtility.roundTimer:isElapsed(15) then
+    if player:isTerrorist() and not self.isDeactivated and not AiUtility.isBombPlanted() then
+        if AiUtility.roundTimer:isElapsed(15) then
             return AiState.priority.PUSH
         end
     end
@@ -50,7 +50,7 @@ end
 
 --- @param ai AiOptions
 --- @param site string
---- @return void
+--- @return nil
 function AiStatePush:activate(ai, site)
     local node = self:getActivityNode(ai, site)
 
@@ -74,7 +74,7 @@ function AiStatePush:activate(ai, site)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStatePush:think(ai)
     if not ai.nodegraph.path and ai.nodegraph:canPathfind() then
         self:activate(ai, self.site)

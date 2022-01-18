@@ -16,7 +16,7 @@ function AiSentenceReplyCheater:new()
     return Nyx.new(self)
 end
 
---- @return void
+--- @return nil
 function AiSentenceReplyCheater:__init()
     self.__parent.__init(self)
 

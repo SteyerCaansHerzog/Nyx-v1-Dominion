@@ -17,7 +17,7 @@ local AiChatCommandForce = {
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return void
+--- @return nil
 function AiChatCommandForce:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return

@@ -23,14 +23,14 @@ function AiStateSweep:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiStateSweep:assess()
     return AiState.priority.SWEEP
 end
 
 --- @param ai AiOptions
 --- @param site string
---- @return void
+--- @return nil
 function AiStateSweep:activate(ai, site)
     self.node = self:getObjective(ai, site)
 
@@ -56,7 +56,7 @@ function AiStateSweep:activate(ai, site)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateSweep:think(ai) end
 
 --- @param ai AiOptions

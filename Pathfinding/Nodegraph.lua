@@ -37,6 +37,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field mapMiddle Node
 --- @field moveSpeed number
 --- @field moveYaw number
+--- @field moveDirection Angle
 --- @field nodes Node[]
 --- @field objectiveA Node
 --- @field objectiveAChoke Node[]
@@ -86,13 +87,13 @@ function Nodegraph:new()
     return Nyx.new(self)
 end
 
---- @return void
+--- @return nil
 function Nodegraph:__init()
     self:initFields()
     self:initEvents()
 end
 
---- @return void
+--- @return nil
 function Nodegraph:initFields()
     self.nodes = {}
     self.currentNode = 0
@@ -100,6 +101,7 @@ function Nodegraph:initFields()
     self.moveSpeed = 450
     self.pathfindFails = 0
     self.unstuckAngles = Client.getCameraAngles()
+    self.moveDirection = Angle:new()
 
     Menu.enableNodegraph = Menu.group:checkbox("> Dominion Nodegraph"):setParent(Menu.master)
     Menu.enableMovement = Menu.group:checkbox("    > Enable Movement"):setParent(Menu.enableNodegraph)
@@ -107,7 +109,7 @@ function Nodegraph:initFields()
     Menu.visualiseDirectPathing = Menu.group:checkbox("    > Visualise Direct Pathing"):setParent(Menu.visualiseNodegraph)
 end
 
---- @return void
+--- @return nil
 function Nodegraph:initEvents()
     Callbacks.init(function()
         if not globals.mapname() then
@@ -188,7 +190,7 @@ function Nodegraph:getSiteNode(site)
 end
 
 --- @vararg string
---- @return void
+--- @return nil
 function Nodegraph:log(...)
     local message = string.format(...)
 
@@ -202,7 +204,7 @@ function Nodegraph:log(...)
     Chat.sendMessage(string.format("%s[Nyx]%s %s", Chat.LIGHT_GREEN, Chat.WHITE, message))
 end
 
---- @return void
+--- @return nil
 function Nodegraph:setupNodegraph()
     if not next(self.nodes) then
         return
@@ -329,7 +331,7 @@ function Nodegraph:setupNodegraph()
     end
 end
 
---- @return void
+--- @return nil
 function Nodegraph:clearNodegraph()
     self.nodes = {}
     self.currentNode = 0
@@ -337,7 +339,7 @@ function Nodegraph:clearNodegraph()
     self:setupNodegraph()
 end
 
---- @return void
+--- @return nil
 function Nodegraph:reactivateAllNodes()
     for _, node in pairs(self.nodes) do
         node.active = true
@@ -345,7 +347,7 @@ function Nodegraph:reactivateAllNodes()
 end
 
 --- @param reason string
---- @return void
+--- @return nil
 function Nodegraph:clearPath(reason)
     self.path = nil
     self.pathCurrent = 0
@@ -372,7 +374,7 @@ function Nodegraph:clearPath(reason)
 end
 
 --- @param filename string
---- @return void
+--- @return nil
 function Nodegraph:loadFromDisk(filename)
     local filedata = readfile(filename)
 
@@ -440,7 +442,7 @@ function Nodegraph:loadFromDisk(filename)
 end
 
 --- @param filename string
---- @return void
+--- @return nil
 function Nodegraph:saveToDisk(filename)
     local nodeData = {}
     local iNodeData = 0
@@ -504,7 +506,7 @@ end
 --- @param origin Vector3
 --- @param connections Node[]
 --- @param types number[]
---- @return void
+--- @return nil
 function Nodegraph:createNode(origin, connections, types)
     self:addNode(Node:new({
         origin = origin,
@@ -514,7 +516,7 @@ function Nodegraph:createNode(origin, connections, types)
 end
 
 --- @param node Node
---- @return void
+--- @return nil
 function Nodegraph:addNode(node)
     local latestId = self.currentNode + 1
 
@@ -524,7 +526,7 @@ function Nodegraph:addNode(node)
 end
 
 --- @param node Node
---- @return void
+--- @return nil
 function Nodegraph:removeNode(node)
     self.nodes[node.id] = nil
 
@@ -639,7 +641,7 @@ function Nodegraph:isJumpNodeValid(origin, node)
     return true
 end
 
---- @return void
+--- @return nil
 function Nodegraph:renderNodegraph()
     if not Menu.visualiseNodegraph:get() then
         return
@@ -653,17 +655,7 @@ function Nodegraph:renderNodegraph()
             if playerOrigin:getDistance(searchNode.origin) < 256 then
                 local isPathable = self:isJumpNodeValid(playerOrigin, searchNode)
 
-                local trace = Trace.getHullToPosition(playerOrigin, searchNode.origin, bounds, {
-                    skip = function(eid)
-                        local entity = Entity:create(eid)
-
-                        if entity.classname ~= "CWorld" then
-                            return true
-                        end
-                    end,
-                    mask = Trace.mask.PLAYERSOLID,
-                    type = Trace.type.EVERYTHING
-                })
+                local trace = Trace.getHullToPosition(playerOrigin, searchNode.origin, bounds, AiUtility.traceOptions)
 
                 isPathable = not trace.isIntersectingGeometry
 
@@ -681,8 +673,11 @@ function Nodegraph:renderNodegraph()
 
                 local radius, thickness = Render.scaleCircle(searchNode.origin, 60, 10)
 
-                trace.endPosition:drawCircle(6, color)
                 searchNode.origin:drawCircleOutline(radius, thickness, color)
+
+                local radius = Render.scaleCircle(trace.endPosition, 14)
+
+                trace.endPosition:drawCircle(radius, color)
             end
         end
     end
@@ -736,7 +731,7 @@ function Nodegraph:renderNodegraph()
     end
 end
 
---- @return void
+--- @return nil
 function Nodegraph:rePathfind()
     if not self.pathEnd then
         return
@@ -752,10 +747,11 @@ end
 --- @field task string
 --- @field onComplete function
 --- @field onFail function
+--- @field canUseInactive boolean
 ---
 --- @param origin Vector3
 --- @param options NodegraphPathfindOptions
---- @return void
+--- @return nil
 function Nodegraph:pathfind(origin, options)
     if not Menu.master:get() or not Menu.enableNodegraph:get() then
         return
@@ -803,7 +799,11 @@ function Nodegraph:pathfind(origin, options)
             canReach = false
         end
 
-        return node.connections[neighbor.id] and node.active and canReach
+        if options.canUseInactive then
+            return node.connections[neighbor.id] and canReach
+        else
+            return node.connections[neighbor.id] and node.active and canReach
+        end
     end)
 
     if not path then
@@ -839,17 +839,8 @@ end
 
 --- @param node Node
 --- @param pathLine boolean
---- @return void
+--- @return nil
 function Nodegraph:setConnections(node, pathLine)
-    local boxOffset = 16
-
-    local box = {
-        Vector3:new(boxOffset, boxOffset, 4),
-        Vector3:new(boxOffset, -boxOffset, 4),
-        Vector3:new(-boxOffset, boxOffset, 4),
-        Vector3:new(-boxOffset, -boxOffset, 4),
-    }
-
     node.connections = {}
 
     for _, searchNode in pairs(self.nodes) do
@@ -859,36 +850,14 @@ function Nodegraph:setConnections(node, pathLine)
             isPathable = self:isJumpNodeValid(node.origin, searchNode)
 
             if pathLine then
-                local trace = Trace.getLineToPosition(node.origin, searchNode.origin, {
-                    skip = function(eid)
-                        local entity = Entity:create(eid)
-
-                        if entity.classname ~= "CWorld" then
-                            return true
-                        end
-                    end,
-                    mask = Trace.mask.PLAYERSOLID,
-                    contents = Trace.contents.SOLID,
-                    type = Trace.type.EVERYTHING
-                })
+                local trace = Trace.getLineToPosition(node.origin, searchNode.origin, AiUtility.traceOptions)
 
                 if trace.isIntersectingGeometry then
                     isPathable = false
                 end
             else
                 local bounds = Vector3:newBounds(Vector3.align.CENTER, 16, 16, 4)
-
-                local trace = Trace.getHullToPosition(node.origin, searchNode.origin, bounds, {
-                    skip = function(eid)
-                        local entity = Entity:create(eid)
-
-                        if entity.classname ~= "CWorld" then
-                            return true
-                        end
-                    end,
-                    mask = Trace.mask.PLAYERSOLID,
-                    type = Trace.type.EVERYTHING
-                })
+                local trace = Trace.getHullToPosition(node.origin, searchNode.origin, bounds, AiUtility.traceOptions)
 
                 isPathable = not trace.isIntersectingGeometry
             end
@@ -902,10 +871,19 @@ function Nodegraph:setConnections(node, pathLine)
 end
 
 --- @param cmd SetupCommandEvent
---- @return void
+--- @return nil
 function Nodegraph:move(cmd)
     if not Menu.master:get() or not Menu.enableNodegraph:get() or not Menu.enableMovement:get() then
         return
+    end
+
+    -- Auto-duck in-air, except when falling.
+    if not AiUtility.client:getFlag(Player.flags.FL_ONGROUND) then
+        local velocity = AiUtility.client:m_vecVelocity()
+
+        if velocity.z > 0 then
+            cmd.in_duck = 1
+        end
     end
 
     -- Attempt to unstuck ourselves
@@ -955,7 +933,7 @@ function Nodegraph:move(cmd)
     end
 
     -- Path is inactive
-    if not node.active then
+    if not self.pathfindOptions.canUseInactive and not node.active then
         self:rePathfind()
     end
 
@@ -966,6 +944,9 @@ function Nodegraph:move(cmd)
     cmd.forwardmove = self.moveSpeed
     cmd.move_yaw = self.moveYaw and self.moveYaw or angleToNode.y
 
+    -- Set move direction
+    self.moveDirection:set(0, cmd.move_yaw)
+
     -- Reset move overrides
     self.moveYaw = nil
     self.moveSpeed = 450
@@ -975,11 +956,11 @@ function Nodegraph:move(cmd)
     -- Crouch under cover
     local crouchNode = self:getClosestNodeOf(origin, {Node.types.CROUCH, Node.types.CROUCH_SHOOT})
 
-    if crouchNode and origin:getDistance(crouchNode.origin) < 32 then
+    if crouchNode and origin:getDistance(crouchNode.origin) < 48 then
         self.crouchTimer:start()
     end
 
-    self.crouchTimer:isElapsedThenStop(0.33)
+    self.crouchTimer:isElapsedThenStop(0.4)
 
     if self.crouchTimer:isStarted() then
         cmd.in_duck = 1
@@ -992,15 +973,21 @@ function Nodegraph:move(cmd)
     self.canJump = true
 
     -- Jump over obstacles
-    if canJump and self.jumpCooldown:isElapsedThenRestart(0.4) and distance < 54 and (jumpNode.type == Node.types.JUMP) then
-        if jumpNode.origin.z - origin.z > 18 then
-            cmd.in_jump = 1
+    if node.type == Node.types.JUMP then
+        if distance < 32 and node.origin.z - origin.z > 18 then
+            if self.jumpCooldown:isElapsedThenRestart(0.6) then
+                cmd.in_jump = 1
 
-            self.pathCurrent = self.pathCurrent + 1
+                self.pathCurrent = self.pathCurrent + 1
+            end
+        elseif distance < 32 and node.origin.z - origin.z < 18 then
+            if self.jumpCooldown:isElapsedThenRestart(0.6) then
+                self.pathCurrent = self.pathCurrent + 1
+            end
         end
     end
 
-    -- Jump gaps
+    -- Jump over gaps
     if canJump and jumpNode.type == Node.types.GAP and distance < 40 then
         cmd.in_jump = 1
 
@@ -1008,7 +995,7 @@ function Nodegraph:move(cmd)
     end
 
     -- Move onto next node
-    if distance < 20 then
+    if distance < 20 and node.type ~= Node.types.JUMP and node.type ~= Node.types.GAP then
         self.pathCurrent = self.pathCurrent + 1
     end
 
@@ -1018,11 +1005,11 @@ function Nodegraph:move(cmd)
     if gameRules:m_bFreezePeriod() ~= 1 and player:getFlag(Player.flags.FL_ONGROUND) then
         local speed = player:m_vecVelocity():set(nil, nil, 0):getMagnitude()
 
-        if not self.stuckTimer:isStarted() and speed < 100 then
+        if not self.stuckTimer:isStarted() and speed < 64 then
             self.stuckTimer:start()
-        elseif self.stuckTimer:isStarted() and speed >= 100 then
+        elseif self.stuckTimer:isStarted() and speed >= 64 then
             self.stuckTimer:stop()
-        elseif self.stuckTimer:isElapsedThenRestart(1.5) then
+        elseif self.stuckTimer:isElapsedThenRestart(0.75) then
             self:rePathfind()
 
             local closestJumpNode = self:getClosestNodeOf(origin, Node.types.JUMP)

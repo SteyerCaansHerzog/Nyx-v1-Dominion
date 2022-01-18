@@ -25,7 +25,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field executeNode string
 --- @field holdNode string
 --- @field weapons string[]
---- @field equipFunction fun(): void
+--- @field equipFunction fun(): nil
 ---
 --- @field isInThrow boolean
 --- @field node Node
@@ -50,7 +50,7 @@ function AiStateGrenadeBase:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiStateGrenadeBase:__init()
     self.inBehaviorTimer = Timer:new()
     self.throwTimer = Timer:new()
@@ -77,7 +77,7 @@ function AiStateGrenadeBase:__init()
 end
 
 --- @param nodegraph Nodegraph
---- @return void
+--- @return nil
 function AiStateGrenadeBase:assess(nodegraph)
     local grenadeNodes = self:getNodes(nodegraph)
 
@@ -174,7 +174,7 @@ function AiStateGrenadeBase:assess(nodegraph)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateGrenadeBase:activate(ai)
     if not self.node then
         return
@@ -196,13 +196,13 @@ function AiStateGrenadeBase:activate(ai)
     })
 end
 
---- @return void
+--- @return nil
 function AiStateGrenadeBase:deactivate()
     Client.equipWeapon()
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateGrenadeBase:think(ai)
     if self.node and AiStateGrenadeBase.usedNodes[self.node.id] then
         self.node = nil
@@ -210,11 +210,7 @@ function AiStateGrenadeBase:think(ai)
         return
     end
 
-    local evade = ai.controller:getState(AiStateEvade)
-
-    if evade then
-        evade.isBlocked = true
-    end
+    ai.controller.states.evade.isBlocked = true
 
     local player = AiUtility.client
     local playerOrigin = player:getOrigin()

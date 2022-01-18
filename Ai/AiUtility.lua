@@ -7,6 +7,7 @@ local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
+local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
@@ -30,7 +31,6 @@ local AiWeaponPriorityGeneral = {
     [Weapons.SG553] = 5,
     [Weapons.UMP45] = 3,
     [Weapons.MAC10] = 2,
-    [Weapons.DEAGLE] = 2,
     [Weapons.NEGEV] = 1
 }
 
@@ -50,7 +50,6 @@ local AiWeaponPriorityClutch = {
     [Weapons.SG553] = 5,
     [Weapons.UMP45] = 3,
     [Weapons.MAC10] = 2,
-    [Weapons.DEAGLE] = 2,
     [Weapons.NEGEV] = 1
 }
 
@@ -92,28 +91,39 @@ local AiWeaponNames = {
 --- @field isRoundOver boolean
 --- @field lastVisibleEnemyTimer Timer
 --- @field mainWeapons number[]
---- @field mainWeapons number[]
 --- @field plantedBomb Entity
 --- @field roundTimer Timer
 --- @field teammates Player[]
 --- @field visibleEnemies Player[]
 --- @field weaponNames string[]
 --- @field weaponPriority AiWeaponPriorityGeneral
+--- @field traceOptions TraceOptions
 local AiUtility = {
     mainWeapons = {
-        Weapons.FAMAS, Weapons.GALIL, Weapons.M4A1, Weapons.AUG, Weapons.AK47, Weapons.AWP, Weapons.SG553, Weapons.SCAR20, Weapons.G3SG1, Weapons.SSG08
+        Weapons.FAMAS, Weapons.GALIL, Weapons.M4A1, Weapons.AUG, Weapons.AK47, Weapons.AWP, Weapons.SG553, Weapons.SSG08
     },
     weaponPriority = AiWeaponPriorityGeneral,
-    weaponNames = AiWeaponNames
+    weaponNames = AiWeaponNames,
+    traceOptions = {
+        skip = function(eid)
+            local entity = Entity:create(eid)
+
+            if entity.classname ~= "CWorld" then
+                return true
+            end
+        end,
+        mask = Trace.mask.PLAYERSOLID,
+        type = Trace.type.EVERYTHING
+    }
 }
 
---- @return void
+--- @return nil
 function AiUtility:__setup()
     self:initFields()
     self:initEvents()
 end
 
---- @return void
+--- @return nil
 function AiUtility:initFields()
     self.client = Player.getClient()
     self.visibleEnemies = {}
@@ -127,7 +137,7 @@ function AiUtility:initFields()
     self.teammates = {}
 end
 
---- @return void
+--- @return nil
 function AiUtility:initEvents()
     Callbacks.roundStart(function()
         self.canDefuse = nil

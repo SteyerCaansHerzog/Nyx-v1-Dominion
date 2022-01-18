@@ -20,8 +20,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field isDefusing boolean
 --- @field lookAtOffset Vector3
 local AiStateDefuse = {
-    name = "Defuse",
-    canDelayActivation = true
+    name = "Defuse"
 }
 
 --- @param fields AiStateDefuse
@@ -30,7 +29,7 @@ function AiStateDefuse:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiStateDefuse:__init()
     self.lookAtOffset = Vector3:newRandom(-16, 16)
 
@@ -69,7 +68,7 @@ function AiStateDefuse:__init()
     end)
 end
 
---- @return void
+--- @return nil
 function AiStateDefuse:assess()
     local player = AiUtility.client
 
@@ -112,7 +111,7 @@ function AiStateDefuse:assess()
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateDefuse:activate(ai)
     local bomb = AiUtility.plantedBomb
 
@@ -143,13 +142,13 @@ function AiStateDefuse:activate(ai)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateDefuse:deactivate(ai)
     ai.nodegraph:reactivateAllNodes()
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateDefuse:think(ai)
     local bomb = AiUtility.plantedBomb
 

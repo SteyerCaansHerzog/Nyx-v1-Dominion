@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 
@@ -21,7 +22,7 @@ local AiChatCommandAssist = {
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return void
+--- @return nil
 function AiChatCommandAssist:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return
@@ -31,17 +32,17 @@ function AiChatCommandAssist:invoke(ai, sender, args)
         return
     end
 
-    local patrol = ai:getState(AiStatePatrol)
-
     local eyeOrigin = sender:getEyeOrigin()
     local cameraAngles = sender:getCameraAngles()
     local forward = cameraAngles:getForward()
     local origin = eyeOrigin:getTraceLine(eyeOrigin + forward * Vector3.MAX_DISTANCE, sender.eid)
 
-    origin = origin - forward * 16
+    origin = origin - forward * 18
     origin = origin:getTraceLine(origin + Vector3:new(0, 0, -Vector3.MAX_DISTANCE), sender.eid)
 
-    patrol:beginPatrol(origin, sender)
+    Client.fireAfter(Client.getRandomFloat(1, 2), function()
+        ai.states.patrol:beginPatrol(origin, sender)
+    end)
 end
 
 return Nyx.class("AiChatCommandAssist", AiChatCommandAssist, AiChatCommand)

@@ -36,7 +36,7 @@ function AiStatePlant:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiStatePlant:__init()
     self.plantDelayTimer = Timer:new()
     self.plantDelayTime = 0.33
@@ -74,13 +74,13 @@ function AiStatePlant:__init()
     end)
 end
 
---- @return void
+--- @return nil
 function AiStatePlant:setSite()
     self.plantAt = Client.getRandomInt(1, 2) == 1 and "a" or "b"
 end
 
 --- @param nodegraph Nodegraph
---- @return void
+--- @return nil
 function AiStatePlant:assess(nodegraph)
     if not Client.hasBomb() then
         return AiState.priority.IGNORE
@@ -96,14 +96,14 @@ function AiStatePlant:assess(nodegraph)
     local site = nodegraph:getSiteNode(siteName)
     local closestPlantNode = nodegraph:getClosestNodeOf(playerOrigin, Node.types.PLANT)
     local isCovered = false
-    local isOnSite = playerOrigin:getDistance(site.origin) < 512
-    local isOnPlant = playerOrigin:getDistance(closestPlantNode.origin) < 64
+    local isOnSite = playerOrigin:getDistance(site.origin) < 600
+    local isOnPlant = playerOrigin:getDistance(closestPlantNode.origin) < 128
 
     if isOnSite then
         for _, teammate in pairs(AiUtility.teammates) do
             local teammateOrigin = teammate:getOrigin()
 
-            local distance = isOnSite and 512 or 256
+            local distance = 400
 
             if playerOrigin:getDistance(teammateOrigin) < distance then
                 isCovered = true
@@ -128,7 +128,7 @@ end
 
 --- @param ai AiOptions
 --- @param site string
---- @return void
+--- @return nil
 function AiStatePlant:activate(ai, site)
     local player = AiUtility.client
     local origin = player:getOrigin()
@@ -180,7 +180,7 @@ function AiStatePlant:activate(ai, site)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStatePlant:think(ai)
     if not self.node then
         self:activate(ai)

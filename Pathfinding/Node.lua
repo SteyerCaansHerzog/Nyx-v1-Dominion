@@ -262,7 +262,7 @@ function Node:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function Node:__init()
     self.active = true
 end

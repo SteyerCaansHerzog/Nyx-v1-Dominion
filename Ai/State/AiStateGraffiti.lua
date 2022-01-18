@@ -8,6 +8,7 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --{{{ Modules
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 --}}}
+
 --{{{ AiStateGraffiti
 --- @class AiStateGraffiti : AiState
 --- @field killCount number
@@ -24,7 +25,7 @@ function AiStateGraffiti:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiStateGraffiti:__init()
     self.killCount = 0
     self.lastKillTimer = Timer:new()
@@ -50,7 +51,7 @@ function AiStateGraffiti:__init()
     end)
 end
 
---- @return void
+--- @return nil
 function AiStateGraffiti:assess()
     if self.lastKillTimer:isElapsedThenStop(self.lastKillCutoff) then
         self.killCount = 0
@@ -76,7 +77,7 @@ function AiStateGraffiti:assess()
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateGraffiti:think(ai)
     local newCameraAngles = Client.getCameraAngles()
 

@@ -36,7 +36,7 @@ function AiStatePickupItems:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiStatePickupItems:__init()
     self.useCooldown = Timer:new():startThenElapse()
     self.entityBlacklist = {}
@@ -47,7 +47,7 @@ function AiStatePickupItems:__init()
     end)
 end
 
---- @return void
+--- @return nil
 function AiStatePickupItems:assess()
     if self.item then
         return self.currentPriority
@@ -55,20 +55,16 @@ function AiStatePickupItems:assess()
 
     local player = AiUtility.client
     local origin = player:getOrigin()
-    local bomb = AiUtility.plantedBomb
 
-    if bomb and player:isCounterTerrorist() and player:m_bHasDefuser() == 0 then
-        local bombOrigin = bomb:m_vecOrigin()
+    if player:isCounterTerrorist() and player:m_bHasDefuser() == 0 then
+        self.item = self:getNearbyItems({Weapons.DEFUSER})
 
-        for _, defuser in Entity.find(Weapons.DEFUSER) do
-            local defuserOrigin = defuser:m_vecOrigin()
+        if self.item then
+            self.lookAtItem = false
 
-            if origin:getDistance(defuserOrigin) < 512 or bombOrigin:getDistance(defuserOrigin) < 512 then
-                self.item = defuser
-                self.currentPriority = AiState.priority.PICKUP_DEFUSER
+            self.currentPriority = AiState.priority.PICKUP_DEFUSER
 
-                return self.currentPriority
-            end
+            return self.currentPriority
         end
     end
 
@@ -89,10 +85,6 @@ function AiStatePickupItems:assess()
         lowestPriority = 0
     end
 
-    if mainWeapon and bomb then
-        return AiState.priority.IGNORE
-    end
-
     --- @type Entity
     local chosenWeapon
     local highestPriority = -1
@@ -100,8 +92,7 @@ function AiStatePickupItems:assess()
     for _, weapon in Entity.find(AiUtility.weaponNames) do
         local priority = AiUtility.weaponPriority[weapon.classname]
 
-        if not
-        self.entityBlacklist[weapon.eid] and
+        if not self.entityBlacklist[weapon.eid] and
             not weapon:m_hOwner()
             and weapon:isValid()
             and (priority and priority > highestPriority)
@@ -121,18 +112,6 @@ function AiStatePickupItems:assess()
         return self.currentPriority
     end
 
-    if player:isCounterTerrorist() and player:m_bHasDefuser() == 0 then
-        self.item = self:getNearbyItems({Weapons.DEFUSER})
-
-        if self.item then
-            self.lookAtItem = false
-
-            self.currentPriority = AiState.priority.PICKUP_ITEM
-
-            return self.currentPriority
-        end
-    end
-
     return AiState.priority.IGNORE
 end
 
@@ -148,7 +127,7 @@ function AiStatePickupItems:getNearbyItems(items)
         end
 
         if not item:isValid() then
-
+            break
         end
 
         if item:m_hOwner() then
@@ -161,9 +140,9 @@ function AiStatePickupItems:getNearbyItems(items)
             break
         end
 
-        local _, fraction = Client.getEyeOrigin():getTraceLine(weaponOrigin:clone():offset(0, 0, 8), Client.getEid())
+        local trace = Trace.getLineToPosition(Client.getEyeOrigin(), weaponOrigin, AiUtility.traceOptions)
 
-        if fraction ~= 1 then
+        if trace.isIntersectingGeometry then
             break
         end
 
@@ -172,10 +151,10 @@ function AiStatePickupItems:getNearbyItems(items)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStatePickupItems:activate(ai) end
 
---- @return void
+--- @return nil
 function AiStatePickupItems:deactivate()
     if self.item and self.item:m_hOwner() == Client.getEid() then
         Client.equipWeapon()
@@ -183,17 +162,23 @@ function AiStatePickupItems:deactivate()
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStatePickupItems:think(ai)
     local owner = self.item:m_hOwnerEntity()
     local isDefuseKit = self.item.classname == "CEconEntity"
 
-    if (isDefuseKit and AiUtility.client:m_bHasDefuser() == 1) or self.item:m_vecOrigin() == nil or owner then
+    if isDefuseKit and AiUtility.client:m_bHasDefuser() == 1 then
+        self.item = nil
+
+        return
+    end
+
+    if self.item:m_vecOrigin() == nil or owner then
+        self.item = nil
+
         if Entity.getGameRules():m_bFreezePeriod() == 1 and owner == AiUtility.client.eid then
             ai.voice.pack:speakGratitude()
         end
-
-        self.item = nil
 
         return
     end
@@ -202,20 +187,7 @@ function AiStatePickupItems:think(ai)
     local origin = player:getOrigin()
     local weaponOrigin = self.item:m_vecOrigin()
     local distance = origin:getDistance(weaponOrigin)
-
-    local trace = Trace.getLineInDirection(weaponOrigin, Vector3:new(0, 0, -1), {
-        skip = function(eid)
-            local entity = Entity:create(eid)
-
-            if entity.classname ~= "CWorld" then
-                return true
-            end
-        end,
-        mask = Trace.mask.PLAYERSOLID,
-        contents = Trace.contents.SOLID,
-        type = Trace.type.EVERYTHING
-    })
-
+    local trace = Trace.getLineInDirection(weaponOrigin, Vector3:new(0, 0, -1), AiUtility.traceOptions)
     local weaponDistanceToFloor = weaponOrigin:getDistance(trace.endPosition)
 
     if ai.nodegraph.pathfindFails > 2 and weaponDistanceToFloor < 10 then

@@ -16,7 +16,7 @@ function AiSentenceReplyRacism:new()
     return Nyx.new(self)
 end
 
---- @return void
+--- @return nil
 function AiSentenceReplyRacism:__init()
     self.__parent.__init(self)
 

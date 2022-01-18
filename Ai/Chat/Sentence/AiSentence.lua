@@ -23,7 +23,7 @@ function AiSentence:new()
     return Nyx.new(self)
 end
 
---- @return void
+--- @return nil
 function AiSentence:__init()
     if not self.minDelay then
         self.minDelay = 3
@@ -62,7 +62,7 @@ function AiSentence:canSpeak()
 end
 
 --- @param substructure string
---- @return void
+--- @return nil
 function AiSentence:speak(substructure)
     if not self:canSpeak() then
         return

@@ -31,20 +31,31 @@ function AiStateChickenInteraction:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiStateChickenInteraction:__init()
     self.blacklist = {}
     self.cooldownTimer = Timer:new():startThenElapse()
     self.interaction = Client.getChance(2) and "kill" or "collect"
 
+    Callbacks.levelInit(function()
+        self.interaction = Client.getChance(2) and "kill" or "collect"
+    end)
+
     Callbacks.roundStart(function()
     	self.blacklist = {}
-        self.interaction = Client.getChance(2) and "kill" or "collect"
     end)
 end
 
---- @return void
+--- @return nil
 function AiStateChickenInteraction:assess()
+    if Entity.getGameRules():m_bFreezePeriod() == 1 then
+        return AiState.priority.IGNORE
+    end
+
+    if AiUtility.plantedBomb then
+        return AiState.priority.IGNORE
+    end
+
     if not self.cooldownTimer:isElapsed(4) then
         return AiState.priority.IGNORE
     end
@@ -66,10 +77,11 @@ function AiStateChickenInteraction:assess()
 
     for _, chicken in Entity.find("CChicken") do
         if not self.blacklist[chicken.eid] then
-            local distance = playerOrigin:getDistance(chicken:m_vecOrigin())
+            local chickenOrigin = chicken:m_vecOrigin()
+            local distance = playerOrigin:getDistance(chickenOrigin)
+            local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), chickenOrigin)
 
-            if distance < 300 and distance < closestChickenDistance then
-                Client.draw(Vector3.drawCircle, chicken:m_vecOrigin(), 4, Color:rgba())
+            if fov < 40 and distance < 300 and distance < closestChickenDistance then
                 closestChicken = chicken
                 closestChickenDistance = distance
             end
@@ -86,15 +98,15 @@ function AiStateChickenInteraction:assess()
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateChickenInteraction:activate(ai) end
 
---- @return void
+--- @return nil
 function AiStateChickenInteraction:deactivate()
     self.targetChicken = nil
 end
 
---- @return void
+--- @return nil
 function AiStateChickenInteraction:reset()
     self.targetChicken = nil
 
@@ -102,8 +114,14 @@ function AiStateChickenInteraction:reset()
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateChickenInteraction:think(ai)
+    if not AiUtility.client:isHoldingKnife() then
+        self:reset()
+
+        return
+    end
+
     local chickenOrigin = self.targetChicken:m_vecOrigin()
 
     if not chickenOrigin or chickenOrigin:isZero() then
@@ -128,6 +146,12 @@ function AiStateChickenInteraction:think(ai)
 
     local playerOrigin = AiUtility.client:getOrigin()
     local distance = playerOrigin:getDistance(chickenOrigin)
+
+    if distance > 500 then
+        self:reset()
+
+        return
+    end
 
     if distance < 200 then
         ai.view:lookAtLocation(chickenOrigin, 5.5)

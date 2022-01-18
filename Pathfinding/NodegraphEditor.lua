@@ -1,9 +1,10 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Color = require "gamesense/Nyx/v1/Api/Color"
 local Menu = require "gamesense/Nyx/v1/Api/Menu"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
+local Render = require "gamesense/Nyx/v1/Api/Render"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 local VKey = require "gamesense/Nyx/v1/Api/VKey"
 
@@ -26,7 +27,9 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field keyRemoveNode VKey
 --- @field keyPreviousType VKey
 --- @field keyNextType VKey
+--- @field keySelectNode VKey
 --- @field nodeTypeCombo number
+--- @field selectedNode Node
 local NodegraphEditor = {}
 
 --- @param fields NodegraphEditor
@@ -35,13 +38,13 @@ function NodegraphEditor:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function NodegraphEditor:__init()
     self:initFields()
     self:initEvents()
 end
 
---- @return void
+--- @return nil
 function NodegraphEditor:initFields()
     MenuGroup.enableEditor = MenuGroup.group:checkbox("> Dominion Editor"):setParent(MenuGroup.master)
 
@@ -49,7 +52,7 @@ function NodegraphEditor:initFields()
         default = 2
     }):setParent(MenuGroup.enableEditor)
 
-    MenuGroup.nodeHeight = MenuGroup.group:slider("    > Node Height", 18, 32, {
+    MenuGroup.nodeHeight = MenuGroup.group:slider("    > Node Height", 18, 64, {
         defalt = 18,
         unit = "u"
     }):setParent(MenuGroup.enableEditor)
@@ -107,7 +110,7 @@ function NodegraphEditor:initFields()
     end):setParent(MenuGroup.enableEditor)
 end
 
---- @return void
+--- @return nil
 function NodegraphEditor:initEvents()
     Callbacks.init(function()
         self.nodeMaxDistance = 300
@@ -116,6 +119,7 @@ function NodegraphEditor:initEvents()
         self.keyRemoveNode = VKey:new(VKey.RIGHT_MOUSE)
         self.keyPreviousType = VKey:new(VKey.C)
         self.keyNextType = VKey:new(VKey.V)
+        self.keySelectNode = VKey:new(VKey.F)
         self.nodeTypeCombo = 1
     end)
 
@@ -129,9 +133,61 @@ function NodegraphEditor:initEvents()
     end)
 end
 
---- @return void
+--- @return Node
+function NodegraphEditor:selectNode()
+    --- @type Node
+    local selectedNode
+    local closestFov = math.huge
+    local cameraAngles = Client.getCameraAngles()
+    local cameraOrigin = Client.getCameraOrigin()
+
+    for _, node in pairs(self.nodegraph.nodes) do
+        if cameraOrigin:getDistance(node.origin) < 750 then
+            local fov = cameraAngles:getFov(cameraOrigin, node.origin)
+
+            if fov < closestFov and fov < 5 then
+                closestFov = fov
+                selectedNode = node
+            end
+        end
+    end
+
+    return selectedNode
+end
+
+--- @return nil
 function NodegraphEditor:createNodes()
     if Menu.isOpen() then
+        return
+    end
+
+    if self.keySelectNode:wasPressed() then
+        if self.selectedNode then
+            self.selectedNode = nil
+        else
+            self.selectedNode = self:selectNode()
+        end
+    end
+
+    if self.selectedNode then
+        local radius = Render.scaleCircle(self.selectedNode.origin, 40)
+
+        self.selectedNode.origin:drawCircle(radius, Color:hsla(200, 0.8, 0.6, 80))
+
+        if self.keyAddNode:wasPressed() then
+            local connectNode = self:selectNode()
+
+            if connectNode and connectNode.id ~= self.selectedNode.id then
+                if not self.selectedNode.connections[connectNode.id] then
+                    self.selectedNode.connections[connectNode.id] = connectNode
+                    connectNode.connections[self.selectedNode.id] = self.selectedNode
+                else
+                    self.selectedNode.connections[connectNode.id] = nil
+                    connectNode.connections[self.selectedNode.id] = nil
+                end
+            end
+        end
+
         return
     end
 
@@ -170,22 +226,7 @@ function NodegraphEditor:createNodes()
     end
 
     if self.keyRemoveNode:wasPressed() then
-        --- @type Node
-        local selectedNode
-        local closestFov = math.huge
-        local cameraAngles = Client.getCameraAngles()
-        local cameraOrigin = Client.getCameraOrigin()
-
-        for _, node in pairs(self.nodegraph.nodes) do
-            if cameraOrigin:getDistance(node.origin) < 750 then
-                local fov = cameraAngles:getFov(cameraOrigin, node.origin)
-
-                if fov < closestFov and fov < 5 then
-                    closestFov = fov
-                    selectedNode = node
-                end
-            end
-        end
+        local selectedNode = self:selectNode()
 
         if selectedNode then
             self.nodegraph:removeNode(selectedNode)
@@ -195,7 +236,7 @@ end
 
 --- @param origin Vector3
 --- @param isSpot boolean
---- @return void
+--- @return nil
 function NodegraphEditor:createNode(origin, isSpot)
     local node = Node:new({
         origin = origin,
@@ -236,7 +277,7 @@ function NodegraphEditor:createNode(origin, isSpot)
     self.nodegraph:addNode(node)
 end
 
---- @return void
+--- @return nil
 function NodegraphEditor:renderUi()
     Client.drawIndicatorGs(Node.typesColor[self.nodeTypeCombo], Node.typesName[self.nodeTypeCombo])
 end

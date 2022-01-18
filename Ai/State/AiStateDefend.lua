@@ -37,8 +37,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field isJiggling boolean
 --- @field isJigglingUponReachingSpot boolean
 local AiStateDefend = {
-    name = "Defend",
-    canDelayActivation = true
+    name = "Defend"
 }
 
 --- @param fields AiStateDefend
@@ -47,7 +46,7 @@ function AiStateDefend:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiStateDefend:__init()
     self.defendTimer = Timer:new()
     self.defendTime = Client.getRandomFloat(2, 6)
@@ -79,12 +78,8 @@ function AiStateDefend:__init()
 end
 
 --- @param nodegraph Nodegraph
---- @return void
+--- @return number
 function AiStateDefend:assess(nodegraph)
-    if AiUtility.enemiesAlive == 0 then
-        --return AiState.priority.IGNORE
-    end
-
     local player = AiUtility.client
     local bomb = AiUtility.plantedBomb
 
@@ -114,7 +109,7 @@ end
 --- @param ai AiOptions
 --- @param site string
 --- @param swapPair boolean
---- @return void
+--- @return nil
 function AiStateDefend:activate(ai, site, swapPair, useClosestSite)
     local bomb = AiUtility.plantedBomb
 
@@ -169,11 +164,11 @@ function AiStateDefend:activate(ai, site, swapPair, useClosestSite)
     end
 end
 
---- @return void
+--- @return nil
 function AiStateDefend:deactivate() end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateDefend:think(ai)
     if not self.node then
         return

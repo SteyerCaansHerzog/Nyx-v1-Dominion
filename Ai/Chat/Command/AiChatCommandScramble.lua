@@ -19,18 +19,16 @@ local AiChatCommandScramble = {
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return void
+--- @return nil
 function AiChatCommandScramble:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return
     end
 
-    local defend = ai:getState(AiStateDefend)
-
     local site = Client.getChance(2) and "a" or "b"
 
     Client.fireAfter(Client.getRandomFloat(1, 2), function()
-        defend:activate(ai, site, false, false)
+        ai.states.defend:activate(ai, site, false, false)
     end)
 end
 

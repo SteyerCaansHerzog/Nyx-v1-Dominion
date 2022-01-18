@@ -19,8 +19,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field pickupBombFails number
 --- @field pickupBombTimer Timer
 local AiStatePickupBomb = {
-    name = "PickupBomb",
-    canDelayActivation = true
+    name = "PickupBomb"
 }
 
 --- @param fields AiStatePickupBomb
@@ -29,7 +28,7 @@ function AiStatePickupBomb:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiStatePickupBomb:__init()
     self.pickupBombFails = 0
     self.pickupBombTimer = Timer:new()
@@ -57,7 +56,7 @@ function AiStatePickupBomb:__init()
     end)
 end
 
---- @return void
+--- @return nil
 function AiStatePickupBomb:assess()
     if self.ignorePickup then
         return AiState.priority.IGNORE
@@ -87,7 +86,7 @@ function AiStatePickupBomb:assess()
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStatePickupBomb:activate(ai)
     local bomb = Entity.findOne({"CC4"})
 
@@ -120,7 +119,7 @@ function AiStatePickupBomb:activate(ai)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStatePickupBomb:think(ai)
     if self.pickupBombFails > 3 then
         self.ignorePickup = true

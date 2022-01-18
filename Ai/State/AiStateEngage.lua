@@ -8,7 +8,6 @@ local Math = require "gamesense/Nyx/v1/Api/Math"
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
-local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
@@ -42,8 +41,8 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field enemySpottedCooldown Timer
 --- @field enemyVisibleTime number
 --- @field enemyVisibleTimer Timer
---- @field ferrariPeekStuckTimer Timer
 --- @field ferrariPeekCooldownTimer Timer
+--- @field ferrariPeekStuckTimer Timer
 --- @field hitboxOffset Vector3
 --- @field hitboxOffsetTimer Timer
 --- @field ignoreDormancyTime number
@@ -51,6 +50,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field ignorePlayerAfter number
 --- @field isIgnoringDormancy boolean
 --- @field isSneaking boolean
+--- @field isTargetEasilyShot boolean
 --- @field lastMoveDirection Vector3
 --- @field lastSeenTimers Timer[]
 --- @field lastSoundTimer Timer
@@ -95,13 +95,13 @@ function AiStateEngage:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiStateEngage:__init()
     self:initFields()
     self:initEvents()
 end
 
---- @return void
+--- @return nil
 function AiStateEngage:initFields()
     self.skill = 1
     self.enemyVisibleTimer = Timer:new()
@@ -167,7 +167,7 @@ function AiStateEngage:initFields()
     end):setParent(Menu.enableAi)
 end
 
---- @return void
+--- @return nil
 function AiStateEngage:initEvents()
     Callbacks.playerFootstep(function(e)
         if e.player:isClient() then
@@ -337,22 +337,15 @@ function AiStateEngage:initEvents()
     end)
 end
 
---- @return void
+--- @return nil
 function AiStateEngage:assess()
     self:setBestTarget()
 
-    if AiUtility.plantedBomb then
-        self.sprayTimer:isElapsedThenStop(0.2)
-        self.watchTimer:isElapsedThenStop(0.5)
-    else
-        self.sprayTimer:isElapsedThenStop(self.sprayTime)
-        self.watchTimer:isElapsedThenStop(self.watchTime)
-    end
+    self.sprayTimer:isElapsedThenStop(self.sprayTime)
+    self.watchTimer:isElapsedThenStop(self.watchTime)
 
-    for _, enemy in pairs(AiUtility.enemies) do
-        if enemy:m_bIsDefusing() == 1 then
-            return AiState.priority.ENGAGE_NEARBY
-        end
+    if Client.isFlashed() and self.bestTarget and AiUtility.visibleEnemies[self.bestTarget.eid] then
+        return AiState.priority.ENGAGE_PANIC
     end
 
     if self.sprayTimer:isStarted() then
@@ -369,6 +362,12 @@ function AiStateEngage:assess()
         end
     end
 
+    for _, enemy in pairs(AiUtility.enemies) do
+        if enemy:m_bIsDefusing() == 1 then
+            return AiState.priority.ENGAGE_NEARBY
+        end
+    end
+
     if self:hasNoticedEnemies() then
         return AiState.priority.ENGAGE_NEARBY
     end
@@ -377,7 +376,7 @@ function AiStateEngage:assess()
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateEngage:activate(ai)
     self.canCrouch = Client.getChance(2)
 
@@ -400,10 +399,10 @@ function AiStateEngage:activate(ai)
     end
 end
 
---- @return void
+--- @return nil
 function AiStateEngage:deactivate() end
 
---- @return void
+--- @return nil
 function AiStateEngage:reset()
     self.reactionTimer:stop()
     self.sprayTimer:stop()
@@ -425,16 +424,10 @@ function AiStateEngage:reset()
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateEngage:think(ai)
     if not Menu.master:get() or not Menu.enableAi:get() then
         return
-    end
-
-    local player = AiUtility.client
-
-    if player:isHoldingWeapon(Weapons.C4) then
-        Client.equipWeapon()
     end
 
     self:tellRotate(ai)
@@ -443,7 +436,7 @@ function AiStateEngage:think(ai)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateEngage:tellRotate(ai)
     if not self.tellRotateTimer:isElapsed(15) then
         return
@@ -515,8 +508,9 @@ end
 
 --- @param player Player
 --- @param range number
---- @return void
-function AiStateEngage:noticeEnemy(player, range)
+--- @param reason string
+--- @return nil
+function AiStateEngage:noticeEnemy(player, range, reason)
     if not AiUtility.client:isAlive() or not self.ignoreDormancyTimer:isElapsed(self.ignoreDormancyTime) then
         return
     end
@@ -539,8 +533,8 @@ function AiStateEngage:noticeEnemy(player, range)
 
     if self.shootAtOriginTimer:isElapsedThenRestart(1) then
         self.shootAtOrigin = player:getOrigin() + Vector3:new(
-            Client.getRandomFloat(-64, 64),
-            Client.getRandomFloat(-64, 64),
+            Client.getRandomFloat(-128, 128),
+            Client.getRandomFloat(-128, 128),
             Client.getRandomFloat(64, 72)
         )
     end
@@ -569,7 +563,7 @@ function AiStateEngage:hasNoticedEnemy(enemy)
     return timer:isStarted() and not timer:isElapsed(self.ignorePlayerAfter)
 end
 
---- @return void
+--- @return nil
 function AiStateEngage:unnoticeAllEnemies()
     for i = 1, 64 do
         self.noticedPlayerTimers[i]:stop()
@@ -598,13 +592,12 @@ function AiStateEngage:setBestTarget()
 
     for _, enemy in pairs(AiUtility.visibleEnemies) do
         local fov = AiUtility.enemyFovs[enemy.eid]
-        local timer = self.noticedPlayerTimers[enemy.eid]
 
         if fov < 55 then
             self:noticeEnemy(enemy, Vector3.MAX_DISTANCE, "In field of view")
         end
 
-        if self:hasNoticedEnemy(enemy) and fov < lowestFov and (timer:isStarted() and not timer:isElapsed(3)) then
+        if self:hasNoticedEnemy(enemy) and fov < lowestFov then
             lowestFov = fov
             selectedEnemy = enemy
         end
@@ -621,6 +614,10 @@ function AiStateEngage:setBestTarget()
     self:setWeaponStats(selectedEnemy)
 
     self.bestTarget = selectedEnemy
+
+    if self.bestTarget and AiUtility.visibleEnemies[self.bestTarget.eid] then
+        self.watchTimer:ifPausedThenStart()
+    end
 end
 
 --- @class AiStateEngageWeaponStats
@@ -634,7 +631,7 @@ end
 --- @field evaluate fun(): boolean
 ---
 --- @param enemy Player
---- @return void
+--- @return nil
 function AiStateEngage:setWeaponStats(enemy)
     if not enemy then
         return
@@ -695,8 +692,8 @@ function AiStateEngage:setWeaponStats(enemy)
                 short = 0
             },
             firerates = {
-                long = 0.2,
-                medium = 0.13,
+                long = 0.22,
+                medium = 0.16,
                 short = 0
             },
             runAtCloseRange = false,
@@ -796,7 +793,7 @@ function AiStateEngage:setWeaponStats(enemy)
             },
             runAtCloseRange = false,
             closeRange = 0,
-            priorityHitbox = Player.hitbox.SPINE_1,
+            priorityHitbox = Player.hitbox.SPINE_2,
             isBoltAction = true,
             evaluate = function()
                 return csgoWeapon.name == "AWP"
@@ -854,9 +851,15 @@ function AiStateEngage:setWeaponStats(enemy)
     self.activeWeapon = selectedWeaponType.name
     self.priorityHitbox = selectedWeaponType.priorityHitbox
     self.canAutoStop = selectedWeaponType.runAtCloseRange and distance < selectedWeaponType.closeRange
+
+    if selectedWeaponType.runAtCloseRange then
+        self.canAutoStop = distance >= selectedWeaponType.closeRange
+    else
+        self.canAutoStop = true
+    end
 end
 
---- @return void
+--- @return nil
 function AiStateEngage:render()
     if not Menu.master:get() or not Menu.enableAi:get() or not Menu.enableAimbot:get() or not Menu.visualiseAimbot:get() then
         return
@@ -939,7 +942,7 @@ function AiStateEngage:render()
 end
 
 --- @param uiPos Vector2
---- @return void
+--- @return nil
 function AiStateEngage:renderEmpty(uiPos)
     local offset = 30
     uiPos:offset(0, offset)
@@ -948,7 +951,7 @@ end
 --- @param uiPos Vector2
 --- @param color Color
 --- @vararg string
---- @return void
+--- @return nil
 function AiStateEngage:renderText(uiPos, color, ...)
     local offset = 25
 
@@ -963,7 +966,7 @@ end
 --- @param uiPos Vector2
 --- @param timer Timer
 --- @param time number
---- @return void
+--- @return nil
 function AiStateEngage:renderTimer(title, uiPos, timer, time, color)
     local offset = 25
     local pct = math.min(1, timer:get() / time)
@@ -986,7 +989,7 @@ function AiStateEngage:renderTimer(title, uiPos, timer, time, color)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateEngage:walk(ai)
     local player = AiUtility.client
     local canWalk
@@ -1033,7 +1036,7 @@ function AiStateEngage:walk(ai)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateEngage:engage(ai)
     self:attack(ai)
 
@@ -1075,12 +1078,6 @@ function AiStateEngage:engage(ai)
             return
         end
 
-        local floor = targetOrigin:getTraceLine(targetOrigin + Vector3:new(0, 0, -Vector3.MAX_DISTANCE), self.bestTarget.eid)
-
-        if targetOrigin.z - floor.z > 18 then
-            return
-        end
-
         ai.nodegraph:pathfind(self.bestTarget:getOrigin(), {
             objective = Node.types.GOAL,
             ignore = self.bestTarget.eid,
@@ -1093,14 +1090,16 @@ function AiStateEngage:engage(ai)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateEngage:attack(ai)
     if not Menu.master:get() or not Menu.enableAi:get() or not Menu.enableAimbot:get() then
         return
     end
 
-    -- Prevent using knife
+    -- Prevent certain generic behaviours
     ai.controller.canUseKnife = false
+    ai.controller.canAntiBlock = false
+    ai.controller.canInspectWeapon = false
 
     -- Prevent reloading when enemies visible
     if next(AiUtility.visibleEnemies) then
@@ -1109,14 +1108,6 @@ function AiStateEngage:attack(ai)
     end
 
     local player = AiUtility.client
-
-    -- Ensure bot is holding a weapon
-    if not player:isHoldingGun() then
-        Client.equipWeapon()
-    end
-
-    -- Prevent weapon inspections
-    ai.controller.canInspectWeapon = false
 
     -- Spray
     if self.sprayTimer:isStarted() and not self.sprayTimer:isElapsed(self.sprayTime) then
@@ -1142,6 +1133,26 @@ function AiStateEngage:attack(ai)
         return
     end
 
+    -- Swap guns when out of ammo.
+    if self.lastPriority == AiState.priority.ENGAGE_VISIBLE then
+        local weapon = Entity:create(player:m_hActiveWeapon())
+        local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
+        local ammo = weapon:m_iClip1()
+        local maxAmmo = csgoWeapon.primary_clip_size
+        local ammoLeftRatio = ammo / maxAmmo
+
+        if ammoLeftRatio == 0 then
+            if AiUtility.client:isHoldingPrimary() then
+                Client.equipPistol()
+            end
+        end
+    elseif self.lastPriority == AiState.priority.ENGAGE_NEARBY then
+        -- Ensure bot is holding a weapon
+        if not player:isHoldingGun() or player:isHoldingPistol() then
+            Client.equipWeapon()
+        end
+    end
+
     -- Enemy
     local enemy = self.bestTarget
 
@@ -1157,32 +1168,49 @@ function AiStateEngage:attack(ai)
         return
     end
 
+    -- Ensure player is holding weapon
+    if not player:isHoldingGun() then
+        Client.equipWeapon()
+    end
+
+    -- Shoot while blind
+    if Client.isFlashed() and AiUtility.visibleEnemies[enemy.eid] then
+        self:shoot(ai, self.shootAtOrigin, 10, enemy)
+
+        return
+    end
+
     -- Shoot through smokes
-    local isShootingThroughSmoke = self:shootThroughSmokes(ai, enemy)
+    if self:shootThroughSmokes(ai, enemy) then
+        return
+    end
 
-    if not isShootingThroughSmoke then
-        -- Shoot last position
-        if not next(AiUtility.visibleEnemies) and self.watchOrigin then
-            self:watchAngle(ai)
-        end
+    -- Shoot last position
+    if not next(AiUtility.visibleEnemies) and self.watchOrigin then
+        self:watchAngle(ai)
+    end
 
-        -- Pre-aim angle
-        -- Pre-aim hitbox when peeking
-        if self:hasNoticedEnemy(enemy) then
-            self:preAimAboutCorners(ai)
-            self:preAimThroughCorners(ai)
-        end
+    -- Pre-aim angle
+    -- Pre-aim hitbox when peeking
+    if self:hasNoticedEnemy(enemy) then
+        self:preAimAboutCorners(ai)
+        self:preAimThroughCorners(ai)
     end
 
     -- Wide-peek enemies
     self:ferrariPeek(ai)
 
     -- Get target hitbox
-    local hitbox = self:getHitbox(enemy)
+    local hitbox, visibleHitboxCount = self:getHitbox(enemy)
 
     if not hitbox then
         return
     end
+
+    -- Inhibit checking corners
+    ai.view.canUseCheckNode = false
+
+    self.isTargetEasilyShot = visibleHitboxCount >= 8
 
     -- Begin watching last angle
     if AiUtility.visibleEnemies[enemy.eid] then
@@ -1190,7 +1218,6 @@ function AiStateEngage:attack(ai)
             self.watchOrigin = hitbox
         end
 
-        self.watchTimer:ifPausedThenStart()
         self.enemyVisibleTimer:ifPausedThenStart()
     else
         self.enemyVisibleTimer:stop()
@@ -1205,19 +1232,9 @@ function AiStateEngage:attack(ai)
     local fov = AiUtility.enemyFovs[enemy.eid]
     local shootFov = Math.clamp(Math.pct(distance, 512), 0, 90) * fov
 
-    -- Ensure player is holding weapon
-    if not player:isHoldingGun() then
-        Client.equipWeapon()
-    end
-
     -- Begin reaction timer
-    if AiUtility.visibleEnemies[enemy.eid] and shootFov < 36 then
+    if AiUtility.visibleEnemies[enemy.eid] and (self:hasNoticedEnemy(enemy) or shootFov < 35) then
         self.reactionTimer:ifPausedThenStart()
-    end
-
-    -- Auto-stop
-    if shootFov < 33 and self.enemyVisibleTimer:isElapsed(self.enemyVisibleTime) then
-        self:autoStop(ai)
     end
 
     if AiUtility.visibleEnemies[enemy.eid] then
@@ -1236,22 +1253,8 @@ function AiStateEngage:attack(ai)
 
     -- React to visible enemy
     if self.reactionTimer:isElapsed(self.currentReactionTime) and AiUtility.visibleEnemies[enemy.eid] then
-        -- Inhibit checking corners
-        ai.view.canUseCheckNode = false
-
-        -- Crouch
-        if shootFov < 20 then
-            ai.cmd.in_duck = 1
-        end
-
-        if player:isHoldingSniper() and shootFov < 8 then
-            Client.scope()
-        elseif player:m_bIsScoped() == 1 and shootFov > 10 then
-            Client.unscope()
-        end
-
         if shootFov < 12 then
-            self:noticeEnemy(enemy,4096, "In shoot FoV")
+            self:noticeEnemy(enemy, 4096, "In shoot FoV")
             self:shoot(ai, hitbox, shootFov, enemy)
 
             ai.controller.canLookAwayFromFlash = false
@@ -1264,7 +1267,6 @@ function AiStateEngage:attack(ai)
 
             self.watchTimer:start()
             self.lastSeenTimers[enemy.eid]:start()
-            self:noticeEnemy(enemy,4096, "In React FoV")
         elseif fov >= 40 and self:hasNoticedEnemy(enemy) then
             ai.view:lookAtLocation(hitbox, self.slowAimSpeed)
         end
@@ -1275,7 +1277,7 @@ end
 --- @param hitbox Vector3
 --- @param fov number
 --- @param enemy Player
---- @return void
+--- @return nil
 function AiStateEngage:shoot(ai, hitbox, fov, enemy)
     if not hitbox then
         return
@@ -1314,6 +1316,18 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
         return
     end
 
+    -- Auto-stop
+    if fov < 20 then
+        self:autoStop(ai)
+    end
+
+    -- Scope
+    if player:isHoldingSniper() and fov < 8 then
+        Client.scope()
+    elseif player:m_bIsScoped() == 1 and fov > 10 then
+        Client.unscope()
+    end
+
     if player:m_vecVelocity():getMagnitude() > 100 then
         return
     end
@@ -1330,7 +1344,7 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
         elseif distance > 500 then
             fireDelay = 0.25
         else
-            fireDelay = 0.1
+            fireDelay = 0.15
         end
 
         if player:m_vecVelocity():getMagnitude() < fireUnderVelocity and
@@ -1352,7 +1366,7 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
 end
 
 --- @param enemy Player
---- @return Vector3
+--- @return Vector3, number
 function AiStateEngage:getHitbox(enemy)
     --- @type Vector3
     local targetHitbox
@@ -1373,21 +1387,24 @@ function AiStateEngage:getHitbox(enemy)
 
     local eid = Client.getEid()
     local eyeOrigin = Client.getEyeOrigin()
+    local visibleHitboxCount = 0
 
     for hitboxId, hitbox in pairs(enemy:getHitboxPositions(hitboxes)) do
         local _, fraction, hitEid = eyeOrigin:getTraceLine(hitbox, eid)
         local isVisible = hitEid == enemy.eid or fraction == 1
 
+        if isVisible then
+            visibleHitboxCount = visibleHitboxCount + 1
+        end
+
         if hitboxId == self.priorityHitbox and isVisible then
             targetHitbox = hitbox
-
-            break
         elseif isVisible then
             targetHitbox = hitbox
         end
     end
 
-    return targetHitbox
+    return targetHitbox, visibleHitboxCount
 end
 
 --- @param ai AiOptions
@@ -1407,7 +1424,7 @@ function AiStateEngage:shootThroughSmokes(ai, enemy)
         and isClose
         and not AiUtility.visibleEnemies[self.bestTarget.eid]
         and self.shootAtOrigin
-        and not self.lastSoundTimer:isElapsed(6)
+        and not self.lastSoundTimer:isElapsed(2)
     then
         local fov = cameraAngles:getFov(eyeOrigin, self.shootAtOrigin)
         local shootFov = Math.clamp(Math.pct(eyeOrigin:getDistance(self.shootAtOrigin), 512), 0, 90) * fov
@@ -1425,7 +1442,7 @@ function AiStateEngage:shootThroughSmokes(ai, enemy)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateEngage:ferrariPeek(ai)
     local enemy = self.bestTarget
 
@@ -1531,7 +1548,7 @@ function AiStateEngage:ferrariPeek(ai)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateEngage:preAimThroughCorners(ai)
     local target = self.bestTarget
 
@@ -1598,7 +1615,7 @@ function AiStateEngage:preAimThroughCorners(ai)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateEngage:preAimAboutCorners(ai)
     if not self.bestTarget or not self.bestTarget:isAlive() then
         return
@@ -1626,6 +1643,10 @@ function AiStateEngage:preAimAboutCorners(ai)
         },
         {
             distance = 128,
+            points = 32
+        },
+        {
+            distance = 256,
             points = 32
         }
     }
@@ -1681,7 +1702,7 @@ function AiStateEngage:preAimAboutCorners(ai)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateEngage:watchAngle(ai)
     if not self.watchTimer:isStarted() then
         return
@@ -1705,7 +1726,7 @@ end
 
 --- @param ai AiOptions
 --- @param enemy Player
---- @return void
+--- @return nil
 function AiStateEngage:pathfindBlockedEnemy(ai, enemy)
     local enemyEyeOrigin = enemy:getOrigin():offset(0, 0, 64)
 
@@ -1744,36 +1765,38 @@ function AiStateEngage:pathfindBlockedEnemy(ai, enemy)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateEngage:autoStop(ai)
     if not self.canAutoStop then
+        ai.cmd.in_duck = 1
+
         return
     end
 
     local player = AiUtility.client
 
-    if player:isHoldingSniper() then
+    if self.isTargetEasilyShot then
+        ai.cmd.in_duck = 1
+
+        local inverseVelocity = -player:m_vecVelocity()
+
+        if inverseVelocity:getMagnitude() < 75 then
+            ai.nodegraph.moveSpeed = 0
+
+            return
+        end
+
+        local velocityAngles = inverseVelocity:normalize():getAngleFromForward()
+
+        ai.nodegraph.moveYaw = velocityAngles.y
+        ai.nodegraph.moveSpeed = 450
+    else
         ai.nodegraph.moveSpeed = 0
-
-        return
     end
-
-    local inverseVelocity = -player:m_vecVelocity()
-
-    if inverseVelocity:getMagnitude() < 75 then
-        ai.nodegraph.moveSpeed = 0
-
-        return
-    end
-
-    local velocityAngles = inverseVelocity:normalize():getAngleFromForward()
-
-    ai.nodegraph.moveYaw = velocityAngles.y
-    ai.nodegraph.moveSpeed = 450
 end
 
 --- @param skill number
---- @return void
+--- @return nil
 function AiStateEngage:setAimSkill(skill)
     self.skill = skill
 

@@ -19,16 +19,15 @@ local AiChatCommandSkill = {
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return void
+--- @return nil
 function AiChatCommandSkill:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return
     end
 
     local skill = Math.clamp(tonumber(args[1]), 0, 10)
-    local engage = ai:getState(AiStateEngage)
 
-    engage:setAimSkill(skill)
+    ai.states.engage:setAimSkill(skill)
 
     ai.nodegraph:log("Updated skill level to %sx", skill)
 end

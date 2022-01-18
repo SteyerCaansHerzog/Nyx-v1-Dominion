@@ -109,18 +109,18 @@ function AiRadio:new(fields)
 	return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiRadio:__init()
     self:initFields()
     self:initEvents()
 end
 
---- @return void
+--- @return nil
 function AiRadio:initFields()
     self.cooldown = Timer:new(1)
 end
 
---- @return void
+--- @return nil
 function AiRadio:initEvents()
     Callbacks.playerDeath(function(e)
         if e.attacker:isClient() then
@@ -148,7 +148,7 @@ end
 --- @param minDelay number
 --- @param maxDelay number
 --- @vararg string
---- @return void
+--- @return nil
 function AiRadio:speak(message, chance, minDelay, maxDelay, ...)
     if true then
         return

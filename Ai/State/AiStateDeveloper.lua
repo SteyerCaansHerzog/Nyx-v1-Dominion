@@ -22,18 +22,21 @@ function AiStateDeveloper:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiStateDeveloper:__init() end
 
---- @return void
+--- @return nil
 function AiStateDeveloper:assess()
-    return -2
+    return AiState.priority.IGNORE
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateDeveloper:activate(ai)
-    ai.nodegraph:pathfind(ai.nodegraph.objectiveB.origin, {
+    local node = ai.nodegraph.nodes[835]
+    --local node = ai.nodegraph.objectiveA
+
+    ai.nodegraph:pathfind(node.origin, {
         objective = Node.types.GOAL,
         retry = false,
         ignore = Client.getEid(),
@@ -42,11 +45,11 @@ function AiStateDeveloper:activate(ai)
     })
 end
 
---- @return void
+--- @return nil
 function AiStateDeveloper:reset() end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateDeveloper:think(ai) end
 
 return Nyx.class("AiStateDeveloper", AiStateDeveloper, AiState)

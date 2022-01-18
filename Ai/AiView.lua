@@ -44,13 +44,13 @@ function AiView:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiView:__init()
     self:initFields()
     self:initEvents()
 end
 
---- @return void
+--- @return nil
 function AiView:initFields()
     self.viewAngles = Client.getCameraAngles()
     self.noiseAngles = Angle:new()
@@ -65,7 +65,7 @@ function AiView:initFields()
     self.viewPitchOffset = 0
 end
 
---- @return void
+--- @return nil
 function AiView:initEvents()
     Callbacks.frame(function()
         if not Menu.master:get() or not Menu.enableAi:get() or not Menu.enableView:get() then
@@ -80,12 +80,13 @@ function AiView:initEvents()
     end)
 end
 
---- @return void
+--- @return nil
 function AiView:setViewAngles()
     if self.viewAngles then
         Client.setCameraAngles(self.lookAtAngles)
     end
 
+    --- @type Angle
     local targetViewAngles
 
     if self.overrideViewAngles then
@@ -93,7 +94,7 @@ function AiView:setViewAngles()
     elseif self.nodegraph.path then
         --- @type Node
         local node
-        local i = 4
+        local i = 3
 
         while not node and i > 0 do
             node = self.nodegraph.path[self.nodegraph.pathCurrent + i]
@@ -102,7 +103,7 @@ function AiView:setViewAngles()
         end
 
         if self.noiseTimer:isElapsedThenRestart(self.noiseInterval) then
-            self.lookSpeed = Client.getRandomFloat(2, 3)
+            self.lookSpeed = Client.getRandomFloat(1.5, 2.2)
 
             if Entity.getGameRules():m_bFreezePeriod() == 0 then
                 self.noiseAngles:set(Client.getRandomFloat(-1, 2.25), Client.getRandomFloat(-2, 2))
@@ -163,11 +164,11 @@ function AiView:setViewAngles()
 
     self.viewAngles:lerp(targetViewAngles, math.min(20, self.lookSpeed * self.lookSpeedModifier))
 
-    self.lookSpeedModifier = 1.66
+    self.lookSpeedModifier = 1.5
 end
 
 --- @param cmd SetupCommandEvent
---- @return void
+--- @return nil
 function AiView:think(cmd)
     if not self.enabled then
         return
@@ -230,7 +231,7 @@ end
 
 --- @param origin Vector3
 --- @param speed number
---- @return void
+--- @return nil
 function AiView:lookAtLocation(origin, speed)
     if self.isViewLocked then
         return
@@ -242,7 +243,7 @@ end
 
 --- @param angle Angle
 --- @param speed number
---- @return void
+--- @return nil
 function AiView:lookInDirection(angle, speed)
     if self.isViewLocked then
         return

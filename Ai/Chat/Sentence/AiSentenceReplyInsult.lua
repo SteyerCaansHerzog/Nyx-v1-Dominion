@@ -16,7 +16,7 @@ function AiSentenceReplyInsult:new()
     return Nyx.new(self)
 end
 
---- @return void
+--- @return nil
 function AiSentenceReplyInsult:__init()
     self.__parent.__init(self)
 

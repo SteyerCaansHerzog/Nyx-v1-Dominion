@@ -23,7 +23,7 @@ end
 
 --{{{ Kills
 --- @param event PlayerDeathEvent
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakEnemyKilledByClient(event)
 	local group
 
@@ -46,7 +46,7 @@ function AiVoicePackGenericBase:speakEnemyKilledByClient(event)
 end
 
 --- @param event PlayerDeathEvent
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakTeammateKilledByClient(event)
 	local group
 
@@ -69,7 +69,7 @@ function AiVoicePackGenericBase:speakTeammateKilledByClient(event)
 end
 
 --- @param event PlayerDeathEvent
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakClientKilledByEnemy(event)
 	local group
 
@@ -90,7 +90,7 @@ function AiVoicePackGenericBase:speakClientKilledByEnemy(event)
 end
 
 --- @param event PlayerDeathEvent
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakClientKilledByTeammate(event)
 	self:speak(self:getGroupDynamic("ClientKilledByTeammate"), {
 		chance = 1,
@@ -105,7 +105,7 @@ end
 
 --{{{ Hurt
 --- @param event PlayerHurtEvent
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakEnemyHurtByClient(event)
 	if event.dmg_health > 10 then
 		self:speak(self:getGroupDynamic("EnemyHurtByClient"), {
@@ -123,11 +123,11 @@ function AiVoicePackGenericBase:speakEnemyHurtByClient(event)
 end
 
 --- @param event PlayerHurtEvent
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakTeammateHurtByClient(event) end
 
 --- @param event PlayerHurtEvent
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakClientHurtByEnemy(event)
 	if event.health < 50 then
 		self:speak(self:getGroupDynamic("ClientHurtByEnemy"), {
@@ -145,7 +145,7 @@ function AiVoicePackGenericBase:speakClientHurtByEnemy(event)
 end
 
 --- @param event PlayerHurtEvent
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakClientHurtByTeammate(event)
 	if event.dmg_health > 10 then
 		self:speak(self:getGroupDynamic("ClientHurtByTeammate"), {
@@ -164,7 +164,7 @@ end
 --- Must be implemented by AI.
 ---
 --- @param bombsite string
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakRequestTeammatesToRotate(bombsite)
 	local group
 
@@ -180,14 +180,17 @@ function AiVoicePackGenericBase:speakRequestTeammatesToRotate(bombsite)
 		lock = true,
 		ignoreLock = true,
 		minDelay = 0.33,
-		maxDelay = 1
+		maxDelay = 1,
+		condition = function()
+			return not AiUtility.isRoundOver
+		end
 	})
 end
 
 --- Must be implemented by AI.
 ---
 --- @param bombsite string
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakRequestTeammatesToPush(bombsite)
 	local group
 
@@ -203,13 +206,16 @@ function AiVoicePackGenericBase:speakRequestTeammatesToPush(bombsite)
 		lock = true,
 		ignoreLock = true,
 		minDelay = 0.33,
-		maxDelay = 1
+		maxDelay = 1,
+		condition = function()
+			return not AiUtility.isRoundOver
+		end
 	})
 end
 
 --- Must be implemented by AI. Triggered when enemy becomes aware of enemies and has decided to engage them.
 ---
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakHearNearbyEnemies()
 	self:speak(self:getGroupDynamic("HearNearbyEnemies"), {
 		chance = 3,
@@ -223,7 +229,7 @@ end
 
 --- Must be implemented by AI. Is related to HearNearbyEnemies.
 ---
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakNotifyTeamOfBombCarrier()
 	self:speak(self:getGroupDynamic("NotifyTeamOfBombCarrier"), {
 		chance = 1,
@@ -237,7 +243,7 @@ end
 
 --- Must be implemented by AI.
 ---
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakNotifyTeamOfBomb()
 	self:speak(self:getGroupDynamic("NotifyTeamOfBomb"), {
 		chance = 1,
@@ -249,7 +255,7 @@ function AiVoicePackGenericBase:speakNotifyTeamOfBomb()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakNotifyFlashbanged()
 	self:speak(self:getGroupDynamic("NotifyFlashbanged"), {
 		chance = 2,
@@ -263,7 +269,7 @@ end
 --}}}
 
 --{{{ Round Start
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakRoundStartPistolFirstHalf()
 	self:speak(self:getGroupDynamic("RoundStartPistolFirstHalf"), {
 		chance = 4,
@@ -275,7 +281,7 @@ function AiVoicePackGenericBase:speakRoundStartPistolFirstHalf()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakRoundStartPistolSecondHalf()
 	self:speak(self:getGroupDynamic("RoundStartPistolSecondHalf"), {
 		chance = 4,
@@ -287,7 +293,7 @@ function AiVoicePackGenericBase:speakRoundStartPistolSecondHalf()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakRoundStartWonPrevious()
 	self:speak(self:getGroupDynamic("RoundStartWonPrevious"), {
 		chance = 6,
@@ -299,7 +305,7 @@ function AiVoicePackGenericBase:speakRoundStartWonPrevious()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakRoundStartLostPrevious()
 	self:speak(self:getGroupDynamic("RoundStartLostPrevious"), {
 		chance = 6,
@@ -311,7 +317,7 @@ function AiVoicePackGenericBase:speakRoundStartLostPrevious()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakRoundStartMatchPointToTeam()
 	self:speak(self:getGroupDynamic("RoundStartMatchPointToTeam"), {
 		chance = 4,
@@ -323,7 +329,7 @@ function AiVoicePackGenericBase:speakRoundStartMatchPointToTeam()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakRoundStartMatchPointToOpposition()
 	self:speak(self:getGroupDynamic("RoundStartMatchPointToOpposition"), {
 		chance = 4,
@@ -335,7 +341,7 @@ function AiVoicePackGenericBase:speakRoundStartMatchPointToOpposition()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakRoundStartMatchPointFinalRound()
 	self:speak(self:getGroupDynamic("RoundStartMatchPointFinalRound"), {
 		chance = 4,
@@ -349,45 +355,45 @@ end
 --}}}
 
 --{{{ Round End
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakRoundEndWon()
 	self:speak(self:getGroupDynamic("RoundEndWon"), {
 		chance = 4,
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 0.33,
+		minDelay = 1,
 		maxDelay = 4
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakRoundEndLost()
 	self:speak(self:getGroupDynamic("RoundEndLost"), {
 		chance = 4,
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 0.33,
+		minDelay = 1,
 		maxDelay = 4
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakRoundEndHalftime()
 	self:speak(self:getGroupDynamic("RoundEndHalftime"), {
 		chance = 4,
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 0.33,
+		minDelay = 1,
 		maxDelay = 8
 	})
 end
 --}}}
 
 --{{{ Game Start
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakWarmupGreeting()
 	self:speak(self:getGroupDynamic("WarmupGreeting"), {
 		chance = 1,
@@ -399,7 +405,7 @@ function AiVoicePackGenericBase:speakWarmupGreeting()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakWarmupIdle()
 	self:speak(self:getGroupDynamic("WarmupIdle"), {
 		chance = 1,
@@ -413,7 +419,7 @@ end
 --}}}
 
 --{{{ Game End
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakGameEndWon()
 	self:speak(self:getGroupDynamic("GameEndWon"), {
 		chance = 3,
@@ -425,7 +431,7 @@ function AiVoicePackGenericBase:speakGameEndWon()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakGameEndLost()
 	self:speak(self:getGroupDynamic("GameEndLost"), {
 		chance = 3,
@@ -439,7 +445,7 @@ end
 --}}}
 
 --{{{ Utility
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakClientDefusingBomb()
 	self:speak(self:getGroupDynamic("ClientDefusingBomb"), {
 		chance = 1,
@@ -451,7 +457,7 @@ function AiVoicePackGenericBase:speakClientDefusingBomb()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakEnemyDefusingBomb()
 	self:speak(self:getGroupDynamic("EnemyDefusingBomb"), {
 		chance = 1,
@@ -463,7 +469,7 @@ function AiVoicePackGenericBase:speakEnemyDefusingBomb()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakCannotDefuseBomb()
 	self:speak(self:getGroupDynamic("CannotDefuseBomb"), {
 		chance = 2,
@@ -471,11 +477,14 @@ function AiVoicePackGenericBase:speakCannotDefuseBomb()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0.33,
-		maxDelay = 2
+		maxDelay = 2,
+		condition = function()
+			return not AiUtility.isRoundOver
+		end
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakClientPlantingBomb()
 	self:speak(self:getGroupDynamic("ClientPlantingBomb"), {
 		chance = 1,
@@ -483,11 +492,14 @@ function AiVoicePackGenericBase:speakClientPlantingBomb()
 		lock = true,
 		ignoreLock = true,
 		minDelay = 0.33,
-		maxDelay = 1
+		maxDelay = 1,
+		condition = function()
+			return not AiUtility.isRoundOver
+		end
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakEnemyPlantingBomb()
 	self:speak(self:getGroupDynamic("EnemyPlantingBomb"), {
 		chance = 1,
@@ -499,7 +511,7 @@ function AiVoicePackGenericBase:speakEnemyPlantingBomb()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakClientThrowingFlashbang()
 	self:speak(self:getGroupDynamic("ClientThrowingFlashbang"), {
 		chance = 1,
@@ -511,7 +523,7 @@ function AiVoicePackGenericBase:speakClientThrowingFlashbang()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakClientThrowingSmoke()
 	self:speak(self:getGroupDynamic("ClientThrowingSmoke"), {
 		chance = 2,
@@ -523,7 +535,7 @@ function AiVoicePackGenericBase:speakClientThrowingSmoke()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakClientThrowingHeGrenade()
 	self:speak(self:getGroupDynamic("ClientThrowingHeGrenade"), {
 		chance = 3,
@@ -535,7 +547,7 @@ function AiVoicePackGenericBase:speakClientThrowingHeGrenade()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakClientThrowingIncendiary()
 	self:speak(self:getGroupDynamic("ClientThrowingIncendiary"), {
 		chance = 3,
@@ -549,7 +561,7 @@ end
 --}}}
 
 --{{{ Comments
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakLastAlive()
 	self:speak(self:getGroupDynamic("LastAlive"), {
 		chance = 2,
@@ -564,7 +576,7 @@ function AiVoicePackGenericBase:speakLastAlive()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakGifting()
 	self:speak(self:getGroupDynamic("Gifting"), {
 		chance = 2,
@@ -576,10 +588,10 @@ function AiVoicePackGenericBase:speakGifting()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakGratitude()
 	self:speak(self:getGroupDynamic("Gratitude"), {
-		chance = 2,
+		chance = 1,
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
@@ -588,7 +600,7 @@ function AiVoicePackGenericBase:speakGratitude()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakAgreement()
 	self:speak(self:getGroupDynamic("Agreement"), {
 		chance = 4,
@@ -603,18 +615,18 @@ function AiVoicePackGenericBase:speakAgreement()
 	})
 end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakDisagreement() end
 
---- @return void
+--- @return nil
 function AiVoicePackGenericBase:speakNoProblem()
 	self:speak(self:getGroupDynamic("NoProblem"), {
-		chance = 5,
+		chance = 1,
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 0.5,
-		maxDelay = 2,
+		minDelay = 0.33,
+		maxDelay = 1,
 		condition = function()
 			return AiUtility.client:isAlive()
 		end

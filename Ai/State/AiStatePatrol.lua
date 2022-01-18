@@ -26,7 +26,6 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field cooldownTimer Timer
 local AiStatePatrol = {
     name = "Patrol",
-    canDelayActivation = true,
     patrolRadius = 512
 }
 
@@ -36,7 +35,7 @@ function AiStatePatrol:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiStatePatrol:__init()
     self.cooldownTimer = Timer:new():startThenElapse()
 
@@ -57,7 +56,7 @@ end
 
 --- @param origin Vector3
 --- @param player Player
---- @return void
+--- @return nil
 function AiStatePatrol:beginPatrol(origin, player)
     self:reset()
 
@@ -66,7 +65,7 @@ function AiStatePatrol:beginPatrol(origin, player)
     self.patrollingOnBehalfOf = player
 end
 
---- @return void
+--- @return nil
 function AiStatePatrol:assess()
     if AiUtility.isRoundOver then
         return AiState.priority.IGNORE
@@ -90,12 +89,12 @@ function AiStatePatrol:assess()
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStatePatrol:activate(ai)
     ai.radio:speak(ai.radio.message.AGREE, 1, 1, 2, "I'm %sassisting%s you.", ai.radio.color.YELLOW, ai.radio.color.DEFAULT)
 end
 
---- @return void
+--- @return nil
 function AiStatePatrol:reset()
     self.isBeginningPatrol = false
     self.isOnPatrol = false
@@ -105,7 +104,7 @@ function AiStatePatrol:reset()
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStatePatrol:think(ai)
     if ai.priority == AiState.priority.PATROL_BOMB then
         if not self.hasNotifiedTeamOfBomb then

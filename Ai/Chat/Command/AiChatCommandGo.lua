@@ -27,7 +27,7 @@ local AiChatCommandGo = {
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return void
+--- @return nil
 function AiChatCommandGo:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return
@@ -54,12 +54,6 @@ function AiChatCommandGo:invoke(ai, sender, args)
     end
 
     local player = AiUtility.client
-    local check = ai:getState(AiStateCheck)
-    local sweep = ai:getState(AiStateSweep)
-    local push = ai:getState(AiStatePush)
-    local defend = ai:getState(AiStateDefend)
-    local patrol = ai:getState(AiStatePatrol)
-    local plant = ai:getState(AiStatePlant)
 
     if AiUtility.roundTimer:isStarted() and AiUtility.roundTimer:isElapsed(15) then
         AiStateGrenadeBase.globalCooldownTimer:start()
@@ -68,35 +62,39 @@ function AiChatCommandGo:invoke(ai, sender, args)
     ai.voice.pack:speakAgreement()
 
     Client.fireAfter(Client.getRandomFloat(1, 2), function()
-        check:reset()
-        patrol:reset()
-        sweep:activate(ai, objective)
+        ai.states.check:reset()
+        ai.states.patrol:reset()
+        ai.states.sweep:activate(ai, objective)
+
+        if ai.states.boost.isBoosting then
+            return
+        end
 
         if Client.hasBomb() then
-            plant:activate(ai, objective)
+            ai.states.plant:activate(ai, objective)
         end
 
         if player:isTerrorist() then
             if objective == "ct" or objective == "t" then
-                check:activate(ai, objective)
+                ai.states.check:activate(ai, objective)
             else
-                defend.defendingSite = objective
+                ai.states.defend.defendingSite = objective
 
-                defend:activate(ai, objective)
+                ai.states.defend:activate(ai, objective)
 
-                push.isDeactivated = false
-                push.site = objective
+                ai.states.push.isDeactivated = false
+                ai.states.push.site = objective
 
-                push:activate(ai, objective)
+                ai.states.push:activate(ai, objective)
             end
 
         elseif player:isCounterTerrorist() then
             if objective == "ct" or objective == "t" then
-                check:activate(ai, objective)
+                ai.states.check:activate(ai, objective)
             else
-                defend.defendingSite = objective
+                ai.states.defend.defendingSite = objective
 
-                defend:activate(ai, objective)
+                ai.states.defend:activate(ai, objective)
 
                 local siteNode = ai.nodegraph:getSiteNode(objective)
                 local team = player:m_iTeamNum()

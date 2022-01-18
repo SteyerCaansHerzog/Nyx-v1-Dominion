@@ -58,7 +58,7 @@ function DominionClient:new()
     return Nyx.new(self)
 end
 
---- @return void
+--- @return nil
 function DominionClient:__init()
     self.allocationTimer = Timer:new()
     self.allocationExpiry = 180
@@ -168,7 +168,7 @@ function DominionClient:__init()
     end)
 end
 
---- @return void
+--- @return nil
 function DominionClient:checkIsValveDs()
     local gameRules = Entity.getGameRules()
 
@@ -181,7 +181,7 @@ function DominionClient:checkIsValveDs()
     end
 end
 
---- @return void
+--- @return nil
 function DominionClient:checkLobby()
     if not self.lastLobbyErrorTimer:isElapsedThenRestart(2) then
         return
@@ -201,7 +201,7 @@ function DominionClient:checkLobby()
     self:checkValidLobbySettings()
 end
 
---- @return void
+--- @return nil
 function DominionClient:checkLobbyInvite()
     for i = 1, Panorama.PartyBrowserAPI.GetInvitesCount() do
         local lobbyId = Panorama.PartyBrowserAPI.GetInviteXuidByIndex(i - 1)
@@ -214,7 +214,7 @@ function DominionClient:checkLobbyInvite()
     end
 end
 
---- @return void
+--- @return nil
 function DominionClient:checkAllBotsInLobby()
     local botsRequired = #self.allocation.botSteamids
     local botsFound = 0
@@ -236,7 +236,7 @@ function DominionClient:checkAllBotsInLobby()
     end
 end
 
---- @return void
+--- @return nil
 function DominionClient:checkValidMapSelection()
     local settings = Panorama.LobbyAPI.GetSessionSettings()
     local queuedMapsStr = settings.game.mapgroupname
@@ -272,7 +272,7 @@ function DominionClient:checkValidMapSelection()
     return
 end
 
---- @return void
+--- @return nil
 function DominionClient:checkValidLobbySettings()
     local settings = Panorama.LobbyAPI.GetSessionSettings()
     local error
@@ -294,7 +294,7 @@ function DominionClient:checkValidLobbySettings()
     end
 end
 
---- @return void
+--- @return nil
 function DominionClient:stopQueue(error)
     Panorama.PartyListAPI.SessionCommand(
         'Game::Chat',
@@ -311,7 +311,7 @@ function DominionClient:stopQueue(error)
     Panorama.LobbyAPI.StopMatchmaking()
 end
 
---- @return void
+--- @return nil
 function DominionClient:initWs()
     self.server:onReconnect(function()
         self:logon()
@@ -320,7 +320,7 @@ function DominionClient:initWs()
     self:logon()
 end
 
---- @return void
+--- @return nil
 function DominionClient:logon()
     self.server:onReceive(LogonSuccess, function(logon)
         self.server.token = logon.token
@@ -353,7 +353,7 @@ function DominionClient:logon()
     end)
 end
 
---- @return void
+--- @return nil
 function DominionClient:keepAlive()
     if not self.server:transmit(KeepAlive) then
         return

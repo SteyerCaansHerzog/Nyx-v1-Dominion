@@ -16,7 +16,7 @@ function AiSentenceTemplate:new()
     return Nyx.new(self)
 end
 
---- @return void
+--- @return nil
 function AiSentenceTemplate:__init()
     self.__parent.__init(self)
 

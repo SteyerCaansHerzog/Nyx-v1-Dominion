@@ -18,11 +18,11 @@ local AiChatCommand = {}
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return void
+--- @return nil
 function AiChatCommand:invoke(ai, sender, args) end
 
 --- @param args string[]
---- @return void
+--- @return nil
 function AiChatCommand:execute(args)
     if not Menu.useAiChatCommands:get() then
         return

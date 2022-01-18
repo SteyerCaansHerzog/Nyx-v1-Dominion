@@ -20,7 +20,7 @@ local AiChatCommandSkillRng = {
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return void
+--- @return nil
 function AiChatCommandSkillRng:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return
@@ -29,10 +29,8 @@ function AiChatCommandSkillRng:invoke(ai, sender, args)
     local skillMin = Math.clamp(tonumber(args[1]), 0, 4)
     local skillMax = Math.clamp(tonumber(args[2]), 0, 4)
     local skill = Client.getRandomInt(skillMin, skillMax)
-    local engage = ai:getState(AiStateEngage)
 
-    engage:setAimSkill(skill)
-
+    ai.states.engage:setAimSkill(skill)
     ai.nodegraph:log("Updated skill level to %sx", skill)
 end
 

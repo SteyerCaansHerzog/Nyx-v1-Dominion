@@ -18,7 +18,7 @@ function AiSentenceSayKills:new()
     return Nyx.new(self)
 end
 
---- @return void
+--- @return nil
 function AiSentenceSayKills:__init()
     self.__parent.__init(self)
 

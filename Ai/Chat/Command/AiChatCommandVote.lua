@@ -18,7 +18,7 @@ local AiChatCommandVote = {
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return void
+--- @return nil
 function AiChatCommandVote:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return

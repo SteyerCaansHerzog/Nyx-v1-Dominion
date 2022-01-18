@@ -19,7 +19,7 @@ local AiChatCommandStop = {
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return void
+--- @return nil
 function AiChatCommandStop:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return
@@ -29,11 +29,9 @@ function AiChatCommandStop:invoke(ai, sender, args)
         return
     end
 
-    local check = ai:getState(AiStateCheck)
-    local patrol = ai:getState(AiStatePatrol)
-
-    check:reset()
-    patrol:reset()
+    ai.states.check:reset()
+    ai.states.patrol:reset()
+    ai.states.boost:reset()
 end
 
 return Nyx.class("AiChatCommandStop", AiChatCommandStop, AiChatCommand)

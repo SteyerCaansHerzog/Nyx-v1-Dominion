@@ -20,18 +20,16 @@ local AiChatCommandKnow = {
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return void
+--- @return nil
 function AiChatCommandKnow:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return
     end
 
-    local engage = ai:getState(AiStateEngage)
-
     for _, enemy in Player.find(function(p)
         return p:isEnemy() and p:isAlive()
     end) do
-        engage:noticeEnemy(enemy, 4096)
+        ai.states.engage:noticeEnemy(enemy, 4096)
     end
 end
 

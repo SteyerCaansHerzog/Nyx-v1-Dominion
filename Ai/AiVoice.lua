@@ -45,7 +45,7 @@ function AiVoice:new(fields)
 	return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiVoice:__init()
     local packs = {}
     local packNames = {}
@@ -190,10 +190,12 @@ function AiVoice:__init()
                 return
             end
 
-            if isWinner then
-                self.pack:speakRoundEndWon()
-            else
-                self.pack:speakRoundEndLost()
+            if not AiUtility.client:isAlive() or not AiUtility.isLastAlive then
+                if isWinner then
+                    self.pack:speakRoundEndWon()
+                else
+                    self.pack:speakRoundEndLost()
+                end
             end
         end)
     end)
@@ -217,7 +219,7 @@ function AiVoice:__init()
                     return
                 end
 
-                if e.victim:isTeammate() then
+                if e.victim:isTeammate() and not e.victim:isClient() then
                     self.pack:speakTeammateKilledByClient(e)
 
                     return

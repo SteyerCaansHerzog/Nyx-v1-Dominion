@@ -34,7 +34,7 @@ function AiStateEvade:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiStateEvade:__init()
     self.shotBoltActionRifleTimer = Timer:new()
     self.shotBoltActionRifleTime = 1
@@ -49,7 +49,7 @@ function AiStateEvade:__init()
     end)
 end
 
---- @return void
+--- @return nil
 function AiStateEvade:assess()
     if self.isBlocked then
         self.isBlocked = nil
@@ -99,7 +99,7 @@ function AiStateEvade:assess()
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateEvade:activate(ai)
     local player = AiUtility.client
     local playerOrigin = player:getOrigin()
@@ -161,7 +161,7 @@ function AiStateEvade:activate(ai)
 end
 
 --- @param ai AiOptions
---- @return void
+--- @return nil
 function AiStateEvade:think(ai)
     if self.changeAngleTimer:isElapsedThenRestart(self.changeAngleTime) then
         self.changeAngleTime = Client.getRandomFloat(0.33, 1.33)
@@ -174,7 +174,7 @@ function AiStateEvade:think(ai)
             cameraAngles = Client.getCameraAngles()
         end
 
-        cameraAngles.p = cameraAngles.p + Client.getRandomFloat(-2, 2)
+        cameraAngles.p = Client.getRandomFloat(-1, 1)
         cameraAngles.y = cameraAngles.y + Client.getRandomFloat(-16, 16)
 
         self.reloadLookAngles = cameraAngles

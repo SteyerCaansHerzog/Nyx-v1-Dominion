@@ -41,7 +41,7 @@ function AiVoicePack:new(fields)
 	return Nyx.new(self, fields)
 end
 
---- @return void
+--- @return nil
 function AiVoicePack:__init()
     self:unlock()
 
@@ -83,24 +83,24 @@ function AiVoicePack:getFiles(line)
     return result
 end
 
---- @return void
+--- @return nil
 function AiVoicePack:lock()
     writefile("gamesense/Nyx/v1/Dominion/Resource/Data/AiRadioLock", "1")
 end
 
---- @return void
+--- @return nil
 function AiVoicePack:unlock()
     writefile("gamesense/Nyx/v1/Dominion/Resource/Data/AiRadioLock", "0")
 end
 
---- @return void
+--- @return nil
 function AiVoicePack:isLocked()
     return readfile("gamesense/Nyx/v1/Dominion/Resource/Data/AiRadioLock") == "1"
 end
 
 --- @param lines string[]
 --- @param options AiVoicePackSpeakOptions
---- @return void
+--- @return nil
 function AiVoicePack:speak(lines, options)
     if not lines then
         return
@@ -142,7 +142,7 @@ end
 
 --- @param sequence string[]
 --- @param options AiVoicePackSpeakOptions
---- @return void
+--- @return nil
 function AiVoicePack:speakSequence(sequence, options)
     if not options then
         options = {}
@@ -185,7 +185,7 @@ end
 
 --- @param sequences string[]
 --- @param options AiVoicePackSpeakOptions
---- @return void
+--- @return nil
 function AiVoicePack:speakRandomSequence(sequences, options)
     if not options then
         options = {}
@@ -271,37 +271,37 @@ end
 
 --{{{ Kills
 --- @param event PlayerDeathEvent
---- @return void
+--- @return nil
 function AiVoicePack:speakEnemyKilledByClient(event) end
 
 --- @param event PlayerDeathEvent
---- @return void
+--- @return nil
 function AiVoicePack:speakTeammateKilledByClient(event) end
 
 --- @param event PlayerDeathEvent
---- @return void
+--- @return nil
 function AiVoicePack:speakClientKilledByEnemy(event) end
 
 --- @param event PlayerDeathEvent
---- @return void
+--- @return nil
 function AiVoicePack:speakClientKilledByTeammate(event) end
 --}}}
 
 --{{{ Hurt
 --- @param event PlayerHurtEvent
---- @return void
+--- @return nil
 function AiVoicePack:speakEnemyHurtByClient(event) end
 
 --- @param event PlayerHurtEvent
---- @return void
+--- @return nil
 function AiVoicePack:speakTeammateHurtByClient(event) end
 
 --- @param event PlayerHurtEvent
---- @return void
+--- @return nil
 function AiVoicePack:speakClientHurtByEnemy(event) end
 
 --- @param event PlayerHurtEvent
---- @return void
+--- @return nil
 function AiVoicePack:speakClientHurtByTeammate(event) end
 --}}}
 
@@ -309,136 +309,136 @@ function AiVoicePack:speakClientHurtByTeammate(event) end
 --- Must be implemented by AI.
 ---
 --- @param bombsite string
---- @return void
+--- @return nil
 function AiVoicePack:speakRequestTeammatesToRotate(bombsite) end
 
 --- Must be implemented by AI.
 ---
 --- @param bombsite string
---- @return void
+--- @return nil
 function AiVoicePack:speakRequestTeammatesToPush(bombsite) end
 
 --- Must be implemented by AI. Triggered when enemy becomes aware of enemies and has decided to engage them.
 ---
---- @return void
+--- @return nil
 function AiVoicePack:speakHearNearbyEnemies() end
 
 --- Must be implemented by AI. Is related to HearNearbyEnemies.
 ---
---- @return void
+--- @return nil
 function AiVoicePack:speakNotifyTeamOfBombCarrier() end
 
 --- Must be implemented by AI.
 ---
---- @return void
+--- @return nil
 function AiVoicePack:speakNotifyTeamOfBomb() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakNotifyFlashbanged() end
 --}}}
 
 --{{{ Round Start
---- @return void
+--- @return nil
 function AiVoicePack:speakRoundStart() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakRoundStartPistolFirstHalf() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakRoundStartPistolSecondHalf() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakRoundStartWonPrevious() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakRoundStartLostPrevious() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakRoundStartMatchPointToTeam() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakRoundStartMatchPointToOpposition() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakRoundStartMatchPointFinalRound() end
 --}}}
 
 --{{{ Round End
---- @return void
+--- @return nil
 function AiVoicePack:speakRoundEnd() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakRoundEndWon() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakRoundEndLost() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakRoundEndHalftime() end
 --}}}
 
 --{{{ Game Start
---- @return void
+--- @return nil
 function AiVoicePack:speakWarmupGreeting() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakWarmupIdle() end
 --}}}
 
 --{{{ Game End
---- @return void
+--- @return nil
 function AiVoicePack:speakGameEndWon() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakGameEndLost() end
 --}}}
 
 --{{{ Utility
---- @return void
+--- @return nil
 function AiVoicePack:speakClientDefusingBomb() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakEnemyDefusingBomb() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakCannotDefuseBomb() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakClientPlantingBomb() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakEnemyPlantingBomb() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakClientThrowingFlashbang() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakClientThrowingSmoke() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakClientThrowingHeGrenade() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakClientThrowingIncendiary() end
 --}}}
 
 --{{{ Comments
---- @return void
+--- @return nil
 function AiVoicePack:speakLastAlive() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakGifting() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakGratitude() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakAgreement() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakDisagreement() end
 
---- @return void
+--- @return nil
 function AiVoicePack:speakNoProblem() end
 --}}}
 
