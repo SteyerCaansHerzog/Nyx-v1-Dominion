@@ -107,7 +107,7 @@ local isAppFocused = vtable_bind("engine.dll", "VEngineClient014", 196, "bool(__
 --- @field antiBlockDuration number
 --- @field antiFlyTimer Timer
 --- @field antiFlyValues number
---- @field autoClosePopupsTimer Timer
+--- @field autoActionTimer Timer
 --- @field canAntiBlock boolean
 --- @field canAvoidInfernos boolean
 --- @field canBuyThisRound boolean
@@ -234,7 +234,7 @@ function AiController:initFields()
 	self.antiBlockDuration = Client.getRandomFloat(1, 2)
 	self.antiFlyTimer = Timer:new():start()
 	self.antiFlyValues = {}
-	self.autoClosePopupsTimer = Timer:new():startThenElapse()
+	self.autoActionTimer = Timer:new():startThenElapse()
 	self.canBuyThisRound = true
 	self.canInspectWeapon = true
 	self.canInspectWeaponTime = Client.getRandomFloat(50, 90)
@@ -351,6 +351,7 @@ function AiController:initEvents()
 	end)
 
 	Callbacks.frameGlobal(function()
+		-- App focus FPS. Performance.
 		local isAppFocusedState = isAppFocused()
 
 		if isAppFocusedState ~= self.lastAppFocusState then
@@ -363,6 +364,7 @@ function AiController:initEvents()
 			end
 		end
 
+		-- Auto-accept admin invites.
 		for i = 1, Panorama.PartyBrowserAPI.GetInvitesCount() do
 			local lobbyId = Panorama.PartyBrowserAPI.GetInviteXuidByIndex(i - 1)
 
@@ -385,9 +387,16 @@ function AiController:initEvents()
 			end
 		end
 
-		if Menu.autoClosePopups:get() and self.autoClosePopupsTimer:isElapsedThenRestart(2) then
+		-- Auto-close Panorama popups.
+		if Menu.autoClosePopups:get() and self.autoActionTimer:isElapsedThenRestart(15) then
 			panorama.loadstring('UiToolkitAPI.CloseAllVisiblePopups()', 'CSGOMainMenu')()
+
 			Panorama.InventoryAPI.AcknowledgeNewItems()
+
+			-- Auto-reconnect to ongoing matches.
+			if self.client.allocation and not Panorama.GameStateAPI.IsConnectedOrConnectingToServer() and Panorama.CompetitiveMatchAPI.HasOngoingMatch() then
+				Panorama.CompetitiveMatchAPI.ActionReconnectToOngoingMatch()
+			end
 		end
 	end)
 
@@ -800,23 +809,28 @@ function AiController:chatCommands(e)
 	command:invoke(self, e.sender, input)
 end
 
+--- @return nil
+function AiController:setClientLoaderLock()
+	writefile("lua/gamesense/Nyx/v1/Dominion/Resource/Data/ClientLoaderLock", "1")
+end
+
 --- @param origin Vector3
 --- @param radius number
 --- @param checkForEnemies boolean
 --- @return nil
 function AiController:deactivateNodes(eid, origin, radius, checkForEnemies)
 	if checkForEnemies then
-		local canContinue = false
+		local isEnemyNearby = false
 
 		for _, enemy in pairs(AiUtility.enemies) do
-			if origin:getDistance(enemy:getOrigin()) < 750 then
-				canContinue = true
+			if origin:getDistance(enemy:getOrigin()) < 1250 then
+				isEnemyNearby = true
 
 				break
 			end
 		end
 
-		if not canContinue then
+		if not isEnemyNearby then
 			return
 		end
 	end
@@ -837,24 +851,15 @@ function AiController:deactivateNodes(eid, origin, radius, checkForEnemies)
 				end
 			end
 
-			local _, fraction = node.origin:getTraceLine(origin)
+			table.insert(deactivatedNodes, node)
 
-			if fraction == 1 then
-				table.insert(deactivatedNodes, node)
-
-				node.active = false
-			end
+			node.active = false
 		end
 	until true end
 
 	self.deactivatedNodes[eid] = deactivatedNodes
 
 	self.nodegraph:rePathfind()
-end
-
---- @return nil
-function AiController:setClientLoaderLock()
-	writefile("lua/gamesense/Nyx/v1/Dominion/Resource/Data/ClientLoaderLock", "1")
 end
 
 --- @param eid number
@@ -930,16 +935,12 @@ function AiController:renderUi()
 	uiPos:offset(0, 10)
 
 	if self.client and self.client.allocation then
-		local host = Player.getBySteamid64(self.client.allocation.steamid)
+		uiPos:drawSurfaceText(Font.MEDIUM, fontColor, "l", string.format(
+			"Session with %s",
+			self.client.allocation.host
+		))
 
-		if host then
-			uiPos:drawSurfaceText(Font.MEDIUM, fontColor, "l", string.format(
-				"Matched with: %s",
-				host:getName()
-			))
-
-			uiPos:offset(0, offset)
-		end
+		uiPos:offset(0, offset)
 	end
 
 	local scoreData = Table.fromPanorama(Panorama.GameStateAPI.GetScoreDataJSO())
@@ -1010,7 +1011,7 @@ function AiController:renderUi()
 		end
 
 		uiPos:drawSurfaceText(Font.MEDIUM, svrColor, "l", string.format(
-			"SVR: %ims / %i%% loss",
+			"SVR: %ims / %.2f%% loss",
 			ping,
 			loss
 		))

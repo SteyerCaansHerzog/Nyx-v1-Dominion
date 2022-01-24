@@ -973,7 +973,7 @@ function Nodegraph:move(cmd)
     self.canJump = true
 
     -- Jump over obstacles
-    if node.type == Node.types.JUMP then
+    if canJump and node.type == Node.types.JUMP then
         if distance < 32 and node.origin.z - origin.z > 18 then
             if self.jumpCooldown:isElapsedThenRestart(0.6) then
                 cmd.in_jump = 1
@@ -1015,7 +1015,7 @@ function Nodegraph:move(cmd)
             local closestJumpNode = self:getClosestNodeOf(origin, Node.types.JUMP)
 
             -- Jump over obstacles
-            if closestJumpNode and origin:getDistance(closestJumpNode.origin) < 64 then
+            if closestJumpNode and origin:getDistance(closestJumpNode.origin) < 64 and self.canJump then
                 cmd.in_jump = 1
             end
         end

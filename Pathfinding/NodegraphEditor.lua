@@ -5,6 +5,7 @@ local Color = require "gamesense/Nyx/v1/Api/Color"
 local Menu = require "gamesense/Nyx/v1/Api/Menu"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Render = require "gamesense/Nyx/v1/Api/Render"
+local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 local VKey = require "gamesense/Nyx/v1/Api/VKey"
 
@@ -143,11 +144,15 @@ function NodegraphEditor:selectNode()
 
     for _, node in pairs(self.nodegraph.nodes) do
         if cameraOrigin:getDistance(node.origin) < 750 then
-            local fov = cameraAngles:getFov(cameraOrigin, node.origin)
+            local trace = Trace.getLineToPosition(cameraOrigin, node.origin, AiUtility.traceOptions)
 
-            if fov < closestFov and fov < 5 then
-                closestFov = fov
-                selectedNode = node
+            if not trace.isIntersectingGeometry then
+                local fov = cameraAngles:getFov(cameraOrigin, node.origin)
+
+                if fov < closestFov and fov < 5 then
+                    closestFov = fov
+                    selectedNode = node
+                end
             end
         end
     end
