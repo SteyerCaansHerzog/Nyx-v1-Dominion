@@ -340,6 +340,96 @@ function Nodegraph:clearNodegraph()
 end
 
 --- @return nil
+function Nodegraph:renderNodegraph()
+    if not Menu.visualiseNodegraph:get() then
+        return
+    end
+
+    if Menu.visualiseDirectPathing:get() then
+        local playerOrigin = Player.getClient():getOrigin():offset(0, 0, 18)
+        local bounds = Vector3:newBounds(Vector3.align.CENTER, 16, 16, 4)
+
+        for _, searchNode in pairs(self.nodes) do
+            if playerOrigin:getDistance(searchNode.origin) < 256 then
+                local isPathable = self:isJumpNodeValid(playerOrigin, searchNode)
+
+                local trace = Trace.getHullToPosition(playerOrigin, searchNode.origin, bounds, AiUtility.traceOptions)
+
+                isPathable = not trace.isIntersectingGeometry
+
+                local color
+
+                if isPathable then
+                    color = Color:hsla(100, 0.8, 0.6)
+
+                    playerOrigin:drawLine(searchNode.origin, Color:hsla(100, 0.8, 0.6, 100), 0.25)
+                else
+                    color = Color:hsla(0, 0.8, 0.6)
+
+                    playerOrigin:drawLine(searchNode.origin, Color:hsla(0, 0.8, 0.6, 100), 0.25)
+                end
+
+                local radius, thickness = Render.scaleCircle(searchNode.origin, 60, 10)
+
+                searchNode.origin:drawCircleOutline(radius, thickness, color)
+
+                local radius = Render.scaleCircle(trace.endPosition, 14)
+
+                trace.endPosition:drawCircle(radius, color)
+            end
+        end
+    end
+
+    local cameraOrigin = Client.getCameraOrigin()
+
+    for _, node in pairs(self.nodes) do
+        local alpha = Math.pcti(cameraOrigin:getDistance(node.origin), 1000) * 255
+
+        if alpha > 0 then
+            local color = Node.typesColor[node.type]:clone()
+
+            color.a = alpha
+
+            for _, connection in pairs(node.connections) do
+                local lineColor = Color:rgba(150, 150, 150, math.min(35, alpha))
+
+                if self.pathMap and self.pathMap[node.id] and self.pathMap[connection.id] then
+                    lineColor = color
+                end
+
+                node.origin:drawLine(connection.origin, lineColor, 0.25)
+            end
+
+            local thickness = node.active and 15 or 6
+            local radius, thickness = Render.scaleCircle(node.origin, 33, thickness)
+
+            node.origin:drawCircleOutline(radius, thickness, color)
+
+            if self.pathMap and self.pathMap[node.id] then
+                node.origin:drawCircle(radius + 2, color:clone():setAlpha(math.min(150, alpha)))
+            end
+
+            local site = ""
+
+            if node.site then
+                site = string.format(" (%s)", node.site:upper())
+            end
+
+            local text = string.format("[%s] %s%s", node.id, Node.typesCode[node.type], site)
+
+            node.origin:clone():offset(0, 0, 14):drawSurfaceText(Font.SMALL, color, "c", text)
+
+            if node.direction then
+                local directionOffset = node.origin + node.direction:getForward() * 16
+                local radius = Render.scaleCircle(directionOffset, 8, 0)
+
+                directionOffset:drawCircle(radius, color)
+            end
+        end
+    end
+end
+
+--- @return nil
 function Nodegraph:reactivateAllNodes()
     for _, node in pairs(self.nodes) do
         node.active = true
@@ -642,96 +732,6 @@ function Nodegraph:isJumpNodeValid(origin, node)
 end
 
 --- @return nil
-function Nodegraph:renderNodegraph()
-    if not Menu.visualiseNodegraph:get() then
-        return
-    end
-
-    if Menu.visualiseDirectPathing:get() then
-        local playerOrigin = Player.getClient():getOrigin():offset(0, 0, 16)
-        local bounds = Vector3:newBounds(Vector3.align.CENTER, 16, 16, 4)
-
-        for _, searchNode in pairs(self.nodes) do
-            if playerOrigin:getDistance(searchNode.origin) < 256 then
-                local isPathable = self:isJumpNodeValid(playerOrigin, searchNode)
-
-                local trace = Trace.getHullToPosition(playerOrigin, searchNode.origin, bounds, AiUtility.traceOptions)
-
-                isPathable = not trace.isIntersectingGeometry
-
-                local color
-
-                if isPathable then
-                    color = Color:hsla(100, 0.8, 0.6)
-
-                    playerOrigin:drawLine(searchNode.origin, Color:hsla(100, 0.8, 0.6, 100), 0.25)
-                else
-                    color = Color:hsla(0, 0.8, 0.6)
-
-                    playerOrigin:drawLine(searchNode.origin, Color:hsla(0, 0.8, 0.6, 100), 0.25)
-                end
-
-                local radius, thickness = Render.scaleCircle(searchNode.origin, 60, 10)
-
-                searchNode.origin:drawCircleOutline(radius, thickness, color)
-
-                local radius = Render.scaleCircle(trace.endPosition, 14)
-
-                trace.endPosition:drawCircle(radius, color)
-            end
-        end
-    end
-
-    local cameraOrigin = Client.getCameraOrigin()
-
-    for _, node in pairs(self.nodes) do
-        local alpha = Math.pcti(cameraOrigin:getDistance(node.origin), 1000) * 255
-
-        if alpha > 0 then
-            local color = Node.typesColor[node.type]:clone()
-
-            color.a = alpha
-
-            for _, connection in pairs(node.connections) do
-                local lineColor = Color:rgba(150, 150, 150, math.min(35, alpha))
-
-                if self.pathMap and self.pathMap[node.id] and self.pathMap[connection.id] then
-                    lineColor = color
-                end
-
-                node.origin:drawLine(connection.origin, lineColor, 0.25)
-            end
-
-            local thickness = node.active and 15 or 6
-            local radius, thickness = Render.scaleCircle(node.origin, 33, thickness)
-
-            node.origin:drawCircleOutline(radius, thickness, color)
-
-            if self.pathMap and self.pathMap[node.id] then
-                node.origin:drawCircle(radius + 2, color:clone():setAlpha(math.min(150, alpha)))
-            end
-
-            local site = ""
-
-            if node.site then
-                site = string.format(" (%s)", node.site:upper())
-            end
-
-            local text = string.format("[%s] %s%s", node.id, Node.typesCode[node.type], site)
-
-            node.origin:clone():offset(0, 0, 14):drawSurfaceText(Font.SMALL, color, "c", text)
-
-            if node.direction then
-                local directionOffset = node.origin + node.direction:getForward() * 16
-                local radius = Render.scaleCircle(directionOffset, 8, 0)
-
-                directionOffset:drawCircle(radius, color)
-            end
-        end
-    end
-end
-
---- @return nil
 function Nodegraph:rePathfind()
     if not self.pathEnd then
         return
@@ -790,7 +790,7 @@ function Nodegraph:pathfind(origin, options)
         self:setConnections(pathStart, false)
     end
 
-    self:setConnections(pathEnd, options.ignore, true)
+    self:setConnections(pathEnd, options.ignore, false)
 
     local path = AStar.find(pathStart, pathEnd, self.nodes, true, function(node, neighbor)
         local canReach = true
@@ -893,7 +893,7 @@ function Nodegraph:move(cmd)
         cmd.forwardmove = self.moveSpeed or 450
         --cmd.move_yaw = self.unstuckAngles.y
 
-        self.unstuckAngles.y = self.unstuckAngles.y + 45 * Time.delta()
+        self.unstuckAngles.y = self.unstuckAngles.y + 45 * Time.getDelta()
     else
         self.unstuckTimer:stop()
         self.unstuckAngles = Client.getCameraAngles()
@@ -988,7 +988,7 @@ function Nodegraph:move(cmd)
     end
 
     -- Jump over gaps
-    if canJump and jumpNode.type == Node.types.GAP and distance < 40 then
+    if canJump and jumpNode.type == Node.types.GAP and distance < 16 then
         cmd.in_jump = 1
 
         self.pathCurrent = self.pathCurrent + 1

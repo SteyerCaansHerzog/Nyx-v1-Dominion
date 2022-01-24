@@ -209,8 +209,6 @@ function AiStatePickupItems:think(ai)
         })
     end
 
-    ai.view.canUseCheckNode = false
-
     if self.lookAtItem and distance < 200 then
         ai.view:lookAtLocation(weaponOrigin, 6.5)
     end

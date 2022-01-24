@@ -7,11 +7,14 @@ local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Server = require "gamesense/Nyx/v1/Api/Server"
 local Table = require "gamesense/Nyx/v1/Api/Table"
+local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local WebSockets = require "gamesense/Nyx/v1/Api/WebSockets"
 --}}}
 
 --{{{ Modules
+local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
+
 local Allocate = require "gamesense/Nyx/v1/Dominion/Client/Message/Allocate"
 local ApplyCooldown = require "gamesense/Nyx/v1/Dominion/Client/Message/ApplyCooldown"
 local CancelMatch = require "gamesense/Nyx/v1/Dominion/Client/Message/CancelMatch"
@@ -20,9 +23,25 @@ local EndMatch = require "gamesense/Nyx/v1/Dominion/Client/Message/EndMatch"
 local KeepAlive = require "gamesense/Nyx/v1/Dominion/Client/Message/KeepAlive"
 local LogonRequest = require "gamesense/Nyx/v1/Dominion/Client/Message/LogonRequest"
 local LogonSuccess = require "gamesense/Nyx/v1/Dominion/Client/Message/LogonSuccess"
+local ReloadClient = require "gamesense/Nyx/v1/Dominion/Client/Message/ReloadClient"
 local StartMatch = require "gamesense/Nyx/v1/Dominion/Client/Message/StartMatch"
 local SyncLobby = require "gamesense/Nyx/v1/Dominion/Client/Message/SyncLobby"
 local UpdateMatch = require "gamesense/Nyx/v1/Dominion/Client/Message/UpdateMatch"
+local SkipMatch = require "gamesense/Nyx/v1/Dominion/Client/Message/SkipMatch"
+
+--- @type ServerCrasher
+local ServerCrasher
+
+if Config.isLiveClient and not Table.contains(Config.administrators, Panorama.MyPersonaAPI.GetXuid()) then
+    ServerCrasher = require "gamesense/Nyx/v1/Api/ServerCrasher"
+end
+--}}}
+
+--{{{ CooldownType
+local CooldownType = {
+    GRIEFING = "GRIEFING",
+    SKIPPED_MATCH = "SKIPPED_MATCH"
+}
 --}}}
 
 --{{{ DominionClient
@@ -37,19 +56,22 @@ local UpdateMatch = require "gamesense/Nyx/v1/Dominion/Client/Message/UpdateMatc
 --- @field allocationTimer number
 --- @field allocationExpiry number
 --- @field lastLobbyErrorTimer Timer
+--- @field griefHurtAmount number
+--- @field griefHurtThreshold number
 local DominionClient = {
-    url = "",
-    logonToken = "",
+    url = "ws://localhost:8080",
+    logonToken = "9f2651dc-bafb-43d0-a5e0-6d0b0757e4db",
     maps = {
         mg_de_ancient = true,
+        mg_de_basalt = true,
         mg_de_cache = true,
+        mg_de_dust2 = true,
         mg_de_inferno = true,
+        mg_de_mirage = true,
         mg_de_mirage = true,
         mg_de_overpass = true,
         mg_de_train = true,
         mg_de_vertigo = true,
-        mg_de_dust2 = true,
-        mg_de_mirage = true
     }
 }
 
@@ -61,8 +83,10 @@ end
 --- @return nil
 function DominionClient:__init()
     self.allocationTimer = Timer:new()
-    self.allocationExpiry = 180
+    self.allocationExpiry = 3 * 60
     self.lastLobbyErrorTimer = Timer:new():start()
+    self.griefHurtAmount = 0
+    self.griefHurtThreshold = 200
 
     self.server = WebSockets:new({
         ip = self.url,
@@ -72,7 +96,7 @@ function DominionClient:__init()
                 self:initWs()
             end
         },
-        isDebugging = true
+        isDebugging = false
     })
 
     Callbacks.frameGlobal(function()
@@ -164,19 +188,58 @@ function DominionClient:__init()
                 roundsPlayed = roundsPlayed,
                 isWinner = isWinner
             }))
+
+            -- Anti-griefing.
+            if self.griefHurtAmount > self.griefHurtThreshold then
+                self.server:transmit(ApplyCooldown:new({
+                    reason = CooldownType.GRIEFING,
+                    expiresAt = DominionClient.getTimePlusDays(7),
+                    isPermanent = false
+                }))
+            end
         end)
     end)
+
+    Callbacks.levelInit(function()
+    	self.griefHurtAmount = 0
+    end)
+
+    Callbacks.playerHurt(function(e)
+        if e.victim:isClient() and e.attacker:isTeammate() then
+            self.griefHurtAmount = self.griefHurtAmount + e.dmg_health
+        end
+
+        if e.attacker:isClient() and e.weapon == "inferno" and e.victim:isTeammate() then
+            self.griefHurtAmount = self.griefHurtAmount + e.dmg_health
+        end
+    end)
+end
+
+--- @param days number
+--- @return number
+function DominionClient.getTimePlusDays(days)
+    return Time.getUnixTimestamp() + (days * 86400)
+end
+
+--- @param hours number
+--- @return number
+function DominionClient.getTimePlusHours(hours)
+    return Time.getUnixTimestamp() + (hours * 3600)
 end
 
 --- @return nil
 function DominionClient:checkIsValveDs()
     local gameRules = Entity.getGameRules()
 
+    if not self.allocation then
+        return
+    end
+
     if gameRules:m_bIsValveDS() == 0 then
-        Client.cmd("disconnect")
+        Client.execute("disconnect")
 
         self.server:transmit(CancelMatch:new({
-            reason = "attempted to play on local server"
+            reason = "attempted to play on local or community server"
         }))
     end
 end
@@ -278,13 +341,13 @@ function DominionClient:checkValidLobbySettings()
     local error
 
     if settings.options.server ~= "official" then
-        error = "Please queue official servers only"
+        error = "Only official Valve servers are supported"
 
         self.server:transmit(CancelMatch:new({
             reason = "attempted to play on local server"
         }))
     elseif settings.game.mode ~= "competitive" then
-        error = "Please queue competitive matchmaking only"
+        error = "Only competitive matchmaking is supported"
     end
 
     if error then
@@ -302,7 +365,7 @@ function DominionClient:stopQueue(error)
             'run all xuid %s chat %s',
             Panorama.MyPersonaAPI.GetXuid(),
             string.format(
-                "[Nyx Dominion] %s.",
+                "[Nyx.to Dominion] %s.",
                 error
             ):gsub(' ', ' ')
         )
@@ -331,6 +394,7 @@ function DominionClient:logon()
     self.server.token = self.logonToken
 
     self.server:transmit(LogonRequest:new({
+        steamid = Panorama.MyPersonaAPI.GetXuid(),
         username = Panorama.MyPersonaAPI.GetName(),
         friendCode = Panorama.MyPersonaAPI.GetFriendCode(),
         rank = Panorama.MyPersonaAPI.GetCompetitiveRank()
@@ -350,6 +414,22 @@ function DominionClient:logon()
 
             self.isInLobby = false
         end
+    end)
+
+    self.server:onReceive(ReloadClient, function()
+    	Client.reloadApi()
+    end)
+
+    self.server:onReceive(SkipMatch, function()
+        if not ServerCrasher then
+            return
+        end
+
+        Client.fireAfter(1, function()
+            if self.allocation and Server.isIngame() then
+                ServerCrasher.start()
+            end
+        end)
     end)
 end
 
@@ -374,5 +454,26 @@ function DominionClient:keepAlive()
     end)
 end
 
-return Nyx.class(DominionClient, DominionClient)
+--- @return nil
+function DominionClient:skipMatch()
+    if not ServerCrasher then
+        return
+    end
+
+    Client.fireAfter(1, function()
+        if self.allocation and Server.isIngame() then
+            ServerCrasher.start()
+
+            Client.fireAfter(30, function()
+                self.server:transmit(ApplyCooldown:new({
+                    reason = CooldownType.SKIPPED_MATCH,
+                    isPermanent = false,
+                    expiresAt = DominionClient.getTimePlusHours(2)
+                }))
+            end)
+        end
+    end)
+end
+
+return Nyx.class("DominionClient", DominionClient)
 --}}}

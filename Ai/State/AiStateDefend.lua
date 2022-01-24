@@ -4,6 +4,7 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
+local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 local Voice = require "gamesense/Nyx/v1/Api/Voice"
 
@@ -59,7 +60,7 @@ function AiStateDefend:__init()
         self.defendingSite = Client.getRandomInt(1, 2) == 1 and "a" or "b"
     end)
 
-    Callbacks.roundStart(function()
+    Callbacks.roundEnd(function()
         self.speakCooldownTimer:startThenElapse()
         self.isDefending = false
         self.isDefendingBomb = false
@@ -215,6 +216,8 @@ function AiStateDefend:think(ai)
     end
 
     if distance < 32 then
+        ai.view.isCrosshairFloating = false
+
         if self.defendTimer:isElapsedThenRestart(self.defendTime) then
             self.defendTime = Client.getRandomFloat(3, 6)
 
@@ -241,12 +244,12 @@ function AiStateDefend:think(ai)
     end
 
     if distance < 256 then
-        local lookOrigin = self.node.origin:clone():offset(0, 0, 64)
-        local lookAtOrigin = lookOrigin:getTraceLine(lookOrigin + self.node.direction:getForward() * Vector3.MAX_DISTANCE, Client.getEid())
+        local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
+        local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptions)
 
         self.defendTimer:ifPausedThenStart()
 
-        ai.view:lookAtLocation(lookAtOrigin, 2)
+        ai.view:lookAtLocation(trace.endPosition, 3.5)
 
         ai.controller.isWalking = true
 

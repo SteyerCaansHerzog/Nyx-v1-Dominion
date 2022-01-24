@@ -3,6 +3,7 @@ local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
+local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
@@ -19,6 +20,8 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --- @field boostOrigin Vector3
 --- @field boostPlayer Player
 --- @field isBoosting boolean
+--- @field boostLookTimer Timer
+--- @field boostLookAngles Angle
 local AiStateBoost = {
     name = "Boost"
 }
@@ -31,11 +34,11 @@ end
 
 --- @return nil
 function AiStateBoost:__init()
+    self.boostLookTimer = Timer:new():startThenElapse()
+
     Callbacks.roundStart(function()
     	self:reset()
     end)
-
-    return nil
 end
 
 --- @return number
@@ -109,6 +112,13 @@ function AiStateBoost:think(ai)
         return
     end
 
+    if self.boostLookTimer:isElapsedThenRestart(2) then
+        self.boostLookAngles = self.boostPlayer:getCameraAngles():offset(
+            Client.getRandomFloat(-2, 2),
+            Client.getRandomFloat(-8, 8)
+        )
+    end
+
     if originDistance < 64 and senderDistance < 72 then
         self.isBoosting = true
     end
@@ -127,7 +137,7 @@ function AiStateBoost:think(ai)
 
             ai.view:lookAtLocation(self.boostPlayer:getHitboxPosition(Player.hitbox.NECK), 2)
         else
-            ai.view:lookInDirection(self.boostPlayer:getCameraAngles():set(0), 2)
+            ai.view:lookInDirection(self.boostLookAngles, 2)
         end
     end
 end

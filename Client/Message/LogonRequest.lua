@@ -4,6 +4,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ LogonRequest
 --- @class LogonRequest : Class
+--- @field steamid string
 --- @field username string
 --- @field friendCode string
 --- @field rank number

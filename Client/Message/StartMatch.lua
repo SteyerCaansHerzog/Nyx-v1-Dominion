@@ -11,5 +11,5 @@ function StartMatch:new()
     return Nyx.new(self)
 end
 
-return Nyx.class(StartMatch, StartMatch)
+return Nyx.class("StartMatch", StartMatch)
 --}}}

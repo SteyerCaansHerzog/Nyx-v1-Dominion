@@ -13,5 +13,5 @@ function CancelMatch:new(fields)
     return Nyx.new(self, fields)
 end
 
-return Nyx.class(CancelMatch, CancelMatch)
+return Nyx.class("CancelMatch", CancelMatch)
 --}}}

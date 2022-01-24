@@ -160,13 +160,16 @@ function AiStateDefuse:think(ai)
     local distance = AiUtility.client:getOrigin():getDistance(bombOrigin)
 
     if distance < 64 then
+        ai.view.isCrosshairFloating = false
+        ai.view.isCrosshairUsingVelocity = false
+
         self.isDefusing = true
     else
         self.isDefusing = false
     end
 
     if AiUtility.client:m_bIsDefusing() == 1 then
-        ai.view:lookInDirection(Client.getCameraAngles(), 6)
+        ai.view:lookInDirection(Client.getCameraAngles(), 5)
     elseif distance < 256 then
         ai.view:lookAtLocation(bombOrigin:clone():offset(5, -3, 14), 4.5)
     end

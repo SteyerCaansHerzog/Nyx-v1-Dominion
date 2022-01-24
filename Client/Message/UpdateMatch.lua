@@ -13,5 +13,5 @@ function UpdateMatch:new(fields)
     return Nyx.new(self, fields)
 end
 
-return Nyx.class(UpdateMatch, UpdateMatch)
+return Nyx.class("UpdateMatch", UpdateMatch)
 --}}}

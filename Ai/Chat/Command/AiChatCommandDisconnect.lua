@@ -24,7 +24,7 @@ function AiChatCommandDisconnect:invoke(ai, sender, args)
         return
     end
 
-    Client.cmd("disconnect")
+    Client.execute("disconnect")
 end
 
 return Nyx.class("AiChatCommandDisconnect", AiChatCommandDisconnect, AiChatCommand)

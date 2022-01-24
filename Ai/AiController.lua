@@ -18,6 +18,8 @@ local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
+
+local Steamworks = require "gamesense/steamworks"
 --}}}
 
 --{{{ Modules
@@ -71,6 +73,7 @@ local AiChatCommandAssist = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/A
 local AiChatCommandReload = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandReload"
 local AiChatCommandSkill = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkill"
 local AiChatCommandSkillRng = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkillRng"
+local AiChatCommandSkipMatch = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkipMatch"
 local AiChatCommandScramble = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandScramble"
 local AiChatCommandSilence = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSilence"
 local AiChatCommandStop = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandStop"
@@ -82,10 +85,15 @@ local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiView = require "gamesense/Nyx/v1/Dominion/Ai/AiView"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
+local DominionClient = require "gamesense/Nyx/v1/Dominion/Client/Client"
 local AiVoice = require "gamesense/Nyx/v1/Dominion/Ai/AiVoice"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+--}}}
+
+--{{{ FFI
+local isAppFocused = vtable_bind("engine.dll", "VEngineClient014", 196, "bool(__thiscall*)(void*)")
 --}}}
 
 --{{{ AiController
@@ -111,6 +119,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field canUnscope boolean
 --- @field canUseKnife boolean
 --- @field chat AiChat
+--- @field client DominionClient
 --- @field commands AiChatCommand[]
 --- @field config Config
 --- @field currentState AiState
@@ -137,6 +146,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field unscopeTimer Timer
 --- @field view AiView
 --- @field voice AiVoice
+--- @field lastAppFocusState boolean
 local AiController = {
 	states = {
 		avoidInfernos = AiStateAvoidInfernos,
@@ -183,6 +193,7 @@ local AiController = {
 		silence = AiChatCommandSilence,
 		skill = AiChatCommandSkill,
 		skillrng = AiChatCommandSkillRng,
+		skipmatch = AiChatCommandSkipMatch,
 		stop = AiChatCommandStop,
 		vote = AiChatCommandVote,
 	},
@@ -287,11 +298,27 @@ function AiController:initFields()
 
 	self:setClientLoaderLock()
 	self:openAndEquipGraffitis()
+
+	if Config.isLiveClient and not Table.contains(Config.administrators, Panorama.MyPersonaAPI.GetXuid()) then
+		self.client = DominionClient:new()
+	end
 end
 
 --- @return nil
 function AiController:initEvents()
+	if entity.get_local_player() then
+		for _ = 0, entity.get_local_player() * 100 do
+			client.random_float(0, 1)
+		end
+	end
+
 	cvar.engine_no_focus_sleep:set_int(0)
+
+	-- Only live clients and non-admins should delete their entire friends list.
+	if Config.isLiveClient and not Table.contains(Config.administrators, Panorama.MyPersonaAPI.GetXuid()) then
+		self:purgeSteamFriends()
+		self:setCrosshair()
+	end
 
 	Callbacks.playerConnectFull(function(e)
 		Client.fireAfter(10, function()
@@ -317,7 +344,25 @@ function AiController:initEvents()
 		end)
 	end)
 
+	Callbacks.levelInit(function()
+		for _ = 0, entity.get_local_player() * 100 do
+			client.random_float(0, 1)
+		end
+	end)
+
 	Callbacks.frameGlobal(function()
+		local isAppFocusedState = isAppFocused()
+
+		if isAppFocusedState ~= self.lastAppFocusState then
+			self.lastAppFocusState = isAppFocusedState
+
+			if isAppFocusedState then
+				cvar.fps_max_menu:set_int(30)
+			else
+				cvar.fps_max_menu:set_int(1)
+			end
+		end
+
 		for i = 1, Panorama.PartyBrowserAPI.GetInvitesCount() do
 			local lobbyId = Panorama.PartyBrowserAPI.GetInviteXuidByIndex(i - 1)
 
@@ -365,7 +410,7 @@ function AiController:initEvents()
 			return
 		end
 
-		Client.cmd("showconsole")
+		Client.execute("showconsole")
 
 		self.isFreezetime = true
 		self.lastPriority = nil
@@ -412,7 +457,7 @@ function AiController:initEvents()
 				return
 			end
 
-			Client.cmd("buy vest; buy vesthelm")
+			Client.execute("buy vest; buy vesthelm")
 		end)
 	end)
 
@@ -456,6 +501,52 @@ function AiController:initEvents()
 		end
 
 		self:chatCommands(e)
+	end)
+end
+
+--- @return nil
+function AiController:setCrosshair()
+	local options = {
+		cl_crosshairstyle = {4},
+		cl_crosshair_drawoutline = {0, 1},
+		cl_crosshairthickness = {1, 1.5},
+		cl_crosshairsize = {2, 3},
+		cl_crosshairgap = {1, 2, 3},
+		cl_crosshairdot = {0, 0, 1},
+		cl_crosshaircolor = {0, 1, 2, 4, 5},
+		cl_crosshair_t = {0, 0, 0, 0, 0, 0, 1},
+		cl_crosshair_outlinethickness = {0.5, 1},
+	}
+
+	for option, values in pairs(options) do
+		Client.execute("%s %s", option, Table.getRandom(values))
+	end
+end
+
+--- @return void
+function AiController:purgeSteamFriends()
+	-- Please don't delete my main account's friends list.
+	if Panorama.MyPersonaAPI.GetXuid() == "76561199102984662" then
+		return
+	end
+
+	local ISteamFriends = Steamworks.ISteamFriends
+	local EFriendFlags = Steamworks.EFriendFlags
+
+	local callback = function()
+		local friendsCount = ISteamFriends.GetFriendCount(EFriendFlags.All)
+
+		for i = 1, friendsCount do
+			local steamid = ISteamFriends.GetFriendByIndex(i - 1, EFriendFlags.All)
+
+			ISteamFriends.RemoveFriend(steamid)
+		end
+	end
+
+	callback()
+
+	Steamworks.set_callback("PersonaStateChange_t", function()
+		callback()
 	end)
 end
 
@@ -504,7 +595,7 @@ function AiController:buyGrenades(limit)
 	for _, nade in pairs(nades) do
 		if i <= limit then
 			Client.fireAfter(Client.getRandomFloat(0.25, 1), function()
-				Client.cmd(nade)
+				Client.execute(nade)
 			end)
 
 			i = i + 1
@@ -539,7 +630,7 @@ function AiController:autoBuy()
 		for _, weapon in pairs(AiUtility.mainWeapons) do
 			if player:hasWeapon(weapon) then
 				if player:m_iArmor() < 33 then
-					Client.cmd("buy vest; buy vesthelm")
+					Client.execute("buy vest; buy vesthelm")
 				end
 
 				self:buyGrenades(grenadeLimit)
@@ -552,11 +643,11 @@ function AiController:autoBuy()
 		local halftimeRounds = math.floor(cvar.mp_maxrounds:get_int() / 2)
 
 		if roundsPlayed == 0 or roundsPlayed == halftimeRounds then
-			Client.cmd("buy p250")
+			Client.execute("buy p250")
 
 			if player:isCounterTerrorist() then
 				if Client.getChance(3) then
-					Client.cmd("buy defuser")
+					Client.execute("buy defuser")
 				else
 					self:buyGrenades(2)
 				end
@@ -585,13 +676,13 @@ function AiController:autoBuy()
 		end
 
 		if Client.getChance(15) and balance > 2000 and balance < 3500 then
-			Client.cmd("buy vest; buy ssg08;")
+			Client.execute("buy vest; buy ssg08;")
 
 			self:buyGrenades(1)
 		end
 
 		if canBuyAwp then
-			Client.cmd("buy awp")
+			Client.execute("buy awp")
 
 			canBuyUtility = true
 		elseif canBuyRifle then
@@ -599,13 +690,13 @@ function AiController:autoBuy()
 			local isBuyingScopedRifle = balance > 4500 and Client.getChance(3)
 
 			if isBuyingCheapRifle then
-				Client.cmd("buy famas; buy galilar")
+				Client.execute("buy famas; buy galilar")
 
 				grenadeLimit = 2
 			elseif isBuyingScopedRifle then
-				Client.cmd("buy aug; buy sg556")
+				Client.execute("buy aug; buy sg556")
 			else
-				Client.cmd("buy m4a4; buy ak47; buy m4a1_silencer")
+				Client.execute("buy m4a4; buy ak47; buy m4a1_silencer")
 			end
 
 			canBuyUtility = true
@@ -613,11 +704,11 @@ function AiController:autoBuy()
 
 		if canBuyUtility then
 			if player:m_iArmor() < 33 then
-				Client.cmd("buy vest; buy vesthelm")
+				Client.execute("buy vest; buy vesthelm")
 			end
 
 			if player:isCounterTerrorist() then
-				Client.cmd("buy defuser")
+				Client.execute("buy defuser")
 			end
 
 			self:buyGrenades(grenadeLimit)
@@ -632,7 +723,7 @@ function AiController:forceBuy()
 	for _, weapon in pairs(AiUtility.mainWeapons) do
 		if player:hasWeapon(weapon) then
 			if player:m_iArmor() < 33 then
-				Client.cmd("buy vest; buy vesthelm")
+				Client.execute("buy vest; buy vesthelm")
 			end
 
 			return
@@ -669,15 +760,15 @@ function AiController:forceBuy()
 		local isBuyingNegev = (balance - 2500 >= 0) and Client.getChance(5)
 
 		if isBuyingNegev then
-			Client.cmd("buy negev")
+			Client.execute("buy negev")
 		elseif isBuyingSmg then
-			Client.cmd("buy %s;", Table.getRandom(smgs))
+			Client.execute("buy %s;", Table.getRandom(smgs))
 		else
-			Client.cmd("buy %s;", Table.getRandom(pistols))
+			Client.execute("buy %s;", Table.getRandom(pistols))
 		end
 
 		if player:m_iArmor() < 33 then
-			Client.cmd("buy vest; buy vesthelm")
+			Client.execute("buy vest; buy vesthelm")
 		end
 
 		self:buyGrenades(1)
@@ -835,9 +926,21 @@ function AiController:renderUi()
 	uiPos:drawSurfaceText(Font.TITLE, teamColors[player:m_iTeamNum()], "l", name)
 	uiPos:offset(0, offset)
 
-
 	uiPos:clone():offset(-5, 5):drawSurfaceRectangle(spacerDimensions, spacerColor)
 	uiPos:offset(0, 10)
+
+	if self.client and self.client.allocation then
+		local host = Player.getBySteamid64(self.client.allocation.steamid)
+
+		if host then
+			uiPos:drawSurfaceText(Font.MEDIUM, fontColor, "l", string.format(
+				"Matched with: %s",
+				host:getName()
+			))
+
+			uiPos:offset(0, offset)
+		end
+	end
 
 	local scoreData = Table.fromPanorama(Panorama.GameStateAPI.GetScoreDataJSO())
 	local tWins = scoreData.teamdata.TERRORIST.score
@@ -851,21 +954,26 @@ function AiController:renderUi()
 		roundType = "Short"
 	end
 
+	local teamWins
+	local enemyWins
+
 	if player:isTerrorist() then
-		uiPos:drawSurfaceText(Font.MEDIUM, fontColor, "l", string.format(
-			"%s Match: ( %i : %i )",
-			roundType,
-			tWins,
-			ctWins
-		))
-	else
-		uiPos:drawSurfaceText(Font.MEDIUM, fontColor, "l", string.format(
-			"%s Match: ( %i : %i )",
-			roundType,
-			ctWins,
-			tWins
-		))
+		teamWins = tWins
+		enemyWins = ctWins
+	elseif player:isCounterTerrorist() then
+		teamWins = ctWins
+		enemyWins = tWins
 	end
+
+	uiPos:drawSurfaceText(Font.MEDIUM, fontColor, "l", string.format(
+		"%s Match: Score %i : %i | KD %i/%i (%.2f)",
+		roundType,
+		teamWins,
+		enemyWins,
+		player:m_iKills(),
+		player:m_iDeaths(),
+		player:getKdRatio()
+	))
 
 	uiPos:offset(0, offset)
 
@@ -1103,10 +1211,10 @@ function AiController:activities(ai)
 		self.canInspectWeaponTimer:restart()
 		self.canInspectWeaponTime = Client.getRandomFloat(30, 90)
 
-		Client.cmd("+lookatweapon")
+		Client.execute("+lookatweapon")
 
 		Client.onNextTick(function()
-			Client.cmd("-lookatweapon")
+			Client.execute("-lookatweapon")
 		end)
 	end
 end
@@ -1198,7 +1306,7 @@ function AiController:antiBlock(ai)
 
 	local player = AiUtility.client
 
-	if player:m_vecVelocity():getMagnitude() > 130 then
+	if player:m_vecVelocity():getMagnitude() > 150 then
 		return
 	end
 
@@ -1242,8 +1350,6 @@ function AiController:antiBlock(ai)
 	local directionOffset = eyeOrigin + movementAngles[directionMethod](movementAngles)
 
 	ai.nodegraph.moveYaw = eyeOrigin:getAngle(directionOffset).y
-
-	--ai.view:lookInDirection(self.antiBlockLookAngles, 3)
 end
 
 --- @param cmd SetupCommandEvent

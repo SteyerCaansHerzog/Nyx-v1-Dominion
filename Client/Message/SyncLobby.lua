@@ -13,5 +13,5 @@ function SyncLobby:new(fields)
     return Nyx.new(self, fields)
 end
 
-return Nyx.class(SyncLobby, SyncLobby)
+return Nyx.class("SyncLobby", SyncLobby)
 --}}}

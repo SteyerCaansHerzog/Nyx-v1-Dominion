@@ -5,6 +5,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --{{{ ApplyCooldown
 --- @class ApplyCooldown : Class
 --- @field expiresAt number
+--- @field isPermanent boolean
 --- @field reason string
 local ApplyCooldown = {}
 
@@ -14,5 +15,5 @@ function ApplyCooldown:new(fields)
     return Nyx.new(self, fields)
 end
 
-return Nyx.class(ApplyCooldown, ApplyCooldown)
+return Nyx.class("ApplyCooldown", ApplyCooldown)
 --}}}

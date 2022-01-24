@@ -27,9 +27,9 @@ function AiChatCommandVote:invoke(ai, sender, args)
     local vote = args[1]
 
     if vote == "yes" then
-        Client.cmd("vote option1")
+        Client.execute("vote option1")
     elseif vote == "no" then
-        Client.cmd("vote option2")
+        Client.execute("vote option2")
     end
 end
 

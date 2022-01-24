@@ -14,5 +14,5 @@ function EndMatch:new(fields)
     return Nyx.new(self, fields)
 end
 
-return Nyx.class(EndMatch, EndMatch)
+return Nyx.class("EndMatch", EndMatch)
 --}}}

@@ -248,6 +248,9 @@ function AiStateGrenadeBase:think(ai)
     if distance < 150 then
         ai.nodegraph.moveYaw = playerOrigin:getAngle(self.node.origin).y
         ai.controller.canAntiBlock = false
+        ai.view.isCrosshairFloating = false
+        ai.view.isCrosshairUsingVelocity = false
+        ai.view.isCrosshairSmoothed = true
 
         ai.view:lookInDirection(self.node.direction, 5)
 
@@ -257,8 +260,8 @@ function AiStateGrenadeBase:think(ai)
             self.isInThrow = true
         end
 
-        if deltaAngles.p < 1
-            and deltaAngles.y < 1
+        if deltaAngles.p < 1.5
+            and deltaAngles.y < 1.5
             and distance < 32
             and self.throwTimer:isElapsedThenRestart(self.throwTime)
             and player:isHoldingWeapons(self.weapons)

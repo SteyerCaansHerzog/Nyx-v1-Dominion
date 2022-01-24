@@ -170,6 +170,7 @@ function AiUtility:initEvents()
     Callbacks.init(function()
     	self.bombCarrier = nil
         self.enemiesAlive = 5
+        self.client = Player.getClient()
     end)
 
     Callbacks.roundStart(function(e)
@@ -236,7 +237,7 @@ function AiUtility:initEvents()
         self.bomb = Entity.findOne("CC4")
         self.plantedBomb = Entity.findOne("CPlantedC4")
 
-        if self.plantedBomb then
+        if self.plantedBomb and not self.isRoundOver then
             self.weaponPriority = AiWeaponPriorityClutch
         else
             self.weaponPriority = AiWeaponPriorityGeneral

@@ -171,7 +171,7 @@ function AiRadio:speak(message, chance, minDelay, maxDelay, ...)
     message = "Null"
 
     Client.fireAfter(Client.getRandomFloat(minDelay, maxDelay), function()
-    	Client.cmd(string.format('playerradio %s "%s%s%s"', message, AiRadioColor.DEFAULT, text, AiRadioColor.WHITE))
+    	Client.execute(string.format('playerradio %s "%s%s%s"', message, AiRadioColor.DEFAULT, text, AiRadioColor.WHITE))
     end)
 end
 

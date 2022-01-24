@@ -76,7 +76,7 @@ function AiStateDrop:think(ai)
         self.droppingGearTimer:ifPausedThenStart()
 
         if Entity.getGameRules():m_bFreezePeriod() == 1 and not AiUtility.client:hasWeapons(AiUtility.mainWeapons) and player:m_iAccount() > 3200 then
-            Client.cmd("buy m4a4; buy ak47; buy m4a1_silencer")
+            Client.execute("buy m4a4; buy ak47; buy m4a1_silencer")
         end
 
         if self.droppingGearTimer:isElapsedThenStop(0.33) then
@@ -87,7 +87,7 @@ function AiStateDrop:think(ai)
             Client.fireAfter(Client.getRandomFloat(0.75, 1.25), function()
                 if not player:hasWeapons(AiUtility.mainWeapons) then
                     if player:m_iAccount() >= 3200 then
-                        Client.cmd("buy m4a4; buy ak47; buy m4a1_silencer")
+                        Client.execute("buy m4a4; buy ak47; buy m4a1_silencer")
                     end
                 end
             end)

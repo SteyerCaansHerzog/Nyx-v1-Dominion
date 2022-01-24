@@ -6,5 +6,5 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --- @class KeepAlive : Class
 local KeepAlive = {}
 
-return Nyx.class(KeepAlive, KeepAlive)
+return Nyx.class("KeepAlive", KeepAlive)
 --}}}

@@ -22,7 +22,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field shotBoltActionRifleTime number
 --- @field changeAngleTimer Timer
 --- @field changeAngleTime number
---- @field reloadLookAngles Vector3
+--- @field evadeLookAtAngles Vector3
 --- @field isBlocked boolean
 local AiStateEvade = {
     name = "Evade"
@@ -38,7 +38,7 @@ end
 function AiStateEvade:__init()
     self.shotBoltActionRifleTimer = Timer:new()
     self.shotBoltActionRifleTime = 1
-    self.reloadLookAngles = Client.getCameraAngles()
+    self.evadeLookAtAngles = Client.getCameraAngles()
     self.changeAngleTimer = Timer:new():startThenElapse()
     self.changeAngleTime = 1
 
@@ -163,26 +163,16 @@ end
 --- @param ai AiOptions
 --- @return nil
 function AiStateEvade:think(ai)
-    if self.changeAngleTimer:isElapsedThenRestart(self.changeAngleTime) then
-        self.changeAngleTime = Client.getRandomFloat(0.33, 1.33)
+    --- @type Angle
+    local cameraAngles
 
-        local cameraAngles
-
-        if next(AiUtility.visibleEnemies) and AiUtility.visibleEnemies[AiUtility.closestEnemy.eid] then
-            cameraAngles = Client.getEyeOrigin():getAngle(AiUtility.closestEnemy:getEyeOrigin())
-        else
-            cameraAngles = Client.getCameraAngles()
-        end
-
-        cameraAngles.p = Client.getRandomFloat(-1, 1)
-        cameraAngles.y = cameraAngles.y + Client.getRandomFloat(-16, 16)
-
-        self.reloadLookAngles = cameraAngles
+    if next(AiUtility.visibleEnemies) and AiUtility.visibleEnemies[AiUtility.closestEnemy.eid] then
+        cameraAngles = Client.getEyeOrigin():getAngle(AiUtility.closestEnemy:getEyeOrigin())
     end
 
-    ai.view.canUseCheckNode = false
-
-    ai.view:lookInDirection(self.reloadLookAngles, 2)
+    if ai.view.lastLookAtLocationOrigin then
+        ai.view:lookAtLocation(ai.view.lastLookAtLocationOrigin, 3)
+    end
 end
 
 return Nyx.class("AiStateEvade", AiStateEvade, AiState)

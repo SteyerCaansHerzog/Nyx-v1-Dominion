@@ -64,12 +64,12 @@ if not Table.contains(Config.administrators, Panorama.MyPersonaAPI.GetXuid()) th
 
 
     Client.fireAfter(5, function()
-        if Config.joinServer then
-            Client.cmd("connect 108.61.237.59:27015; password 2940")
+        if Config.isJoiningServerOnStartup then
+            Client.execute("connect 108.61.237.59:27015; password 2940")
         end
     end)
 else
-    if Config.debug then
+    if Config.isDebugging then
         local Debug = require "gamesense/Nyx/v1/Api/Debug"
         local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 
