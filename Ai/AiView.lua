@@ -58,13 +58,13 @@ function AiView:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiView:__init()
     self:initFields()
     self:initEvents()
 end
 
---- @return nil
+--- @return void
 function AiView:initFields()
     self.aimPunchAngles = Angle:new(0, 0)
     self.isCrosshairFloating = true
@@ -88,7 +88,7 @@ function AiView:initFields()
     self.yawSineModifier = 1
 end
 
---- @return nil
+--- @return void
 function AiView:initEvents()
     Callbacks.frame(function()
         if not Menu.master:get() or not Menu.enableAi:get() or not Menu.enableView:get() then
@@ -103,7 +103,7 @@ function AiView:initEvents()
     end)
 end
 
---- @return nil
+--- @return void
 function AiView:setViewAngles()
     -- Match camera angles to AI view angles.
     if self.viewAngles then
@@ -152,7 +152,7 @@ function AiView:setViewAngles()
 end
 
 --- @param targetViewAngles Angle
---- @return nil
+--- @return void
 function AiView:interpolateViewAngles(targetViewAngles)
     self:setRandomizers()
 
@@ -163,7 +163,7 @@ function AiView:interpolateViewAngles(targetViewAngles)
 end
 
 --- @param targetViewAngles Angle
---- @return nil
+--- @return void
 function AiView:setTargetVelocity(targetViewAngles)
     if not self.isCrosshairUsingVelocity then
         self.isCrosshairUsingVelocity = true
@@ -191,7 +191,7 @@ function AiView:setTargetVelocity(targetViewAngles)
 end
 
 --- @param targetViewAngles Angle
---- @return nil
+--- @return void
 function AiView:setTargetCurve(targetViewAngles)
     -- Sine wave float the angles.
     local floatPitch = Animate.float(0, 50, 5)
@@ -212,7 +212,7 @@ function AiView:setTargetCurve(targetViewAngles)
 end
 
 --- @param targetViewAngles Angle
---- @return nil
+--- @return void
 function AiView:setTargetFloat(targetViewAngles)
     -- Float the angles.
     local pitchSine = Animate.float(0, 1 * self.pitchSineModifier, 1 * self.pitchSineModifier)
@@ -224,7 +224,7 @@ function AiView:setTargetFloat(targetViewAngles)
     )
 end
 
---- @return nil
+--- @return void
 function AiView:setRandomizers()
     if Entity.getGameRules():m_bFreezePeriod() == 1 or not self.isCrosshairFloating then
         self.isCrosshairFloating = true
@@ -247,13 +247,13 @@ function AiView:setRandomizers()
 end
 
 --- @param idealViewAngles Angle
---- @return nil
+--- @return void
 function AiView:setIdealOverride(idealViewAngles)
     idealViewAngles:setFromAngle(self.overrideViewAngles)
 end
 
 --- @param idealViewAngles Angle
---- @return nil
+--- @return void
 function AiView:setIdealLookAhead(idealViewAngles)
     --- @type Node
     local lookAheadNode
@@ -291,7 +291,7 @@ function AiView:setIdealLookAhead(idealViewAngles)
 end
 
 --- @param idealViewAngles Angle
---- @return nil
+--- @return void
 function AiView:setIdealCheckCorner(idealViewAngles)
     local player = AiUtility.client
     local clientOrigin = player:getOrigin()
@@ -337,7 +337,7 @@ function AiView:setIdealCheckCorner(idealViewAngles)
 end
 
 --- @param cmd SetupCommandEvent
---- @return nil
+--- @return void
 function AiView:think(cmd)
     if not self.enabled then
         return
@@ -405,7 +405,7 @@ end
 
 --- @param origin Vector3
 --- @param speed number
---- @return nil
+--- @return void
 function AiView:lookAtLocation(origin, speed)
     if self.isViewLocked then
         return
@@ -418,7 +418,7 @@ end
 
 --- @param angle Angle
 --- @param speed number
---- @return nil
+--- @return void
 function AiView:lookInDirection(angle, speed)
     if self.isViewLocked then
         return

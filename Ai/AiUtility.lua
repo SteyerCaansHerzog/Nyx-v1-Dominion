@@ -117,13 +117,13 @@ local AiUtility = {
     }
 }
 
---- @return nil
+--- @return void
 function AiUtility:__setup()
     self:initFields()
     self:initEvents()
 end
 
---- @return nil
+--- @return void
 function AiUtility:initFields()
     self.client = Player.getClient()
     self.visibleEnemies = {}
@@ -137,7 +137,7 @@ function AiUtility:initFields()
     self.teammates = {}
 end
 
---- @return nil
+--- @return void
 function AiUtility:initEvents()
     Callbacks.roundStart(function()
         self.canDefuse = nil

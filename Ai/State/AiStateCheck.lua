@@ -24,21 +24,21 @@ function AiStateCheck:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStateCheck:__init()
     Callbacks.roundStart(function()
     	self:reset()
     end)
 end
 
---- @return nil
+--- @return void
 function AiStateCheck:assess()
     return self.isChecking and AiState.priority.CHECK or AiStateCheck.priority.IGNORE
 end
 
 --- @param ai AiOptions
 --- @param spawn string
---- @return nil
+--- @return void
 function AiStateCheck:activate(ai, spawn)
     self.node = self:getSpawn(ai, spawn)
 
@@ -65,13 +65,13 @@ function AiStateCheck:activate(ai, spawn)
     })
 end
 
---- @return nil
+--- @return void
 function AiStateCheck:reset()
     self.isChecking = false
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateCheck:think(ai) end
 
 --- @param ai AiOptions

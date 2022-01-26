@@ -28,23 +28,23 @@ function AiStateDeveloper:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStateDeveloper:__init() end
 
---- @return nil
+--- @return void
 function AiStateDeveloper:assess()
     return AiState.priority.IGNORE
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateDeveloper:activate(ai) end
 
---- @return nil
+--- @return void
 function AiStateDeveloper:reset() end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateDeveloper:think(ai) end
 
 return Nyx.class("AiStateDeveloper", AiStateDeveloper, AiState)

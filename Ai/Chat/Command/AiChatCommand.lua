@@ -5,6 +5,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
+local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 --}}}
 
@@ -18,11 +19,11 @@ local AiChatCommand = {}
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return nil
+--- @return void
 function AiChatCommand:invoke(ai, sender, args) end
 
 --- @param args string[]
---- @return nil
+--- @return void
 function AiChatCommand:execute(args)
     if not Menu.useAiChatCommands:get() then
         return
@@ -43,7 +44,7 @@ function AiChatCommand:isValid(ai, sender, args)
         return false
     end
 
-    local isSenderAdmin = Table.contains(ai.config.administrators, sender:getSteam64())
+    local isSenderAdmin = Table.contains(Config.administrators, sender:getSteam64())
 
     if self.isAdminOnly and not isSenderAdmin then
         return false

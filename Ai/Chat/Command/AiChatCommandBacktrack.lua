@@ -33,7 +33,7 @@ local AiChatCommandBacktrack = {
 --- @param ai AiController
 --- @param sender PlayerChatEvent
 --- @param args string[]
---- @return nil
+--- @return void
 function AiChatCommandBacktrack:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return

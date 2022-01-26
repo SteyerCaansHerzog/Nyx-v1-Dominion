@@ -98,13 +98,13 @@ function AiStateEngage:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStateEngage:__init()
     self:initFields()
     self:initEvents()
 end
 
---- @return nil
+--- @return void
 function AiStateEngage:initFields()
     self.skill = 4
     self.enemyVisibleTimer = Timer:new()
@@ -171,7 +171,7 @@ function AiStateEngage:initFields()
     end):setParent(Menu.enableAi)
 end
 
---- @return nil
+--- @return void
 function AiStateEngage:initEvents()
     Callbacks.playerFootstep(function(e)
         if e.player:isClient() then
@@ -349,7 +349,7 @@ function AiStateEngage:initEvents()
     end)
 end
 
---- @return nil
+--- @return void
 function AiStateEngage:assess()
     self:setBestTarget()
 
@@ -388,7 +388,7 @@ function AiStateEngage:assess()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEngage:activate(ai)
     self.canCrouch = Client.getChance(2)
 
@@ -411,10 +411,10 @@ function AiStateEngage:activate(ai)
     end
 end
 
---- @return nil
+--- @return void
 function AiStateEngage:deactivate() end
 
---- @return nil
+--- @return void
 function AiStateEngage:reset()
     self.reactionTimer:stop()
     self.sprayTimer:stop()
@@ -436,7 +436,7 @@ function AiStateEngage:reset()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEngage:think(ai)
     if not Menu.master:get() or not Menu.enableAi:get() then
         return
@@ -448,7 +448,7 @@ function AiStateEngage:think(ai)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEngage:tellRotate(ai)
     if not self.tellRotateTimer:isElapsed(15) then
         return
@@ -521,7 +521,7 @@ end
 --- @param player Player
 --- @param range number
 --- @param reason string
---- @return nil
+--- @return void
 function AiStateEngage:noticeEnemy(player, range, reason)
     if not AiUtility.client:isAlive() or not self.ignoreDormancyTimer:isElapsed(self.ignoreDormancyTime) then
         return
@@ -553,7 +553,7 @@ function AiStateEngage:noticeEnemy(player, range, reason)
 end
 
 --- @param player Player
---- @return nil
+--- @return void
 function AiStateEngage:unnoticeEnemy(player)
     self.noticedPlayerTimers[player.eid]:stop()
 end
@@ -581,7 +581,7 @@ function AiStateEngage:hasNoticedEnemy(enemy)
     return timer:isStarted() and not timer:isElapsed(self.ignorePlayerAfter)
 end
 
---- @return nil
+--- @return void
 function AiStateEngage:unnoticeAllEnemies()
     for i = 1, 64 do
         self.noticedPlayerTimers[i]:stop()
@@ -653,7 +653,7 @@ end
 --- @field evaluate fun(): boolean
 ---
 --- @param enemy Player
---- @return nil
+--- @return void
 function AiStateEngage:setWeaponStats(enemy)
     if not enemy then
         return
@@ -881,7 +881,7 @@ function AiStateEngage:setWeaponStats(enemy)
     end
 end
 
---- @return nil
+--- @return void
 function AiStateEngage:render()
     if not Menu.master:get() or not Menu.enableAi:get() or not Menu.enableAimbot:get() or not Menu.visualiseAimbot:get() then
         return
@@ -964,7 +964,7 @@ function AiStateEngage:render()
 end
 
 --- @param uiPos Vector2
---- @return nil
+--- @return void
 function AiStateEngage:renderEmpty(uiPos)
     local offset = 30
     uiPos:offset(0, offset)
@@ -973,7 +973,7 @@ end
 --- @param uiPos Vector2
 --- @param color Color
 --- @vararg string
---- @return nil
+--- @return void
 function AiStateEngage:renderText(uiPos, color, ...)
     local offset = 25
 
@@ -988,7 +988,7 @@ end
 --- @param uiPos Vector2
 --- @param timer Timer
 --- @param time number
---- @return nil
+--- @return void
 function AiStateEngage:renderTimer(title, uiPos, timer, time, color)
     local offset = 25
     local pct = math.min(1, timer:get() / time)
@@ -1011,7 +1011,7 @@ function AiStateEngage:renderTimer(title, uiPos, timer, time, color)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEngage:walk(ai)
     local player = AiUtility.client
     local canWalk
@@ -1058,7 +1058,7 @@ function AiStateEngage:walk(ai)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEngage:engage(ai)
     self:attack(ai)
 
@@ -1115,7 +1115,7 @@ function AiStateEngage:engage(ai)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEngage:attack(ai)
     if not Menu.master:get() or not Menu.enableAi:get() or not Menu.enableAimbot:get() then
         return
@@ -1296,7 +1296,7 @@ end
 --- @param hitbox Vector3
 --- @param fov number
 --- @param enemy Player
---- @return nil
+--- @return void
 function AiStateEngage:shoot(ai, hitbox, fov, enemy)
     if not hitbox then
         return
@@ -1540,7 +1540,7 @@ function AiStateEngage:shootThroughSmokes(ai, enemy)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEngage:ferrariPeek(ai)
     local enemy = self.bestTarget
 
@@ -1645,7 +1645,7 @@ function AiStateEngage:ferrariPeek(ai)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEngage:preAimThroughCorners(ai)
     local target = self.bestTarget
 
@@ -1724,7 +1724,7 @@ function AiStateEngage:preAimThroughCorners(ai)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEngage:preAimAboutCorners(ai)
     if not self.bestTarget or not self.bestTarget:isAlive() then
         return
@@ -1811,7 +1811,7 @@ function AiStateEngage:preAimAboutCorners(ai)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEngage:watchAngle(ai)
     if not self.watchTimer:isStarted() then
         return
@@ -1835,7 +1835,7 @@ end
 
 --- @param ai AiOptions
 --- @param enemy Player
---- @return nil
+--- @return void
 function AiStateEngage:pathfindBlockedEnemy(ai, enemy)
     local enemyEyeOrigin = enemy:getOrigin():offset(0, 0, 64)
 
@@ -1874,7 +1874,7 @@ function AiStateEngage:pathfindBlockedEnemy(ai, enemy)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEngage:autoStop(ai)
     if not self.canAutoStop then
         ai.cmd.in_duck = 1
@@ -1905,7 +1905,7 @@ function AiStateEngage:autoStop(ai)
 end
 
 --- @param skill number
---- @return nil
+--- @return void
 function AiStateEngage:setAimSkill(skill)
     self.skill = skill
 

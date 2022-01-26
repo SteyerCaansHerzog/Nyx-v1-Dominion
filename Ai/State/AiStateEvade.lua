@@ -34,7 +34,7 @@ function AiStateEvade:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStateEvade:__init()
     self.shotBoltActionRifleTimer = Timer:new()
     self.shotBoltActionRifleTime = 1
@@ -49,7 +49,7 @@ function AiStateEvade:__init()
     end)
 end
 
---- @return nil
+--- @return void
 function AiStateEvade:assess()
     if self.isBlocked then
         self.isBlocked = nil
@@ -99,7 +99,7 @@ function AiStateEvade:assess()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEvade:activate(ai)
     local player = AiUtility.client
     local playerOrigin = player:getOrigin()
@@ -161,7 +161,7 @@ function AiStateEvade:activate(ai)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEvade:think(ai)
     --- @type Angle
     local cameraAngles

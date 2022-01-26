@@ -26,10 +26,10 @@ function AiStateAvoidInfernos:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStateAvoidInfernos:__init() end
 
---- @return nil
+--- @return void
 function AiStateAvoidInfernos:assess()
     local clientOrigin = AiUtility.client:getOrigin()
 
@@ -47,22 +47,22 @@ function AiStateAvoidInfernos:assess()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateAvoidInfernos:activate(ai) end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateAvoidInfernos:deactivate(ai)
     self:reset()
 end
 
---- @return nil
+--- @return void
 function AiStateAvoidInfernos:reset()
     self.inferno = nil
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateAvoidInfernos:think(ai)
     local clientOrigin = AiUtility.client:getOrigin()
     local eyeOrigin = Client.getEyeOrigin()
@@ -74,7 +74,7 @@ function AiStateAvoidInfernos:think(ai)
     --- @type Node
     local backupNode
 
-    for _, node in pairs(self.nodegraph.nodes) do
+    for _, node in pairs(ai.nodegraph.nodes) do
         if node.active and infernoOrigin:getDistance(node.origin) > 300 and clientOrigin:getDistance(node.origin) < 1024 then
             backupNode = node
 

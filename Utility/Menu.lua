@@ -44,7 +44,7 @@ function DominionMenu:new()
     return Nyx.new(self)
 end
 
---- @return nil
+--- @return void
 function DominionMenu:__init()
     self.standaloneQuickStopRef = Menu.reference("misc", "movement", "standalone quick stop")
 

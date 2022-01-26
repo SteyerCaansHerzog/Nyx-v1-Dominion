@@ -19,7 +19,7 @@ local AiChatCommandStop = {
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return nil
+--- @return void
 function AiChatCommandStop:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return

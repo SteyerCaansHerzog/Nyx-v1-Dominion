@@ -31,7 +31,7 @@ function AiStateChickenInteraction:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStateChickenInteraction:__init()
     self.blacklist = {}
     self.cooldownTimer = Timer:new():startThenElapse()
@@ -46,7 +46,7 @@ function AiStateChickenInteraction:__init()
     end)
 end
 
---- @return nil
+--- @return void
 function AiStateChickenInteraction:assess()
     if Entity.getGameRules():m_bFreezePeriod() == 1 then
         return AiState.priority.IGNORE
@@ -98,15 +98,15 @@ function AiStateChickenInteraction:assess()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateChickenInteraction:activate(ai) end
 
---- @return nil
+--- @return void
 function AiStateChickenInteraction:deactivate()
     self.targetChicken = nil
 end
 
---- @return nil
+--- @return void
 function AiStateChickenInteraction:reset()
     self.targetChicken = nil
 
@@ -114,7 +114,7 @@ function AiStateChickenInteraction:reset()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateChickenInteraction:think(ai)
     if not AiUtility.client:isHoldingKnife() then
         self:reset()

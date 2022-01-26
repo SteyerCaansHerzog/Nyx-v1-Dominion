@@ -32,7 +32,7 @@ function AiStateBoost:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStateBoost:__init()
     self.boostLookTimer = Timer:new():startThenElapse()
 
@@ -56,14 +56,14 @@ end
 
 --- @param player Player
 --- @param origin Vector3
---- @return nil
+--- @return void
 function AiStateBoost:boost(player, origin)
     self.boostPlayer = player
     self.boostOrigin = origin
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateBoost:activate(ai)
     ai.nodegraph:pathfind(self.boostOrigin, {
     objective = Node.types.GOAL,
@@ -75,12 +75,12 @@ function AiStateBoost:activate(ai)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateBoost:deactivate(ai)
     self:reset()
 end
 
---- @return nil
+--- @return void
 function AiStateBoost:reset()
     self.boostPlayer = nil
     self.boostOrigin = nil
@@ -88,7 +88,7 @@ function AiStateBoost:reset()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateBoost:think(ai)
     if ai.nodegraph.pathfindFails > 0 then
         self:reset()

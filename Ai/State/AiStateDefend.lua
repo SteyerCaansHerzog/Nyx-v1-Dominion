@@ -47,7 +47,7 @@ function AiStateDefend:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStateDefend:__init()
     self.defendTimer = Timer:new()
     self.defendTime = Client.getRandomFloat(2, 6)
@@ -60,13 +60,16 @@ function AiStateDefend:__init()
         self.defendingSite = Client.getRandomInt(1, 2) == 1 and "a" or "b"
     end)
 
+    Callbacks.roundPrestart(function()
+        self.defendingSite = Client.getRandomInt(1, 2) == 1 and "a" or "b"
+    end)
+
     Callbacks.roundEnd(function()
         self.speakCooldownTimer:startThenElapse()
         self.isDefending = false
         self.isDefendingBomb = false
         self.isDefendingDefuser = false
         self.node = nil
-        self.defendingSite = Client.getRandomInt(1, 2) == 1 and "a" or "b"
     end)
 
     Callbacks.itemPickup(function(e)
@@ -110,7 +113,7 @@ end
 --- @param ai AiOptions
 --- @param site string
 --- @param swapPair boolean
---- @return nil
+--- @return void
 function AiStateDefend:activate(ai, site, swapPair, useClosestSite)
     local bomb = AiUtility.plantedBomb
 
@@ -165,11 +168,11 @@ function AiStateDefend:activate(ai, site, swapPair, useClosestSite)
     end
 end
 
---- @return nil
+--- @return void
 function AiStateDefend:deactivate() end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateDefend:think(ai)
     if not self.node then
         return

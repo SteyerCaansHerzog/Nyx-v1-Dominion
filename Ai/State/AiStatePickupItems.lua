@@ -36,7 +36,7 @@ function AiStatePickupItems:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStatePickupItems:__init()
     self.useCooldown = Timer:new():startThenElapse()
     self.entityBlacklist = {}
@@ -47,7 +47,7 @@ function AiStatePickupItems:__init()
     end)
 end
 
---- @return nil
+--- @return void
 function AiStatePickupItems:assess()
     if self.item then
         return self.currentPriority
@@ -151,10 +151,10 @@ function AiStatePickupItems:getNearbyItems(items)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStatePickupItems:activate(ai) end
 
---- @return nil
+--- @return void
 function AiStatePickupItems:deactivate()
     if self.item and self.item:m_hOwner() == Client.getEid() then
         Client.equipWeapon()
@@ -162,7 +162,7 @@ function AiStatePickupItems:deactivate()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStatePickupItems:think(ai)
     local owner = self.item:m_hOwnerEntity()
     local isDefuseKit = self.item.classname == "CEconEntity"

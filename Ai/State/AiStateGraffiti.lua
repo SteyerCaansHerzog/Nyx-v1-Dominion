@@ -25,7 +25,7 @@ function AiStateGraffiti:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStateGraffiti:__init()
     self.killCount = 0
     self.lastKillTimer = Timer:new()
@@ -51,7 +51,7 @@ function AiStateGraffiti:__init()
     end)
 end
 
---- @return nil
+--- @return void
 function AiStateGraffiti:assess()
     if self.lastKillTimer:isElapsedThenStop(self.lastKillCutoff) then
         self.killCount = 0
@@ -77,7 +77,7 @@ function AiStateGraffiti:assess()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateGraffiti:think(ai)
     local newCameraAngles = Client.getCameraAngles()
 

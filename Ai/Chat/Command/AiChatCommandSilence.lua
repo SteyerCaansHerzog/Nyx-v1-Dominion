@@ -18,7 +18,7 @@ local AiChatCommandSilence = {
 --- @param ai AiController
 --- @param sender PlayerChatEvent
 --- @param args string[]
---- @return nil
+--- @return void
 function AiChatCommandSilence:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return

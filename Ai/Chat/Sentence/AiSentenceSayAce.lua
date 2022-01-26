@@ -18,7 +18,7 @@ function AiSentenceSayAce:new()
     return Nyx.new(self)
 end
 
---- @return nil
+--- @return void
 function AiSentenceSayAce:__init()
     self.__parent.__init(self)
 

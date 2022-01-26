@@ -23,6 +23,9 @@ local Steamworks = require "gamesense/steamworks"
 --}}}
 
 --{{{ Modules
+local AiActionPanorama = require "gamesense/Nyx/v1/Dominion/Ai/Action/AiActionPanorama"
+local AiActionSetBaseState = require "gamesense/Nyx/v1/Dominion/Ai/Action/AiActionSetBaseState"
+
 local AiStateAvoidInfernos = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateAvoidInfernos"
 local AiStateBoost = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBoost"
 local AiStateCheck = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateCheck"
@@ -84,11 +87,11 @@ local AiRadio = require "gamesense/Nyx/v1/Dominion/Ai/AiRadio"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiView = require "gamesense/Nyx/v1/Dominion/Ai/AiView"
+local AiVoice = require "gamesense/Nyx/v1/Dominion/Ai/AiVoice"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local DominionClient = require "gamesense/Nyx/v1/Dominion/Client/Client"
-local AiVoice = require "gamesense/Nyx/v1/Dominion/Ai/AiVoice"
+local DominionMenu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
-local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
@@ -98,45 +101,40 @@ local isAppFocused = vtable_bind("engine.dll", "VEngineClient014", 196, "bool(__
 
 --{{{ AiController
 --- @class AiController : Class
+--- @field actions AiAction[]
 --- @field activeFlashbang Entity
---- @field antiBlockLookAngles Vector3
 --- @field antiAfkEnabled boolean
 --- @field antiAfkLookAngles Angle
 --- @field antiAfkMoveYaw number
 --- @field antiAfkTimer Timer
 --- @field antiBlockDuration number
+--- @field antiBlockLookAngles Vector3
 --- @field antiFlyTimer Timer
 --- @field antiFlyValues number
---- @field autoActionTimer Timer
 --- @field canAntiBlock boolean
 --- @field canAvoidInfernos boolean
 --- @field canBuyThisRound boolean
 --- @field canInspectWeapon boolean
 --- @field canInspectWeaponTime number
 --- @field canInspectWeaponTimer Timer
---- @field canLookAround boolean
 --- @field canLookAwayFromFlash boolean
 --- @field canUnscope boolean
 --- @field canUseKnife boolean
 --- @field chat AiChat
 --- @field client DominionClient
 --- @field commands AiChatCommand[]
---- @field config Config
 --- @field currentState AiState
 --- @field deactivatedNodes table<number, Node[]>
 --- @field deactivatedNodesByBlock table<number, Node[]>
+--- @field dynamicSkillHasDied number
+--- @field dynamicSkillRoundKills number
 --- @field flashbangVisibleTimer Timer
---- @field font number
---- @field freezetimeTimer Timer
---- @field isFreezetime boolean
+--- @field isAutoBuyArmourBlocked boolean
 --- @field isQuickStopping boolean
 --- @field isWalking boolean
 --- @field lastPriority number
---- @field lookAroundAngles Angle
---- @field lookAroundTimer Timer
 --- @field nodegraph Nodegraph
 --- @field radio AiRadio
---- @field reloadDelay number
 --- @field sentences AiSentence[]
 --- @field states AiState[]
 --- @field unblockDirection string
@@ -146,7 +144,6 @@ local isAppFocused = vtable_bind("engine.dll", "VEngineClient014", 196, "bool(__
 --- @field unscopeTimer Timer
 --- @field view AiView
 --- @field voice AiVoice
---- @field lastAppFocusState boolean
 local AiController = {
 	states = {
 		avoidInfernos = AiStateAvoidInfernos,
@@ -206,6 +203,10 @@ local AiController = {
 		sayAce = AiSentenceSayAce,
 		sayGg = AiSentenceSayGg,
 		sayKills = AiSentenceSayKills,
+	},
+	actions = {
+		panorama = AiActionPanorama,
+		setBaseState = AiActionSetBaseState,
 	}
 }
 
@@ -215,13 +216,13 @@ function AiController:new(fields)
 	return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiController:__init()
 	self:initFields()
 	self:initEvents()
 end
 
---- @return nil
+--- @return void
 function AiController:initFields()
 	self.view = AiView:new({
 		nodegraph = self.nodegraph
@@ -234,26 +235,20 @@ function AiController:initFields()
 	self.antiBlockDuration = Client.getRandomFloat(1, 2)
 	self.antiFlyTimer = Timer:new():start()
 	self.antiFlyValues = {}
-	self.autoActionTimer = Timer:new():startThenElapse()
 	self.canBuyThisRound = true
 	self.canInspectWeapon = true
 	self.canInspectWeaponTime = Client.getRandomFloat(50, 90)
 	self.canInspectWeaponTimer = Timer:new():start()
-	self.config = Config
 	self.deactivatedNodes = {}
 	self.deactivatedNodesByBlock = {}
 	self.flashbangVisibleTimer = Timer:new()
-	self.freezetimeTimer = Timer:new()
-	self.isFreezetime = true
-	self.lookAroundTimer = Timer:new():start()
-	self.reloadDelay = Client.getRandomFloat(2, 2.9)
 	self.unblockDirection = "Left"
 	self.unblockNodesTimer = Timer:new()
 	self.unblockTimer = Timer:new():elapse()
 	self.unscopeTime = 2
 	self.unscopeTimer = Timer:new()
 
-	Menu.enableAi = Menu.group:checkbox("> Dominion Artifical Intelligence"):setParent(Menu.master):addCallback(function(item)
+	DominionMenu.enableAi = DominionMenu.group:checkbox("> Dominion Artifical Intelligence"):setParent(DominionMenu.master):addCallback(function(item)
 		local value = item:get()
 
 		if not value then
@@ -265,9 +260,9 @@ function AiController:initFields()
 		self.currentState = nil
 	end)
 
-	Menu.visualisePathfinding = Menu.group:checkbox("    > Visualise Pathfinding"):setParent(Menu.enableAi)
-	Menu.enableView = Menu.group:checkbox("    > Enable View"):setParent(Menu.enableAi)
-	Menu.enableAutoBuy = Menu.group:checkbox("    > Enable Auto-Buy"):setParent(Menu.enableAi)
+	DominionMenu.visualisePathfinding = DominionMenu.group:checkbox("    > Visualise Pathfinding"):setParent(DominionMenu.enableAi)
+	DominionMenu.enableView = DominionMenu.group:checkbox("    > Enable View"):setParent(DominionMenu.enableAi)
+	DominionMenu.enableAutoBuy = DominionMenu.group:checkbox("    > Enable Auto-Buy"):setParent(DominionMenu.enableAi)
 
 	self.radio = AiRadio:new()
 	self.voice = AiVoice:new()
@@ -292,116 +287,34 @@ function AiController:initFields()
 
 	self.commands = commands
 
+	local actions = {}
+
+	for id, action in pairs(self.actions) do
+		actions[id] = action:new()
+	end
+
+	self.actions = actions
+
 	AiChat:new({
 		sentences = self.sentences
 	})
-
-	self:setClientLoaderLock()
-	self:openAndEquipGraffitis()
 
 	if Config.isLiveClient and not Table.contains(Config.administrators, Panorama.MyPersonaAPI.GetXuid()) then
 		self.client = DominionClient:new()
 	end
 end
 
---- @return nil
+--- @return void
 function AiController:initEvents()
-	if entity.get_local_player() then
-		for _ = 0, entity.get_local_player() * 100 do
-			client.random_float(0, 1)
-		end
-	end
-
-	cvar.engine_no_focus_sleep:set_int(0)
-
-	-- Only live clients and non-admins should delete their entire friends list.
-	if Config.isLiveClient and not Table.contains(Config.administrators, Panorama.MyPersonaAPI.GetXuid()) then
-		self:purgeSteamFriends()
-		self:setCrosshair()
-	end
-
-	Callbacks.playerConnectFull(function(e)
-		Client.fireAfter(10, function()
-			local steamid64 = e.player:getSteam64()
-
-			if Panorama.GameStateAPI.IsSelectedPlayerMuted(steamid64) then
-				Panorama.GameStateAPI.ToggleMute(steamid64)
-			end
-		end)
-	end)
-
 	Callbacks.init(function()
-		Client.fireAfter(10, function()
-			for _, player in Player.findAll(function()
-				return true
-			end) do
-				local steamid64 = player:getSteam64()
+		self.dynamicSkillRoundKills = 0
+		self.dynamicSkillHasDied = false
 
-				if Panorama.GameStateAPI.IsSelectedPlayerMuted(steamid64) then
-					Panorama.GameStateAPI.ToggleMute(steamid64)
-				end
-			end
-		end)
-	end)
-
-	Callbacks.levelInit(function()
-		for _ = 0, entity.get_local_player() * 100 do
-			client.random_float(0, 1)
-		end
-	end)
-
-	Callbacks.frameGlobal(function()
-		-- App focus FPS. Performance.
-		local isAppFocusedState = isAppFocused()
-
-		if isAppFocusedState ~= self.lastAppFocusState then
-			self.lastAppFocusState = isAppFocusedState
-
-			if isAppFocusedState then
-				cvar.fps_max_menu:set_int(30)
-			else
-				cvar.fps_max_menu:set_int(1)
-			end
-		end
-
-		-- Auto-accept admin invites.
-		for i = 1, Panorama.PartyBrowserAPI.GetInvitesCount() do
-			local lobbyId = Panorama.PartyBrowserAPI.GetInviteXuidByIndex(i - 1)
-
-			local found = false
-
-			for j = 0, 5 do
-				local xuid = Panorama.PartyBrowserAPI.GetPartyMemberXuid(lobbyId, j)
-
-				if Table.contains(Config.administrators, xuid) then
-					Panorama.PartyBrowserAPI.ActionJoinParty(lobbyId)
-
-					found = true
-
-					break
-				end
-			end
-
-			if found then
-				break
-			end
-		end
-
-		-- Auto-close Panorama popups.
-		if Menu.autoClosePopups:get() and self.autoActionTimer:isElapsedThenRestart(15) then
-			panorama.loadstring('UiToolkitAPI.CloseAllVisiblePopups()', 'CSGOMainMenu')()
-
-			Panorama.InventoryAPI.AcknowledgeNewItems()
-
-			-- Auto-reconnect to ongoing matches.
-			if self.client.allocation and not Panorama.GameStateAPI.IsConnectedOrConnectingToServer() and Panorama.CompetitiveMatchAPI.HasOngoingMatch() then
-				Panorama.CompetitiveMatchAPI.ActionReconnectToOngoingMatch()
-			end
-		end
+		self.states.engage.skill = 2
 	end)
 
 	Callbacks.frame(function()
-		if not Menu.master:get() then
+		if not DominionMenu.master:get() then
 			return
 		end
 
@@ -412,22 +325,49 @@ function AiController:initEvents()
 		self:think(cmd)
 	end)
 
+	Callbacks.playerDeath(function(e)
+		if e.attacker:isClient() and e.victim:isEnemy() then
+			self.dynamicSkillRoundKills = self.dynamicSkillRoundKills + 1
+		end
+
+		if e.victim:isClient() and e.attacker:isEnemy() then
+			self.dynamicSkillHasDied = true
+		end
+	end)
+
 	Callbacks.roundStart(function()
+		self.isAutoBuyArmourBlocked = true
+
+		Client.fireAfter(1, function()
+			self.isAutoBuyArmourBlocked = false
+		end)
+
+		-- Dynamic skill.
+		if self.client and self.client.allocation then
+			if self.dynamicSkillHasDied and self.dynamicSkillRoundKills == 0 then
+				self.states.engage.skill = self.states.engage.skill + 1
+			elseif self.dynamicSkillRoundKills >= 2 then
+				self.states.engage.skill = self.states.engage.skill - 1
+			end
+
+			self.states.engage.skill = Math.clamp(self.states.engage.skill, 0, 10)
+		end
+
+		self.dynamicSkillHasDied = false
+		self.dynamicSkillRoundKills = 0
+
 		self.nodegraph:reactivateAllNodes()
 
-		if not Menu.master:get() or not Menu.enableAi:get() then
+		if not DominionMenu.master:get() or not DominionMenu.enableAi:get() then
 			return
 		end
 
-		Client.execute("showconsole")
-
-		self.isFreezetime = true
+		-- AI.
 		self.lastPriority = nil
 		self.currentState = nil
 
 		self.nodegraph:clearPath("Round restart")
 
-		self.freezetimeTimer:start()
 		self:autoBuy()
 
 		for _, block in pairs(self.nodegraph.objectiveBlock) do
@@ -446,14 +386,13 @@ function AiController:initEvents()
 	end)
 
 	Callbacks.roundFreezeEnd(function()
-		self.isFreezetime = false
 		self.canBuyThisRound = true
 
 		self.unblockNodesTimer:start()
 	end)
 
 	Callbacks.itemEquip(function(e)
-		if not Menu.master:get() or not Menu.enableAi:get() or not Menu.enableAutoBuy:get() then
+		if not DominionMenu.master:get() or not DominionMenu.enableAi:get() or not DominionMenu.enableAutoBuy:get() then
 			return
 		end
 
@@ -462,11 +401,11 @@ function AiController:initEvents()
 		end
 
 		Client.fireAfter(0.1, function()
-			if not self.freezetimeTimer:isElapsed(1) then
+			if self.isAutoBuyArmourBlocked then
 				return
 			end
 
-			Client.execute("buy vest; buy vesthelm")
+			Client.execute("buy vest; buy vesthelm") print("BUY?") -- todo
 		end)
 	end)
 
@@ -505,7 +444,7 @@ function AiController:initEvents()
 	end)
 
 	Callbacks.playerChat(function(e)
-		if not Menu.master:get() then
+		if not DominionMenu.master:get() then
 			return
 		end
 
@@ -513,82 +452,8 @@ function AiController:initEvents()
 	end)
 end
 
---- @return nil
-function AiController:setCrosshair()
-	local options = {
-		cl_crosshairstyle = {4},
-		cl_crosshair_drawoutline = {0, 1},
-		cl_crosshairthickness = {1, 1.5},
-		cl_crosshairsize = {2, 3},
-		cl_crosshairgap = {1, 2, 3},
-		cl_crosshairdot = {0, 0, 1},
-		cl_crosshaircolor = {0, 1, 2, 4, 5},
-		cl_crosshair_t = {0, 0, 0, 0, 0, 0, 1},
-		cl_crosshair_outlinethickness = {0.5, 1},
-	}
-
-	for option, values in pairs(options) do
-		Client.execute("%s %s", option, Table.getRandom(values))
-	end
-end
-
---- @return void
-function AiController:purgeSteamFriends()
-	-- Please don't delete my main account's friends list.
-	if Panorama.MyPersonaAPI.GetXuid() == "76561199102984662" then
-		return
-	end
-
-	local ISteamFriends = Steamworks.ISteamFriends
-	local EFriendFlags = Steamworks.EFriendFlags
-
-	local callback = function()
-		local friendsCount = ISteamFriends.GetFriendCount(EFriendFlags.All)
-
-		for i = 1, friendsCount do
-			local steamid = ISteamFriends.GetFriendByIndex(i - 1, EFriendFlags.All)
-
-			ISteamFriends.RemoveFriend(steamid)
-		end
-	end
-
-	callback()
-
-	Steamworks.set_callback("PersonaStateChange_t", function()
-		callback()
-	end)
-end
-
---- @return nil
-function AiController:openAndEquipGraffitis()
-	Panorama.InventoryAPI.SetInventorySortAndFilters("inv_sort_age", false, "", "", "")
-
-	local totalItems = Panorama.InventoryAPI.GetInventoryCount() - 1
-	local openedGraffiti = {}
-	local unopenedGraffiti = {}
-
-	for i = 0, totalItems do
-		local idx = Panorama.InventoryAPI.GetInventoryItemIDByIndex(i)
-		local set = Panorama.InventoryAPI.GetItemDefinitionName(idx)
-
-		if set == "spray" then
-			table.insert(unopenedGraffiti, idx)
-		elseif set == "spraypaint" then
-			table.insert(openedGraffiti, idx)
-		end
-	end
-
-	Panorama.LoadoutAPI.EquipItemInSlot("noteam", Table.getRandom(openedGraffiti), "spray0")
-
-	for id, spray in pairs(unopenedGraffiti) do
-		Client.fireAfter(id, function()
-			Panorama.InventoryAPI.UseTool(spray, spray)
-		end)
-	end
-end
-
 --- @param limit number
---- @return nil
+--- @return void
 function AiController:buyGrenades(limit)
 	local nades = Table.getShuffled({
 		"buy smokegrenade",
@@ -612,9 +477,9 @@ function AiController:buyGrenades(limit)
 	end
 end
 
---- @return nil
+--- @return void
 function AiController:autoBuy()
-	if not Menu.enableAutoBuy:get() or not self.canBuyThisRound then
+	if not DominionMenu.enableAutoBuy:get() or not self.canBuyThisRound then
 		return
 	end
 
@@ -725,7 +590,7 @@ function AiController:autoBuy()
 	end)
 end
 
---- @return nil
+--- @return void
 function AiController:forceBuy()
 	local player = AiUtility.client
 
@@ -792,7 +657,7 @@ function AiController:getState(state)
 end
 
 --- @param e PlayerChatEvent
---- @return nil
+--- @return void
 function AiController:chatCommands(e)
 	if not e.text:sub(1, 1) == "/" then
 		return
@@ -809,15 +674,10 @@ function AiController:chatCommands(e)
 	command:invoke(self, e.sender, input)
 end
 
---- @return nil
-function AiController:setClientLoaderLock()
-	writefile("lua/gamesense/Nyx/v1/Dominion/Resource/Data/ClientLoaderLock", "1")
-end
-
 --- @param origin Vector3
 --- @param radius number
 --- @param checkForEnemies boolean
---- @return nil
+--- @return void
 function AiController:deactivateNodes(eid, origin, radius, checkForEnemies)
 	if checkForEnemies then
 		local isEnemyNearby = false
@@ -863,7 +723,7 @@ function AiController:deactivateNodes(eid, origin, radius, checkForEnemies)
 end
 
 --- @param eid number
---- @return nil
+--- @return void
 function AiController:reactivateNodes(eid)
 	if not self.deactivatedNodes[eid] then
 		return
@@ -876,9 +736,9 @@ function AiController:reactivateNodes(eid)
 	self.deactivatedNodes[eid] = nil
 end
 
---- @return nil
+--- @return void
 function AiController:renderUi()
-	if not Menu.visualisePathfinding:get() then
+	if not DominionMenu.visualisePathfinding:get() then
 		return
 	end
 
@@ -991,7 +851,7 @@ function AiController:renderUi()
 
 	uiPos:offset(0, offset)
 
-	if not Menu.enableAi:get() then
+	if not DominionMenu.enableAi:get() then
 		uiPos:drawSurfaceText(Font.TITLE, Color:hsla(0, 0.8, 0.6, 255), "l", "AI DISABLED")
 
 		uiPos:offset(0, offset)
@@ -1098,13 +958,13 @@ function AiController:renderUi()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiController:activities(ai)
 	local isQuickStopping = self.isQuickStopping
 
 	self.isQuickStopping = false
 
-	Menu.standaloneQuickStopRef:set(isQuickStopping)
+	DominionMenu.standaloneQuickStopRef:set(isQuickStopping)
 
 	local isWalking = self.isWalking
 
@@ -1221,7 +1081,7 @@ function AiController:activities(ai)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiController:antiAfk(ai)
 	if self.antiAfkTimer:isElapsedThenRestart(1) then
 		self.antiAfkLookAngles.p = Client.getRandomFloat(-10, 10)
@@ -1235,7 +1095,7 @@ function AiController:antiAfk(ai)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiController:antiFlash(ai)
 	local playerEid = Client.getEid()
 	local eyeOrigin = Client.getEyeOrigin()
@@ -1293,7 +1153,7 @@ function AiController:antiFlash(ai)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiController:antiBlock(ai)
 	if not self.canAntiBlock then
 		self.canAntiBlock = true
@@ -1354,7 +1214,7 @@ function AiController:antiBlock(ai)
 end
 
 --- @param cmd SetupCommandEvent
---- @return nil
+--- @return void
 function AiController:antiFly(cmd)
 	local playerOrigin = Client.getOrigin()
 
@@ -1397,7 +1257,7 @@ function AiController:antiFly(cmd)
 	end
 end
 
---- @return nil
+--- @return void
 function AiController:unblockNodes()
 	if not self.unblockNodesTimer:isElapsedThenStop(20) then
 		return
@@ -1411,7 +1271,7 @@ function AiController:unblockNodes()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiController:lookAround(ai)
 
 	if not self.canLookAround then
@@ -1448,7 +1308,7 @@ function AiController:lookAround(ai)
 	ai.view:lookInDirection(self.lookAroundAngles, 6)
 end
 
---- @return nil
+--- @return void
 function AiController:unscope()
 	if not self.canUnscope then
 		self.canUnscope = true
@@ -1483,7 +1343,7 @@ end
 --- @field priority number
 ---
 --- @param cmd SetupCommandEvent
---- @return nil
+--- @return void
 function AiController:think(cmd)
 	-- Possible fix for bug where logic loop still executes in spite of being out of a server.
 	if not Server.isConnected() then
@@ -1506,7 +1366,7 @@ function AiController:think(cmd)
 	self:antiFly(cmd)
 	self:unblockNodes()
 
-	if not Menu.master:get() or not Menu.enableAi:get() then
+	if not DominionMenu.master:get() or not DominionMenu.enableAi:get() then
 		return
 	end
 
@@ -1546,7 +1406,7 @@ function AiController:think(cmd)
 		priority = highestPriority
 	}
 
-	if Menu.enableView:get() then
+	if DominionMenu.enableView:get() then
 		self.view:think(cmd)
 	end
 

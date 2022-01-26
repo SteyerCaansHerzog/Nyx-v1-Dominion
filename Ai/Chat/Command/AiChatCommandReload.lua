@@ -12,13 +12,13 @@ local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatC
 local AiChatCommandReload = {
     cmd = "reload",
     requiredArgs = 0,
-    isAdminOnly = false
+    isAdminOnly = true
 }
 
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return nil
+--- @return void
 function AiChatCommandReload:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return

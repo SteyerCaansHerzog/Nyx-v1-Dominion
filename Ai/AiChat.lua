@@ -13,7 +13,7 @@ function AiChat:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiChat:__init()
     local sentences = {}
 

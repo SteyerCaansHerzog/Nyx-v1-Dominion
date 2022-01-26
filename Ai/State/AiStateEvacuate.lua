@@ -26,7 +26,7 @@ function AiStateEvacuate:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStateEvacuate:assess()
     if AiUtility.isRoundOver then
         return AiState.priority.ROUND_OVER
@@ -64,7 +64,7 @@ function AiStateEvacuate:assess()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEvacuate:activate(ai)
     local node = self:getHideNode(ai, AiUtility.bombPlantedAt)
 
@@ -87,7 +87,7 @@ function AiStateEvacuate:activate(ai)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateEvacuate:think(ai)
     if not self.node then
         self:activate(ai)

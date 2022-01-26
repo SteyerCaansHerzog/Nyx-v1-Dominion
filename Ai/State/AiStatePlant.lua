@@ -36,7 +36,7 @@ function AiStatePlant:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStatePlant:__init()
     self.plantDelayTimer = Timer:new()
     self.plantDelayTime = 0.33
@@ -74,13 +74,13 @@ function AiStatePlant:__init()
     end)
 end
 
---- @return nil
+--- @return void
 function AiStatePlant:setSite()
     self.plantAt = Client.getRandomInt(1, 2) == 1 and "a" or "b"
 end
 
 --- @param nodegraph Nodegraph
---- @return nil
+--- @return void
 function AiStatePlant:assess(nodegraph)
     if not Client.hasBomb() then
         return AiState.priority.IGNORE
@@ -128,7 +128,7 @@ end
 
 --- @param ai AiOptions
 --- @param site string
---- @return nil
+--- @return void
 function AiStatePlant:activate(ai, site)
     local player = AiUtility.client
     local origin = player:getOrigin()
@@ -180,7 +180,7 @@ function AiStatePlant:activate(ai, site)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStatePlant:think(ai)
     if not self.node then
         self:activate(ai)

@@ -1,0 +1,73 @@
+The following software is required:
+	- https://www.audacityteam.org/
+	- https://www.bulkrenameutility.co.uk/
+
+At the bottom are the "recording groups". Each group represents a type of thing that the bot should be able to say.
+
+Each group should consist of multiple separate recordings. They may be different sentences, or even the same sentence said in a slightly different way. Each group is annotated with an example sentence.
+
+Some recording groups require more individual recordings than others, as they are used more often. This is noted by the `1x` note next to the group, indicating the minimum amount of recordings that should be aimed for.
+
+Refer to the video tutorial ( https://www.youtube.com/watch?v=D1cIUPdEdro ) for a demonstration on how to record all of the lines for the recording groups quickly.
+
+The files must be saved in 22050hz in single-channel mono as .wav files. The individual recording file names are in the format of `ClientThrowingFlashbang_1.wav` etc.
+
+You may freely use humour and NSFW speech, except for racism or extremely offensive speech.
+
+Ask me for any questions.
+
+Notes:
+	- A small voice pack is about 150 files. A medium sized one is 300-400. A decently sized one is 500-600. 1000 is insane, but go ahead.
+
+Recording Groups:
+	- (6x) CannotDefuseBomb - the bomb is no longer able to be defused (e.g. "shit, we don't have time")
+	- (6x) ClientDefusingBomb - the bot is on the bomb ("i'm defusing")
+	- (6x) ClientHurtByEnemy - the bot was tagged badly by the enemy ("i'm low")
+	- (6x) ClientHurtByTeammate - the bot was tagged by a teammate ("can you not shoot me")
+	- (6x) ClientKilledByEnemy_Owned - the bot got killed through a smoke, wall, or by a nade ("fuck's sake" / "ok well i got destroyed")
+	- (12x) ClientKilledByEnemy_Generic - the bot has been killed ("i'm down")
+	- (6x) ClientKilledByTeammate - the bot has been killed by a teammte ("dude ..." / "bro you killed me")
+	- (6x) ClientPlantingBomb - the bot is planting ("planting!")
+	- (12x) ClientThrowingFlashbang - the bot is throwing a flashbang ("flashing!")
+	- (6x) ClientThrowingHeGrenade - the bot is throwing a HE grenade ("nading!")
+	- (6x) ClientThrowingIncendiary - the bot is throwing a molotov ("mollying!")
+	- (6x) ClientThrowingSmoke - the bot is throwing a smoke ("smoking!")
+	- (6x) EnemyDefusingBomb - the bot is telling the team that the enemy is defusing ("they're defusing!")
+	- (6x) EnemyHurtByClient - the bot has tagged an enemy ("he's tagged")
+	- (4x) EnemyKilledByClient_Grenade - the bot has killed an enemy with an HE ("kobe!")
+	- (6x) EnemyKilledByClient_Owned - the bot has killed an enemy through a smoke, wall, or with a molotov ("get fucked!")
+	- (20x) EnemyKilledByClient_Generic - the bot has killed an enemy ("he's down")
+	- (6x) EnemyPlantingBomb - the bot is telling the team that the enemy is planting ("they're planting!")
+	- (6x) GameEndLost - the game was lost ("fuck, gg", "oh well")
+	- (6x) GameEndWon - the game was won ("nice, gg!")
+	- (12x) HearNearbyEnemies - the bot hears enemies nearby and is going to engage them ("enemies on me", "they've over by me")
+	- (6x) NotifyTeamOfBomb - the bot sees the bomb on the floor ("i got the bomb here")
+	- (6x) NotifyTeamOfBombCarrier - the bot knows that the enemy is carrying the bomb near it ("the bomb is coming this way")
+	- (6x) NotifyFlashbanged - the bot has been flashbanged ("fuck i'm blind")
+	- (6x) RequestTeammatesToRotate_A - the bot wants the team to rotate to it ("guys come A")
+	- (6x) RequestTeammatesToRotate_B - the bot wants the team to rotate to it ("i need help on B")
+	- (6x) RequestTeammatesToPush_A - the bot has the bomb and wants the team to push ("i'm taking the bomb to A")
+	- (6x) RequestTeammatesToPush_B - the bot has the bomb and wants the team to push ("i'm going B with the bomb")
+	- (4x) RoundEndHalftime - the match is at halftime ("good half")
+	- (10x) RoundEndLost - the round was lost ("damn" / "nice try")
+	- (10x) RoundEndWon - the round was won ("nice" / "good job")
+	- (8x) RoundStartLostPrevious - the previous round was lost ("let's try again" / "okay let's get this round")
+	- (4x) RoundStartMatchPointFinalRound - the game is at match point with 1 round remaining ("final round, let's get this one")
+	- (4x) RoundStartMatchPointToOpposition - the game is at match point with the enemy team to win in 1 round ("don't lose this round")
+	- (4x) RoundStartMatchPointToTeam - the game is at match point with the team to win in 1 round ("okay 1 more win let's do this")
+	- (4x) RoundStartPistolFirstHalf - the game is at first pistol round ("good luck guys")
+	- (4x) RoundStartPistolSecondHalf - the game is at second half pistol round ("let's win this half")
+	- (8x) RoundStartWonPrevious - the previous round was won ("good job guys" / "keep it up")
+	- (4x) TeammateKilledByClient_Inferno - the bot has teamkilled with a molotov ("bro why are you in my molly")
+	- (4x) TeammateKilledByClient_Blind - the bot has teamkilled whilst blind ("sorry i was blind")
+	- (6x) TeammateKilledByClient_Generic - the bot has teamkilled ("sorry dude")
+	- (12x) WarmupGreeting - the bot has just joined the server and it is warmup ("hey guys" / "hello team")
+	- (12x) WarmupIdle - the bot is making idle chat during warmup ("so how's everyone doing?")
+	- (6x) Agreement - the bot is agreeing with a teammte ("okay!" / "sure")
+	- (6x) Disagreement - the bot is disagreeing with a teammte ("no" / "no, sorry")
+	- (6x) Gratitude - the bot is thanking a teammate ("thanks")
+	- (6x) NoProblem - the bot has no problem with the current action ("no problem")
+	- (12x) Gifting - the bot is dropping a teammate ("here you go")
+	- (6x) LastAlive - the bot is the last alive in a clutch situation ("well, i guess i have to do this alone")
+	- (6x) Reloading - the bot is reloading its weapon ("i'm reloading")
+	- (6x) Apologize - the bot is apologizing ("sorry")

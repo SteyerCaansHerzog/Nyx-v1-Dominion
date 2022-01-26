@@ -50,7 +50,7 @@ function AiStateGrenadeBase:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStateGrenadeBase:__init()
     self.inBehaviorTimer = Timer:new()
     self.throwTimer = Timer:new()
@@ -77,7 +77,7 @@ function AiStateGrenadeBase:__init()
 end
 
 --- @param nodegraph Nodegraph
---- @return nil
+--- @return void
 function AiStateGrenadeBase:assess(nodegraph)
     local grenadeNodes = self:getNodes(nodegraph)
 
@@ -174,7 +174,7 @@ function AiStateGrenadeBase:assess(nodegraph)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateGrenadeBase:activate(ai)
     if not self.node then
         return
@@ -196,13 +196,13 @@ function AiStateGrenadeBase:activate(ai)
     })
 end
 
---- @return nil
+--- @return void
 function AiStateGrenadeBase:deactivate()
     Client.equipWeapon()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateGrenadeBase:think(ai)
     if self.node and AiStateGrenadeBase.usedNodes[self.node.id] then
         self.node = nil

@@ -19,7 +19,7 @@ function AiSentenceReplyRank:new()
     return Nyx.new(self)
 end
 
---- @return nil
+--- @return void
 function AiSentenceReplyRank:__init()
     self.__parent.__init(self)
 

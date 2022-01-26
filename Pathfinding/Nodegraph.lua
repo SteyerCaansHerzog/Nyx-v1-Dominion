@@ -87,13 +87,13 @@ function Nodegraph:new()
     return Nyx.new(self)
 end
 
---- @return nil
+--- @return void
 function Nodegraph:__init()
     self:initFields()
     self:initEvents()
 end
 
---- @return nil
+--- @return void
 function Nodegraph:initFields()
     self.nodes = {}
     self.currentNode = 0
@@ -109,7 +109,7 @@ function Nodegraph:initFields()
     Menu.visualiseDirectPathing = Menu.group:checkbox("    > Visualise Direct Pathing"):setParent(Menu.visualiseNodegraph)
 end
 
---- @return nil
+--- @return void
 function Nodegraph:initEvents()
     Callbacks.init(function()
         if not globals.mapname() then
@@ -190,7 +190,7 @@ function Nodegraph:getSiteNode(site)
 end
 
 --- @vararg string
---- @return nil
+--- @return void
 function Nodegraph:log(...)
     local message = string.format(...)
 
@@ -204,7 +204,7 @@ function Nodegraph:log(...)
     Chat.sendMessage(string.format("%s[Nyx]%s %s", Chat.LIGHT_GREEN, Chat.WHITE, message))
 end
 
---- @return nil
+--- @return void
 function Nodegraph:setupNodegraph()
     if not next(self.nodes) then
         return
@@ -331,7 +331,7 @@ function Nodegraph:setupNodegraph()
     end
 end
 
---- @return nil
+--- @return void
 function Nodegraph:clearNodegraph()
     self.nodes = {}
     self.currentNode = 0
@@ -339,7 +339,7 @@ function Nodegraph:clearNodegraph()
     self:setupNodegraph()
 end
 
---- @return nil
+--- @return void
 function Nodegraph:renderNodegraph()
     if not Menu.visualiseNodegraph:get() then
         return
@@ -429,7 +429,7 @@ function Nodegraph:renderNodegraph()
     end
 end
 
---- @return nil
+--- @return void
 function Nodegraph:reactivateAllNodes()
     for _, node in pairs(self.nodes) do
         node.active = true
@@ -437,7 +437,7 @@ function Nodegraph:reactivateAllNodes()
 end
 
 --- @param reason string
---- @return nil
+--- @return void
 function Nodegraph:clearPath(reason)
     self.path = nil
     self.pathCurrent = 0
@@ -464,7 +464,7 @@ function Nodegraph:clearPath(reason)
 end
 
 --- @param filename string
---- @return nil
+--- @return void
 function Nodegraph:loadFromDisk(filename)
     local filedata = readfile(filename)
 
@@ -532,7 +532,7 @@ function Nodegraph:loadFromDisk(filename)
 end
 
 --- @param filename string
---- @return nil
+--- @return void
 function Nodegraph:saveToDisk(filename)
     local nodeData = {}
     local iNodeData = 0
@@ -596,7 +596,7 @@ end
 --- @param origin Vector3
 --- @param connections Node[]
 --- @param types number[]
---- @return nil
+--- @return void
 function Nodegraph:createNode(origin, connections, types)
     self:addNode(Node:new({
         origin = origin,
@@ -606,7 +606,7 @@ function Nodegraph:createNode(origin, connections, types)
 end
 
 --- @param node Node
---- @return nil
+--- @return void
 function Nodegraph:addNode(node)
     local latestId = self.currentNode + 1
 
@@ -616,7 +616,7 @@ function Nodegraph:addNode(node)
 end
 
 --- @param node Node
---- @return nil
+--- @return void
 function Nodegraph:removeNode(node)
     self.nodes[node.id] = nil
 
@@ -731,7 +731,7 @@ function Nodegraph:isJumpNodeValid(origin, node)
     return true
 end
 
---- @return nil
+--- @return void
 function Nodegraph:rePathfind()
     if not self.pathEnd then
         return
@@ -751,7 +751,7 @@ end
 ---
 --- @param origin Vector3
 --- @param options NodegraphPathfindOptions
---- @return nil
+--- @return void
 function Nodegraph:pathfind(origin, options)
     if not Menu.master:get() or not Menu.enableNodegraph:get() then
         return
@@ -839,7 +839,7 @@ end
 
 --- @param node Node
 --- @param pathLine boolean
---- @return nil
+--- @return void
 function Nodegraph:setConnections(node, pathLine)
     node.connections = {}
 
@@ -871,7 +871,7 @@ function Nodegraph:setConnections(node, pathLine)
 end
 
 --- @param cmd SetupCommandEvent
---- @return nil
+--- @return void
 function Nodegraph:move(cmd)
     if not Menu.master:get() or not Menu.enableNodegraph:get() or not Menu.enableMovement:get() then
         return

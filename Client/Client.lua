@@ -13,7 +13,9 @@ local WebSockets = require "gamesense/Nyx/v1/Api/WebSockets"
 --}}}
 
 --{{{ Modules
+local AiVoice = require "gamesense/Nyx/v1/Dominion/Ai/AiVoice"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
+local DominionMenu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 
 local Allocate = require "gamesense/Nyx/v1/Dominion/Client/Message/Allocate"
 local ApplyCooldown = require "gamesense/Nyx/v1/Dominion/Client/Message/ApplyCooldown"
@@ -80,7 +82,7 @@ function DominionClient:new()
     return Nyx.new(self)
 end
 
---- @return nil
+--- @return void
 function DominionClient:__init()
     self.allocationTimer = Timer:new()
     self.allocationExpiry = 3 * 60
@@ -170,6 +172,12 @@ function DominionClient:__init()
             return
         end
 
+        if self.allocation and Server.isIngame() then
+            Client.fireAfter(Client.getRandomFloat(8, 16), function()
+                Client.execute("disconnect")
+            end)
+        end
+
         Client.onNextTick(function()
             local roundsPlayed = Entity.getGameRules():m_totalRoundsPlayed()
             local scoreData = Table.fromPanorama(Panorama.GameStateAPI.GetScoreDataJSO())
@@ -227,7 +235,7 @@ function DominionClient.getTimePlusHours(hours)
     return Time.getUnixTimestamp() + (hours * 3600)
 end
 
---- @return nil
+--- @return void
 function DominionClient:checkIsValveDs()
     local gameRules = Entity.getGameRules()
 
@@ -244,7 +252,7 @@ function DominionClient:checkIsValveDs()
     end
 end
 
---- @return nil
+--- @return void
 function DominionClient:checkLobby()
     if not self.lastLobbyErrorTimer:isElapsedThenRestart(2) then
         return
@@ -264,7 +272,7 @@ function DominionClient:checkLobby()
     self:checkValidLobbySettings()
 end
 
---- @return nil
+--- @return void
 function DominionClient:checkLobbyInvite()
     for i = 1, Panorama.PartyBrowserAPI.GetInvitesCount() do
         local lobbyId = Panorama.PartyBrowserAPI.GetInviteXuidByIndex(i - 1)
@@ -277,7 +285,7 @@ function DominionClient:checkLobbyInvite()
     end
 end
 
---- @return nil
+--- @return void
 function DominionClient:checkAllBotsInLobby()
     local botsRequired = #self.allocation.botSteamids
     local botsFound = 0
@@ -299,7 +307,7 @@ function DominionClient:checkAllBotsInLobby()
     end
 end
 
---- @return nil
+--- @return void
 function DominionClient:checkValidMapSelection()
     local settings = Panorama.LobbyAPI.GetSessionSettings()
     local queuedMapsStr = settings.game.mapgroupname
@@ -335,7 +343,7 @@ function DominionClient:checkValidMapSelection()
     return
 end
 
---- @return nil
+--- @return void
 function DominionClient:checkValidLobbySettings()
     local settings = Panorama.LobbyAPI.GetSessionSettings()
     local error
@@ -357,7 +365,7 @@ function DominionClient:checkValidLobbySettings()
     end
 end
 
---- @return nil
+--- @return void
 function DominionClient:stopQueue(error)
     Panorama.PartyListAPI.SessionCommand(
         'Game::Chat',
@@ -374,7 +382,7 @@ function DominionClient:stopQueue(error)
     Panorama.LobbyAPI.StopMatchmaking()
 end
 
---- @return nil
+--- @return void
 function DominionClient:initWs()
     self.server:onReconnect(function()
         self:logon()
@@ -383,7 +391,7 @@ function DominionClient:initWs()
     self:logon()
 end
 
---- @return nil
+--- @return void
 function DominionClient:logon()
     self.server:onReceive(LogonSuccess, function(logon)
         self.server.token = logon.token
@@ -403,6 +411,21 @@ function DominionClient:logon()
     self.server:onReceive(Allocate, function(allocation)
         self.allocation = allocation
 
+        local idx
+        local steamid = Panorama.MyPersonaAPI.GetXuid()
+
+        for i = 1, #allocation.botSteamids do
+            if allocation.botSteamids[i] == steamid then
+                idx = i
+
+                break
+            end
+        end
+
+        if idx then
+            DominionMenu.voicePack:set(AiVoice.liveClientPacks[idx])
+        end
+
         self.allocationTimer:start()
     end)
 
@@ -414,6 +437,8 @@ function DominionClient:logon()
 
             self.isInLobby = false
         end
+
+        DominionMenu.voicePack:set(0)
     end)
 
     self.server:onReceive(ReloadClient, function()
@@ -433,7 +458,7 @@ function DominionClient:logon()
     end)
 end
 
---- @return nil
+--- @return void
 function DominionClient:keepAlive()
     if not self.server:transmit(KeepAlive) then
         return
@@ -454,7 +479,7 @@ function DominionClient:keepAlive()
     end)
 end
 
---- @return nil
+--- @return void
 function DominionClient:skipMatch()
     if not ServerCrasher then
         return

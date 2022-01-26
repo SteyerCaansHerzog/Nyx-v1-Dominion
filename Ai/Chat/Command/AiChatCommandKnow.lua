@@ -20,7 +20,7 @@ local AiChatCommandKnow = {
 --- @param ai AiController
 --- @param sender Player
 --- @param args string[]
---- @return nil
+--- @return void
 function AiChatCommandKnow:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return

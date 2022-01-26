@@ -29,7 +29,7 @@ function AiStateDefuse:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStateDefuse:__init()
     self.lookAtOffset = Vector3:newRandom(-16, 16)
 
@@ -68,7 +68,7 @@ function AiStateDefuse:__init()
     end)
 end
 
---- @return nil
+--- @return void
 function AiStateDefuse:assess()
     local player = AiUtility.client
 
@@ -111,7 +111,7 @@ function AiStateDefuse:assess()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateDefuse:activate(ai)
     local bomb = AiUtility.plantedBomb
 
@@ -142,13 +142,13 @@ function AiStateDefuse:activate(ai)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateDefuse:deactivate(ai)
     ai.nodegraph:reactivateAllNodes()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateDefuse:think(ai)
     local bomb = AiUtility.plantedBomb
 

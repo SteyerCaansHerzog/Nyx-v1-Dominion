@@ -26,7 +26,7 @@ function AiStatePush:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStatePush:__init()
     Callbacks.roundStart(function()
         self.isDefendingBomb = false
@@ -35,7 +35,7 @@ function AiStatePush:__init()
     end)
 end
 
---- @return nil
+--- @return void
 function AiStatePush:assess()
     local player = AiUtility.client
 
@@ -50,7 +50,7 @@ end
 
 --- @param ai AiOptions
 --- @param site string
---- @return nil
+--- @return void
 function AiStatePush:activate(ai, site)
     local node = self:getActivityNode(ai, site)
 
@@ -74,7 +74,7 @@ function AiStatePush:activate(ai, site)
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStatePush:think(ai)
     if not ai.nodegraph.path and ai.nodegraph:canPathfind() then
         self:activate(ai, self.site)

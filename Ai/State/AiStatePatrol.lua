@@ -35,7 +35,7 @@ function AiStatePatrol:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStatePatrol:__init()
     self.cooldownTimer = Timer:new():startThenElapse()
 
@@ -56,7 +56,7 @@ end
 
 --- @param origin Vector3
 --- @param player Player
---- @return nil
+--- @return void
 function AiStatePatrol:beginPatrol(origin, player)
     self:reset()
 
@@ -65,7 +65,7 @@ function AiStatePatrol:beginPatrol(origin, player)
     self.patrollingOnBehalfOf = player
 end
 
---- @return nil
+--- @return void
 function AiStatePatrol:assess()
     if AiUtility.isRoundOver then
         return AiState.priority.IGNORE
@@ -89,12 +89,12 @@ function AiStatePatrol:assess()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStatePatrol:activate(ai)
     ai.radio:speak(ai.radio.message.AGREE, 1, 1, 2, "I'm %sassisting%s you.", ai.radio.color.YELLOW, ai.radio.color.DEFAULT)
 end
 
---- @return nil
+--- @return void
 function AiStatePatrol:reset()
     self.isBeginningPatrol = false
     self.isOnPatrol = false
@@ -104,7 +104,7 @@ function AiStatePatrol:reset()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStatePatrol:think(ai)
     if ai.priority == AiState.priority.PATROL_BOMB then
         if not self.hasNotifiedTeamOfBomb then

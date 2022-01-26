@@ -32,7 +32,7 @@ function AiStateDrop:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStateDrop:__init()
     self.droppingGearTimer = Timer:new()
     self.isDroppingGear = false
@@ -40,7 +40,7 @@ end
 
 --- @param player Player
 --- @param requestedGear string
---- @return nil
+--- @return void
 function AiStateDrop:dropGear(player, requestedGear)
     self.requestingPlayer = player
     self.isDroppingGear = true
@@ -54,13 +54,13 @@ function AiStateDrop:assess()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateDrop:activate(ai)
     ai.voice.pack:speakGifting()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateDrop:think(ai)
     ai.controller.canLookAwayFromFlash = false
     ai.controller.canUseGear = false

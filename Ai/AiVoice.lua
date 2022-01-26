@@ -24,6 +24,7 @@ local AiVoicePackSteyer = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePac
 --- @class AiVoice : Class
 --- @field pack AiVoicePack
 --- @field packs AiVoicePack[]
+--- @field liveClientPacks number[]
 --- @field packsListboxMap AiVoicePack[]
 --- @field clientWonLastRound boolean
 --- @field flashbangTimer Timer
@@ -36,6 +37,9 @@ local AiVoice = {
         AiVoicePackAdrian,
         AiVoicePackConnor,
         AiVoicePackJeffrey,
+    },
+    liveClientPacks = {
+        3, 4, 5, 6, 7
     }
 }
 
@@ -45,7 +49,7 @@ function AiVoice:new(fields)
 	return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiVoice:__init()
     local packs = {}
     local packNames = {}
@@ -58,7 +62,7 @@ function AiVoice:__init()
     self.packs = packs
     self.packsListboxMap = packNames
 
-    DominionMenu.group:listbox("    > Voice Pack", packNames):addCallback(function(item)
+    DominionMenu.voicePack = DominionMenu.group:listbox("    > Voice Pack", packNames):addCallback(function(item)
     	self.pack = self.packs[item:get() + 1]
     end):setParent(DominionMenu.enableAi)
 

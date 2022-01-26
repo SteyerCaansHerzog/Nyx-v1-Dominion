@@ -6,7 +6,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --- @class Performance : Class
 local Performance = {}
 
---- @return nil
+--- @return void
 function Performance.enable()
     cvar.mat_fastclip:set_raw_int(1)
     cvar.mat_fastnobump:set_raw_int(1)

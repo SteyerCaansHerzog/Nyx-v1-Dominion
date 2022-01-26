@@ -39,13 +39,13 @@ function NodegraphEditor:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function NodegraphEditor:__init()
     self:initFields()
     self:initEvents()
 end
 
---- @return nil
+--- @return void
 function NodegraphEditor:initFields()
     MenuGroup.enableEditor = MenuGroup.group:checkbox("> Dominion Editor"):setParent(MenuGroup.master)
 
@@ -111,7 +111,7 @@ function NodegraphEditor:initFields()
     end):setParent(MenuGroup.enableEditor)
 end
 
---- @return nil
+--- @return void
 function NodegraphEditor:initEvents()
     Callbacks.init(function()
         self.nodeMaxDistance = 300
@@ -160,7 +160,7 @@ function NodegraphEditor:selectNode()
     return selectedNode
 end
 
---- @return nil
+--- @return void
 function NodegraphEditor:createNodes()
     if Menu.isOpen() then
         return
@@ -241,7 +241,7 @@ end
 
 --- @param origin Vector3
 --- @param isSpot boolean
---- @return nil
+--- @return void
 function NodegraphEditor:createNode(origin, isSpot)
     local node = Node:new({
         origin = origin,
@@ -282,7 +282,7 @@ function NodegraphEditor:createNode(origin, isSpot)
     self.nodegraph:addNode(node)
 end
 
---- @return nil
+--- @return void
 function NodegraphEditor:renderUi()
     Client.drawIndicatorGs(Node.typesColor[self.nodeTypeCombo], Node.typesName[self.nodeTypeCombo])
 end

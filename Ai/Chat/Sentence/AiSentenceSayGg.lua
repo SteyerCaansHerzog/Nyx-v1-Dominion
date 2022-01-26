@@ -18,7 +18,7 @@ function AiSentenceSayGg:new()
     return Nyx.new(self)
 end
 
---- @return nil
+--- @return void
 function AiSentenceSayGg:__init()
     self.__parent.__init(self)
 

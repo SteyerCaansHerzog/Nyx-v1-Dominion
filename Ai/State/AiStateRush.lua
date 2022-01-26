@@ -25,14 +25,14 @@ function AiStateRush:new(fields)
     return Nyx.new(self, fields)
 end
 
---- @return nil
+--- @return void
 function AiStateRush:__init()
     Callbacks.roundStart(function()
         self.canRushThisRound = Client.getRandomInt(1, 5) == 1
     end)
 end
 
---- @return nil
+--- @return void
 function AiStateRush:assess()
     local player = AiUtility.client
 
@@ -44,7 +44,7 @@ function AiStateRush:assess()
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateRush:activate(ai)
     local nodes = Table.new({ai.nodegraph.tSpawn}, ai.nodegraph.objectiveRush)
     local node = Table.getRandom(nodes, Node)
@@ -67,13 +67,13 @@ function AiStateRush:activate(ai)
     })
 end
 
---- @return nil
+--- @return void
 function AiStateRush:deactivate()
     self.canRushThisRound = false
 end
 
 --- @param ai AiOptions
---- @return nil
+--- @return void
 function AiStateRush:think(ai)
     if not ai.nodegraph.path then
         self.canRushThisRound = false
