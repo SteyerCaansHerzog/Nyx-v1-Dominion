@@ -64,7 +64,7 @@ function AiStateEvade:assess()
     local player = AiUtility.client
 
     if Client.isFlashed() then
-        if not AiUtility.isPlanting and player:m_bIsDefusing() == 0 then
+        if not AiUtility.isClientPlanting and player:m_bIsDefusing() == 0 then
             return AiState.priority.EVADE
         end
     end

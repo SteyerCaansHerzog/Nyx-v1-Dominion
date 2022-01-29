@@ -157,7 +157,7 @@ function AiStatePickupItems:activate(ai) end
 --- @return void
 function AiStatePickupItems:deactivate()
     if self.item and self.item:m_hOwner() == Client.getEid() then
-        Client.equipWeapon()
+        Client.equipAnyWeapon()
     end
 end
 

@@ -265,7 +265,7 @@ function AiStateDefend:think(ai)
         ai.controller.isWalking = true
 
         if not player:isHoldingGun() then
-            Client.equipWeapon()
+            Client.equipAnyWeapon()
         end
 
         ai.controller.canUnscope = false

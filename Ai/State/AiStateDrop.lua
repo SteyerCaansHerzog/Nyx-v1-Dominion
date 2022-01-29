@@ -22,7 +22,7 @@ local AiStateDrop = {
     isDelayedWhenActivated = false,
     requestableGear = {
         bomb = Client.equipBomb,
-        gun = Client.equipWeapon
+        gun = Client.equipAnyWeapon
     }
 }
 

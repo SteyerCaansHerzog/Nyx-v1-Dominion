@@ -19,10 +19,11 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 
 --{{{ AiStateGrenadeDynamic
 --- @class AiStateGrenadeDynamic : AiState
---- @field throwAngles Angle
---- @field throwTimer Timer
---- @field throwCooldownTimer Timer
 --- @field isThrowing boolean
+--- @field targetPlayer Player
+--- @field throwAngles Angle
+--- @field throwCooldownTimer Timer
+--- @field throwTimer Timer
 local AiStateGrenadeDynamic = {
     name = "Grenade Dynamic"
 }
@@ -46,7 +47,7 @@ end
 --- @return void
 function AiStateGrenadeDynamic:assess()
     -- Cooldown. We really need it.
-    if not self.throwCooldownTimer:isElapsed(5) then
+    if not self.throwCooldownTimer:isElapsed(20) then
         return AiState.priority.IGNORE
     end
 
@@ -60,16 +61,17 @@ function AiStateGrenadeDynamic:assess()
         return AiState.priority.IGNORE
     end
 
-    local clientOrigin = AiUtility.client:getOrigin()
+    local bounds = Vector3:newBounds(Vector3.align.CENTER, 8)
+    local clientEyeOrigin = Client.getEyeOrigin()
 
     -- Angle to try our mentally handicapped flash prediction with.
-    local predictionAngles = Angle:new(Client.getRandomFloat(-89, -65), Client.getRandomFloat(-180, 180))
+    local predictionAngles = Angle:new(Client.getRandomFloat(-89, -10), Client.getRandomFloat(-180, 180))
 
     -- I literally threw a flash into the sky and asked for the distance from my eye sockets to the detonation point.
     local predictionDistance = 700
 
     -- Oh Source, do tell us where this stray nade "prediction" went?
-    local impactTrace = Trace.getLineAtAngle(clientOrigin, predictionAngles, {
+    local impactTrace = Trace.getHullAtAngle(clientEyeOrigin, predictionAngles, bounds, {
         skip = AiUtility.client.eid,
         mask = Trace.mask.VISIBLE,
         distance = predictionDistance
@@ -77,7 +79,7 @@ function AiStateGrenadeDynamic:assess()
 
     -- Throw away traces that end too close to us because they're useless and will just blind the AI.
     -- Although, the AI would probably want to be blind if it pulled up its own hood and found this demented-ass method.
-    if clientOrigin:getDistance(impactTrace.endPosition) < 300 then
+    if clientEyeOrigin:getDistance(impactTrace.endPosition) < 400 then
         return AiState.priority.IGNORE
     end
 
@@ -86,7 +88,7 @@ function AiStateGrenadeDynamic:assess()
     for _, enemy in pairs(AiUtility.enemies) do repeat
         -- Does our super accurate "detonate" spot trace have line of sight to the approximate enemy's eyeballs?
         -- Not using getHitboxPosition because getOrigin works on dormancy. That and CSGO's hitbox positions are more demented than this code.
-        local blindTrace = Trace.getLineToPosition(impactTrace.endPosition, enemy:getOrigin():offset(0, 0, 72), {
+        local blindTrace = Trace.getHullToPosition(impactTrace.endPosition, enemy:getOrigin():offset(0, 0, 72), bounds, {
             skip = enemy.eid,
             mask = Trace.mask.VISIBLE
         })
@@ -102,7 +104,8 @@ function AiStateGrenadeDynamic:assess()
         end
 
         -- We're gonna try these angles. Pray on God.
-        self.throwAngles = predictionAngles
+        self.throwAngles = clientEyeOrigin:getAngle(impactTrace.endPosition):offset(6)
+        self.targetPlayer = enemy
 
         return AiState.priority.DYNAMIC_GRENADE
     until true end
@@ -116,10 +119,17 @@ function AiStateGrenadeDynamic:activate(ai)
     ai.nodegraph:clearPath("throw a dynamic grenade")
 end
 
+--- @param ai AiOptions
+--- @return void
+function AiStateGrenadeDynamic:deactivate(ai)
+    Client.equipPrimary()
+end
+
 --- @return void
 function AiStateGrenadeDynamic:reset()
     self.throwAngles = nil
     self.isThrowing = false
+    self.targetPlayer = nil
 
     self.throwTimer:stop()
 end
@@ -127,6 +137,12 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateGrenadeDynamic:think(ai)
+    if AiUtility.isRoundOver or not self.targetPlayer:isAlive() then
+        self:reset()
+
+        return
+    end
+
     ai.controller.states.evade.isBlocked = true
     ai.controller.canUseKnife = false
     ai.controller.canLookAwayFromFlash = false
@@ -140,12 +156,11 @@ function AiStateGrenadeDynamic:think(ai)
         Client.equipFlashbang()
     end
 
-    ai.view:lookInDirection(self.throwAngles, 4)
+    ai.view:lookInDirection(self.throwAngles, 4.5)
 
-    local deltaAngles = self.throwAngles:getAbsDiff(Client.getCameraAngles())
+    local maxDiff = self.throwAngles:getMaxDiff(Client.getCameraAngles())
 
-    if deltaAngles.p < 4
-        and deltaAngles.y < 4
+    if maxDiff < 2
         and AiUtility.client:isHoldingWeapon(Weapons.FLASHBANG)
         and AiUtility.client:isAbleToAttack()
     then
@@ -156,12 +171,14 @@ function AiStateGrenadeDynamic:think(ai)
         self.throwTimer:ifPausedThenStart()
 
         ai.cmd.in_attack = 1
+
+        ai.voice.pack:speakClientThrowingFlashbang()
     end
 
     if self.throwTimer:isElapsedThenRestart(0.1) then
         ai.cmd.in_attack = 0
 
-        Client.fireAfter(0.1, function()
+        Client.fireAfter(0.25, function()
             self.throwCooldownTimer:restart()
 
             self:reset()

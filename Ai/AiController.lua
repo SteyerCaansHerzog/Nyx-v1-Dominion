@@ -1040,7 +1040,7 @@ function AiController:activities(ai)
 	local isHoldingKnife = player:isHoldingWeapon(Weapons.KNIFE)
 
 	if isHoldingKnife and not canUseKnife then
-		Client.equipWeapon()
+		Client.equipAnyWeapon()
 	elseif not isHoldingKnife and canUseKnife then
 		Client.equipKnife()
 	end

@@ -1151,8 +1151,8 @@ function AiStateEngage:canHoldAngle(ai)
         return false
     end
 
-    -- Don't hold if the enemy has planted the bomb.
-    if AiUtility.client:isCounterTerrorist() and not AiUtility.plantedBomb then
+    -- Don't hold if the enemy is planting or has planted the bomb.
+    if AiUtility.client:isCounterTerrorist() and not AiUtility.plantedBomb and not AiUtility.isBombBeingPlantedByEnemy then
         return true
     end
 
@@ -1360,7 +1360,7 @@ function AiStateEngage:attack(ai)
     elseif self.lastPriority == AiState.priority.ENGAGE_NEARBY then
         -- Ensure bot is holding a weapon
         if not player:isHoldingGun() or player:isHoldingPistol() then
-            Client.equipWeapon()
+            Client.equipAnyWeapon()
         end
     end
 
@@ -1381,7 +1381,7 @@ function AiStateEngage:attack(ai)
 
     -- Ensure player is holding weapon
     if not player:isHoldingGun() then
-        Client.equipWeapon()
+        Client.equipAnyWeapon()
     end
 
     -- Shoot while blind

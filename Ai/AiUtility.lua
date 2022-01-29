@@ -89,7 +89,9 @@ local AiWeaponNames = {
 --- @field isBombBeingDefusedByEnemy boolean
 --- @field isBombBeingDefusedByTeammate boolean
 --- @field isLastAlive boolean
---- @field isPlanting boolean
+--- @field isClientPlanting boolean
+--- @field isBombBeingPlantedByEnemy boolean
+--- @field isBombBeingPlantedByTeammate boolean
 --- @field isRoundOver boolean
 --- @field lastVisibleEnemyTimer Timer
 --- @field mainWeapons number[]
@@ -180,7 +182,9 @@ function AiUtility:initEvents()
         self.isRoundOver = false
         self.isBombBeingDefusedByEnemy = false
         self.isBombBeingDefusedByTeammate = false
-        self.isPlanting = false
+        self.isBombBeingPlantedByEnemy = false
+        self.isBombBeingPlantedByTeammate = false
+        self.isClientPlanting = false
     end)
 
     Callbacks.itemPickup(function(e)
@@ -203,19 +207,29 @@ function AiUtility:initEvents()
 
     Callbacks.bombBeginPlant(function(e)
         if e.player:isClient() then
-            self.isPlanting = true
+            self.isClientPlanting = true
+        elseif e.player:isTeammate() then
+            self.isBombBeingPlantedByTeammate = true
+        elseif e.player:isEnemy() then
+            self.isBombBeingPlantedByEnemy = true
         end
     end)
 
     Callbacks.bombAbortPlant(function(e)
         if e.player:isClient() then
-            self.isPlanting = false
+            self.isClientPlanting = false
+        elseif e.player:isTeammate() then
+            self.isBombBeingPlantedByTeammate = false
+        elseif e.player:isEnemy() then
+            self.isBombBeingPlantedByEnemy = false
         end
     end)
 
     Callbacks.bombPlanted(function()
     	self.bombCarrier = nil
-        self.isPlanting = false
+        self.isClientPlanting = false
+        self.isBombBeingPlantedByEnemy = false
+        self.isBombBeingPlantedByTeammate = false
     end)
 
     Callbacks.bombBeginDefuse(function(e)

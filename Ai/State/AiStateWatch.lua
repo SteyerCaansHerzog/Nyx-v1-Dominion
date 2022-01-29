@@ -148,6 +148,12 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateWatch:think(ai)
+    if AiUtility.plantedBomb then
+        self:reset()
+
+        return
+    end
+
     local clientOrigin = AiUtility.client:getOrigin()
     local distance = clientOrigin:getDistance(self.node.origin)
 
@@ -193,7 +199,7 @@ function AiStateWatch:think(ai)
         ai.controller.canUseKnife = false
 
         if not AiUtility.client:isHoldingGun() then
-            Client.equipWeapon()
+            Client.equipAnyWeapon()
         end
     end
 

@@ -198,7 +198,7 @@ end
 
 --- @return void
 function AiStateGrenadeBase:deactivate()
-    Client.equipWeapon()
+    Client.equipAnyWeapon()
 end
 
 --- @param ai AiOptions
