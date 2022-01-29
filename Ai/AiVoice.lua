@@ -12,12 +12,15 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local DominionMenu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiVoicePackAdrian = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackAdrian"
+local AiVoicePackBenji = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackBenji"
 local AiVoicePackConnor = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackConnor"
+local AiVoicePackD9 = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackD9"
 local AiVoicePackEmpty = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackEmpty"
 local AiVoicePackJeffrey = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackJeffrey"
 local AiVoicePackLaurentio = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackLaurentio"
 local AiVoicePackMatteo = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackMatteo"
 local AiVoicePackSteyer = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackSteyer"
+local AiVoicePackTaylor = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackTaylor"
 --}}}
 
 --{{{ AiVoice
@@ -37,9 +40,9 @@ local AiVoice = {
         AiVoicePackAdrian,
         AiVoicePackConnor,
         AiVoicePackJeffrey,
-    },
-    liveClientPacks = {
-        3, 4, 5, 6, 7
+        AiVoicePackTaylor,
+        AiVoicePackBenji,
+        AiVoicePackD9
     }
 }
 

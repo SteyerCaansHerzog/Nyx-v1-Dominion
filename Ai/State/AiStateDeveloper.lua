@@ -11,13 +11,12 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
 --{{{ AiStateDeveloper
 --- @class AiStateDeveloper : AiState
---- @field timer Timer
---- @field angle Angle
 local AiStateDeveloper = {
     name = "Developer"
 }

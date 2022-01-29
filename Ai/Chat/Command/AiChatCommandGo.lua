@@ -62,13 +62,13 @@ function AiChatCommandGo:invoke(ai, sender, args)
     ai.voice.pack:speakAgreement()
 
     Client.fireAfter(Client.getRandomFloat(1, 2), function()
-        ai.states.check:reset()
-        ai.states.patrol:reset()
-        ai.states.sweep:activate(ai, objective)
-
         if ai.states.boost.isBoosting then
             return
         end
+
+        ai.states.check:reset()
+        ai.states.patrol:reset()
+        ai.states.sweep:activate(ai, objective)
 
         if Client.hasBomb() then
             ai.states.plant:activate(ai, objective)

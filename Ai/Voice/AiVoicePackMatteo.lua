@@ -7,7 +7,7 @@ local AiVoicePackGenericBase = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoi
 --}}}
 
 --{{{ AiVoicePackMatteo
---- @class AiVoicePackMatteo : AiVoicePack
+--- @class AiVoicePackMatteo : AiVoicePackGenericBase
 local AiVoicePackMatteo = {
 	name = "M / EN-IT - Matteo",
     packPath = "Matteo"

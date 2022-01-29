@@ -8,7 +8,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 
 --{{{ AiVoicePackGenericBase
---- @class AiVoicePackGenericBase : AiVoicePack
+--- @class AiVoicePackGenericBase : AiVoicePackGenericBase
 --- @field groups table<string, number>
 local AiVoicePackGenericBase = {
 	name = "Generic",
@@ -154,7 +154,10 @@ function AiVoicePackGenericBase:speakClientHurtByTeammate(event)
 			lock = true,
 			ignoreLock = false,
 			minDelay = 0.33,
-			maxDelay = 1
+			maxDelay = 1,
+			condition = function()
+				return AiUtility.client:isAlive()
+			end
 		})
 	end
 end

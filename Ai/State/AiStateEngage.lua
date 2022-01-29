@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local Animate = require "gamesense/Nyx/v1/Api/Animate"
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
@@ -8,6 +9,7 @@ local Math = require "gamesense/Nyx/v1/Api/Math"
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
+local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
@@ -38,6 +40,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field blockTimer Timer
 --- @field canAutoStop boolean
 --- @field canCrouch boolean
+--- @field isPreAimViableForHoldingAngle boolean
 --- @field currentReactionTime number
 --- @field enemySpottedCooldown Timer
 --- @field enemyVisibleTime number
@@ -49,22 +52,33 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field ignoreDormancyTime number
 --- @field ignoreDormancyTimer Timer
 --- @field ignorePlayerAfter number
+--- @field isHoldingAngle boolean
+--- @field isHoldingAngleDucked boolean
 --- @field isIgnoringDormancy boolean
+--- @field isPathfindingDirectlyToEnemy boolean
+--- @field isRcsEnabled boolean
 --- @field isSneaking boolean
---- @field isVisibleToAimSystem boolean
 --- @field isTargetEasilyShot boolean
+--- @field isVisibleToAimSystem boolean
+--- @field jiggleDirection string
+--- @field jiggleTime number
+--- @field jiggleTimer Timer
+--- @field lastBestTargetOrigin Vector3
 --- @field lastMoveDirection Vector3
 --- @field lastSeenTimers Timer[]
 --- @field lastSoundTimer Timer
 --- @field noticedPlayerTimers Timer[]
 --- @field onGroundTime Timer
 --- @field onGroundTimer Timer
+--- @field patienceTimer Timer
+--- @field patienceCooldownTimer Timer
 --- @field preAimAroundCornersTime number
 --- @field preAimAroundCornersTimer Timer
 --- @field preAimCornerOrigin Vector3
 --- @field preAimOrigin Vector3
 --- @field preAimOriginTimer Timer
 --- @field preAimTarget Player
+--- @field preAimThroughCornerBlockTimer Timer
 --- @field priorityHitbox number
 --- @field reactionTime number
 --- @field reactionTimer Timer
@@ -87,7 +101,6 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field watchOrigin Vector3
 --- @field watchTime number
 --- @field watchTimer Timer
---- @field preAimThroughCornerBlockTimer Timer
 local AiStateEngage = {
     name = "Engage"
 }
@@ -129,6 +142,11 @@ function AiStateEngage:initFields()
     self.ferrariPeekStuckTimer = Timer:new()
     self.ferrariPeekCooldownTimer = Timer:new():startThenElapse()
     self.preAimThroughCornerBlockTimer = Timer:new():startThenElapse()
+    self.jiggleTimer = Timer:new():startThenElapse()
+    self.jiggleTime = Client.getRandomFloat(0.33, 0.66)
+    self.jiggleDirection = "Left"
+    self.patienceTimer = Timer:new()
+    self.patienceCooldownTimer = Timer:new():startThenElapse()
 
     self.noticedPlayerTimers = {}
 
@@ -216,8 +234,10 @@ function AiStateEngage:initEvents()
     Callbacks.roundStart(function()
         self:reset()
 
-        self.isIgnoringDormancy = true
         self.ignoreDormancyTimer:stop()
+
+        self.isIgnoringDormancy = true
+        self.jiggleTime = Client.getRandomFloat(0.33, 0.66)
     end)
 
     Callbacks.roundFreezeEnd(function()
@@ -328,6 +348,8 @@ function AiStateEngage:initEvents()
     end)
 
     Callbacks.playerDeath(function(e)
+        self.isPathfindingDirectlyToEnemy = Client.getChance(3)
+
         if e.victim:isClient() then
             self:reset()
 
@@ -364,6 +386,12 @@ function AiStateEngage:assess()
         return AiState.priority.ENGAGE_VISIBLE
     end
 
+    for _, enemy in pairs(AiUtility.enemies) do
+        if AiUtility.visibleEnemies[enemy.eid] and self:hasNoticedEnemy(enemy) then
+            return AiState.priority.ENGAGE_VISIBLE
+        end
+    end
+
     if not AiUtility.plantedBomb then
         if self.reactionTimer:isStarted() then
             return AiState.priority.ENGAGE_VISIBLE
@@ -374,10 +402,8 @@ function AiStateEngage:assess()
         end
     end
 
-    for _, enemy in pairs(AiUtility.enemies) do
-        if enemy:m_bIsDefusing() == 1 then
-            return AiState.priority.ENGAGE_NEARBY
-        end
+    if AiUtility.isBombBeingDefusedByEnemy then
+        return AiState.priority.ENGAGE_VISIBLE
     end
 
     if self:hasNoticedEnemies() then
@@ -462,7 +488,7 @@ function AiStateEngage:tellRotate(ai)
 
     local playerOrigin = player:getOrigin()
 
-    local nearestBombSite = ai.nodegraph:getNearestBombSite(playerOrigin)
+    local nearestBombSite = ai.nodegraph:getNearestSiteName(playerOrigin)
     local siteOrigin = ai.nodegraph:getSiteNode(nearestBombSite).origin
 
     if playerOrigin:getDistance(siteOrigin) > 2048 then
@@ -502,7 +528,7 @@ function AiStateEngage:tellRotate(ai)
     if isBombVisible or countEnemiesNearby >= 2 then
         self.tellRotateTimer:restart()
 
-        local nearestBombSite = ai.nodegraph:getNearestBombSite(tellEnemy:getOrigin())
+        local nearestBombSite = ai.nodegraph:getNearestSiteName(tellEnemy:getOrigin())
 
         if Menu.useChatCommands:get() then
             Messenger.send(string.format(" go %s", nearestBombSite), true)
@@ -602,6 +628,12 @@ function AiStateEngage:setBestTarget()
     local origin = player:getOrigin()
 
     for _, enemy in pairs(AiUtility.enemies) do
+        if enemy:m_bIsDefusing() == 1 then
+            selectedEnemy = enemy
+
+            break
+        end
+
         if self:hasNoticedEnemy(enemy) then
             local distance = origin:getDistance(enemy:getOrigin())
 
@@ -613,6 +645,12 @@ function AiStateEngage:setBestTarget()
     end
 
     for _, enemy in pairs(AiUtility.visibleEnemies) do
+        if enemy:m_bIsDefusing() == 1 then
+            selectedEnemy = enemy
+
+            break
+        end
+
         local fov = AiUtility.enemyFovs[enemy.eid]
 
         if fov < 55 then
@@ -650,6 +688,7 @@ end
 --- @field closeRange number
 --- @field priorityHitbox number
 --- @field isBoltAction boolean
+--- @field isRcsEnabled table
 --- @field evaluate fun(): boolean
 ---
 --- @param enemy Player
@@ -677,6 +716,11 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = 0,
                 short = 0
             },
+            isRcsEnabled = {
+                long = true,
+                medium = true,
+                short = true
+            },
             runAtCloseRange = true,
             closeRange = 512,
             priorityHitbox = Player.hitbox.NECK,
@@ -696,6 +740,11 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = 0.06,
                 short = 0
             },
+            isRcsEnabled = {
+                long = false,
+                medium = true,
+                short = true
+            },
             runAtCloseRange = true,
             closeRange = 1024,
             priorityHitbox = Player.hitbox.NECK,
@@ -709,14 +758,19 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "Rifle",
             ranges = {
-                long = 1250,
-                medium = 750,
+                long = 1500,
+                medium = 1000,
                 short = 0
             },
             firerates = {
-                long = 0.19,
-                medium = 0.13,
+                long = 0.2,
+                medium = 0.16,
                 short = 0
+            },
+            isRcsEnabled = {
+                long = true,
+                medium = true,
+                short = true
             },
             runAtCloseRange = false,
             closeRange = 0,
@@ -737,6 +791,11 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = 0.45,
                 short = 0.1
             },
+            isRcsEnabled = {
+                long = false,
+                medium = false,
+                short = true
+            },
             runAtCloseRange = false,
             closeRange = 0,
             priorityHitbox = Player.hitbox.HEAD,
@@ -755,6 +814,11 @@ function AiStateEngage:setWeaponStats(enemy)
                 long = 0,
                 medium = 0,
                 short = 0
+            },
+            isRcsEnabled = {
+                long = false,
+                medium = false,
+                short = false
             },
             runAtCloseRange = false,
             closeRange = 0,
@@ -775,6 +839,11 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = 0.14,
                 short = 0.04
             },
+            isRcsEnabled = {
+                long = true,
+                medium = true,
+                short = true
+            },
             runAtCloseRange = true,
             closeRange = 600,
             priorityHitbox = Player.hitbox.HEAD,
@@ -793,6 +862,11 @@ function AiStateEngage:setWeaponStats(enemy)
                 long = 0.18,
                 medium = 0.13,
                 short = 0
+            },
+            isRcsEnabled = {
+                long = true,
+                medium = true,
+                short = true
             },
             runAtCloseRange = true,
             closeRange = 900,
@@ -813,6 +887,11 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = 0,
                 short = 0
             },
+            isRcsEnabled = {
+                long = false,
+                medium = false,
+                short = false
+            },
             runAtCloseRange = false,
             closeRange = 0,
             priorityHitbox = Player.hitbox.SPINE_2,
@@ -832,6 +911,11 @@ function AiStateEngage:setWeaponStats(enemy)
                 long = 0,
                 medium = 0,
                 short = 0
+            },
+            isRcsEnabled = {
+                long = false,
+                medium = false,
+                short = false
             },
             runAtCloseRange = false,
             closeRange = 0,
@@ -862,12 +946,16 @@ function AiStateEngage:setWeaponStats(enemy)
 
     if distance >= selectedWeaponType.ranges.long then
         self.tapFireTime = selectedWeaponType.firerates.long
+        self.isRcsEnabled = selectedWeaponType.isRcsEnabled.long
     elseif distance >= selectedWeaponType.ranges.medium then
         self.tapFireTime = selectedWeaponType.firerates.medium
+        self.isRcsEnabled = selectedWeaponType.isRcsEnabled.medium
     elseif distance >= selectedWeaponType.ranges.short then
         self.tapFireTime = selectedWeaponType.firerates.short
+        self.isRcsEnabled = selectedWeaponType.isRcsEnabled.short
     else
         self.tapFireTime = 0
+        self.isRcsEnabled = true
     end
 
     self.activeWeapon = selectedWeaponType.name
@@ -1044,10 +1132,8 @@ function AiStateEngage:walk(ai)
         canWalk = false
     end
 
-    for _, enemy in pairs(AiUtility.enemies) do
-        if enemy:m_bIsDefusing() == 1 then
-            canWalk = false
-        end
+    if AiUtility.isBombBeingDefusedByEnemy then
+        canWalk = false
     end
 
     self.isSneaking = canWalk
@@ -1055,6 +1141,53 @@ function AiStateEngage:walk(ai)
     if canWalk then
         ai.controller.isWalking = true
     end
+end
+
+--- @param ai AiOptions
+--- @return boolean
+function AiStateEngage:canHoldAngle(ai)
+    -- Activates if the enemy is near a corner, but not too close to it.
+    if not self.isPreAimViableForHoldingAngle then
+        return false
+    end
+
+    -- Don't hold if the enemy has planted the bomb.
+    if AiUtility.client:isCounterTerrorist() and not AiUtility.plantedBomb then
+        return true
+    end
+
+    -- We have to have a cooldown, or you can immediately trigger the AI back into holding the angle.
+    if self.patienceCooldownTimer:isStarted() and not self.patienceCooldownTimer:isElapsed(8) then
+        return false
+    end
+
+    -- Don't hold if the enemy is defusing the bomb.
+    if AiUtility.client:isTerrorist() and not AiUtility.isBombBeingDefusedByEnemy then
+        -- Don't hold the angle forever.
+        if self.patienceTimer:isElapsed(6) then
+            self.patienceCooldownTimer:restart()
+
+            return false
+        end
+
+        local clientOrigin = AiUtility.client:getOrigin()
+        local distanceToSite = ai.nodegraph:getNearestSiteNode(clientOrigin).origin:getDistance(clientOrigin)
+        local isNearPlantedBomb = AiUtility.plantedBomb and AiUtility.client:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 512
+
+        -- Please don't hold angles if we have to plant.
+        if AiUtility.bombCarrier and not AiUtility.bombCarrier:is(AiUtility.client) then
+            return true
+        end
+
+        -- Good enough situation to hold as a T.
+        -- We don't do it outside of sites because we should really be pushing the enemy at this stage.
+        if isNearPlantedBomb or distanceToSite < 700 then
+            return true
+        end
+    end
+
+    -- It's best to just push the enemy.
+    return false
 end
 
 --- @param ai AiOptions
@@ -1067,50 +1200,103 @@ function AiStateEngage:engage(ai)
     end
 
     local targetOrigin = self.bestTarget:getOrigin()
-    local task = ai.priority == AiState.priority.ENGAGE_VISIBLE and "Engaging %s" or "Moving to engage %s"
 
-    if ai.nodegraph.path then
-        local enemyOrigin = self.bestTarget:getOrigin()
+    if self.lastBestTargetOrigin and self.bestTarget:getFlag(Player.flags.FL_ONGROUND) and targetOrigin:getDistance(self.lastBestTargetOrigin) > 128 then
+        ai.nodegraph:clearPath("Enemy moved")
+    end
 
-        if self.bestTarget:getFlag(Player.flags.FL_ONGROUND) and enemyOrigin and not enemyOrigin:isZero() then
-            if enemyOrigin:getDistance(ai.nodegraph.pathEnd.origin) > 128 then
-                ai.nodegraph:clearPath("Enemy moved")
+    -- Don't peek the angle. Hold it.
+    if self:canHoldAngle(ai) then
+        if ai.nodegraph.path then
+            self.isHoldingAngle = Client.getChance(2)
+            self.isHoldingAngleDucked = Client.getChance(4)
+
+            if self.isHoldingAngle then
+                ai.nodegraph:clearPath("Enemy is around corner")
             end
+        end
+
+        if self.isHoldingAngle then
+            self.patienceTimer:ifPausedThenStart()
+
+            if self.isHoldingAngleDucked then
+                ai.cmd.in_duck = 1
+            else
+                if self.jiggleTimer:isElapsedThenRestart(self.jiggleTime) then
+                    self.jiggleDirection = self.jiggleDirection == "Left" and "Right" or "Left"
+                end
+
+                --- @type Vector3
+                local direction
+
+                if self.jiggleDirection == "Left" then
+                    direction = Client.getCameraAngles():getLeft()
+                else
+                    direction = Client.getCameraAngles():getRight()
+                end
+
+                ai.nodegraph.moveSpeed = 450
+                ai.nodegraph.moveYaw = direction:getAngleFromForward().y
+            end
+
+            return
+        else
+            self.patienceTimer:stop()
         end
     end
 
-    -- Enemy is out of reach. Move to nearest node instead.
-    if ai.nodegraph:canPathfind() and ai.nodegraph.pathfindFails > 0 then
-        local node = ai.nodegraph:getClosestNode(targetOrigin)
-
-        ai.nodegraph:pathfind(node.origin, {
-            objective = Node.types.GOAL,
-            ignore = self.bestTarget.eid,
-            task = string.format(task, self.bestTarget:getName()),
-            onComplete = function()
-                ai.nodegraph:log("Reached target location")
-            end
-        })
-
-        return
-    end
-
-    -- Attempt to move to the target directly.
     if not ai.nodegraph.path and ai.nodegraph:canPathfind() then
-        if not self.bestTarget:isAlive() then
-            self.bestTarget = nil
+        local targetEyeOrigin = self.bestTarget:getEyeOrigin()
+
+        --- @type Node[]
+        local selectedNodes = {}
+        --- @type Node
+        local closestNode
+        local closestNodeDistance = math.huge
+
+        -- Find a nearby node that is visible to the enemy.
+        for _, node in pairs(ai.nodegraph.nodes) do
+            local distance = targetOrigin:getDistance(node.origin)
+
+            -- Determine closest node. This is our backup in case there's no visible nodes.
+            if distance < closestNodeDistance then
+                closestNodeDistance = distance
+                closestNode = node
+            end
+
+            -- Find a visible node nearby.
+            if not self.isPathfindingDirectlyToEnemy and distance < 512 then
+                local trace = Trace.getLineToPosition(targetEyeOrigin, node.origin, AiUtility.traceOptions)
+
+                if not trace.isIntersectingGeometry then
+                    table.insert(selectedNodes, node)
+                end
+            end
+        end
+
+        -- We can pathfind to a node visible to the enemy.
+        if not Table.isEmpty(selectedNodes) then
+            ai.nodegraph:pathfind(Table.getRandom(selectedNodes).origin, {
+                objective = Node.types.ENEMY,
+                ignore = self.bestTarget.eid,
+                task = string.format("Engage (vis) %s", self.bestTarget:getName())
+            })
+
+            self.lastBestTargetOrigin = targetOrigin
 
             return
         end
 
-        ai.nodegraph:pathfind(self.bestTarget:getOrigin(), {
-            objective = Node.types.GOAL,
-            ignore = self.bestTarget.eid,
-            task = string.format(task, self.bestTarget:getName()),
-            onComplete = function()
-                ai.nodegraph:log("Reached target location")
-            end
-        })
+        -- Move to the closest node to the enemy.
+        if closestNode then
+            ai.nodegraph:pathfind(closestNode.origin, {
+                objective = Node.types.ENEMY,
+                ignore = self.bestTarget.eid,
+                task = string.format("Engage (pxy) %s", self.bestTarget:getName())
+            })
+
+            self.lastBestTargetOrigin = targetOrigin
+        end
     end
 end
 
@@ -1304,13 +1490,11 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
 
     ai.nodegraph.canJump = false
 
-    if self.hitboxOffsetTimer:isElapsedThenRestart(0.66) then
-        self.hitboxOffset = Vector3:new(
-            Client.getRandomFloat(-self.aimOffset, self.aimOffset),
-            Client.getRandomFloat(-self.aimOffset, self.aimOffset),
-            Client.getRandomFloat(-self.aimOffset / 3, self.aimOffset / 3)
-        )
-    end
+    self.hitboxOffset = Vector3:new(
+        Animate.sine(0, self.aimOffset, 3.1),
+        Animate.sine(0, self.aimOffset, 2.3),
+        Animate.sine(0, self.aimOffset / 3, 4)
+    )
 
     local eyeOrigin = Client.getEyeOrigin()
     local player = AiUtility.client
@@ -1400,6 +1584,9 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
         self:autoStop(ai)
     end
 
+    -- RCS
+    ai.view.isRcsEnabled = self.isRcsEnabled
+
     -- Scope
     if player:isHoldingSniper() and fov < 8 then
         Client.scope()
@@ -1427,7 +1614,7 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
 
         if ammo and ammo > 0 then
             if self.tapFireTimer:isElapsedThenRestart(self.tapFireTime) then
-                ai.cmd.in_attack = 1
+               ai.cmd.in_attack = 1
             end
         end
     end
@@ -1734,6 +1921,10 @@ function AiStateEngage:preAimAboutCorners(ai)
         self.preAimOrigin = self.bestTarget:getOrigin():offset(0, 0, 60)
     end
 
+    if not self.preAimOrigin then
+        return
+    end
+
     if self.isVisibleToAimSystem then
         return
     end
@@ -1743,19 +1934,19 @@ function AiStateEngage:preAimAboutCorners(ai)
 
     local bands = {
         {
-            distance = 32,
+            distance = 40,
             points = 8
         },
         {
-            distance = 64,
+            distance = 80,
             points = 16
         },
         {
-            distance = 128,
+            distance = 150,
             points = 32
         },
         {
-            distance = 160,
+            distance = 200,
             points = 32
         }
     }
@@ -1765,8 +1956,9 @@ function AiStateEngage:preAimAboutCorners(ai)
     --- @type Vector3
     local closestVertex
     local closestVertexDistance = math.huge
+    local closestBand
 
-    for _, band in pairs(bands) do
+    for id, band in pairs(bands) do
         if isVisible then
             break
         end
@@ -1789,6 +1981,8 @@ function AiStateEngage:preAimAboutCorners(ai)
                         closestVertexDistance = distance
 
                         isVisible = true
+
+                        closestBand = id
                     end
                 end
             end
@@ -1796,6 +1990,8 @@ function AiStateEngage:preAimAboutCorners(ai)
     end
 
     if not closestVertex then
+        self.isPreAimViableForHoldingAngle = false
+
         return
     end
 
@@ -1803,7 +1999,14 @@ function AiStateEngage:preAimAboutCorners(ai)
 
     self.watchTimer:start()
 
+    if closestBand == 2 or closestBand == 3 then
+        self.isPreAimViableForHoldingAngle = true
+    else
+        self.isPreAimViableForHoldingAngle = false
+    end
+
     ai.controller.canUnscope = false
+    ai.view.isCrosshairFloating = false
 
     ai.view:lookAtLocation(closestVertex, self.slowAimSpeed)
 

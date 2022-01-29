@@ -19,24 +19,24 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 
 --{{{ AiStateDefend
 --- @class AiStateDefend : AiState
---- @field reachedDestination boolean
---- @field isDefendingBomb boolean
---- @field node Node
+--- @field bombCarrier Player
 --- @field bombNearSite string
 --- @field defendingSite string
---- @field bombCarrier Player
---- @field defendTimer Timer
 --- @field defendTime number
+--- @field defendTimer Timer
 --- @field equippedGun boolean
 --- @field isDefending boolean
---- @field sectorClearTimer Timer
+--- @field isDefendingBomb boolean
 --- @field isDefendingDefuser boolean
---- @field speakCooldownTimer Timer
---- @field jiggleTimer Timer
---- @field jiggleTime number
---- @field jiggleDirection string
 --- @field isJiggling boolean
 --- @field isJigglingUponReachingSpot boolean
+--- @field jiggleDirection string
+--- @field jiggleTime number
+--- @field jiggleTimer Timer
+--- @field node Node
+--- @field reachedDestination boolean
+--- @field sectorClearTimer Timer
+--- @field speakCooldownTimer Timer
 local AiStateDefend = {
     name = "Defend"
 }
@@ -89,14 +89,12 @@ function AiStateDefend:assess(nodegraph)
 
     if player:isCounterTerrorist() then
         if bomb then
-            self.defendingSite = nodegraph:getNearestBombSite(bomb:m_vecOrigin())
+            self.defendingSite = nodegraph:getNearestSiteName(bomb:m_vecOrigin())
 
-            for _, teammate in pairs(AiUtility.teammates) do
-                if teammate:m_bIsDefusing() == 1 then
-                    self.isDefendingDefuser = true
+            if AiUtility.isBombBeingDefusedByTeammate then
+                self.isDefendingDefuser = true
 
-                    return AiState.priority.DEFEND_DEFUSER
-                end
+                return AiState.priority.DEFEND_DEFUSER
             end
         end
 
@@ -104,6 +102,16 @@ function AiStateDefend:assess(nodegraph)
     end
 
     if player:isTerrorist() then
+        -- We should probably go to the site.
+        if AiUtility.bombCarrier and not AiUtility.bombCarrier:is(AiUtility.client) then
+            local bombCarrierOrigin = AiUtility.bombCarrier:getOrigin()
+            local bombsite = nodegraph:getNearestSiteNode(bombCarrierOrigin)
+
+            if bombCarrierOrigin:getDistance(bombsite.origin) < 750 then
+                return AiState.priority.DEFEND_ACTIVE
+            end
+        end
+
         return AiState.priority.DEFEND
     end
 
@@ -118,9 +126,9 @@ function AiStateDefend:activate(ai, site, swapPair, useClosestSite)
     local bomb = AiUtility.plantedBomb
 
     if bomb then
-        site = ai.nodegraph:getNearestBombSite(bomb:m_vecOrigin())
+        site = ai.nodegraph:getNearestSiteName(bomb:m_vecOrigin())
     elseif useClosestSite then
-        site = ai.nodegraph:getNearestBombSite(AiUtility.client:getOrigin())
+        site = ai.nodegraph:getNearestSiteName(AiUtility.client:getOrigin())
     end
 
     --- @type Node
@@ -195,7 +203,7 @@ function AiStateDefend:think(ai)
     local bomb = AiUtility.plantedBomb
 
     if bomb and not self.isDefendingBomb then
-        self:activate(ai, ai.nodegraph:getNearestBombSite(bomb:m_vecOrigin()))
+        self:activate(ai, ai.nodegraph:getNearestSiteName(bomb:m_vecOrigin()))
 
         self.isDefendingBomb = true
 
