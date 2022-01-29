@@ -6,18 +6,18 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local AiVoicePackGenericBase = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackGenericBase"
 --}}}
 
---{{{ AiVoicePackSteyer
---- @class AiVoicePackAdrian : AiVoicePack
-local AiVoicePackSteyer = {
+--{{{ AiVoicePackAdrian
+--- @class AiVoicePackAdrian : AiVoicePackGenericBase
+local AiVoicePackAdrian = {
 	name = "M / EN-US - Adrian",
     packPath = "Adrian"
 }
 
---- @param fields AiVoicePackSteyer
---- @return AiVoicePackSteyer
-function AiVoicePackSteyer:new(fields)
+--- @param fields AiVoicePackAdrian
+--- @return AiVoicePackAdrian
+function AiVoicePackAdrian:new(fields)
 	return Nyx.new(self, fields)
 end
 
-return Nyx.class("AiVoicePackSteyer", AiVoicePackSteyer, AiVoicePackGenericBase)
+return Nyx.class("AiVoicePackAdrian", AiVoicePackAdrian, AiVoicePackGenericBase)
 --}}}

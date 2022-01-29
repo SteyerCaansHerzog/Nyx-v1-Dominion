@@ -38,7 +38,9 @@ local AiStateEngage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEngage"
 local AiStateEvacuate = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEvacuate"
 local AiStateEvade = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEvade"
 local AiStateFlashbang = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFlashbang"
+local AiStateFollow = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFollow"
 local AiStateGraffiti = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGraffiti"
+local AiStateGrenadeDynamic = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGrenadeDynamic"
 local AiStateHeGrenade = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateHeGrenade"
 local AiStateMolotov = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateMolotov"
 local AiStatePatrol = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePatrol"
@@ -49,6 +51,8 @@ local AiStatePush = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePush"
 local AiStateRush = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateRush"
 local AiStateSmoke = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSmoke"
 local AiStateSweep = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSweep"
+local AiStateWait = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWait"
+local AiStateWatch = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWatch"
 
 local AiSentenceReplyCheater = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyCheater"
 local AiSentenceReplyCommend = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyCommend"
@@ -68,6 +72,7 @@ local AiChatCommandDisconnect = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Comma
 local AiChatCommandDrop = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandDrop"
 local AiChatCommandEco = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandEco"
 local AiChatCommandEnabled = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandEnabled"
+local AiChatCommandFollow = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandFollow"
 local AiChatCommandForce = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandForce"
 local AiChatCommandGo = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandGo"
 local AiChatCommandKnow = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandKnow"
@@ -81,6 +86,7 @@ local AiChatCommandScramble = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command
 local AiChatCommandSilence = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSilence"
 local AiChatCommandStop = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandStop"
 local AiChatCommandVote = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandVote"
+local AiChatCommandWait = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandWait"
 
 local AiChat = require "gamesense/Nyx/v1/Dominion/Ai/AiChat"
 local AiRadio = require "gamesense/Nyx/v1/Dominion/Ai/AiRadio"
@@ -93,10 +99,6 @@ local DominionClient = require "gamesense/Nyx/v1/Dominion/Client/Client"
 local DominionMenu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
---}}}
-
---{{{ FFI
-local isAppFocused = vtable_bind("engine.dll", "VEngineClient014", 196, "bool(__thiscall*)(void*)")
 --}}}
 
 --{{{ AiController
@@ -156,8 +158,10 @@ local AiController = {
 		engage = AiStateEngage,
 		evacuate = AiStateEvacuate,
 		evade = AiStateEvade,
-		flashbang = AiStateFlashbang,
+		--flashbang = AiStateFlashbang,
+		follow = AiStateFollow,
 		graffiti = AiStateGraffiti,
+		grenadeDynamic = AiStateGrenadeDynamic,
 		heGrenade = AiStateHeGrenade,
 		chickenInteraction = AiStateChickenInteraction,
 		molotov = AiStateMolotov,
@@ -169,6 +173,8 @@ local AiController = {
 		rush = AiStateRush,
 		smoke = AiStateSmoke,
 		sweep = AiStateSweep,
+		wait = AiStateWait,
+		watch = AiStateWatch,
 	},
 	commands = {
 		afk = AiChatCommandAfk,
@@ -181,6 +187,7 @@ local AiController = {
 		drop = AiChatCommandDrop,
 		eco = AiChatCommandEco,
 		ai = AiChatCommandEnabled,
+		follow = AiChatCommandFollow,
 		force = AiChatCommandForce,
 		go = AiChatCommandGo,
 		know = AiChatCommandKnow,
@@ -193,6 +200,7 @@ local AiController = {
 		skipmatch = AiChatCommandSkipMatch,
 		stop = AiChatCommandStop,
 		vote = AiChatCommandVote,
+		wait = AiChatCommandWait,
 	},
 	sentences = {
 		replyCheater = AiSentenceReplyCheater,
@@ -405,7 +413,7 @@ function AiController:initEvents()
 				return
 			end
 
-			Client.execute("buy vest; buy vesthelm") print("BUY?") -- todo
+			Client.execute("buy vest; buy vesthelm")
 		end)
 	end)
 
@@ -540,7 +548,7 @@ function AiController:autoBuy()
 
 		local team = player:m_iTeamNum()
 		local canBuyRifle = balance - (team == 2 and 3000 or 3050) >= 0
-		local canBuyAwp = (balance - 5750 >= 0) and Client.getChance(6)
+		local canBuyAwp = (balance - 5750 >= 0) and Client.getChance(3)
 		local canBuyUtility = false
 
 		if (roundsPlayed == 1 or roundsPlayed == halftimeRounds + 1) and not canBuyRifle then
@@ -771,7 +779,7 @@ function AiController:renderUi()
 		return
 	end
 
-	local screenBgColor = Color:rgba(0, 0, 0, 0)
+	local screenBgColor = Color:rgba(0, 0, 0, 75)
 
 	if not player:isAlive() then
 		name = name .. " (DEAD)"
@@ -1107,14 +1115,17 @@ function AiController:antiFlash(ai)
 	end
 
 	if self.activeFlashbang then
-		local trace = Trace.getHullToPosition(
-			eyeOrigin,
-			self.activeFlashbang:m_vecOrigin(),
-			Vector3:newBounds(Vector3.align.CENTER, 8),
-			AiUtility.traceOptions
-		)
+		local visiblePoints = 0
 
-		if trace.isIntersectingGeometry then
+		for _, vertex in pairs(self.activeFlashbang:m_vecOrigin():getBox(Vector3.align.CENTER, 8)) do
+			local trace = Trace.getLineToPosition(eyeOrigin, vertex, AiUtility.traceOptions)
+
+			if not trace.isIntersectingGeometry then
+				visiblePoints = visiblePoints + 1
+			end
+		end
+
+		if visiblePoints == 0 then
 			self.activeFlashbang = nil
 
 			return
@@ -1122,7 +1133,7 @@ function AiController:antiFlash(ai)
 
 		self.flashbangVisibleTimer:ifPausedThenStart()
 
-		if self.flashbangVisibleTimer:isElapsed(0.25) then
+		if self.flashbangVisibleTimer:isElapsed(0.5) then
 			ai.view:lookAtLocation(eyeOrigin:getAngle(self.activeFlashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 4)
 		end
 
@@ -1134,6 +1145,7 @@ function AiController:antiFlash(ai)
 	local cameraAngles = Client.getCameraAngles()
 
 	for _, flash in Entity.find({Weapons.GRENADE_PROJECTILE}) do repeat
+		-- CSGO is fucking retarded.
 		if flash:m_flDamage() ~= 100 then
 			break
 		end
@@ -1173,8 +1185,8 @@ function AiController:antiBlock(ai)
 
 	local isBlocked = false
 	local origin = player:getOrigin()
-	local collisionOrigin = origin:clone():offset(0, 0, -32) + (Client.getCameraAngles():set(0):getForward() * 32)
-	local collisionBounds = collisionOrigin:getBounds(Vector3.align.BOTTOM, 32, 32, 96)
+	local collisionOrigin = origin:clone():offset(0, 0, -32) + (Client.getCameraAngles():set(0):getForward() * 48)
+	local collisionBounds = collisionOrigin:getBounds(Vector3.align.BOTTOM, 26, 26, 96)
 	--- @type Player
 	local blockingTeammate
 
@@ -1259,7 +1271,7 @@ end
 
 --- @return void
 function AiController:unblockNodes()
-	if not self.unblockNodesTimer:isElapsedThenStop(20) then
+	if not self.unblockNodesTimer:isElapsedThenStop(10) then
 		return
 	end
 

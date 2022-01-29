@@ -47,7 +47,7 @@ function AiStateDefuse:__init()
                 return
             end
 
-            local nearestSite = self.nodegraph:getNearestBombSite(bomb:m_vecOrigin())
+            local nearestSite = self.nodegraph:getNearestSiteName(bomb:m_vecOrigin())
             --- @type Node[]
             local chokes = self.nodegraph[string.format("objective%sChoke", nearestSite:upper())]
 
@@ -89,13 +89,15 @@ function AiStateDefuse:assess()
     local playerOrigin = player:getOrigin()
     local isCovered = false
 
-    for _, teammate in pairs(AiUtility.teammates) do
-        if teammate:m_bIsDefusing() == 1 then
-            return AiState.priority.IGNORE
-        end
+    if AiUtility.isBombBeingDefusedByTeammate then
+        return AiState.priority.IGNORE
+    end
 
+    for _, teammate in pairs(AiUtility.teammates) do
         if playerOrigin:getDistance(teammate:getOrigin()) < 512 then
             isCovered = true
+
+            break
         end
     end
 
@@ -128,7 +130,7 @@ function AiStateDefuse:activate(ai)
         task = "Defending the defuser"
     else
         pathEnd = bombOrigin
-        task = string.format("Retaking %s site", ai.nodegraph:getNearestBombSite(bombOrigin):upper())
+        task = string.format("Retaking %s site", ai.nodegraph:getNearestSiteName(bombOrigin):upper())
     end
 
     ai.nodegraph:pathfind(pathEnd, {

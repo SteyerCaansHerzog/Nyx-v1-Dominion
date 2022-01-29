@@ -10,6 +10,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --- @field isInGame boolean
 --- @field isInLobby boolean
 --- @field isInQueue boolean
+--- @field voicePacks number[]
 local Allocate = {}
 
 return Nyx.class("Allocate", Allocate)

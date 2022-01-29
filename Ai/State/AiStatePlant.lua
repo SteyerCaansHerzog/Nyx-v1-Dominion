@@ -92,7 +92,7 @@ function AiStatePlant:assess(nodegraph)
 
     local player = AiUtility.client
     local playerOrigin = player:getOrigin()
-    local siteName = nodegraph:getNearestBombSite(playerOrigin)
+    local siteName = nodegraph:getNearestSiteName(playerOrigin)
     local site = nodegraph:getSiteNode(siteName)
     local closestPlantNode = nodegraph:getClosestNodeOf(playerOrigin, Node.types.PLANT)
     local isCovered = false
@@ -189,8 +189,9 @@ function AiStatePlant:think(ai)
     local player = AiUtility.client
     local distance = player:getOrigin():getDistance(self.node.origin)
 
-    if distance < 64 then
+    if distance < 72 then
         ai.view:lookInDirection(self.node.direction, 3)
+        ai.controller.isQuickStopping = true
     end
 
     if distance < 80 then

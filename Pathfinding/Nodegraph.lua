@@ -68,6 +68,8 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field objectiveSmokeDefend Node[]
 --- @field objectiveSmokeExecute Node[]
 --- @field objectiveSmokeHold Node[]
+--- @field objectiveWatchRifle Node[]
+--- @field objectiveWatchSniper Node[]
 --- @field path Node[]
 --- @field pathCurrent number
 --- @field pathEnd Node
@@ -168,7 +170,7 @@ end
 
 --- @param origin Vector3
 --- @return string
-function Nodegraph:getNearestBombSite(origin)
+function Nodegraph:getNearestSiteName(origin)
     local aDistance = origin:getDistance(self.objectiveA.origin)
     local bDistance = origin:getDistance(self.objectiveB.origin)
 
@@ -187,6 +189,12 @@ function Nodegraph:getSiteNode(site)
     elseif site == "b" then
         return self.objectiveB
     end
+end
+
+--- @param origin Vector3
+--- @return Node
+function Nodegraph:getNearestSiteNode(origin)
+    return self:getSiteNode(self:getNearestSiteName(origin))
 end
 
 --- @vararg string
@@ -257,7 +265,9 @@ function Nodegraph:setupNodegraph()
         [Node.types.CHOKE] = "Choke",
         [Node.types.SHOOT] = "Shoot",
         [Node.types.CROUCH_SHOOT] = "Shoot",
-        [Node.types.BLOCK] = "Block"
+        [Node.types.BLOCK] = "Block",
+        [Node.types.WATCH_RIFLE] = "WatchRifle",
+        [Node.types.WATCH_SNIPER] = "WatchSniper",
     }
 
     local linkToObjective = {
@@ -346,13 +356,18 @@ function Nodegraph:renderNodegraph()
     end
 
     if Menu.visualiseDirectPathing:get() then
-        local playerOrigin = Player.getClient():getOrigin():offset(0, 0, 18)
-        local bounds = Vector3:newBounds(Vector3.align.CENTER, 16, 16, 4)
+        local playerOrigin = Player.getClient():getOrigin():offset(0, 0, 8)
+        local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 16, 16, 46)
+
+        for _, vertex in pairs(bounds) do
+            local drawPos = playerOrigin + vertex
+
+            drawPos:drawCircleOutline(10, 4, Color:rgba())
+        end
 
         for _, searchNode in pairs(self.nodes) do
             if playerOrigin:getDistance(searchNode.origin) < 256 then
                 local isPathable = self:isJumpNodeValid(playerOrigin, searchNode)
-
                 local trace = Trace.getHullToPosition(playerOrigin, searchNode.origin, bounds, AiUtility.traceOptions)
 
                 isPathable = not trace.isIntersectingGeometry
@@ -387,8 +402,11 @@ function Nodegraph:renderNodegraph()
 
         if alpha > 0 then
             local color = Node.typesColor[node.type]:clone()
+            local colorFont = color:clone()
 
             color.a = alpha
+
+            colorFont.a = Math.pcti(cameraOrigin:getDistance(node.origin), 256) * 255
 
             for _, connection in pairs(node.connections) do
                 local lineColor = Color:rgba(150, 150, 150, math.min(35, alpha))
@@ -417,7 +435,9 @@ function Nodegraph:renderNodegraph()
 
             local text = string.format("[%s] %s%s", node.id, Node.typesCode[node.type], site)
 
-            node.origin:clone():offset(0, 0, 14):drawSurfaceText(Font.SMALL, color, "c", text)
+            if colorFont.a > 0 then
+                node.origin:clone():offset(0, 0, 14):drawSurfaceText(Font.SMALL, colorFont, "c", text)
+            end
 
             if node.direction then
                 local directionOffset = node.origin + node.direction:getForward() * 16
@@ -973,8 +993,8 @@ function Nodegraph:move(cmd)
     self.canJump = true
 
     -- Jump over obstacles
-    if canJump and node.type == Node.types.JUMP then
-        if distance < 32 and node.origin.z - origin.z > 18 then
+    if node.type == Node.types.JUMP then
+        if canJump and distance < 32 and node.origin.z - origin.z > 18 then
             if self.jumpCooldown:isElapsedThenRestart(0.6) then
                 cmd.in_jump = 1
 
@@ -1009,7 +1029,7 @@ function Nodegraph:move(cmd)
             self.stuckTimer:start()
         elseif self.stuckTimer:isStarted() and speed >= 64 then
             self.stuckTimer:stop()
-        elseif self.stuckTimer:isElapsedThenRestart(0.75) then
+        elseif self.stuckTimer:isElapsedThenRestart(1) then
             self:rePathfind()
 
             local closestJumpNode = self:getClosestNodeOf(origin, Node.types.JUMP)

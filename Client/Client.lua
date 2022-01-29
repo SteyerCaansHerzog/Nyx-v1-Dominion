@@ -175,6 +175,12 @@ function DominionClient:__init()
         if self.allocation and Server.isIngame() then
             Client.fireAfter(Client.getRandomFloat(8, 16), function()
                 Client.execute("disconnect")
+
+                if self.isInLobby then
+                    Panorama.LobbyAPI.CloseSession()
+
+                    self.isInLobby = false
+                end
             end)
         end
 
@@ -411,19 +417,21 @@ function DominionClient:logon()
     self.server:onReceive(Allocate, function(allocation)
         self.allocation = allocation
 
-        local idx
-        local steamid = Panorama.MyPersonaAPI.GetXuid()
+        if allocation.voicePacks then
+            local idx
+            local steamid = Panorama.MyPersonaAPI.GetXuid()
 
-        for i = 1, #allocation.botSteamids do
-            if allocation.botSteamids[i] == steamid then
-                idx = i
+            for i = 1, #allocation.botSteamids do
+                if allocation.botSteamids[i] == steamid then
+                    idx = i
 
-                break
+                    break
+                end
             end
-        end
 
-        if idx then
-            DominionMenu.voicePack:set(AiVoice.liveClientPacks[idx])
+            if idx then
+                DominionMenu.voicePack:set(self.allocation.voicePacks[idx])
+            end
         end
 
         self.allocationTimer:start()
@@ -431,12 +439,6 @@ function DominionClient:logon()
 
     self.server:onReceive(Deallocate, function()
         self.allocation = nil
-
-        if self.isInLobby then
-            Panorama.LobbyAPI.CloseSession()
-
-            self.isInLobby = false
-        end
 
         DominionMenu.voicePack:set(0)
     end)

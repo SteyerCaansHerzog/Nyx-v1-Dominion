@@ -265,6 +265,7 @@ function AiStateGrenadeBase:think(ai)
             and distance < 32
             and self.throwTimer:isElapsedThenRestart(self.throwTime)
             and player:isHoldingWeapons(self.weapons)
+            and player:isAbleToAttack()
         then
             ai.cmd.in_attack = 1
         end

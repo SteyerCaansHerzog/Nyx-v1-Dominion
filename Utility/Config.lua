@@ -17,7 +17,7 @@ local Config = {
     },
     isDebugging = false,
     isJoiningServerOnStartup = false,
-    isLiveClient = true
+    isLiveClient = false
 }
 
 return Nyx.class("Config", Config)

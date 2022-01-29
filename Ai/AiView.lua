@@ -29,6 +29,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field isCrosshairUsingVelocity boolean
 --- @field isCrosshairSmoothed boolean
 --- @field isViewLocked boolean
+--- @field isRcsEnabled boolean
 --- @field lastCameraAngles Angle
 --- @field lastLookAtLocationOrigin Vector3
 --- @field lookAtAngles Angle
@@ -126,7 +127,6 @@ function AiView:setViewAngles()
 
     --- @type Angle
     local targetViewAngles = idealViewAngles
-    local cameraAngles = Client.getCameraAngles()
 
     -- Apply velocity on angles. Creates the effect of "over-shooting" the target point
     -- when moving the mouse far and fast.
@@ -141,6 +141,8 @@ function AiView:setViewAngles()
     if self.isCrosshairSmoothed then
         self.isCrosshairSmoothed = false
     else
+        local cameraAngles = Client.getCameraAngles()
+
         -- Prevent smoothing all the way down to 0 delta.
         if cameraAngles:getMaxDiff(targetViewAngles) < 0.5 then
             return
@@ -185,7 +187,7 @@ function AiView:setTargetVelocity(targetViewAngles)
     self.velocity:approach(Angle:new(), self.velocityResetSpeed)
 
     -- Velocity sine. This should make the over-swing become non-parallel to the aim target.
-    local velocitySine = Angle:new(Animate.float(0, Math.clamp(self.velocity:getMagnitude() * 0.5, -8, 8), 1), 0)
+    local velocitySine = Angle:new(Animate.sine(0, Math.clamp(self.velocity:getMagnitude() * 0.5, -8, 8), 1), 0)
 
     targetViewAngles:setFromAngle(targetViewAngles + (self.velocity + velocitySine))
 end
@@ -194,8 +196,8 @@ end
 --- @return void
 function AiView:setTargetCurve(targetViewAngles)
     -- Sine wave float the angles.
-    local floatPitch = Animate.float(0, 50, 5)
-    local floatYaw = Animate.float(0, 50, 2)
+    local floatPitch = Animate.sine(0, 50, 5)
+    local floatYaw = Animate.sine(0, 50, 2)
 
     -- Get the absolute difference of the angles.
     local deltaPitch = math.abs(targetViewAngles.p - self.viewAngles.p)
@@ -215,8 +217,8 @@ end
 --- @return void
 function AiView:setTargetFloat(targetViewAngles)
     -- Float the angles.
-    local pitchSine = Animate.float(0, 1 * self.pitchSineModifier, 1 * self.pitchSineModifier)
-    local yawSine = Animate.float(0, 2 * self.yawSineModifier, 1 * self.yawSineModifier)
+    local pitchSine = Animate.sine(0, 1 * self.pitchSineModifier, 1 * self.pitchSineModifier)
+    local yawSine = Animate.sine(0, 2 * self.yawSineModifier, 1 * self.yawSineModifier)
 
     targetViewAngles:set(
         targetViewAngles.p + pitchSine,
@@ -239,10 +241,10 @@ function AiView:setRandomizers()
     if self.randomizerTimer:isElapsedThenRestart(self.randomizerInterval) then
         self.randomizerInterval = Client.getRandomFloat(0.75, 2)
 
-        self.noiseAngles:set(Client.getRandomFloat(-1, 2.25), Client.getRandomFloat(-2, 2))
+        self.noiseAngles:set(Client.getRandomFloat(-1, 1.5), Client.getRandomFloat(-1.5, 1.5))
 
-        self.pitchSineModifier = Client.getRandomFloat(-1.5, 1.5)
-        self.yawSineModifier = Client.getRandomFloat(-4, 4)
+        self.pitchSineModifier = Client.getRandomFloat(-1.33, 1.33)
+        self.yawSineModifier = Client.getRandomFloat(-2.5, 2.5)
     end
 end
 
@@ -259,7 +261,7 @@ function AiView:setIdealLookAhead(idealViewAngles)
     local lookAheadNode
 
     -- How far in the path to look ahead.
-    local lookAheadTo = 3
+    local lookAheadTo = 4
 
     -- Select a node ahead in the path, and look closer until we find a valid node.
     while not lookAheadNode and lookAheadTo > 0 do
@@ -284,7 +286,7 @@ function AiView:setIdealLookAhead(idealViewAngles)
     lookOrigin:offset(0, 0, 46)
 
     -- Set look speed so we don't use the speed set by AI behaviour.
-    self.lookSpeed = 2.25
+    self.lookSpeed = 2.6
 
     -- Generate our look ahead view angles.
     idealViewAngles:setFromAngle(Client.getEyeOrigin():getAngle(lookOrigin))
@@ -357,9 +359,11 @@ function AiView:think(cmd)
     local aimPunchAngles = player:m_aimPunchAngle()
     local correctedViewAngles = self.viewAngles:clone()
 
-    self.aimPunchAngles = self.aimPunchAngles + (aimPunchAngles - self.aimPunchAngles) * 20 * Time.getDelta()
+    if self.isRcsEnabled then
+        self.aimPunchAngles = self.aimPunchAngles + (aimPunchAngles - self.aimPunchAngles) * 20 * Time.getDelta()
 
-    correctedViewAngles = (correctedViewAngles - self.aimPunchAngles * self.recoilControl):normalize()
+        correctedViewAngles = (correctedViewAngles - self.aimPunchAngles * self.recoilControl):normalize()
+    end
 
     self.lookAtAngles = correctedViewAngles
     cmd.pitch = correctedViewAngles.p

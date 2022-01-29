@@ -32,6 +32,8 @@ function AiChatCommandStop:invoke(ai, sender, args)
     ai.states.check:reset()
     ai.states.patrol:reset()
     ai.states.boost:reset()
+    ai.states.follow:reset()
+    ai.states.wait:reset()
 end
 
 return Nyx.class("AiChatCommandStop", AiChatCommandStop, AiChatCommand)

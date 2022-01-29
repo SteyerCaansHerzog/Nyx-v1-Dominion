@@ -38,10 +38,8 @@ function AiStateEvacuate:assess()
         return AiState.priority.IGNORE
     end
 
-    for _, enemy in pairs(AiUtility.enemies) do
-        if enemy:m_bIsDefusing() == 1 then
-            return AiState.priority.IGNORE
-        end
+    if AiUtility.isBombBeingDefusedByEnemy then
+        return AiState.priority.IGNORE
     end
 
     local player = AiUtility.client

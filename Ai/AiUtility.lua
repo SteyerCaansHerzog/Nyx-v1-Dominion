@@ -86,6 +86,8 @@ local AiWeaponNames = {
 --- @field enemyFovs number[]
 --- @field enemyHitboxes table<number, Vector3[]>
 --- @field hasBomb Player
+--- @field isBombBeingDefusedByEnemy boolean
+--- @field isBombBeingDefusedByTeammate boolean
 --- @field isLastAlive boolean
 --- @field isPlanting boolean
 --- @field isRoundOver boolean
@@ -94,10 +96,10 @@ local AiWeaponNames = {
 --- @field plantedBomb Entity
 --- @field roundTimer Timer
 --- @field teammates Player[]
+--- @field traceOptions TraceOptions
 --- @field visibleEnemies Player[]
 --- @field weaponNames string[]
 --- @field weaponPriority AiWeaponPriorityGeneral
---- @field traceOptions TraceOptions
 local AiUtility = {
     mainWeapons = {
         Weapons.FAMAS, Weapons.GALIL, Weapons.M4A1, Weapons.AUG, Weapons.AK47, Weapons.AWP, Weapons.SG553, Weapons.SSG08
@@ -173,33 +175,30 @@ function AiUtility:initEvents()
         self.client = Player.getClient()
     end)
 
-    Callbacks.roundStart(function(e)
+    Callbacks.roundPrestart(function(e)
         self.bombCarrier = nil
         self.isRoundOver = false
+        self.isBombBeingDefusedByEnemy = false
+        self.isBombBeingDefusedByTeammate = false
+        self.isPlanting = false
     end)
 
     Callbacks.itemPickup(function(e)
-        if not e.item == "c4" then
-            return
+        if e.item == "c4" then
+            self.bombCarrier = e.player
         end
-
-        self.bombCarrier = e.player
     end)
 
     Callbacks.itemEquip(function(e)
-        if not e.item == "c4" then
-            return
+        if e.item == "c4" then
+            self.bombCarrier = e.player
         end
-
-        self.bombCarrier = e.player
     end)
 
     Callbacks.itemRemove(function(e)
-        if not e.item == "c4" then
-            return
+        if e.item == "c4" then
+            self.bombCarrier = nil
         end
-
-        self.bombCarrier = nil
     end)
 
     Callbacks.bombBeginPlant(function(e)
@@ -217,6 +216,30 @@ function AiUtility:initEvents()
     Callbacks.bombPlanted(function()
     	self.bombCarrier = nil
         self.isPlanting = false
+    end)
+
+    Callbacks.bombBeginDefuse(function(e)
+        if not e.player:isClient() and e.player:isTeammate() then
+            self.isBombBeingDefusedByTeammate = true
+        elseif e.player:isEnemy() then
+            self.isBombBeingDefusedByEnemy = true
+        end
+    end)
+
+    Callbacks.bombAbortDefuse(function(e)
+        if not e.player:isClient() and e.player:isTeammate() then
+            self.isBombBeingDefusedByTeammate = true
+        elseif e.player:isEnemy() then
+            self.isBombBeingDefusedByEnemy = true
+        end
+    end)
+
+    Callbacks.bombDefused(function(e)
+        if not e.player:isClient() and e.player:isTeammate() then
+            self.isBombBeingDefusedByTeammate = true
+        elseif e.player:isEnemy() then
+            self.isBombBeingDefusedByEnemy = true
+        end
     end)
 
     Callbacks.playerDeath(function(e)
