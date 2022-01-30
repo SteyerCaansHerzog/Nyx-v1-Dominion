@@ -109,17 +109,13 @@ function AiSentenceSayKills:__init()
         if e.victim:isClient() and e.attacker:isEnemy() then
             if e.weapon == "knife" then
                 self:speak("DEATH_WP")
-            end
-
-            if e.weapon == "hegrenade" or e.weapon == "inferno" then
+            elseif e.weapon == "hegrenade" or e.weapon == "inferno" then
                 self:speak("DEATH_NADE")
-            end
-
-            if e.penetrated > 0 and e.headshot then
+            elseif e.penetrated > 0 and e.headshot then
                 self:speak("DEATH_WP")
-            end
-
-            if e.noscope or e.attackerblind or e.thrusmoke then
+            elseif e.noscope or e.attackerblind or e.thrusmoke then
+                self:speak("DEATH_WP")
+            elseif Client.getChance(8) then
                 self:speak("DEATH_WP")
             end
         end

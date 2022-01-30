@@ -98,7 +98,8 @@ local AiWeaponNames = {
 --- @field plantedBomb Entity
 --- @field roundTimer Timer
 --- @field teammates Player[]
---- @field traceOptions TraceOptions
+--- @field traceOptionsPathfinding TraceOptions
+--- @field traceOptionsAttacking TraceOptions
 --- @field visibleEnemies Player[]
 --- @field weaponNames string[]
 --- @field weaponPriority AiWeaponPriorityGeneral
@@ -108,7 +109,7 @@ local AiUtility = {
     },
     weaponPriority = AiWeaponPriorityGeneral,
     weaponNames = AiWeaponNames,
-    traceOptions = {
+    traceOptionsPathfinding = {
         skip = function(eid)
             local entity = Entity:create(eid)
 
@@ -117,6 +118,17 @@ local AiUtility = {
             end
         end,
         mask = Trace.mask.PLAYERSOLID,
+        type = Trace.type.EVERYTHING
+    },
+    traceOptionsAttacking = {
+        skip = function(eid)
+            local entity = Entity:create(eid)
+
+            if entity.classname ~= "CWorld" then
+                return true
+            end
+        end,
+        mask = Trace.mask.VISIBLE,
         type = Trace.type.EVERYTHING
     }
 }
@@ -329,9 +341,9 @@ function AiUtility:initEvents()
 
             if not enemy:isDormant() then
                 for _, hitbox in pairs(enemy:getHitboxPositions()) do
-                    local _, fraction, eid = eyeOrigin:getTraceLine(hitbox, playerEid)
+                    local trace = Trace.getLineToPosition(eyeOrigin, hitbox, AiUtility.traceOptionsAttacking)
 
-                    if eid == enemy.eid or fraction == 1 then
+                    if not trace.isIntersectingGeometry then
                         if enemy:m_bIsDefusing() == 1 then
                             visibleHitboxes = visibleHitboxes + 1
                         else

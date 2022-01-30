@@ -86,7 +86,6 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field scopedTimer Timer
 --- @field setBestTargetTimer Timer
 --- @field shootAtOrigin Vector3
---- @field shootAtOriginTimer Timer
 --- @field skill number
 --- @field slowAimSpeed number
 --- @field sprayTime number
@@ -132,7 +131,6 @@ function AiStateEngage:initFields()
     self.ignoreDormancyTime = 6.5
     self.isIgnoringDormancy = false
     self.isSneaking = false
-    self.shootAtOriginTimer = Timer:new():startThenElapse()
     self.blockTimer = Timer:new():startThenElapse()
     self.blockTime = 0.25
     self.lastSoundTimer = Timer:new():start()
@@ -568,14 +566,6 @@ function AiStateEngage:noticeEnemy(player, range, reason)
     end
 
     self.noticedPlayerTimers[player.eid]:start()
-
-    if self.shootAtOriginTimer:isElapsedThenRestart(1) then
-        self.shootAtOrigin = player:getOrigin() + Vector3:new(
-            Client.getRandomFloat(-128, 128),
-            Client.getRandomFloat(-128, 128),
-            Client.getRandomFloat(64, 72)
-        )
-    end
 end
 
 --- @param player Player
@@ -1266,7 +1256,7 @@ function AiStateEngage:engage(ai)
 
             -- Find a visible node nearby.
             if not self.isPathfindingDirectlyToEnemy and distance < 512 then
-                local trace = Trace.getLineToPosition(targetEyeOrigin, node.origin, AiUtility.traceOptions)
+                local trace = Trace.getLineToPosition(targetEyeOrigin, node.origin, AiUtility.traceOptionsPathfinding)
 
                 if not trace.isIntersectingGeometry then
                     table.insert(selectedNodes, node)
@@ -1379,6 +1369,12 @@ function AiStateEngage:attack(ai)
         return
     end
 
+    self.shootAtOrigin = enemy:getEyeOrigin() + Vector3:new(
+        Animate.sine(0, 22, 3),
+        Animate.sine(0, 22, 2),
+        Animate.sine(0, 8, 2.5)
+    )
+
     -- Ensure player is holding weapon
     if not player:isHoldingGun() then
         Client.equipAnyWeapon()
@@ -1399,6 +1395,23 @@ function AiStateEngage:attack(ai)
     -- Shoot last position
     if not next(AiUtility.visibleEnemies) and self.watchOrigin then
         self:watchAngle(ai)
+    end
+
+    if not AiUtility.visibleEnemies[enemy.eid] then
+        local eyeOrigin = Client.getEyeOrigin()
+        local wallbangOrigin = enemy:getOrigin():offset(0, 0, 48)
+        local eid, dmg = eyeOrigin:getTraceBullet(wallbangOrigin, Client.getEid())
+        local lastSeenAgo = self.noticedPlayerTimers[enemy.eid]:get()
+
+        print(dmg)
+
+        if eid == enemy.eid and dmg > 10 and lastSeenAgo < 1.5 then
+            Client.draw(Vector3.drawCircleOutline, self.shootAtOrigin, 12, 2, Color:hsla(30, 1, 0.5, 200))
+
+            self:shoot(ai, self.shootAtOrigin, self:getShootFov(Client.getCameraAngles(), eyeOrigin, wallbangOrigin))
+
+            return
+        end
     end
 
     -- Get target hitbox
@@ -1436,9 +1449,7 @@ function AiStateEngage:attack(ai)
     self.currentReactionTime = (lastSeenEnemyTimer:isStarted() and not lastSeenEnemyTimer:isElapsed(2)) and self.anticipateTime or self.reactionTime
 
     local eyeOrigin = Client.getEyeOrigin()
-    local distance = eyeOrigin:getDistance(hitbox)
-    local fov = AiUtility.enemyFovs[enemy.eid]
-    local shootFov = Math.clamp(Math.pct(distance, 512), 0, 90) * fov
+    local shootFov = self:getShootFov(Client.getCameraAngles(), eyeOrigin, hitbox)
 
     -- Begin reaction timer
     if AiUtility.visibleEnemies[enemy.eid] and (self:hasNoticedEnemy(enemy) or shootFov < 35) then
@@ -1467,15 +1478,26 @@ function AiStateEngage:attack(ai)
 
             self:noticeEnemy(enemy, 4096, "In shoot FoV")
             self:shoot(ai, hitbox, shootFov, enemy)
-        elseif fov < 40 then
+        elseif shootFov < 40 then
             ai.view:lookAtLocation(hitbox, self.aimSpeed * 0.8)
 
             self.watchTimer:start()
             self.lastSeenTimers[enemy.eid]:start()
-        elseif fov >= 40 and self:hasNoticedEnemy(enemy) then
+        elseif shootFov >= 40 and self:hasNoticedEnemy(enemy) then
             ai.view:lookAtLocation(hitbox, self.slowAimSpeed)
         end
     end
+end
+
+--- @param angle Angle
+--- @param vectorA Vector3
+--- @param vectorB Vector3
+--- @return number
+function AiStateEngage:getShootFov(angle, vectorA, vectorB)
+    local distance = vectorA:getDistance(vectorB)
+    local fov = angle:getFov(vectorA, vectorB)
+
+    return Math.clamp(Math.pct(distance, 512), 0, 90) * fov
 end
 
 --- @param ai AiOptions
@@ -1506,9 +1528,9 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
             return
         end
 
-        local _, fraction, eid = eyeOrigin:getTraceLine(hitbox, Client.getEid())
+        local trace = Trace.getLineToPosition(eyeOrigin, hitbox, AiUtility.traceOptionsAttacking)
 
-        if eid ~= enemy.eid and fraction ~= 1 then
+        if trace.isIntersectingGeometry then
             return
         end
     end
@@ -1537,11 +1559,6 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
 
         ai.view:lookAtLocation(aimAt, self.aimSpeed)
     end
-
-    Client.draw(Vector3.drawCircle, hitbox, 6, Color:hsla(0, 1, 0.5, 75))
-    Client.draw(Vector3.drawCircleOutline, aimAt, 8, 2, Color:hsla(0, 1, 0.5, 150))
-    Client.draw(Vector3.drawCircle, aimAt, 2, Color:hsla(0, 1, 0.5, 150))
-    Client.draw(Vector3.drawLine, hitbox, aimAt, Color:hsla(0, 1, 0.5, 150))
 
     -- Do not shoot teammates
     local clientEyeOrigin = Client.getEyeOrigin()
@@ -1660,17 +1677,7 @@ function AiStateEngage:getHitbox(enemy)
 
     for hitboxId, hitbox in pairs(enemy:getHitboxPositions(hitboxes)) do
         local hitboxPriority = hitboxesPriority[hitboxId]
-        local trace = Trace.getLineToPosition(eyeOrigin, hitbox, {
-            skip = function(eid)
-                local entity = Entity:create(eid)
-
-                if entity.classname ~= "CWorld" then
-                    return true
-                end
-            end,
-            mask = Trace.mask.VISIBLE,
-            type = Trace.type.EVERYTHING
-        })
+        local trace = Trace.getLineToPosition(eyeOrigin, hitbox, AiUtility.traceOptionsAttacking)
 
         if not trace.isIntersectingGeometry then
             visibleHitboxCount = visibleHitboxCount + 1
@@ -2009,7 +2016,6 @@ function AiStateEngage:preAimAboutCorners(ai)
     ai.view.isCrosshairFloating = false
 
     ai.view:lookAtLocation(closestVertex, self.slowAimSpeed)
-
     Client.draw(Vector3.drawCircleOutline, closestVertex, 12, 2, Color:hsla(200, 1, 0.5, 200))
 end
 

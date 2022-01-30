@@ -20,6 +20,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --{{{ AiStateGrenadeDynamic
 --- @class AiStateGrenadeDynamic : AiState
 --- @field isThrowing boolean
+--- @field canJumpThrow boolean
 --- @field targetPlayer Player
 --- @field throwAngles Angle
 --- @field throwCooldownTimer Timer
@@ -65,7 +66,7 @@ function AiStateGrenadeDynamic:assess()
     local clientEyeOrigin = Client.getEyeOrigin()
 
     -- Angle to try our mentally handicapped flash prediction with.
-    local predictionAngles = Angle:new(Client.getRandomFloat(-89, -10), Client.getRandomFloat(-180, 180))
+    local predictionAngles = Angle:new(Client.getRandomFloat(-85, -20), Client.getRandomFloat(-180, 180))
 
     -- I literally threw a flash into the sky and asked for the distance from my eye sockets to the detonation point.
     local predictionDistance = 700
@@ -98,14 +99,17 @@ function AiStateGrenadeDynamic:assess()
             break
         end
 
+        local distance = blindTrace.startPosition:getDistance(blindTrace.endPosition)
+
         -- The enemy probably wouldn't be blinded even if we threw an actually well-calculated flash at them.
-        if blindTrace.startPosition:getDistance(blindTrace.endPosition) > 1200 then
+        if distance > 1200 then
             break
         end
 
         -- We're gonna try these angles. Pray on God.
-        self.throwAngles = clientEyeOrigin:getAngle(impactTrace.endPosition):offset(6)
+        self.throwAngles = clientEyeOrigin:getAngle(impactTrace.endPosition):offset(5)
         self.targetPlayer = enemy
+        self.canJumpThrow = distance > 600 and predictionAngles.p < -40
 
         return AiState.priority.DYNAMIC_GRENADE
     until true end
@@ -129,6 +133,7 @@ end
 function AiStateGrenadeDynamic:reset()
     self.throwAngles = nil
     self.isThrowing = false
+    self.canJumpThrow = false
     self.targetPlayer = nil
 
     self.throwTimer:stop()
@@ -177,6 +182,10 @@ function AiStateGrenadeDynamic:think(ai)
 
     if self.throwTimer:isElapsedThenRestart(0.1) then
         ai.cmd.in_attack = 0
+
+        if self.canJumpThrow then
+            ai.cmd.in_jump = 1
+        end
 
         Client.fireAfter(0.25, function()
             self.throwCooldownTimer:restart()

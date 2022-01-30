@@ -82,6 +82,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field tSpawn Node
 --- @field unstuckAngles Angle
 --- @field unstuckTimer Timer
+--- @field cachedPathfindMoveYaw number
 local Nodegraph = {}
 
 --- @return Nodegraph
@@ -368,7 +369,7 @@ function Nodegraph:renderNodegraph()
         for _, searchNode in pairs(self.nodes) do
             if playerOrigin:getDistance(searchNode.origin) < 256 then
                 local isPathable = self:isJumpNodeValid(playerOrigin, searchNode)
-                local trace = Trace.getHullToPosition(playerOrigin, searchNode.origin, bounds, AiUtility.traceOptions)
+                local trace = Trace.getHullToPosition(playerOrigin, searchNode.origin, bounds, AiUtility.traceOptionsPathfinding)
 
                 isPathable = not trace.isIntersectingGeometry
 
@@ -863,6 +864,8 @@ end
 function Nodegraph:setConnections(node, pathLine)
     node.connections = {}
 
+    local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 16, 16, 46)
+
     for _, searchNode in pairs(self.nodes) do
         if searchNode.id ~= node.id and node.origin:getDistance(searchNode.origin) < 256 then
             local isPathable = true
@@ -870,14 +873,13 @@ function Nodegraph:setConnections(node, pathLine)
             isPathable = self:isJumpNodeValid(node.origin, searchNode)
 
             if pathLine then
-                local trace = Trace.getLineToPosition(node.origin, searchNode.origin, AiUtility.traceOptions)
+                local trace = Trace.getLineToPosition(node.origin, searchNode.origin, AiUtility.traceOptionsPathfinding)
 
                 if trace.isIntersectingGeometry then
                     isPathable = false
                 end
             else
-                local bounds = Vector3:newBounds(Vector3.align.CENTER, 16, 16, 4)
-                local trace = Trace.getHullToPosition(node.origin, searchNode.origin, bounds, AiUtility.traceOptions)
+                local trace = Trace.getHullToPosition(node.origin, searchNode.origin, bounds, AiUtility.traceOptionsPathfinding)
 
                 isPathable = not trace.isIntersectingGeometry
             end
@@ -911,7 +913,6 @@ function Nodegraph:move(cmd)
         self.unstuckTimer:ifPausedThenStart()
 
         cmd.forwardmove = self.moveSpeed or 450
-        --cmd.move_yaw = self.unstuckAngles.y
 
         self.unstuckAngles.y = self.unstuckAngles.y + 45 * Time.getDelta()
     else
@@ -959,6 +960,8 @@ function Nodegraph:move(cmd)
 
     -- Movement direction
     local angleToNode = origin:getAngle(node.origin)
+
+    self.cachedPathfindMoveYaw = angleToNode.y
 
     -- Move to next node
     cmd.forwardmove = self.moveSpeed

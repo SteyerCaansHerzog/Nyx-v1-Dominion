@@ -144,7 +144,7 @@ function NodegraphEditor:selectNode()
 
     for _, node in pairs(self.nodegraph.nodes) do
         if cameraOrigin:getDistance(node.origin) < 750 then
-            local trace = Trace.getLineToPosition(cameraOrigin, node.origin, AiUtility.traceOptions)
+            local trace = Trace.getLineToPosition(cameraOrigin, node.origin, AiUtility.traceOptionsPathfinding)
 
             if not trace.isIntersectingGeometry then
                 local fov = cameraAngles:getFov(cameraOrigin, node.origin)

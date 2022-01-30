@@ -308,7 +308,7 @@ function AiView:setIdealCheckCorner(idealViewAngles)
     local clientEyeOrigin = Client.getEyeOrigin()
     local checkOrigin = closestCheckNode.origin:clone():offset(0, 0, 46)
     local checkDirection = closestCheckNode.direction
-    local trace = Trace.getLineAtAngle(checkOrigin, checkDirection, AiUtility.traceOptions)
+    local trace = Trace.getLineAtAngle(checkOrigin, checkDirection, AiUtility.traceOptionsPathfinding)
     local checkNearOrigin = trace.endPosition
 
     -- Find an enemy matching the check node's criteria.
@@ -328,7 +328,7 @@ function AiView:setIdealCheckCorner(idealViewAngles)
         -- Prevent the AI looking when its velocity is low, or the AI is facing well away from the check node.
         if player:m_vecVelocity():getMagnitude() > 100 and diff < 135 then
             -- Find the point that the check node is looking at.
-            local trace = Trace.getLineAtAngle(checkOrigin, closestCheckNode.direction, AiUtility.traceOptions)
+            local trace = Trace.getLineAtAngle(checkOrigin, closestCheckNode.direction, AiUtility.traceOptionsPathfinding)
 
             -- Set look speed so we don't use the speed set by AI behaviour.
             self.lookSpeed = 4.5

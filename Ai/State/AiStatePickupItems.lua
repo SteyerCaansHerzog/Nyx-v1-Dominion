@@ -140,7 +140,7 @@ function AiStatePickupItems:getNearbyItems(items)
             break
         end
 
-        local trace = Trace.getLineToPosition(Client.getEyeOrigin(), weaponOrigin, AiUtility.traceOptions)
+        local trace = Trace.getLineToPosition(Client.getEyeOrigin(), weaponOrigin, AiUtility.traceOptionsPathfinding)
 
         if trace.isIntersectingGeometry then
             break
@@ -187,7 +187,7 @@ function AiStatePickupItems:think(ai)
     local origin = player:getOrigin()
     local weaponOrigin = self.item:m_vecOrigin()
     local distance = origin:getDistance(weaponOrigin)
-    local trace = Trace.getLineInDirection(weaponOrigin, Vector3:new(0, 0, -1), AiUtility.traceOptions)
+    local trace = Trace.getLineInDirection(weaponOrigin, Vector3:new(0, 0, -1), AiUtility.traceOptionsPathfinding)
     local weaponDistanceToFloor = weaponOrigin:getDistance(trace.endPosition)
 
     if ai.nodegraph.pathfindFails > 2 and weaponDistanceToFloor < 10 then

@@ -192,7 +192,7 @@ function AiStateWatch:think(ai)
 
     if distance < 200 then
         local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
-        local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptions)
+        local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding)
 
         ai.view:lookAtLocation(trace.endPosition, 3)
 

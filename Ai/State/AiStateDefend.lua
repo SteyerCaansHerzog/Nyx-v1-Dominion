@@ -256,7 +256,7 @@ function AiStateDefend:think(ai)
 
     if distance < 256 then
         local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
-        local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptions)
+        local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding)
 
         self.defendTimer:ifPausedThenStart()
 

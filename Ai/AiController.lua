@@ -59,6 +59,7 @@ local AiSentenceReplyCommend = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Senten
 local AiSentenceReplyInsult = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyInsult"
 local AiSentenceReplyRacism = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyRacism"
 local AiSentenceReplyRank = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyRank"
+local AiSentenceReplyWeeb = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyWeeb"
 local AiSentenceSayAce = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceSayAce"
 local AiSentenceSayGg = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceSayGg"
 local AiSentenceSayKills = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceSayKills"
@@ -208,6 +209,7 @@ local AiController = {
 		replyInsult = AiSentenceReplyInsult,
 		replyRacism = AiSentenceReplyRacism,
 		replyRank = AiSentenceReplyRank,
+		replyWeeb = AiSentenceReplyWeeb,
 		sayAce = AiSentenceSayAce,
 		sayGg = AiSentenceSayGg,
 		sayKills = AiSentenceSayKills,
@@ -1118,7 +1120,7 @@ function AiController:antiFlash(ai)
 		local visiblePoints = 0
 
 		for _, vertex in pairs(self.activeFlashbang:m_vecOrigin():getBox(Vector3.align.CENTER, 8)) do
-			local trace = Trace.getLineToPosition(eyeOrigin, vertex, AiUtility.traceOptions)
+			local trace = Trace.getLineToPosition(eyeOrigin, vertex, AiUtility.traceOptionsPathfinding)
 
 			if not trace.isIntersectingGeometry then
 				visiblePoints = visiblePoints + 1
@@ -1133,7 +1135,7 @@ function AiController:antiFlash(ai)
 
 		self.flashbangVisibleTimer:ifPausedThenStart()
 
-		if self.flashbangVisibleTimer:isElapsed(0.5) then
+		if self.flashbangVisibleTimer:isElapsed(0.4) then
 			ai.view:lookAtLocation(eyeOrigin:getAngle(self.activeFlashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 4)
 		end
 
@@ -1152,7 +1154,7 @@ function AiController:antiFlash(ai)
 
 		local flashOrigin = flash:m_vecOrigin()
 
-		if cameraAngles:getFov(eyeOrigin, flashOrigin) > 35 then
+		if cameraAngles:getFov(eyeOrigin, flashOrigin) > 40 then
 			break
 		end
 
@@ -1173,6 +1175,10 @@ function AiController:antiBlock(ai)
 		return
 	end
 
+	if not self.nodegraph.cachedPathfindMoveYaw then
+		return
+	end
+
 	if Entity.getGameRules():m_bFreezePeriod() == 1 then
 		return
 	end
@@ -1185,8 +1191,8 @@ function AiController:antiBlock(ai)
 
 	local isBlocked = false
 	local origin = player:getOrigin()
-	local collisionOrigin = origin:clone():offset(0, 0, -32) + (Client.getCameraAngles():set(0):getForward() * 48)
-	local collisionBounds = collisionOrigin:getBounds(Vector3.align.BOTTOM, 26, 26, 96)
+	local collisionOrigin = origin:clone():offset(0, 0, -32) + (Angle:new(0, self.nodegraph.cachedPathfindMoveYaw):set(0):getForward() * 32)
+	local collisionBounds = collisionOrigin:getBounds(Vector3.align.BOTTOM, 20, 20, 96)
 	--- @type Player
 	local blockingTeammate
 
@@ -1214,7 +1220,7 @@ function AiController:antiBlock(ai)
 
 	if self.unblockTimer:isElapsedThenStop(self.antiBlockDuration) then
 		self.unblockDirection = Client.getChance(2) and "Left" or "Right"
-		self.antiBlockDuration = Client.getRandomFloat(0.5, 1.25)
+		self.antiBlockDuration = Client.getRandomFloat(0.6, 0.95)
 	end
 
 	local directionMethod = string.format("get%s", self.unblockDirection)

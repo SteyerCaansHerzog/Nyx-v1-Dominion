@@ -44,11 +44,11 @@ function AiChatCommandBoost:invoke(ai, sender, args)
     local senderCameraAngles = sender:getCameraAngles()
     local senderCameraBackward = senderCameraAngles:getBackward()
     local bounds = Vector3:newBounds(Vector3.align.CENTER, 8)
-    local traceAim = Trace.getLineAtAngle(sender:getEyeOrigin(), senderCameraAngles, AiUtility.traceOptions)
+    local traceAim = Trace.getLineAtAngle(sender:getEyeOrigin(), senderCameraAngles, AiUtility.traceOptionsPathfinding)
 
     traceAim.endPosition = traceAim.endPosition + senderCameraBackward * 16
 
-    local traceFloor = Trace.getHullInDirection(traceAim.endPosition, Vector3:new(0, 0, -1), bounds, AiUtility.traceOptions)
+    local traceFloor = Trace.getHullInDirection(traceAim.endPosition, Vector3:new(0, 0, -1), bounds, AiUtility.traceOptionsPathfinding)
 
     local distances = {}
 

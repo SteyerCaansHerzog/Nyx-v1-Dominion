@@ -15,6 +15,7 @@ local AiVoicePackAdrian = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePac
 local AiVoicePackBenji = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackBenji"
 local AiVoicePackConnor = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackConnor"
 local AiVoicePackD9 = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackD9"
+local AiVoicePackEdd = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackEdd"
 local AiVoicePackEmpty = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackEmpty"
 local AiVoicePackJeffrey = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackJeffrey"
 local AiVoicePackLaurentio = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackLaurentio"
@@ -33,16 +34,19 @@ local AiVoicePackTaylor = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePac
 --- @field flashbangTimer Timer
 local AiVoice = {
     packs = {
+        -- Not live
         AiVoicePackEmpty,
         AiVoicePackSteyer,
-        AiVoicePackMatteo,
-        AiVoicePackLaurentio,
+        -- Live
         AiVoicePackAdrian,
-        AiVoicePackConnor,
-        AiVoicePackJeffrey,
-        AiVoicePackTaylor,
         AiVoicePackBenji,
-        AiVoicePackD9
+        AiVoicePackConnor,
+        AiVoicePackD9,
+        AiVoicePackEdd,
+        AiVoicePackJeffrey,
+        AiVoicePackLaurentio,
+        AiVoicePackMatteo,
+        AiVoicePackTaylor,
     }
 }
 
