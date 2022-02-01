@@ -100,6 +100,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field watchOrigin Vector3
 --- @field watchTime number
 --- @field watchTimer Timer
+--- @field aimInaccurateOffset number
 local AiStateEngage = {
     name = "Engage"
 }
@@ -256,22 +257,6 @@ function AiStateEngage:initEvents()
             end
         end
 
-        local isLastAlive = true
-
-        for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:isAlive() then
-                isLastAlive = false
-
-                break
-            end
-        end
-
-        if isLastAlive then
-            for _, enemy in pairs(AiUtility.enemies) do
-                self:noticeEnemy(enemy, 1024)
-            end
-        end
-
         if player:m_bIsScoped() == 1 then
             self.scopedTimer:ifPausedThenStart()
         else
@@ -309,6 +294,8 @@ function AiStateEngage:initEvents()
         end
 
         if CsgoWeapons[e.weapon].is_melee_weapon then
+            self:noticeEnemy(e.player, 256, "Knifed")
+
             return
         end
 
@@ -606,10 +593,6 @@ end
 
 --- @return Player
 function AiStateEngage:setBestTarget()
-    if self.sprayTimer:isStarted() and not self.sprayTimer:isElapsed(self.sprayTime) then
-        return
-    end
-
     --- @type Player
     local selectedEnemy
     local lowestFov = math.huge
@@ -1141,12 +1124,35 @@ function AiStateEngage:canHoldAngle(ai)
         return false
     end
 
+    -- Check we're not going to hold an angle in a really dumb spot.
+    local clientEyeOrigin = Client.getEyeOrigin()
+    local traceOptions = Table.merge(AiUtility.traceOptionsAttacking, {
+        distance = 200
+    })
+
+    local losTrace = Trace.getLineAtAngle(clientEyeOrigin, Client.getCameraAngles(), traceOptions)
+
+    -- Line of sight is facing too close to a wall.
+    if losTrace.isIntersectingGeometry then
+        return false
+    end
+
+    local clientOrigin = AiUtility.client:getOrigin()
+    local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 32)
+    local hullTrace = Trace.getHullAtPosition(clientOrigin:clone():offset(0, 0, 16), bounds, AiUtility.traceOptionsAttacking)
+
+    -- Our proximity to a wall is too close.
+    if hullTrace.isIntersectingGeometry then
+        return false
+    end
+
     -- Don't hold if the enemy is planting or has planted the bomb.
     if AiUtility.client:isCounterTerrorist() and not AiUtility.plantedBomb and not AiUtility.isBombBeingPlantedByEnemy then
         return true
     end
 
     -- We have to have a cooldown, or you can immediately trigger the AI back into holding the angle.
+    -- We don't do this for CTs. They can play time most of the time.
     if self.patienceCooldownTimer:isStarted() and not self.patienceCooldownTimer:isElapsed(8) then
         return false
     end
@@ -1160,7 +1166,6 @@ function AiStateEngage:canHoldAngle(ai)
             return false
         end
 
-        local clientOrigin = AiUtility.client:getOrigin()
         local distanceToSite = ai.nodegraph:getNearestSiteNode(clientOrigin).origin:getDistance(clientOrigin)
         local isNearPlantedBomb = AiUtility.plantedBomb and AiUtility.client:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 512
 
@@ -1334,12 +1339,15 @@ function AiStateEngage:attack(ai)
         return
     end
 
+    -- Weapon info.
+    local weapon = Entity:create(player:m_hActiveWeapon())
+    local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
+    local ammo = weapon:m_iClip1()
+    local maxAmmo = csgoWeapon.primary_clip_size
+    local ammoRatio = ammo / maxAmmo
+
     -- Swap guns when out of ammo.
     if self.lastPriority == AiState.priority.ENGAGE_VISIBLE then
-        local weapon = Entity:create(player:m_hActiveWeapon())
-        local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
-        local ammo = weapon:m_iClip1()
-        local maxAmmo = csgoWeapon.primary_clip_size
         local ammoLeftRatio = ammo / maxAmmo
 
         if ammoLeftRatio == 0 then
@@ -1369,10 +1377,13 @@ function AiStateEngage:attack(ai)
         return
     end
 
-    self.shootAtOrigin = enemy:getEyeOrigin() + Vector3:new(
-        Animate.sine(0, 22, 3),
-        Animate.sine(0, 22, 2),
-        Animate.sine(0, 8, 2.5)
+    local horizontal = self.aimInaccurateOffset
+    local vertical = self.aimInaccurateOffset / 3
+
+    self.shootAtOrigin = enemy:getOrigin():offset(0, 0, 48) + Vector3:new(
+        Animate.sine(0, horizontal, 3),
+        Animate.sine(0, horizontal, 2),
+        Animate.sine(0, vertical, 2.5)
     )
 
     -- Ensure player is holding weapon
@@ -1398,19 +1409,38 @@ function AiStateEngage:attack(ai)
     end
 
     if not AiUtility.visibleEnemies[enemy.eid] then
-        local eyeOrigin = Client.getEyeOrigin()
-        local wallbangOrigin = enemy:getOrigin():offset(0, 0, 48)
-        local eid, dmg = eyeOrigin:getTraceBullet(wallbangOrigin, Client.getEid())
-        local lastSeenAgo = self.noticedPlayerTimers[enemy.eid]:get()
+        local lastSeenAgo = self.noticedPlayerTimers[enemy.eid]:get() - 0.25
 
-        print(dmg)
+        if lastSeenAgo > 0 and lastSeenAgo < 1 then
+            local eyeOrigin = Client.getEyeOrigin()
+            local wallbangOrigin = enemy:getOrigin():offset(0, 0, 48)
+            local eid, dmg = eyeOrigin:getTraceBullet(wallbangOrigin, Client.getEid())
 
-        if eid == enemy.eid and dmg > 10 and lastSeenAgo < 1.5 then
-            Client.draw(Vector3.drawCircleOutline, self.shootAtOrigin, 12, 2, Color:hsla(30, 1, 0.5, 200))
+            local canWallbang = true
 
-            self:shoot(ai, self.shootAtOrigin, self:getShootFov(Client.getCameraAngles(), eyeOrigin, wallbangOrigin))
+            if player:hasSniper() then
+                if ammoRatio < 1 then
+                    canWallbang = false
+                elseif dmg < 60 then
+                    canWallbang = false
+                end
+            else
+                if ammoRatio < 0.25 then
+                    canWallbang = false
+                elseif ammoRatio < 0.5 and dmg < 33 then
+                    canWallbang = false
+                elseif dmg < 10 then
+                    canWallbang = false
+                end
+            end
 
-            return
+            if eid == enemy.eid and canWallbang and not eyeOrigin:isRayIntersectingSmoke(wallbangOrigin) then
+                Client.draw(Vector3.drawCircleOutline, self.shootAtOrigin, 12, 2, Color:hsla(30, 1, 0.5, 200))
+
+                self:shoot(ai, self.shootAtOrigin, self:getShootFov(Client.getCameraAngles(), eyeOrigin, wallbangOrigin) / 2.5)
+
+                return
+            end
         end
     end
 
@@ -1523,6 +1553,11 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
 
     local aimAt = hitbox + self.hitboxOffset
 
+    Client.draw(Vector3.drawCircle, hitbox, 3, Color:hsla(0, 1, 0.5, 150))
+    Client.draw(Vector3.drawCircleOutline, aimAt, 10, 3, Color:hsla(0, 1, 0.5, 100))
+    Client.draw(Vector3.drawCircle, aimAt, 2, Color:hsla(0, 1, 0.5, 150))
+    Client.draw(Vector3.drawLine, hitbox, aimAt, Color:hsla(0, 1, 0.5, 75))
+
     if enemy then
         if enemy:isDormant() then
             return
@@ -1629,7 +1664,7 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
     else
         ai.view.recoilControl = self.recoilControl
 
-        if ammo and ammo > 0 then
+        if fov < 4 and ammo and ammo > 0 then
             if self.tapFireTimer:isElapsedThenRestart(self.tapFireTime) then
                ai.cmd.in_attack = 1
             end
@@ -1705,24 +1740,22 @@ end
 function AiStateEngage:shootThroughSmokes(ai, enemy)
     local cameraAngles = Client.getCameraAngles()
     local eyeOrigin = Client.getEyeOrigin()
-
-    -- Shoot through smokes / walls
     local testHitbox = enemy:getHitboxPosition(Player.hitbox.PELVIS)
     local testOrigin = eyeOrigin:getTraceLine(testHitbox, Client.getEid())
     local isOccludedBySmoke = eyeOrigin:isRayIntersectingSmoke(testOrigin)
-    local isClose = testOrigin:getDistance(testHitbox) < 46
+    local isClose = testOrigin:getDistance(testHitbox) < 32
 
     if isOccludedBySmoke
         and isClose
         and not AiUtility.visibleEnemies[self.bestTarget.eid]
         and self.shootAtOrigin
-        and not self.lastSoundTimer:isElapsed(2)
+        and not self.lastSoundTimer:isElapsed(1)
     then
         local fov = cameraAngles:getFov(eyeOrigin, self.shootAtOrigin)
         local shootFov = Math.clamp(Math.pct(eyeOrigin:getDistance(self.shootAtOrigin), 512), 0, 90) * fov
 
-        if self.noticedPlayerTimers[enemy.eid]:get() < 2 then
-            self:shoot(ai, self.shootAtOrigin, shootFov, self.bestTarget)
+        if self.noticedPlayerTimers[enemy.eid]:get() < 1 then
+            self:shoot(ai, self.shootAtOrigin * 2, shootFov, self.bestTarget)
         else
             ai.view:lookAtLocation(self.shootAtOrigin, self.slowAimSpeed)
         end
@@ -2126,7 +2159,8 @@ function AiStateEngage:setAimSkill(skill)
             aimSpeed = 3,
             slowAimSpeed = 3,
             recoilControl = 2.5,
-            aimOffset = 20
+            aimOffset = 20,
+            aimInaccurateOffset = 40
         },
         [1] = {
             reactionTime = 0.3,
@@ -2135,7 +2169,8 @@ function AiStateEngage:setAimSkill(skill)
             aimSpeed = 4,
             slowAimSpeed = 3,
             recoilControl = 2.5,
-            aimOffset = 16
+            aimOffset = 16,
+            aimInaccurateOffset = 35
         },
         [2] = {
             reactionTime = 0.25,
@@ -2144,7 +2179,8 @@ function AiStateEngage:setAimSkill(skill)
             aimSpeed = 4,
             slowAimSpeed = 3,
             recoilControl = 2.2,
-            aimOffset = 14
+            aimOffset = 14,
+            aimInaccurateOffset = 30
         },
         [3] = {
             reactionTime = 0.2,
@@ -2153,7 +2189,8 @@ function AiStateEngage:setAimSkill(skill)
             aimSpeed = 5,
             slowAimSpeed = 4,
             recoilControl = 2.2,
-            aimOffset = 12
+            aimOffset = 12,
+            aimInaccurateOffset = 26
         },
         [4] = {
             reactionTime = 0.2,
@@ -2162,7 +2199,8 @@ function AiStateEngage:setAimSkill(skill)
             aimSpeed = 6,
             slowAimSpeed = 4,
             recoilControl = 2,
-            aimOffset = 10
+            aimOffset = 10,
+            aimInaccurateOffset = 24
         },
         [5] = {
             reactionTime = 0.16,
@@ -2171,7 +2209,8 @@ function AiStateEngage:setAimSkill(skill)
             aimSpeed = 6,
             slowAimSpeed = 4,
             recoilControl = 2,
-            aimOffset = 8
+            aimOffset = 8,
+            aimInaccurateOffset = 22
         },
         [6] = {
             reactionTime = 0.14,
@@ -2180,7 +2219,8 @@ function AiStateEngage:setAimSkill(skill)
             aimSpeed = 8,
             slowAimSpeed = 6,
             recoilControl = 2,
-            aimOffset = 8
+            aimOffset = 8,
+            aimInaccurateOffset = 20
         },
         [7] = {
             reactionTime = 0.12,
@@ -2189,7 +2229,8 @@ function AiStateEngage:setAimSkill(skill)
             aimSpeed = 10,
             slowAimSpeed = 8,
             recoilControl = 2,
-            aimOffset = 6
+            aimOffset = 6,
+            aimInaccurateOffset = 18
         },
         [8] = {
             reactionTime = 0.1,
@@ -2198,7 +2239,8 @@ function AiStateEngage:setAimSkill(skill)
             aimSpeed = 10,
             slowAimSpeed = 8,
             recoilControl = 2,
-            aimOffset = 4
+            aimOffset = 4,
+            aimInaccurateOffset = 16
         },
         [9] = {
             reactionTime = 0.1,
@@ -2207,7 +2249,8 @@ function AiStateEngage:setAimSkill(skill)
             aimSpeed = 12,
             slowAimSpeed = 8,
             recoilControl = 2,
-            aimOffset = 2
+            aimOffset = 2,
+            aimInaccurateOffset = 14
         },
         [10] = {
             reactionTime = 0.0,
@@ -2216,7 +2259,8 @@ function AiStateEngage:setAimSkill(skill)
             aimSpeed = 12,
             slowAimSpeed = 8,
             recoilControl = 2,
-            aimOffset = 0
+            aimOffset = 0,
+            aimInaccurateOffset = 0
         },
     }
 

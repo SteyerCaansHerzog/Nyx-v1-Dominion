@@ -66,7 +66,7 @@ function AiSentenceSayKills:__init()
             "kobe", "ez", "lmao", "haha", "rekt"
         },
         INSULT = {
-            "ez", "easy", "rekt"
+            "ez", "easy", "rekt", "destroyed", "owned", "+ratio'd", "+ratio"
         },
         SORRY = {
             "sorry", "my bad", "mb", "oops", "shit"

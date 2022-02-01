@@ -7,40 +7,38 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local AiSentence = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentence"
 --}}}
 
---{{{ AiSentenceReplyWeeb
---- @class AiSentenceReplyWeeb : AiSentence
-local AiSentenceReplyWeeb = {}
+--{{{ AiSentenceReplyBot
+--- @class AiSentenceReplyBot : AiSentence
+local AiSentenceReplyBot = {}
 
---- @return AiSentenceReplyWeeb
-function AiSentenceReplyWeeb:new()
+--- @return AiSentenceReplyBot
+function AiSentenceReplyBot:new()
     return Nyx.new(self)
 end
 
 --- @return void
-function AiSentenceReplyWeeb:__init()
+function AiSentenceReplyBot:__init()
     self.__parent.__init(self)
 
     self.probability = 2
     self.maxUses = 2
 
     self.structures = {
-        "{SHUT_UP} {YOU} {WEEB}{PUNCT}",
-        "{SHUT_UP}{PUNCT}",
-        "{SUSSY}"
+        "{NOPE}{COMMA} {NO_BOTS} {HERE}{PUNCT}"
     }
 
     self.insertions = {
-        SHUT_UP = {
-            "shut up", "shut it", "shut the fuck up", "don't talk", "stop talking"
+        NOPE = {
+            "nope", "no", "nah", "lol", "lol no", "lol nah"
         },
-        YOU = {
-            "you", "you're a", "ur a", "you are a"
+        NO_BOTS = {
+            "no bots", "there're no bots", "there are no bots", "there's no bots"
         },
-        WEEB = {
-            "weeb", "smelly weeb", "dirty weeb", "fucking weeb", "weeaboo"
+        HERE = {
+            "here", "around here", "on this team"
         },
-        SUSSY = {
-            "sussy", "sussy baka", "sus"
+        COMMA = {
+            "", ","
         },
         PUNCT = {
             "", "."
@@ -53,7 +51,7 @@ function AiSentenceReplyWeeb:__init()
         end
 
         if not self.contains(e.text, {
-            "uwu", "owo"
+            "bot"
         }) then
             return
         end
@@ -62,5 +60,5 @@ function AiSentenceReplyWeeb:__init()
     end)
 end
 
-return Nyx.class("AiSentenceReplyWeeb", AiSentenceReplyWeeb, AiSentence)
+return Nyx.class("AiSentenceReplyBot", AiSentenceReplyBot, AiSentence)
 --}}}

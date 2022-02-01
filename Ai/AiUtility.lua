@@ -113,6 +113,10 @@ local AiUtility = {
         skip = function(eid)
             local entity = Entity:create(eid)
 
+            if entity.classname == "CDynamicProp" or entity.classname == "CFuncBrush" then
+                return false
+            end
+
             if entity.classname ~= "CWorld" then
                 return true
             end
@@ -124,11 +128,15 @@ local AiUtility = {
         skip = function(eid)
             local entity = Entity:create(eid)
 
+            if entity.classname == "CFuncBrush" then
+                return false
+            end
+
             if entity.classname ~= "CWorld" then
                 return true
             end
         end,
-        mask = Trace.mask.VISIBLE,
+        mask = Trace.mask.SHOT,
         type = Trace.type.EVERYTHING
     }
 }

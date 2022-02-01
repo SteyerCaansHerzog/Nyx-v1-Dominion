@@ -86,10 +86,6 @@ function AiStatePlant:assess(nodegraph)
         return AiState.priority.IGNORE
     end
 
-    if Entity.getGameRules():m_bFreezePeriod() == 1 then
-        return AiState.priority.IGNORE
-    end
-
     local player = AiUtility.client
     local playerOrigin = player:getOrigin()
     local siteName = nodegraph:getNearestSiteName(playerOrigin)

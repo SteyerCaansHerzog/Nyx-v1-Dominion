@@ -360,12 +360,6 @@ function Nodegraph:renderNodegraph()
         local playerOrigin = Player.getClient():getOrigin():offset(0, 0, 8)
         local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 16, 16, 46)
 
-        for _, vertex in pairs(bounds) do
-            local drawPos = playerOrigin + vertex
-
-            drawPos:drawCircleOutline(10, 4, Color:rgba())
-        end
-
         for _, searchNode in pairs(self.nodes) do
             if playerOrigin:getDistance(searchNode.origin) < 256 then
                 local isPathable = self:isJumpNodeValid(playerOrigin, searchNode)

@@ -69,12 +69,31 @@ function AiSentence:speak(substructure)
     end
 
     local message = self:getMessage(substructure)
+    local typingDelay = message:len() * 0.1
 
-    local extendDelay = message:len() * 0.1
-
-    Client.fireAfter(Client.getRandomFloat(extendDelay + self.minDelay, extendDelay + self.maxDelay), function()
+    Client.fireAfter(Client.getRandomFloat(typingDelay + self.minDelay, typingDelay + self.maxDelay), function()
         Messenger.send(message, false)
     end)
+end
+
+--- @param messages string[]
+--- @return void
+function AiSentence:speakMultipleRaw(messages)
+    if not self:canSpeak() then
+        return
+    end
+
+    local totalTypingDelay = 0
+
+    for _, message in pairs(messages) do
+        local typingDelay = Client.getRandomFloat(1, 2) + message:len() * 0.075
+
+        totalTypingDelay = totalTypingDelay + typingDelay
+
+        Client.fireAfter(totalTypingDelay, function()
+            Messenger.send(message)
+        end)
+    end
 end
 
 --- @param substructure string

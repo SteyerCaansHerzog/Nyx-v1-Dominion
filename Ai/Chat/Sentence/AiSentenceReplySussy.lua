@@ -7,40 +7,36 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local AiSentence = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentence"
 --}}}
 
---{{{ AiSentenceReplyWeeb
---- @class AiSentenceReplyWeeb : AiSentence
-local AiSentenceReplyWeeb = {}
+--{{{ AiSentenceReplySussy
+--- @class AiSentenceReplySussy : AiSentence
+local AiSentenceReplySussy = {}
 
---- @return AiSentenceReplyWeeb
-function AiSentenceReplyWeeb:new()
+--- @return AiSentenceReplySussy
+function AiSentenceReplySussy:new()
     return Nyx.new(self)
 end
 
 --- @return void
-function AiSentenceReplyWeeb:__init()
+function AiSentenceReplySussy:__init()
     self.__parent.__init(self)
 
     self.probability = 2
     self.maxUses = 2
 
     self.structures = {
-        "{SHUT_UP} {YOU} {WEEB}{PUNCT}",
-        "{SHUT_UP}{PUNCT}",
-        "{SUSSY}"
+        "{GO_AWAY} {FAN}{PUNCT}",
+        "{AMOGUS}"
     }
 
     self.insertions = {
-        SHUT_UP = {
-            "shut up", "shut it", "shut the fuck up", "don't talk", "stop talking"
+        GO_AWAY = {
+            "go away", "fuck off", "piss off", "shut up", "shut it", "stop talking", "don't talk"
         },
-        YOU = {
-            "you", "you're a", "ur a", "you are a"
+        FAN = {
+            "amongus fan", "amongus retard", "retard", "fat fuck", "spick"
         },
-        WEEB = {
-            "weeb", "smelly weeb", "dirty weeb", "fucking weeb", "weeaboo"
-        },
-        SUSSY = {
-            "sussy", "sussy baka", "sus"
+        AMOGUS = {
+            "amogus"
         },
         PUNCT = {
             "", "."
@@ -53,7 +49,7 @@ function AiSentenceReplyWeeb:__init()
         end
 
         if not self.contains(e.text, {
-            "uwu", "owo"
+            "sussy", "baka"
         }) then
             return
         end
@@ -62,5 +58,5 @@ function AiSentenceReplyWeeb:__init()
     end)
 end
 
-return Nyx.class("AiSentenceReplyWeeb", AiSentenceReplyWeeb, AiSentence)
+return Nyx.class("AiSentenceReplySussy", AiSentenceReplySussy, AiSentence)
 --}}}

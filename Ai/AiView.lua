@@ -161,7 +161,7 @@ function AiView:interpolateViewAngles(targetViewAngles)
     targetViewAngles:__add(self.noiseAngles)
     targetViewAngles:normalize()
 
-    self.viewAngles:lerp(targetViewAngles, math.min(20, self.lookSpeed * self.lookSpeedModifier)):normalize()
+    self.viewAngles:lerp(targetViewAngles, math.min(20, self.lookSpeed * self.lookSpeedModifier))
 end
 
 --- @param targetViewAngles Angle
@@ -437,8 +437,8 @@ end
 --- @return boolean
 function AiView:isPlayerBlocked(node)
     local playerOrigin = AiUtility.client:getOrigin()
-    local collisionOrigin = playerOrigin + Client.getCameraAngles():getForward() * 25
-    local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 48, 48, 256)
+    local collisionOrigin = playerOrigin + node.direction:getForward() * 25
+    local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 32, 32, 256)
 
     for _, teammate in pairs(AiUtility.teammates) do
         if teammate:getOrigin():offset(0, 0, 36):isInBounds(collisionBounds) then

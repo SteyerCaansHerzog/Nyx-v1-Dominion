@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Color = require "gamesense/Nyx/v1/Api/Color"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -19,6 +20,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 
 --{{{ AiStateGrenadeDynamic
 --- @class AiStateGrenadeDynamic : AiState
+--- @field isActivated boolean
 --- @field isThrowing boolean
 --- @field canJumpThrow boolean
 --- @field targetPlayer Player
@@ -48,8 +50,34 @@ end
 --- @return void
 function AiStateGrenadeDynamic:assess()
     -- Cooldown. We really need it.
-    if not self.throwCooldownTimer:isElapsed(20) then
+    if not self.throwCooldownTimer:isElapsed(12) then
         return AiState.priority.IGNORE
+    end
+
+    local clientEyeOrigin = Client.getEyeOrigin()
+    local clientTestVisibilityBox = clientEyeOrigin:getPlane(Vector3.align.CENTER, 64)
+
+    -- Don't try flashes if it's not safe.
+    for _, enemy in pairs(AiUtility.enemies) do
+        local distance = clientEyeOrigin:getDistance(enemy:getOrigin())
+
+        -- Enemy is too close.
+        if distance < 600 then
+            return AiState.priority.IGNORE
+        end
+
+        local enemyTestVisibilityBox = enemy:getEyeOrigin():getBox(Vector3.align.CENTER, 64)
+
+        -- Enemy could peek us, or we could peek them.
+        for _, clientVertex in pairs(clientTestVisibilityBox) do
+            for _, enemyVertex in pairs(enemyTestVisibilityBox) do
+                local trace = Trace.getLineToPosition(clientVertex, enemyVertex, AiUtility.traceOptionsAttacking)
+
+                if not trace.isIntersectingGeometry then
+                    return AiState.priority.IGNORE
+                end
+            end
+        end
     end
 
     -- We already found an angle to not-blind a totally-suspecting enemy player with.
@@ -63,10 +91,10 @@ function AiStateGrenadeDynamic:assess()
     end
 
     local bounds = Vector3:newBounds(Vector3.align.CENTER, 8)
-    local clientEyeOrigin = Client.getEyeOrigin()
+
 
     -- Angle to try our mentally handicapped flash prediction with.
-    local predictionAngles = Angle:new(Client.getRandomFloat(-85, -20), Client.getRandomFloat(-180, 180))
+    local predictionAngles = Angle:new(Client.getRandomFloat(-85, 25), Client.getRandomFloat(-180, 180))
 
     -- I literally threw a flash into the sky and asked for the distance from my eye sockets to the detonation point.
     local predictionDistance = 700
@@ -87,9 +115,11 @@ function AiStateGrenadeDynamic:assess()
     -- Oh boy, which of our opponents is gonna get to see the worst thrown flashbang of their lives?
     -- If you've never seen a do repeat until true loop before it's because Lua couldn't be bothered to implement "continue".
     for _, enemy in pairs(AiUtility.enemies) do repeat
+        local enemyTestOrigin = enemy:getOrigin():offset(0, 0, 72)
+
         -- Does our super accurate "detonate" spot trace have line of sight to the approximate enemy's eyeballs?
         -- Not using getHitboxPosition because getOrigin works on dormancy. That and CSGO's hitbox positions are more demented than this code.
-        local blindTrace = Trace.getHullToPosition(impactTrace.endPosition, enemy:getOrigin():offset(0, 0, 72), bounds, {
+        local blindTrace = Trace.getHullToPosition(impactTrace.endPosition, enemyTestOrigin, bounds, {
             skip = enemy.eid,
             mask = Trace.mask.VISIBLE
         })
@@ -106,10 +136,35 @@ function AiStateGrenadeDynamic:assess()
             break
         end
 
+        -- Check if we're going to throw it into a wall at close range.
+        local nearTrace = Trace.getLineAtAngle(clientEyeOrigin, predictionAngles:clone():offset(-12), {
+            skip = AiUtility.client.eid,
+            mask = Trace.mask.VISIBLE,
+            distance = 200
+        })
+
         -- We're gonna try these angles. Pray on God.
-        self.throwAngles = clientEyeOrigin:getAngle(impactTrace.endPosition):offset(5)
+        self.throwAngles = clientEyeOrigin:getAngle(impactTrace.endPosition)
+
+        -- Try not to throw the flash at the wall in front of us.
+        if nearTrace.isIntersectingGeometry then
+            print("is aiming lower!")
+            self.throwAngles:offset(0, 6)
+        end
+
         self.targetPlayer = enemy
-        self.canJumpThrow = distance > 600 and predictionAngles.p < -40
+
+        local jumpEyeOrigin = clientEyeOrigin:clone():offset(0, 0, 60)
+        local trace = Trace.getLineToPosition(jumpEyeOrigin, enemyTestOrigin, AiUtility.traceOptionsAttacking)
+        local isVisibleWhenJumping = not trace.isIntersectingGeometry
+
+        self.canJumpThrow = not isVisibleWhenJumping and predictionAngles.p < -40
+
+        Client.onNextTick(function()
+            if not self.isActivated then
+                self:reset()
+            end
+        end)
 
         return AiState.priority.DYNAMIC_GRENADE
     until true end
@@ -121,12 +176,16 @@ end
 --- @return void
 function AiStateGrenadeDynamic:activate(ai)
     ai.nodegraph:clearPath("throw a dynamic grenade")
+
+    self.isActivated = true
 end
 
 --- @param ai AiOptions
 --- @return void
 function AiStateGrenadeDynamic:deactivate(ai)
     Client.equipPrimary()
+
+    self:reset()
 end
 
 --- @return void
@@ -135,6 +194,7 @@ function AiStateGrenadeDynamic:reset()
     self.isThrowing = false
     self.canJumpThrow = false
     self.targetPlayer = nil
+    self.isActivated = false
 
     self.throwTimer:stop()
 end
@@ -177,7 +237,9 @@ function AiStateGrenadeDynamic:think(ai)
 
         ai.cmd.in_attack = 1
 
-        ai.voice.pack:speakClientThrowingFlashbang()
+        if not AiUtility.isLastAlive then
+            ai.voice.pack:speakClientThrowingFlashbang()
+        end
     end
 
     if self.throwTimer:isElapsedThenRestart(0.1) then

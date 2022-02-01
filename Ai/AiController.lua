@@ -54,15 +54,19 @@ local AiStateSweep = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSweep"
 local AiStateWait = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWait"
 local AiStateWatch = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWatch"
 
+local AiSentenceReplyBot = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyBot"
 local AiSentenceReplyCheater = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyCheater"
 local AiSentenceReplyCommend = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyCommend"
+local AiSentenceReplyGay = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyGay"
 local AiSentenceReplyInsult = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyInsult"
 local AiSentenceReplyRacism = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyRacism"
 local AiSentenceReplyRank = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyRank"
+local AiSentenceReplySussy = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplySussy"
 local AiSentenceReplyWeeb = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyWeeb"
 local AiSentenceSayAce = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceSayAce"
 local AiSentenceSayGg = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceSayGg"
 local AiSentenceSayKills = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceSayKills"
+local AiSentenceSayRandom = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceSayRandom"
 
 local AiChatCommandAfk = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandAfk"
 local AiChatCommandBacktrack = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBacktrack"
@@ -204,15 +208,19 @@ local AiController = {
 		wait = AiChatCommandWait,
 	},
 	sentences = {
+		replyBot = AiSentenceReplyBot,
 		replyCheater = AiSentenceReplyCheater,
 		replyCommend = AiSentenceReplyCommend,
+		replyGay = AiSentenceReplyGay,
 		replyInsult = AiSentenceReplyInsult,
 		replyRacism = AiSentenceReplyRacism,
 		replyRank = AiSentenceReplyRank,
+		replySussy = AiSentenceReplySussy,
 		replyWeeb = AiSentenceReplyWeeb,
 		sayAce = AiSentenceSayAce,
 		sayGg = AiSentenceSayGg,
 		sayKills = AiSentenceSayKills,
+		sayRandom = AiSentenceSayRandom,
 	},
 	actions = {
 		panorama = AiActionPanorama,

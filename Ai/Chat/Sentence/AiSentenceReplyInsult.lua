@@ -24,20 +24,23 @@ function AiSentenceReplyInsult:__init()
     self.maxUses = 30
 
     self.structures = {
-        "didn't ask{PUNCTUATION}",
-        "who asked?",
-        "did someone ask you?",
-        "i don't think anyone asked{PUNCTUATION}",
-        "nobody {ASKED}{PUNCTUATION}"
+        "{WHO_ASKED}{IPUNCT}",
+        "{SHUSH}{PUNCT}"
     }
 
     self.insertions = {
-        ASKED = {
-            "asked",
-            "was speaking to you",
+        WHO_ASKED = {
+            "who asked", "nobody asked", "didn't ask", "did i ask", "did we ask", "did someone ask you",
+            "did anyone speak to you", "was anyone speaking to you", "i don't think anyone asked"
         },
-        PUNCTUATION = {
+        SHUSH = {
+            "shush", "hush now", "shut it", "shut up", "quiet down", "pipe down"
+        },
+        PUNCT = {
             "", "."
+        },
+        IPUNCT = {
+            "", ".", "?"
         }
     }
 

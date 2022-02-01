@@ -322,7 +322,7 @@ function AiVoice:__init()
     end)
 
     Callbacks.weaponFire(function(e)
-        if AiUtility.isLastAlive then
+        if AiUtility.isLastAlive or Entity.getGameRules():m_bWarmupPeriod() == 1 then
             return
         end
 
