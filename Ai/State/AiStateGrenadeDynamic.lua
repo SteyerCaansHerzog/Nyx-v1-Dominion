@@ -148,7 +148,6 @@ function AiStateGrenadeDynamic:assess()
 
         -- Try not to throw the flash at the wall in front of us.
         if nearTrace.isIntersectingGeometry then
-            print("is aiming lower!")
             self.throwAngles:offset(0, 6)
         end
 

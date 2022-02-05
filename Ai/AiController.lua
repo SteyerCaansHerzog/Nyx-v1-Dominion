@@ -1194,15 +1194,18 @@ function AiController:antiBlock(ai)
 	local player = AiUtility.client
 
 	if player:m_vecVelocity():getMagnitude() > 150 then
-		return
+		--return todo?
 	end
 
 	local isBlocked = false
 	local origin = player:getOrigin()
-	local collisionOrigin = origin:clone():offset(0, 0, -32) + (Angle:new(0, self.nodegraph.cachedPathfindMoveYaw):set(0):getForward() * 32)
-	local collisionBounds = collisionOrigin:getBounds(Vector3.align.BOTTOM, 20, 20, 96)
+	local collisionOrigin = origin:clone():offset(0, 0, 36) + (Angle:new(0, self.nodegraph.cachedPathfindMoveYaw):set(0):getForward() * 32)
+	local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 22, 22, 36)
 	--- @type Player
 	local blockingTeammate
+
+	Client.draw(Vector3.drawScaledCircle, collisionBounds[1], 20, Color)
+	Client.draw(Vector3.drawScaledCircle, collisionBounds[2], 20, Color)
 
 	for _, teammate in pairs(AiUtility.teammates) do
 		if teammate:getOrigin():offset(0, 0, 36):isInBounds(collisionBounds) then

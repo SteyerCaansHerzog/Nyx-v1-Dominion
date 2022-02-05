@@ -261,7 +261,7 @@ function AiView:setIdealLookAhead(idealViewAngles)
     local lookAheadNode
 
     -- How far in the path to look ahead.
-    local lookAheadTo = 4
+    local lookAheadTo = 3
 
     -- Select a node ahead in the path, and look closer until we find a valid node.
     while not lookAheadNode and lookAheadTo > 0 do
@@ -438,7 +438,7 @@ end
 function AiView:isPlayerBlocked(node)
     local playerOrigin = AiUtility.client:getOrigin()
     local collisionOrigin = playerOrigin + node.direction:getForward() * 25
-    local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 32, 32, 256)
+    local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 32, 32, 64)
 
     for _, teammate in pairs(AiUtility.teammates) do
         if teammate:getOrigin():offset(0, 0, 36):isInBounds(collisionBounds) then

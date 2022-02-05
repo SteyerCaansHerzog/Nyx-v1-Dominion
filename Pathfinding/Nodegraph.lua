@@ -357,8 +357,8 @@ function Nodegraph:renderNodegraph()
     end
 
     if Menu.visualiseDirectPathing:get() then
-        local playerOrigin = Player.getClient():getOrigin():offset(0, 0, 8)
-        local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 16, 16, 46)
+        local playerOrigin = Player.getClient():getOrigin():offset(0, 0, 16)
+        local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 16, 16, 24)
 
         for _, searchNode in pairs(self.nodes) do
             if playerOrigin:getDistance(searchNode.origin) < 256 then
@@ -779,10 +779,10 @@ function Nodegraph:pathfind(origin, options)
     options = options or {}
 
     local player = AiUtility.client
-    local playerOrigin = player:getOrigin()
+    local playerOrigin = player:getOrigin():offset(0, 0, 16)
 
     local pathStart = Node:new({
-        origin = playerOrigin + Vector3:new(0, 0, 18),
+        origin = playerOrigin,
         connections = {},
         type = Node.types.START
     })
@@ -858,7 +858,7 @@ end
 function Nodegraph:setConnections(node, pathLine)
     node.connections = {}
 
-    local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 16, 16, 46)
+    local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 16, 16, 24)
 
     for _, searchNode in pairs(self.nodes) do
         if searchNode.id ~= node.id and node.origin:getDistance(searchNode.origin) < 256 then

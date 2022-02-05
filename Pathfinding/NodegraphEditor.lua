@@ -143,16 +143,18 @@ function NodegraphEditor:selectNode()
     local cameraOrigin = Client.getCameraOrigin()
 
     for _, node in pairs(self.nodegraph.nodes) do
-        if cameraOrigin:getDistance(node.origin) < 750 then
+        if cameraOrigin:getDistance(node.origin) < 350 then
             local trace = Trace.getLineToPosition(cameraOrigin, node.origin, AiUtility.traceOptionsPathfinding)
 
             if not trace.isIntersectingGeometry then
-                local fov = cameraAngles:getFov(cameraOrigin, node.origin)
+                -- See below.
+            end
 
-                if fov < closestFov and fov < 5 then
-                    closestFov = fov
-                    selectedNode = node
-                end
+            local fov = cameraAngles:getFov(cameraOrigin, node.origin)
+
+            if fov < closestFov and fov < 5 then
+                closestFov = fov
+                selectedNode = node
             end
         end
     end
@@ -217,7 +219,8 @@ function NodegraphEditor:createNodes()
     end
 
     if self.keyAddNode:wasPressed() then
-        local origin = Client.getCameraTraceLine()
+        local trace = Trace.getLineAlongCrosshair(AiUtility.traceOptionsPathfinding)
+        local origin = trace.endPosition
 
         origin = origin + Vector3:new(0, 0, MenuGroup.nodeHeight:get())
 

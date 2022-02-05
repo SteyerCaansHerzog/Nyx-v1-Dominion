@@ -15,6 +15,7 @@ local AiStateSmoke = {
     name = "Smoke",
     priority = AiState.priority.SMOKE,
     cooldown = 4,
+    usableAfter = 4,
     defendNode = "objectiveSmokeDefend",
     executeNode = "objectiveSmokeExecute",
     holdNode = "objectiveSmokeHold",

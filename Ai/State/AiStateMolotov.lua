@@ -14,6 +14,7 @@ local AiStateMolotov = {
     name = "Molotov",
     priority = AiState.priority.MOLOTOV,
     cooldown = 6,
+    usableAfter = 10,
     defendNode = "objectiveMolotovDefend",
     executeNode = "objectiveMolotovExecute",
     holdNode = "objectiveMolotovHold",

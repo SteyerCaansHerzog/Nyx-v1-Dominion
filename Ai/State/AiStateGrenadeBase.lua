@@ -26,6 +26,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field holdNode string
 --- @field weapons string[]
 --- @field equipFunction fun(): nil
+--- @field usableAfter number
 ---
 --- @field isInThrow boolean
 --- @field node Node
@@ -35,13 +36,13 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field switchWeaponsCooldown Timer
 --- @field cooldownTimer Timer
 --- @field inBehaviorTimer Timer
---- @field isRoundOver boolean
 --- @field usedNodes Timer[]
 local AiStateGrenadeBase = {
     name = "GrenadeBase",
     globalCooldownTimer = Timer:new():startThenElapse(),
     cooldownTimer = Timer:new():startThenElapse(),
-    usedNodes = {}
+    usedNodes = {},
+    usableAfter = 0
 }
 
 --- @param fields AiStateGrenadeBase
@@ -57,15 +58,6 @@ function AiStateGrenadeBase:__init()
     self.throwTime = 0.2
     self.switchWeaponsCooldown = Timer:new():start()
 
-    Callbacks.roundEnd(function()
-        self.isRoundOver = true
-    end)
-
-    Callbacks.roundStart(function()
-        self.isRoundOver = false
-        self.node = nil
-    end)
-
     Callbacks.grenadeThrown(function(e)
         if e.player:isClient() then
             self.isInThrow = false
@@ -79,6 +71,10 @@ end
 --- @param nodegraph Nodegraph
 --- @return void
 function AiStateGrenadeBase:assess(nodegraph)
+    if AiUtility.roundTimer:isStarted() and not AiUtility.roundTimer:isElapsed(self.usableAfter) then
+        return AiState.priority.IGNORE
+    end
+
     local grenadeNodes = self:getNodes(nodegraph)
 
     if not grenadeNodes then
@@ -123,7 +119,7 @@ function AiStateGrenadeBase:assess(nodegraph)
         local distance = playerOrigin:getDistance(grenadeNode.origin)
 
         if distance < 512 and distance < closestDistance then
-            local bounds = grenadeNode.origin:getBounds(Vector3.align.BOTTOM, 400, 400, 72)
+            local bounds = grenadeNode.origin:getBounds(Vector3.align.BOTTOM, 400, 400, 64)
 
             if playerCenter:isInBounds(bounds) then
                 closestDistance = distance
@@ -144,7 +140,7 @@ function AiStateGrenadeBase:assess(nodegraph)
         return AiState.priority.IN_THROW
     end
 
-    if self.isRoundOver then
+    if AiUtility.isRoundOver then
         return AiState.priority.IGNORE
     end
 

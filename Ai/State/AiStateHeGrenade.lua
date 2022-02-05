@@ -15,6 +15,7 @@ local AiStateHeGrenade = {
     name = "HE Grenade",
     priority = AiState.priority.HE_GRENADE,
     cooldown = 6,
+    usableAfter = 15,
     defendNode = "objectiveHeGrenadeDefend",
     executeNode = "objectivHeGrenadevExecute",
     holdNode = "objectiveHeGrenadeHold",

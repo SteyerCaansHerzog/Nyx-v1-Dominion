@@ -1411,7 +1411,7 @@ function AiStateEngage:attack(ai)
     if not AiUtility.visibleEnemies[enemy.eid] then
         local lastSeenAgo = self.noticedPlayerTimers[enemy.eid]:get() - 0.25
 
-        if lastSeenAgo > 0 and lastSeenAgo < 1 then
+        if AiUtility.isBombBeingDefusedByEnemy or (lastSeenAgo > 0 and lastSeenAgo < 1) then
             local eyeOrigin = Client.getEyeOrigin()
             local wallbangOrigin = enemy:getOrigin():offset(0, 0, 48)
             local eid, dmg = eyeOrigin:getTraceBullet(wallbangOrigin, Client.getEid())
