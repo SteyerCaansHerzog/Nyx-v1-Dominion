@@ -113,7 +113,7 @@ local AiUtility = {
         skip = function(eid)
             local entity = Entity:create(eid)
 
-            if entity.classname == "CDynamicProp" or entity.classname == "CFuncBrush" then
+            if entity.classname == "CDynamicProp" or entity.classname == "CFuncBrush" or entity.classname == "CBaseEntity" then
                 return false
             end
 

@@ -57,6 +57,7 @@ local AiStateWatch = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWatch"
 local AiSentenceReplyBot = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyBot"
 local AiSentenceReplyCheater = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyCheater"
 local AiSentenceReplyCommend = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyCommend"
+local AiSentenceReplyEmoticon = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyEmoticon"
 local AiSentenceReplyGay = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyGay"
 local AiSentenceReplyInsult = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyInsult"
 local AiSentenceReplyRacism = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyRacism"
@@ -109,16 +110,12 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --{{{ AiController
 --- @class AiController : Class
 --- @field actions AiAction[]
---- @field activeFlashbang Entity
 --- @field antiAfkEnabled boolean
 --- @field antiAfkLookAngles Angle
 --- @field antiAfkMoveYaw number
 --- @field antiAfkTimer Timer
---- @field antiBlockDuration number
---- @field antiBlockLookAngles Vector3
 --- @field antiFlyTimer Timer
 --- @field antiFlyValues number
---- @field canAntiBlock boolean
 --- @field canAvoidInfernos boolean
 --- @field canBuyThisRound boolean
 --- @field canInspectWeapon boolean
@@ -135,7 +132,8 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field deactivatedNodesByBlock table<number, Node[]>
 --- @field dynamicSkillHasDied number
 --- @field dynamicSkillRoundKills number
---- @field flashbangVisibleTimer Timer
+--- @field flashbangs number[]
+--- @field flashbang Entity
 --- @field isAutoBuyArmourBlocked boolean
 --- @field isQuickStopping boolean
 --- @field isWalking boolean
@@ -211,6 +209,7 @@ local AiController = {
 		replyBot = AiSentenceReplyBot,
 		replyCheater = AiSentenceReplyCheater,
 		replyCommend = AiSentenceReplyCommend,
+		replyEmoticon = AiSentenceReplyEmoticon,
 		replyGay = AiSentenceReplyGay,
 		replyInsult = AiSentenceReplyInsult,
 		replyRacism = AiSentenceReplyRacism,
@@ -250,7 +249,6 @@ function AiController:initFields()
 	self.antiAfkLookAngles = Angle:new()
 	self.antiAfkMoveYaw = 0
 	self.antiAfkTimer = Timer:new():start()
-	self.antiBlockDuration = Client.getRandomFloat(1, 2)
 	self.antiFlyTimer = Timer:new():start()
 	self.antiFlyValues = {}
 	self.canBuyThisRound = true
@@ -259,12 +257,12 @@ function AiController:initFields()
 	self.canInspectWeaponTimer = Timer:new():start()
 	self.deactivatedNodes = {}
 	self.deactivatedNodesByBlock = {}
-	self.flashbangVisibleTimer = Timer:new()
 	self.unblockDirection = "Left"
 	self.unblockNodesTimer = Timer:new()
 	self.unblockTimer = Timer:new():elapse()
 	self.unscopeTime = 2
 	self.unscopeTimer = Timer:new()
+	self.flashbangs = {}
 
 	DominionMenu.enableAi = DominionMenu.group:checkbox("> Dominion Artifical Intelligence"):setParent(DominionMenu.master):addCallback(function(item)
 		local value = item:get()
@@ -456,8 +454,10 @@ function AiController:initEvents()
 	end)
 
 	Callbacks.flashbangDetonate(function(e)
-		if self.activeFlashbang and self.activeFlashbang.eid == e.entityid then
-			self.activeFlashbang = nil
+		self.flashbangs[e.entityid] = nil
+
+		if self.flashbang and self.flashbang.eid == e.entityid then
+			self.flashbang = nil
 		end
 	end)
 
@@ -1115,136 +1115,61 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiController:antiFlash(ai)
-	local playerEid = Client.getEid()
 	local eyeOrigin = Client.getEyeOrigin()
+	local cameraAngles = Client.getCameraAngles()
 
-	if not self.canLookAwayFromFlash then
-		self.canLookAwayFromFlash = true
+	for _, grenade in Entity.find({Weapons.GRENADE_PROJECTILE}) do repeat
+		if grenade:m_flDamage() ~= 100 then
+			break
+		end
 
-		return
-	end
+		if not self.flashbangs[grenade.eid] then
+			self.flashbangs[grenade.eid] = Time.getCurtime() + 1.65
+		end
 
-	if self.activeFlashbang then
-		local visiblePoints = 0
+		if self.flashbang then
+			break
+		end
 
-		for _, vertex in pairs(self.activeFlashbang:m_vecOrigin():getBox(Vector3.align.CENTER, 8)) do
-			local trace = Trace.getLineToPosition(eyeOrigin, vertex, AiUtility.traceOptionsPathfinding)
+		if self.flashbangs[grenade.eid] - Time.getCurtime() > 0.4 then
+			break
+		end
 
-			if not trace.isIntersectingGeometry then
-				visiblePoints = visiblePoints + 1
+		local grenadeOrigin = grenade:m_vecOrigin()
+		local distance = eyeOrigin:getDistance(grenadeOrigin)
+		local fov = cameraAngles:getFov(eyeOrigin, grenadeOrigin)
+
+		if distance < 150 then
+			if fov > 40 then
+				break
+			end
+		else
+			if fov > 80 then
+				break
 			end
 		end
 
-		if visiblePoints == 0 then
-			self.activeFlashbang = nil
+		local trace = Trace.getLineToPosition(eyeOrigin, grenadeOrigin, AiUtility.traceOptionsAttacking)
 
-			return
-		end
-
-		self.flashbangVisibleTimer:ifPausedThenStart()
-
-		if self.flashbangVisibleTimer:isElapsed(0.4) then
-			ai.view:lookAtLocation(eyeOrigin:getAngle(self.activeFlashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 4)
-		end
-
-		return
-	else
-		self.flashbangVisibleTimer:stop()
-	end
-
-	local cameraAngles = Client.getCameraAngles()
-
-	for _, flash in Entity.find({Weapons.GRENADE_PROJECTILE}) do repeat
-		-- CSGO is fucking retarded.
-		if flash:m_flDamage() ~= 100 then
-			break
-		end
-
-		local flashOrigin = flash:m_vecOrigin()
-
-		if cameraAngles:getFov(eyeOrigin, flashOrigin) > 40 then
-			break
-		end
-
-		local _, fraction = eyeOrigin:getTraceLine(flashOrigin, playerEid)
-
-		if fraction == 1 then
-			self.activeFlashbang = flash
+		if not trace.isIntersectingGeometry then
+			self.flashbang = grenade
 		end
 	until true end
-end
 
---- @param ai AiOptions
---- @return void
-function AiController:antiBlock(ai)
-	if not self.canAntiBlock then
-		self.canAntiBlock = true
-
+	if not self.flashbang then
 		return
 	end
 
-	if not self.nodegraph.cachedPathfindMoveYaw then
-		return
-	end
+	Client.unscope()
 
-	if Entity.getGameRules():m_bFreezePeriod() == 1 then
-		return
-	end
-
-	local player = AiUtility.client
-
-	if player:m_vecVelocity():getMagnitude() > 150 then
-		--return todo?
-	end
-
-	local isBlocked = false
-	local origin = player:getOrigin()
-	local collisionOrigin = origin:clone():offset(0, 0, 36) + (Angle:new(0, self.nodegraph.cachedPathfindMoveYaw):set(0):getForward() * 32)
-	local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 22, 22, 36)
-	--- @type Player
-	local blockingTeammate
-
-	Client.draw(Vector3.drawScaledCircle, collisionBounds[1], 20, Color)
-	Client.draw(Vector3.drawScaledCircle, collisionBounds[2], 20, Color)
-
-	for _, teammate in pairs(AiUtility.teammates) do
-		if teammate:getOrigin():offset(0, 0, 36):isInBounds(collisionBounds) then
-			isBlocked = true
-
-			blockingTeammate = teammate
-
-			break
-		end
-	end
-
-	if not isBlocked then
-		self.antiBlockLookAngles = nil
-
-		return
-	end
-
-	if not self.antiBlockLookAngles then
-		self.antiBlockLookAngles = Client.getEyeOrigin():getAngle(blockingTeammate:getEyeOrigin())
-	end
-
-	self.unblockTimer:ifPausedThenStart()
-
-	if self.unblockTimer:isElapsedThenStop(self.antiBlockDuration) then
-		self.unblockDirection = Client.getChance(2) and "Left" or "Right"
-		self.antiBlockDuration = Client.getRandomFloat(0.6, 0.95)
-	end
-
-	local directionMethod = string.format("get%s", self.unblockDirection)
-	local eyeOrigin = Client.getEyeOrigin()
-	local movementAngles = Angle:new(ai.cmd.pitch, ai.cmd.yaw)
-	local directionOffset = eyeOrigin + movementAngles[directionMethod](movementAngles)
-
-	ai.nodegraph.moveYaw = eyeOrigin:getAngle(directionOffset).y
+	ai.view:lookAtLocation(eyeOrigin:getAngle(self.flashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 8)
 end
 
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiController:antiFly(cmd)
+	-- This method can be replaced by cvar.full_update but I spent the time writing this so piss off.
+
 	local playerOrigin = Client.getOrigin()
 
 	if self.antiFlyTimer:isElapsedThenRestart(0.75) then
@@ -1299,44 +1224,6 @@ function AiController:unblockNodes()
 	end
 end
 
---- @param ai AiOptions
---- @return void
-function AiController:lookAround(ai)
-
-	if not self.canLookAround then
-		return
-	end
-
-	if not self.lookAroundTimer:isElapsed(4) then
-		return
-	end
-
-	local eyeOrgin = Client.getEyeOrigin()
-	local playerEid = Client.getEid()
-	local plane = eyeOrgin:getPlane(128)
-	local farVertices = {}
-	local iFarVertices = 1
-
-	for _, vertex in pairs(plane) do
-		local _, fraction = eyeOrgin:getTraceLine(vertex, playerEid)
-
-		if fraction == 1 then
-			farVertices[iFarVertices] = vertex
-			iFarVertices = iFarVertices + 1
-		end
-	end
-
-	if #farVertices == 0 then
-		return
-	end
-
-	if self.lookAroundTimer:isElapsedThenRestart(6) then
-		self.lookAroundAngles = eyeOrgin:getAngle(farVertices[Client.getRandomInt(1, #farVertices)])
-	end
-
-	ai.view:lookInDirection(self.lookAroundAngles, 6)
-end
-
 --- @return void
 function AiController:unscope()
 	if not self.canUnscope then
@@ -1375,7 +1262,7 @@ end
 --- @return void
 function AiController:think(cmd)
 	-- Possible fix for bug where logic loop still executes in spite of being out of a server.
-	if not Server.isConnected() then
+	if not Server.isIngame() then
 		return
 	end
 
@@ -1464,9 +1351,8 @@ function AiController:think(cmd)
 	end
 
 	self:activities(ai)
-	self:antiBlock(ai)
 
-	self.nodegraph:move(cmd)
+	self.nodegraph:processMovement(cmd)
 
 	self:antiFlash(ai)
 	self:unscope()

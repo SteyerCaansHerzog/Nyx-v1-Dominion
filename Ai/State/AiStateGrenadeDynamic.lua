@@ -211,10 +211,10 @@ function AiStateGrenadeDynamic:think(ai)
     ai.controller.canUseKnife = false
     ai.controller.canLookAwayFromFlash = false
     ai.controller.isQuickStopping = true
-    ai.controller.canAntiBlock = false
-    ai.view.isCrosshairFloating = false
-    ai.view.isCrosshairUsingVelocity = false
-    ai.view.isCrosshairSmoothed = true
+    ai.nodegraph.isAllowedToAvoidTeammates = false
+    ai.view.isCrosshairFloating = true
+    ai.view.isCrosshairUsingVelocity = true
+    ai.view.isCrosshairSmoothed = false
 
     if not AiUtility.client:isHoldingWeapon(Weapons.FLASHBANG) then
         Client.equipFlashbang()

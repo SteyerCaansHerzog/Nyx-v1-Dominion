@@ -37,10 +37,6 @@ function AiActionSetBaseState:__init()
 		self:setCrosshair()
 	end
 
-	Callbacks.init(function()
-		self:setPrngSeed()
-	end)
-
 	Callbacks.frameGlobal(function()
 		self:setAppFocusedFps()
 	end)
@@ -66,15 +62,6 @@ function AiActionSetBaseState:setAppFocusedFps()
 			cvar.fps_max_menu:set_int(30)
 		else
 			cvar.fps_max_menu:set_int(1)
-		end
-	end
-end
-
---- @return void
-function AiActionSetBaseState:setPrngSeed()
-	if entity.get_local_player() then
-		for _ = 0, entity.get_local_player() * 100 do
-			client.random_float(0, 1)
 		end
 	end
 end

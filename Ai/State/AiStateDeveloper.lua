@@ -37,7 +37,11 @@ end
 
 --- @param ai AiOptions
 --- @return void
-function AiStateDeveloper:activate(ai) end
+function AiStateDeveloper:activate(ai)
+    local node = ai.nodegraph.nodes[3136]
+
+    ai.nodegraph:pathfind(node.origin)
+end
 
 --- @return void
 function AiStateDeveloper:reset() end

@@ -48,6 +48,7 @@ function AiSentenceReplyInsult:__init()
         if not self:isValidReplyTarget(e) then
             return
         end
+
         if not self.contains(e.text, {
             "ur shit", "you're shit",
             "suck",

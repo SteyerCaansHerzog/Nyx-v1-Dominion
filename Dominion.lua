@@ -13,10 +13,21 @@
 ---     gamesense/csgo_weapons
 
 --{{{ Dependencies
+local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
+
+-- This must be executed as the very first setupCommand event that runs. Before everything else.
+-- It is responsible for ensuring RNG between AI clients on the same server is properly randomised.
+Callbacks.setupCommand(function()
+    if entity.get_local_player() then
+        for _ = 0, entity.get_local_player() * 100 do
+            client.random_float(0, 1)
+        end
+    end
+end)
 
 --{{{ Modules
 local AiController = require "gamesense/Nyx/v1/Dominion/Ai/AiController"

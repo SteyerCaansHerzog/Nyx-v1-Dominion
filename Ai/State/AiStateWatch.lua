@@ -106,7 +106,7 @@ function AiStateWatch:getWatchNode(nodes, chance)
             break
         end
 
-        if clientOrigin:getDistance(node.origin) > 750 then
+        if clientOrigin:getDistance(node.origin) > 500 then
             break
         end
 
@@ -187,7 +187,7 @@ function AiStateWatch:think(ai)
         ai.controller.isQuickStopping = true
         ai.view.isCrosshairFloating = false
         ai.controller.canUnscope = false
-        ai.controller.canAntiBlock = false
+        ai.nodegraph.isAllowedToAvoidTeammates = false
     end
 
     if distance < 200 then

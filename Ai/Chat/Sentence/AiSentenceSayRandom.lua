@@ -57,7 +57,7 @@ local AiSentenceTemplate = {
         },
         {
             "a'ight",
-            "i'm finna shoot dog brb"
+            "i'm finna shoot my dog brb"
         },
         {
             "you guys watch sparkles?",
@@ -122,6 +122,25 @@ local AiSentenceTemplate = {
             "sorry i'm bad",
             "can't hear the game",
             "mom's ventilator is rly loud and dad doesn't want to turn it off"
+        },
+        {
+            "grr"
+        },
+        {
+            "i'd fuck whoopie goldberg",
+            "i swear that's a bind"
+        },
+        {
+            "tomorrow's another day",
+            "and my team'll still be shit"
+        },
+        {
+            "imposter",
+            "amogus",
+            "sus",
+            "sussy baka",
+            "uwu",
+            "i fuck dogs"
         }
     }
 }

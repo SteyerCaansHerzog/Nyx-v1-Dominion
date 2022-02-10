@@ -124,7 +124,7 @@ function AiStateBoost:think(ai)
     end
 
     if senderDistance < 500 and originDistance < 200 then
-        ai.controller.canAntiBlock = false
+        ai.nodegraph.isAllowedToAvoidTeammates = false
         ai.controller.canLookAwayFromFlash = false
         ai.controller.states.evade.isBlocked = true
 

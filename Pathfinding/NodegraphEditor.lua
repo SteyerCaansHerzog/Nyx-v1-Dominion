@@ -49,7 +49,7 @@ end
 function NodegraphEditor:initFields()
     MenuGroup.enableEditor = MenuGroup.group:checkbox("> Dominion Editor"):setParent(MenuGroup.master)
 
-    MenuGroup.maxNodeConnections = MenuGroup.group:slider("    > Max Node Connections", 1, 4, {
+    MenuGroup.maxNodeConnections = MenuGroup.group:slider("    > Max Node Connections", 0, 4, {
         default = 2
     }):setParent(MenuGroup.enableEditor)
 
@@ -287,7 +287,7 @@ end
 
 --- @return void
 function NodegraphEditor:renderUi()
-    Client.drawIndicatorGs(Node.typesColor[self.nodeTypeCombo], Node.typesName[self.nodeTypeCombo])
+    Client.drawIndicatorFrame(Node.typesColor[self.nodeTypeCombo], Node.typesName[self.nodeTypeCombo])
 end
 
 return Nyx.class("NodegraphEditor", NodegraphEditor)

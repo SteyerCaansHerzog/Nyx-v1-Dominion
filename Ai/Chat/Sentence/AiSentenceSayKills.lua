@@ -23,31 +23,34 @@ function AiSentenceSayKills:__init()
     self.__parent.__init(self)
 
     self.probability = 3
-    self.maxUses = 30
+    self.maxUses = 6
 
     self.structures = {
         DEATH_WP = {
-            "{WOW}",
-            "{COMMEND}"
+            "{WOW}{PUNCT}",
+            "{COMMEND}{PUNCT}"
         },
         DEATH_NADE = {
-            "{OH}"
+            "{OH}{PUNCT}"
         },
         DEATH_BY_TEAMMATE = {
-            "{BRO}",
-            "{NP}"
+            "{BRO}{PUNCT}",
+            "{NP}{PUNCT}"
         },
         KILL_KOBE = {
-            "{KOBE}"
+            "{KOBE}{PUNCT}"
         },
         KILL_INSULT = {
-            "{INSULT}"
+            "{INSULT}{PUNCT}"
         },
         KILL_SORRY = {
-            "{SORRY}"
+            "{SORRY}{PUNCT}"
+        },
+        DEATH_NOOB = {
+            "{YOURE}{NOOB}{PUNCT}"
         },
         ENEMY_DEATH_BY_TEAMMATE = {
-            "{LOL}",
+            "{LOL}{PUNCT}",
             "{EMOJI}"
         }
     }
@@ -82,6 +85,15 @@ function AiSentenceSayKills:__init()
         },
         EMOJI = {
             "xd", ":p", ":v", "xD", "xd"
+        },
+        YOURE = {
+            "", "you're a ", "ur a "
+        },
+        NOOB = {
+            "noob", "cuck", "cock", "fatso", "fattie", "little bitch", "little slut", "cumsleeve"
+        },
+        PUNCT = {
+            "", ".", "!"
         }
     }
 
@@ -109,6 +121,8 @@ function AiSentenceSayKills:__init()
         if e.victim:isClient() and e.attacker:isEnemy() then
             if e.weapon == "knife" then
                 self:speak("DEATH_WP")
+            elseif e.weapon == "p90" or e.weapon == "scar20" or e.weapon == "g3sg" then
+                self:speak("DEATH_NOOB")
             elseif e.weapon == "hegrenade" or e.weapon == "inferno" then
                 self:speak("DEATH_NADE")
             elseif e.penetrated > 0 and e.headshot then

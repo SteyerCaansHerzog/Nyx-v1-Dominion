@@ -8,6 +8,7 @@ local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -68,6 +69,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field lastSeenTimers Timer[]
 --- @field lastSoundTimer Timer
 --- @field noticedPlayerTimers Timer[]
+--- @field noticedLoudPlayerTimers Timer[]
 --- @field onGroundTime Timer
 --- @field onGroundTimer Timer
 --- @field patienceTimer Timer
@@ -151,6 +153,12 @@ function AiStateEngage:initFields()
 
     for i = 1, 64 do
         self.noticedPlayerTimers[i] = Timer:new()
+    end
+
+    self.noticedLoudPlayerTimers = {}
+
+    for i = 1, 64 do
+        self.noticedLoudPlayerTimers[i] = Timer:new()
     end
 
     self.lastSeenTimers = {}
@@ -247,12 +255,12 @@ function AiStateEngage:initEvents()
         local player = AiUtility.client
         local bomb = AiUtility.plantedBomb
 
-        if player:isCounterTerrorist() and bomb then
+        if bomb and player:isCounterTerrorist() then
             local bombOrigin = bomb:m_vecOrigin()
 
             for _, enemy in pairs(AiUtility.enemies) do
                 if bombOrigin:getDistance(enemy:getOrigin()) < 512 then
-                    self:noticeEnemy(enemy, 512, "Near Site")
+                    self:noticeEnemy(enemy, 512, false, "Near Site")
                 end
             end
         end
@@ -269,23 +277,23 @@ function AiStateEngage:initEvents()
             return
         end
 
-        self:noticeEnemy(e.attacker, Vector3.MAX_DISTANCE, "Shot by")
+        self:noticeEnemy(e.attacker, Vector3.MAX_DISTANCE, true, "Shot by")
     end)
 
     Callbacks.playerFootstep(function(e)
-        self:noticeEnemy(e.player, 900, "Stepped")
+        self:noticeEnemy(e.player, 900, false, "Stepped")
     end)
 
     Callbacks.playerJump(function(e)
-        self:noticeEnemy(e.player, 512, "Jumped")
+        self:noticeEnemy(e.player, 512, false, "Jumped")
     end)
 
     Callbacks.weaponZoom(function(e)
-        self:noticeEnemy(e.player, 512, "Scoped")
+        self:noticeEnemy(e.player, 512, false, "Scoped")
     end)
 
     Callbacks.weaponReload(function(e)
-        self:noticeEnemy(e.player, 700, "Reloaded")
+        self:noticeEnemy(e.player, 700, false, "Reloaded")
     end)
 
     Callbacks.weaponFire(function(e)
@@ -294,7 +302,7 @@ function AiStateEngage:initEvents()
         end
 
         if CsgoWeapons[e.weapon].is_melee_weapon then
-            self:noticeEnemy(e.player, 256, "Knifed")
+            self:noticeEnemy(e.player, 256, true, "Knifed")
 
             return
         end
@@ -305,7 +313,7 @@ function AiStateEngage:initEvents()
             range = Vector3.MAX_DISTANCE
         end
 
-        self:noticeEnemy(e.player, range, "Shot")
+        self:noticeEnemy(e.player, range, true, "Shot")
     end)
 
     Callbacks.bulletImpact(function(e)
@@ -317,19 +325,19 @@ function AiStateEngage:initEvents()
             return
         end
 
-        self:noticeEnemy(e.shooter, 4096, "Shot at")
+        self:noticeEnemy(e.shooter, 4096, true, "Shot at")
     end)
 
     Callbacks.bombBeginDefuse(function(e)
-        self:noticeEnemy(e.player, 4096, "Began defusing")
+        self:noticeEnemy(e.player, 4096, true, "Began defusing")
     end)
 
     Callbacks.bombBeginPlant(function(e)
-        self:noticeEnemy(e.player, 2048, "Began planting")
+        self:noticeEnemy(e.player, 2048, true, "Began planting")
     end)
 
     Callbacks.grenadeThrown(function(e)
-        self:noticeEnemy(e.player, 512, "Threw grenade")
+        self:noticeEnemy(e.player, 512, false, "Threw grenade")
     end)
 
     Callbacks.playerDeath(function(e)
@@ -346,11 +354,12 @@ function AiStateEngage:initEvents()
         end
 
         if e.victim:isTeammate() and AiUtility.client:getOrigin():getDistance(e.victim:getOrigin()) < 1250 then
-            self:noticeEnemy(e.attacker, 1250, "Teammate killed")
+            self:noticeEnemy(e.attacker, 1250, true, "Teammate killed")
         end
 
         if e.victim:isEnemy() and self.noticedPlayerTimers[e.victim.eid] then
             self.noticedPlayerTimers[e.victim.eid]:stop()
+            self.noticedLoudPlayerTimers[e.victim.eid]:stop()
             self.lastSeenTimers[e.victim.eid]:stop()
         end
     end)
@@ -437,6 +446,12 @@ function AiStateEngage:reset()
 
     for i = 1, 64 do
         self.noticedPlayerTimers[i] = Timer:new()
+    end
+
+    self.noticedLoudPlayerTimers = {}
+
+    for i = 1, 64 do
+        self.noticedLoudPlayerTimers[i] = Timer:new()
     end
 
     self.lastSeenTimers = {}
@@ -531,9 +546,10 @@ end
 
 --- @param player Player
 --- @param range number
+--- @param isLoud boolean
 --- @param reason string
 --- @return void
-function AiStateEngage:noticeEnemy(player, range, reason)
+function AiStateEngage:noticeEnemy(player, range, isLoud, reason)
     if not AiUtility.client:isAlive() or not self.ignoreDormancyTimer:isElapsed(self.ignoreDormancyTime) then
         return
     end
@@ -553,17 +569,26 @@ function AiStateEngage:noticeEnemy(player, range, reason)
     end
 
     self.noticedPlayerTimers[player.eid]:start()
+
+    if isLoud then
+        self.noticedLoudPlayerTimers[player.eid]:start()
+    end
 end
 
 --- @param player Player
 --- @return void
 function AiStateEngage:unnoticeEnemy(player)
     self.noticedPlayerTimers[player.eid]:stop()
+    self.noticedLoudPlayerTimers[player.eid]:stop()
 end
 
 --- @return boolean
 function AiStateEngage:hasNoticedEnemies()
-    local ignorePlayerAfter = Client.hasBomb() and 3 or self.ignorePlayerAfter
+    local ignorePlayerAfter = self.ignorePlayerAfter
+
+    if Client.hasBomb() and not AiUtility.isLastAlive then
+        ignorePlayerAfter = 3
+    end
 
     for _, enemy in pairs(AiUtility.enemies) do
         local timer = self.noticedPlayerTimers[enemy.eid]
@@ -576,10 +601,18 @@ function AiStateEngage:hasNoticedEnemies()
     return false
 end
 
---- @param enemy WeaponFireOnEmptyEvent
+--- @param enemy Player
 --- @return boolean
 function AiStateEngage:hasNoticedEnemy(enemy)
     local timer = self.noticedPlayerTimers[enemy.eid]
+
+    return timer:isStarted() and not timer:isElapsed(self.ignorePlayerAfter)
+end
+
+--- @param enemy Player
+--- @return boolean
+function AiStateEngage:hasNoticedLoudEnemy(enemy)
+    local timer = self.noticedLoudPlayerTimers[enemy.eid]
 
     return timer:isStarted() and not timer:isElapsed(self.ignorePlayerAfter)
 end
@@ -588,6 +621,7 @@ end
 function AiStateEngage:unnoticeAllEnemies()
     for i = 1, 64 do
         self.noticedPlayerTimers[i]:stop()
+        self.noticedLoudPlayerTimers[i]:stop()
     end
 end
 
@@ -627,7 +661,7 @@ function AiStateEngage:setBestTarget()
         local fov = AiUtility.enemyFovs[enemy.eid]
 
         if fov < 55 then
-            self:noticeEnemy(enemy, Vector3.MAX_DISTANCE, "In field of view")
+            self:noticeEnemy(enemy, Vector3.MAX_DISTANCE, false, "In field of view")
         end
 
         if self:hasNoticedEnemy(enemy) and fov < lowestFov then
@@ -1148,6 +1182,27 @@ function AiStateEngage:canHoldAngle(ai)
 
     -- Don't hold if the enemy is planting or has planted the bomb.
     if AiUtility.client:isCounterTerrorist() and not AiUtility.plantedBomb and not AiUtility.isBombBeingPlantedByEnemy then
+
+        -- If we're the closest to enemy, maybe don't permanently hold the angle.
+        if self.bestTarget then
+            local isClosestToEnemy = true
+            local targetOrigin = self.bestTarget:getOrigin()
+            local clientDistance = clientOrigin:getDistance(targetOrigin)
+
+            for _, teammate in pairs(AiUtility.teammates) do
+                if teammate:getOrigin():getDistance(targetOrigin) < clientDistance then
+                    isClosestToEnemy = false
+
+                    break
+                end
+            end
+
+            if isClosestToEnemy then
+                -- Leaving this unused for now.
+                --return false
+            end
+        end
+
         return true
     end
 
@@ -1159,11 +1214,21 @@ function AiStateEngage:canHoldAngle(ai)
 
     -- Don't hold if the enemy is defusing the bomb.
     if AiUtility.client:isTerrorist() and not AiUtility.isBombBeingDefusedByEnemy then
-        -- Don't hold the angle forever.
-        if self.patienceTimer:isElapsed(6) then
-            self.patienceCooldownTimer:restart()
+        --- @type GameStateTimeData
+        local timeData = Table.fromPanorama(Panorama.GameStateAPI.GetTimeDataJSO())
 
-            return false
+        if not AiUtility.plantedBomb then
+            -- We don't have much time remaining in the round, so we ought not to stand around.
+            if timeData.roundtime_remaining < 30 then
+                return false
+            end
+
+            -- Don't hold the angle forever.
+            if self.patienceTimer:isElapsed(6) then
+                self.patienceCooldownTimer:restart()
+
+                return false
+            end
         end
 
         local distanceToSite = ai.nodegraph:getNearestSiteNode(clientOrigin).origin:getDistance(clientOrigin)
@@ -1177,6 +1242,16 @@ function AiStateEngage:canHoldAngle(ai)
         -- Good enough situation to hold as a T.
         -- We don't do it outside of sites because we should really be pushing the enemy at this stage.
         if isNearPlantedBomb or distanceToSite < 700 then
+            return true
+        end
+    end
+
+    if self.bestTarget then
+        local trace = Trace.getLineToPosition(clientEyeOrigin, self.bestTarget:getEyeOrigin(), AiUtility.traceOptionsAttacking)
+
+        -- The enemy, from our point of view, is occluded by a smoke.
+        -- We shouldn't really push smokes, so we should prefer holding the smoke instead.
+        if clientEyeOrigin:isRayIntersectingSmoke(trace.endPosition) then
             return true
         end
     end
@@ -1214,6 +1289,11 @@ function AiStateEngage:engage(ai)
         if self.isHoldingAngle then
             self.patienceTimer:ifPausedThenStart()
 
+            -- Jiggling whilst scoped might look stupid.
+            if AiUtility.client:isHoldingSniper() then
+                Client.scope()
+            end
+
             if self.isHoldingAngleDucked then
                 ai.cmd.in_duck = 1
             else
@@ -1230,8 +1310,7 @@ function AiStateEngage:engage(ai)
                     direction = Client.getCameraAngles():getRight()
                 end
 
-                ai.nodegraph.moveSpeed = 450
-                ai.nodegraph.moveYaw = direction:getAngleFromForward().y
+                ai.nodegraph.moveAngle = direction:getAngleFromForward()
             end
 
             return
@@ -1283,6 +1362,7 @@ function AiStateEngage:engage(ai)
         end
 
         -- Move to the closest node to the enemy.
+        -- The alternative to this is soft-crashing the AI.
         if closestNode then
             ai.nodegraph:pathfind(closestNode.origin, {
                 objective = Node.types.ENEMY,
@@ -1302,12 +1382,12 @@ function AiStateEngage:attack(ai)
         return
     end
 
-    -- Prevent certain generic behaviours
+    -- Prevent certain generic behaviours.
     ai.controller.canUseKnife = false
-    ai.controller.canAntiBlock = false
+    ai.nodegraph.isAllowedToAvoidTeammates = false
     ai.controller.canInspectWeapon = false
 
-    -- Prevent reloading when enemies visible
+    -- Prevent reloading/unscoping when enemies are visible.
     if next(AiUtility.visibleEnemies) then
         ai.controller.canReload = false
         ai.controller.canUnscope = false
@@ -1315,24 +1395,27 @@ function AiStateEngage:attack(ai)
 
     local player = AiUtility.client
 
-    -- Spray
+    -- Spray.
     if self.sprayTimer:isStarted() and not self.sprayTimer:isElapsed(self.sprayTime) then
         ai.controller.canReload = false
 
         self:shoot(ai, self.watchOrigin, 3, self.bestTarget)
     end
 
-    -- Reset reaction delay
+    -- Reset reaction delay.
     if not next(AiUtility.visibleEnemies) then
         self.reactionTimer:stop()
     end
 
-    -- Ignore unnoticed enemies
+    -- Ignore unnoticed enemies.
+    -- I'm like 100% sure that this is completely redundant. How does this attack function even get run
+    -- if there's no enemies the AI knows about to attack?
+    -- I'm not removing it because every time I change something in this 2000 line file the AI starts doing insane things.
     if not self:hasNoticedEnemies() then
         return
     end
 
-    -- Block overpowered spray transfers
+    -- Block overpowered spray transfers.
     if not self.blockTimer:isElapsed(self.blockTime) then
         ai.controller.canReload = false
 
@@ -1356,21 +1439,21 @@ function AiStateEngage:attack(ai)
             end
         end
     elseif self.lastPriority == AiState.priority.ENGAGE_NEARBY then
-        -- Ensure bot is holding a weapon
+        -- Ensure bot is holding a weapon.
         if not player:isHoldingGun() or player:isHoldingPistol() then
             Client.equipAnyWeapon()
         end
     end
 
-    -- Enemy
+    -- Target we intend to engage.
     local enemy = self.bestTarget
 
-    -- Prevent reloading
+    -- Prevent reloading.
     if self.watchTimer:isStarted() and not self.watchTimer:isElapsed(self.watchTime) then
         ai.controller.canReload = false
     end
 
-    -- Watch last known position
+    -- Watch last known position.
     if not enemy then
         self:watchAngle(ai)
 
@@ -1386,24 +1469,24 @@ function AiStateEngage:attack(ai)
         Animate.sine(0, vertical, 2.5)
     )
 
-    -- Ensure player is holding weapon
+    -- Ensure player is holding weapon.
     if not player:isHoldingGun() then
         Client.equipAnyWeapon()
     end
 
-    -- Shoot while blind
+    -- Shoot while blind.
     if Client.isFlashed() and AiUtility.visibleEnemies[enemy.eid] then
         self:shoot(ai, self.shootAtOrigin, 10, enemy)
 
         return
     end
 
-    -- Shoot through smokes
+    -- Shoot through smokes.
     if self:shootThroughSmokes(ai, enemy) then
         return
     end
 
-    -- Shoot last position
+    -- Shoot last position.
     if not next(AiUtility.visibleEnemies) and self.watchOrigin then
         self:watchAngle(ai)
     end
@@ -1444,11 +1527,11 @@ function AiStateEngage:attack(ai)
         end
     end
 
-    -- Get target hitbox
+    -- Get target hitbox.
     local hitbox, visibleHitboxCount = self:getHitbox(enemy)
 
-    -- Pre-aim angle
-    -- Pre-aim hitbox when peeking
+    -- Pre-aim angle.
+    -- Pre-aim hitbox when peeking.
     if self:hasNoticedEnemy(enemy) then
         self:preAimAboutCorners(ai)
         self:preAimThroughCorners(ai)
@@ -1458,12 +1541,12 @@ function AiStateEngage:attack(ai)
         return
     end
 
-    -- Wide-peek enemies
+    -- Wide-peek enemies.
     self:ferrariPeek(ai)
 
     self.isTargetEasilyShot = visibleHitboxCount >= 8
 
-    -- Begin watching last angle
+    -- Begin watching last angle.
     if AiUtility.visibleEnemies[enemy.eid] then
         if hitbox then
             self.watchOrigin = hitbox
@@ -1481,13 +1564,13 @@ function AiStateEngage:attack(ai)
     local eyeOrigin = Client.getEyeOrigin()
     local shootFov = self:getShootFov(Client.getCameraAngles(), eyeOrigin, hitbox)
 
-    -- Begin reaction timer
+    -- Begin reaction timer.
     if AiUtility.visibleEnemies[enemy.eid] and (self:hasNoticedEnemy(enemy) or shootFov < 35) then
         self.reactionTimer:ifPausedThenStart()
     end
 
     if AiUtility.visibleEnemies[enemy.eid] then
-        -- Do not look away from flashbangs
+        -- Do not look away from flashbangs.
         ai.controller.canLookAwayFromFlash = false
     end
 
@@ -1497,7 +1580,7 @@ function AiStateEngage:attack(ai)
         Client.draw(Vector3.drawCircleOutline, hitbox, 12, 2, Color:hsla(50, 1, 0.5, 200))
     end
 
-    -- React to visible enemy
+    -- React to visible enemy.
     if self.reactionTimer:isElapsed(self.currentReactionTime) and AiUtility.visibleEnemies[enemy.eid] then
         if shootFov < 12 then
             ai.controller.canLookAwayFromFlash = false
@@ -1506,7 +1589,7 @@ function AiStateEngage:attack(ai)
             self.watchTimer:start()
             self.lastSeenTimers[enemy.eid]:start()
 
-            self:noticeEnemy(enemy, 4096, "In shoot FoV")
+            self:noticeEnemy(enemy, 4096, false, "In shoot FoV")
             self:shoot(ai, hitbox, shootFov, enemy)
         elseif shootFov < 40 then
             ai.view:lookAtLocation(hitbox, self.aimSpeed * 0.8)
@@ -1866,7 +1949,7 @@ function AiStateEngage:ferrariPeek(ai)
 
         if self.ferrariPeekCooldownTimer:isElapsed(5) then
             ai.nodegraph.moveSpeed = 450
-            ai.nodegraph.moveYaw = moveAngles.y
+            ai.nodegraph.moveAngle = moveAngles
         end
     end
 end
@@ -2132,17 +2215,16 @@ function AiStateEngage:autoStop(ai)
         local inverseVelocity = -player:m_vecVelocity()
 
         if inverseVelocity:getMagnitude() < 75 then
-            ai.nodegraph.moveSpeed = 0
+            ai.nodegraph.isAllowedToMove = false
 
             return
         end
 
         local velocityAngles = inverseVelocity:normalize():getAngleFromForward()
 
-        ai.nodegraph.moveYaw = velocityAngles.y
-        ai.nodegraph.moveSpeed = 450
+        ai.nodegraph.moveAngle = velocityAngles
     else
-        ai.nodegraph.moveSpeed = 0
+        ai.nodegraph.isAllowedToMove = false
     end
 end
 

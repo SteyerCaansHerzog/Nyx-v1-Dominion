@@ -375,15 +375,15 @@ function AiView:think(cmd)
     -- Shoot out cover
     local shootNode = self.nodegraph:getClosestNodeOf(origin, {Node.types.SHOOT, Node.types.CROUCH_SHOOT})
 
-    if shootNode and origin:getDistance(shootNode.origin) < 48 then
-        local yawDelta = math.abs(shootNode.direction.y - correctedViewAngles.y)
+    if shootNode and origin:getDistance(shootNode.origin) < 40 then
+        local diff = correctedViewAngles:getMaxDiff(shootNode.direction)
 
-        if yawDelta < 135 and self:isPlayerBlocked(shootNode) then
+        if diff < 135 and self:isPlayerBlocked(shootNode) then
             self.overrideViewAngles = shootNode.direction
             self.lookSpeed = 4
             self.isViewLocked = true
 
-            if yawDelta < 15 then
+            if diff < 15 then
                 cmd.in_attack = 1
             end
         end
@@ -395,7 +395,7 @@ function AiView:think(cmd)
     if node and origin:getDistance(node.origin) < 128 then
         local yawDelta = math.abs(node.direction.y - correctedViewAngles.y)
 
-        if yawDelta < 135 and self:isPlayerBlocked(node) then
+        if yawDelta < 150 and self:isPlayerBlocked(node) then
             self.overrideViewAngles = node.direction
             self.lookSpeed = 4
             self.isViewLocked = true
@@ -446,16 +446,11 @@ function AiView:isPlayerBlocked(node)
         end
     end
 
-    local nodeOrigin = node.origin:clone():offset(0, 0, 36)
+    local nodeOrigin = node.origin:clone():offset(0, 0, 40)
     local offset = nodeOrigin + node.direction:getForward() * 48
+    local trace = Trace.getLineToPosition(nodeOrigin, offset, AiUtility.traceOptionsPathfinding)
 
-    local _, fraction = nodeOrigin:getTraceLine(offset, Client.getEid())
-
-    if fraction ~= 1 then
-        return true
-    end
-
-    return false
+    return trace.isIntersectingGeometry
 end
 
 return Nyx.class("AiView", AiView)

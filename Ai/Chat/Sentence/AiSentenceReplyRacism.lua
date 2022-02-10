@@ -82,6 +82,10 @@ function AiSentenceReplyRacism:__init()
     }
 
     Callbacks.playerChat(function(e)
+        if not self:isValidReplyTarget(e) then
+            return
+        end
+
         if not self.contains(e.text, {
             "nigger", "negro", "coon", "kaffir", "kaffer", "chink", "ching chong", "spick", "beaner", "wetback", "charlie"
         }) then

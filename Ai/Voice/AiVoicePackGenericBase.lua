@@ -606,7 +606,7 @@ end
 --- @return void
 function AiVoicePackGenericBase:speakAgreement()
 	self:speak(self:getGroupDynamic("Agreement"), {
-		chance = 4,
+		chance = 1,
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,

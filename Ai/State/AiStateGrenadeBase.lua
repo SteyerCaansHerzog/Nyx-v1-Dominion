@@ -231,10 +231,8 @@ function AiStateGrenadeBase:think(ai)
         ai.controller.isQuickStopping = true
     end
 
-    if distance > 25 then
-        ai.nodegraph.moveSpeed = 450
-    else
-        ai.nodegraph.moveSpeed = 0
+    if distance < 20 then
+        ai.nodegraph.isAllowedToMove = false
     end
 
     if distance < 46 then
@@ -242,8 +240,8 @@ function AiStateGrenadeBase:think(ai)
     end
 
     if distance < 150 then
-        ai.nodegraph.moveYaw = playerOrigin:getAngle(self.node.origin).y
-        ai.controller.canAntiBlock = false
+        ai.nodegraph.moveAngle = playerOrigin:getAngle(self.node.origin)
+        ai.nodegraph.isAllowedToAvoidTeammates = false
         ai.view.isCrosshairFloating = false
         ai.view.isCrosshairUsingVelocity = false
         ai.view.isCrosshairSmoothed = true

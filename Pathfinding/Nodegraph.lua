@@ -37,7 +37,6 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field mapMiddle Node
 --- @field moveSpeed number
 --- @field moveYaw number
---- @field moveDirection Angle
 --- @field nodes Node[]
 --- @field objectiveA Node
 --- @field objectiveAChoke Node[]
@@ -82,7 +81,12 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field tSpawn Node
 --- @field unstuckAngles Angle
 --- @field unstuckTimer Timer
---- @field cachedPathfindMoveYaw number
+--- @field cachedPathfindMoveAngle Angle
+--- @field moveAngle Angle
+--- @field isAllowedToMove boolean
+--- @field unblockTimer Timer
+--- @field unblockDuration number
+--- @field unblockLookAngles Angle
 local Nodegraph = {}
 
 --- @return Nodegraph
@@ -104,7 +108,10 @@ function Nodegraph:initFields()
     self.moveSpeed = 450
     self.pathfindFails = 0
     self.unstuckAngles = Client.getCameraAngles()
-    self.moveDirection = Angle:new()
+    self.isAllowedToMove = true
+    self.unblockTimer = Timer:new()
+    self.unblockDirection = "Left"
+    self.unblockDuration = 0.6
 
     Menu.enableNodegraph = Menu.group:checkbox("> Dominion Nodegraph"):setParent(Menu.master)
     Menu.enableMovement = Menu.group:checkbox("    > Enable Movement"):setParent(Menu.enableNodegraph)
@@ -358,7 +365,7 @@ function Nodegraph:renderNodegraph()
 
     if Menu.visualiseDirectPathing:get() then
         local playerOrigin = Player.getClient():getOrigin():offset(0, 0, 16)
-        local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 16, 16, 24)
+        local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 16, 16, 18)
 
         for _, searchNode in pairs(self.nodes) do
             if playerOrigin:getDistance(searchNode.origin) < 256 then
@@ -805,7 +812,7 @@ function Nodegraph:pathfind(origin, options)
         self:setConnections(pathStart, false)
     end
 
-    self:setConnections(pathEnd, options.ignore, false)
+    self:setConnections(pathEnd, true)
 
     local path = AStar.find(pathStart, pathEnd, self.nodes, true, function(node, neighbor)
         local canReach = true
@@ -858,7 +865,7 @@ end
 function Nodegraph:setConnections(node, pathLine)
     node.connections = {}
 
-    local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 16, 16, 24)
+    local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 16, 16, 18)
 
     for _, searchNode in pairs(self.nodes) do
         if searchNode.id ~= node.id and node.origin:getDistance(searchNode.origin) < 256 then
@@ -888,45 +895,13 @@ end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function Nodegraph:move(cmd)
+function Nodegraph:processMovement(cmd)
     if not Menu.master:get() or not Menu.enableNodegraph:get() or not Menu.enableMovement:get() then
         return
     end
 
-    -- Auto-duck in-air, except when falling.
-    if not AiUtility.client:getFlag(Player.flags.FL_ONGROUND) then
-        local velocity = AiUtility.client:m_vecVelocity()
-
-        if velocity.z > 0 then
-            cmd.in_duck = 1
-        end
-    end
-
-    -- Attempt to unstuck ourselves
-    if self.pathfindFails > 0 then
-        self.unstuckTimer:ifPausedThenStart()
-
-        cmd.forwardmove = self.moveSpeed or 450
-
-        self.unstuckAngles.y = self.unstuckAngles.y + 45 * Time.getDelta()
-    else
-        self.unstuckTimer:stop()
-        self.unstuckAngles = Client.getCameraAngles()
-    end
-
-    -- No path to move along
     if not self.path then
         self.task = "Idle"
-
-        if self.moveYaw then
-            -- Move to next node
-            cmd.forwardmove = self.moveSpeed
-            cmd.move_yaw = self.moveYaw
-
-            -- Reset move overrides
-            self.moveYaw = nil
-            self.moveSpeed = 450
-        end
 
         return
     end
@@ -935,9 +910,33 @@ function Nodegraph:move(cmd)
     local origin = player:getOrigin()
     local node = self.path[self.pathCurrent]
 
-    -- Finished path
+    local isAllowedToMove = self.isAllowedToMove
+
+    self.isAllowedToMove = true
+
+    -- We're blocked from moving.
+    if not isAllowedToMove then
+        return
+    end
+
+    -- Deal with moving.
+    if self.pathfindFails > 0 then
+        self.unstuckTimer:ifPausedThenStart()
+
+        self:executeMovementForward(cmd)
+    else
+        self.unstuckTimer:stop()
+        self.unstuckAngles = Client.getCameraAngles()
+    end
+
+    if self.moveAngle then
+        self:executeMovement(cmd, self.moveAngle)
+
+        self.cachedPathfindMoveAngle = self.moveAngle
+        self.moveAngle = nil
+    end
+
     if not node then
-        -- On path completed
         if self.pathfindOptions.onComplete then
             self.pathfindOptions.onComplete()
         end
@@ -947,26 +946,36 @@ function Nodegraph:move(cmd)
         return
     end
 
-    -- Path is inactive
+    -- Node we're trying to pathfind over is inactive.
     if not self.pathfindOptions.canUseInactive and not node.active then
         self:rePathfind()
     end
 
-    -- Movement direction
     local angleToNode = origin:getAngle(node.origin)
 
-    self.cachedPathfindMoveYaw = angleToNode.y
+    self.cachedPathfindMoveAngle = angleToNode
 
-    -- Move to next node
-    cmd.forwardmove = self.moveSpeed
-    cmd.move_yaw = self.moveYaw and self.moveYaw or angleToNode.y
+    self:executeMovement(cmd, angleToNode)
 
-    -- Set move direction
-    self.moveDirection:set(0, cmd.move_yaw)
+    -- Avoid teammates.
+    if self:avoidTeammates(cmd) then
+        --return
+    end
 
-    -- Reset move overrides
-    self.moveYaw = nil
-    self.moveSpeed = 450
+    -- Avoid clipping the sides of walls.
+    if self:avoidClipping(cmd) then
+        --return
+    end
+
+    -- Deal with jumping and ducking.
+    -- Auto-duck in-air, except when falling.
+    if not player:getFlag(Player.flags.FL_ONGROUND) then
+        local velocity = player:m_vecVelocity()
+
+        if velocity.z > 0 then
+            cmd.in_duck = 1
+        end
+    end
 
     local distance = origin:getDistance2(node.origin)
 
@@ -1038,6 +1047,199 @@ function Nodegraph:move(cmd)
         end
     end
 end
+
+--- @param cmd SetupCommandEvent
+--- @return boolean
+function Nodegraph:avoidTeammates(cmd)
+    if not self.canAntiBlock then
+        self.canAntiBlock = true
+
+        return
+    end
+
+    if not self.cachedPathfindMoveAngle then
+        return
+    end
+
+    if Entity.getGameRules():m_bFreezePeriod() == 1 then
+        return
+    end
+
+    local player = AiUtility.client
+
+    -- This is probably not useful.
+    if player:m_vecVelocity():getMagnitude() > 200 then
+        return
+    end
+
+    local isBlocked = false
+    local origin = player:getOrigin()
+    local collisionOrigin = origin:clone():offset(0, 0, 36) + (self.cachedPathfindMoveAngle:clone():set(0):getForward() * 40)
+    local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 32, 32, 25)
+    --- @type Player
+    local blockingTeammate
+
+    for _, teammate in pairs(AiUtility.teammates) do
+        if teammate:getOrigin():offset(0, 0, 36):isInBounds(collisionBounds) then
+            isBlocked = true
+
+            blockingTeammate = teammate
+
+            break
+        end
+    end
+
+    if not isBlocked then
+        self.unblockLookAngles = nil
+
+        return
+    end
+
+    if not self.unblockLookAngles then
+        self.unblockLookAngles = Client.getEyeOrigin():getAngle(blockingTeammate:getEyeOrigin())
+    end
+
+    self.unblockTimer:ifPausedThenStart()
+
+    if self.unblockTimer:isElapsedThenStop(self.unblockDuration) then
+        self.unblockDirection = Client.getChance(2) and "Left" or "Right"
+        self.unblockDuration = Client.getRandomFloat(0.5, 1)
+    end
+
+    local directionMethod = string.format("get%s", self.unblockDirection)
+    local eyeOrigin = Client.getEyeOrigin()
+    local movementAngles = self.cachedPathfindMoveAngle
+    local directionOffset = eyeOrigin + movementAngles[directionMethod](movementAngles) * 32
+
+    self:executeMovement(cmd, eyeOrigin:getAngle(directionOffset))
+end
+
+--- @param cmd SetupCommandEvent
+--- @return boolean
+function Nodegraph:avoidClipping(cmd)
+    if not self.cachedPathfindMoveAngle then
+        return false
+    end
+
+    local isDucking = AiUtility.client:getFlag(Player.flags.FL_DUCKING)
+    local clientOrigin = Client.getOrigin()
+    local origin = clientOrigin:offset(0, 0, 18)
+    local boundsTraceOrigin = Client.getOrigin():offset(0, 0, 36)
+    local moveAngle = self.cachedPathfindMoveAngle
+    local moveAngleForward = moveAngle:getForward()
+    local boundsOrigin = origin + moveAngleForward * 20
+    local bounds = Vector3:newBounds(Vector3.align.UP, 6, 6, isDucking and 18 or 27)
+    local directions = {
+        Left = Angle.getLeft,
+        Right = Angle.getRight
+    }
+
+    --- @type Angle
+    local avoidAngle
+    local clipCount = 0
+
+    for _, direction in pairs(directions) do
+        --- @type Vector3
+        local checkDirection = direction(moveAngle)
+        local boundsTraceOffset = boundsOrigin + checkDirection * 20
+        local trace = Trace.getHullToPosition(boundsTraceOrigin, boundsTraceOffset, bounds, AiUtility.traceOptionsPathfinding)
+
+        if trace.isIntersectingGeometry then
+            local avoidDirection = clientOrigin - checkDirection * 8
+
+            avoidAngle = clientOrigin:getAngle(avoidDirection)
+            clipCount = clipCount + 1
+        end
+    end
+
+    if avoidAngle and clipCount ~= 2 then
+        self:executeMovement(cmd, avoidAngle)
+
+        return true
+    end
+
+    return false
+end
+
+--- @param cmd SetupCommandEvent
+--- @param moveAngle Angle
+--- @return void
+function Nodegraph:executeMovement(cmd, moveAngle)
+    local directions = {
+        [0] = function()
+            cmd.forwardmove = 450
+            cmd.in_forward = true
+        end,
+        [-45] = function()
+            cmd.forwardmove = 450
+            cmd.sidemove = 450
+            cmd.in_forward = true
+            cmd.in_moveright = true
+        end,
+        [-90] = function()
+            cmd.sidemove = 450
+            cmd.in_right = true
+        end,
+        [-135] = function()
+            cmd.forwardmove = -450
+            cmd.sidemove = 450
+            cmd.in_right = true
+            cmd.in_back = true
+        end,
+        [180] = function()
+            cmd.forwardmove = -450
+            cmd.in_back = true
+        end,
+        [135] = function()
+            cmd.forwardmove = -450
+            cmd.sidemove = -450
+            cmd.in_back = true
+            cmd.in_left = true
+        end,
+        [90] = function()
+            cmd.sidemove = -450
+            cmd.in_left = true
+        end,
+        [45] = function()
+            cmd.forwardmove = 450
+            cmd.sidemove = -450
+            cmd.in_forward = true
+            cmd.in_left = true
+        end
+    }
+
+    moveAngle:set(0)
+
+    local origin = Client.getOrigin()
+
+    --- @type fun(): void
+    local closestCallback
+    local lowestDelta = math.huge
+
+    for yaw, callback in pairs(directions) do
+        local directionAngle = Angle:new(0, yaw + cmd.move_yaw):normalize()
+        local deltaAngle = directionAngle:getAbsDiff(moveAngle)
+
+        if deltaAngle.y < lowestDelta then
+            lowestDelta = deltaAngle.y
+            closestCallback = callback
+        end
+    end
+
+    if closestCallback then
+        closestCallback()
+    end
+end
+
+--- @param e SetupCommandEvent
+--- @return void
+function Nodegraph:executeMovementForward(e)
+    e.forwardmove = 450
+    e.in_forward = 1
+end
+
+--- @return void
+function Nodegraph:executeMovementStop() end
 
 return Nyx.class("Nodegraph", Nodegraph)
 --}}}

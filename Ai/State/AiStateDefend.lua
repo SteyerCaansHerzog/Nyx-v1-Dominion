@@ -37,6 +37,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field reachedDestination boolean
 --- @field sectorClearTimer Timer
 --- @field speakCooldownTimer Timer
+--- @field getToSiteTimer Timer
 local AiStateDefend = {
     name = "Defend"
 }
@@ -55,12 +56,15 @@ function AiStateDefend:__init()
     self.jiggleTimer = Timer:new():start()
     self.jiggleTime = 0.66
     self.jiggleDirection = "Left"
+    self.getToSiteTimer = Timer:new()
 
     Callbacks.init(function()
         self.defendingSite = Client.getRandomInt(1, 2) == 1 and "a" or "b"
     end)
 
     Callbacks.roundPrestart(function()
+        self.getToSiteTimer:stop()
+
         self.defendingSite = Client.getRandomInt(1, 2) == 1 and "a" or "b"
     end)
 
@@ -78,6 +82,14 @@ function AiStateDefend:__init()
         end
 
         self.bombCarrier = e.player
+    end)
+
+    Callbacks.bombPlanted(function()
+    	Client.fireAfter(1, function()
+            if AiUtility.plantedBomb and AiUtility.client:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) > 1250 then
+                self.getToSiteTimer:start()
+            end
+    	end)
     end)
 end
 
@@ -102,6 +114,12 @@ function AiStateDefend:assess(nodegraph)
     end
 
     if player:isTerrorist() then
+        -- We're not near the site.
+        -- This will practically force the AI to go to the site.
+        if self.getToSiteTimer:isStarted() and not self.getToSiteTimer:isElapsed(12) then
+            return AiState.priority.DEFEND_EXPEDITE
+        end
+
         -- We should probably go to the site.
         if AiUtility.bombCarrier and not AiUtility.bombCarrier:is(AiUtility.client) then
             local bombCarrierOrigin = AiUtility.bombCarrier:getOrigin()
@@ -196,10 +214,6 @@ function AiStateDefend:think(ai)
         self.isJiggling = false
     end
 
-    if not self.reachedDestination then
-        ai.controller.canLookAround = true
-    end
-
     local bomb = AiUtility.plantedBomb
 
     if bomb and not self.isDefendingBomb then
@@ -223,7 +237,7 @@ function AiStateDefend:think(ai)
     end
 
     if not self.isJigglingUponReachingSpot and distance > 16 and distance < 64 then
-        ai.nodegraph.moveYaw = player:getOrigin():getAngle(self.node.origin).y
+        ai.nodegraph.moveAngle = player:getOrigin():getAngle(self.node.origin)
     end
 
     if distance < 32 then
@@ -232,7 +246,7 @@ function AiStateDefend:think(ai)
         if self.defendTimer:isElapsedThenRestart(self.defendTime) then
             self.defendTime = Client.getRandomFloat(3, 6)
 
-            if Client.getChance(8) then
+            if Client.getChance(4) then
                 self:activate(ai, nil, false, true)
 
                 self.isJigglingUponReachingSpot = false
@@ -256,13 +270,16 @@ function AiStateDefend:think(ai)
 
     if distance < 256 then
         local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
-        local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding)
+        local lookDirectionTrace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding)
+        local nodeVisibleTrace = Trace.getLineToPosition(Client.getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking)
 
         self.defendTimer:ifPausedThenStart()
 
-        ai.view:lookAtLocation(trace.endPosition, 3.5)
+        if not nodeVisibleTrace.isIntersectingGeometry then
+            ai.view:lookAtLocation(lookDirectionTrace.endPosition, 4)
 
-        ai.controller.isWalking = true
+            ai.controller.isWalking = true
+        end
 
         if not player:isHoldingGun() then
             Client.equipAnyWeapon()
@@ -290,8 +307,7 @@ function AiStateDefend:think(ai)
             --- @type Vector3
             local direction = self.node.direction[string.format("get%s", self.jiggleDirection)](self.node.direction)
 
-            ai.nodegraph.moveSpeed = 450
-            ai.nodegraph.moveYaw = direction:getAngleFromForward().y
+            ai.nodegraph.moveAngle = direction:getAngleFromForward()
         end
     end
 end

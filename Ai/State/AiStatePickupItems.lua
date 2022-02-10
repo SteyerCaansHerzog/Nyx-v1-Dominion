@@ -210,7 +210,7 @@ function AiStatePickupItems:think(ai)
     end
 
     if self.lookAtItem and distance < 200 then
-        ai.view:lookAtLocation(weaponOrigin, 6.5)
+        ai.view:lookAtLocation(weaponOrigin, 4)
     end
 
     if distance < 128 and self.useCooldown:isElapsedThenRestart(0.1) then
