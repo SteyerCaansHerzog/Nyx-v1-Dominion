@@ -73,7 +73,6 @@ if not Table.contains(Config.administrators, Panorama.MyPersonaAPI.GetXuid()) th
         end
     end)
 
-
     Client.fireAfter(5, function()
         if Config.isJoiningServerOnStartup then
             Client.execute("connect 108.61.237.59:27015; password 2940")

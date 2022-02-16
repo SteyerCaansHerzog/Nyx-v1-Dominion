@@ -91,7 +91,7 @@ end
 
 --- @return void
 function AiView:initEvents()
-    Callbacks.frame(function()
+    Callbacks.runCommand(function()
         if not Menu.master:get() or not Menu.enableAi:get() or not Menu.enableView:get() then
             return
         end
@@ -261,7 +261,7 @@ function AiView:setIdealLookAhead(idealViewAngles)
     local lookAheadNode
 
     -- How far in the path to look ahead.
-    local lookAheadTo = 3
+    local lookAheadTo = 4
 
     -- Select a node ahead in the path, and look closer until we find a valid node.
     while not lookAheadNode and lookAheadTo > 0 do
@@ -393,14 +393,18 @@ function AiView:think(cmd)
     local node = self.nodegraph:getClosestNodeOf(origin, Node.types.DOOR)
 
     if node and origin:getDistance(node.origin) < 128 then
-        local yawDelta = math.abs(node.direction.y - correctedViewAngles.y)
+        local diff = correctedViewAngles:getMaxDiff(node.direction)
 
-        if yawDelta < 150 and self:isPlayerBlocked(node) then
+        if diff < 150 and self:isPlayerBlocked(node) then
             self.overrideViewAngles = node.direction
             self.lookSpeed = 4
             self.isViewLocked = true
 
-            if self.useCooldown:isElapsedThenRestart(0.33) and yawDelta < 15 then
+            if self.useCooldown:isElapsedThenRestart(0.5) and diff < 15 then
+                cmd.in_use = 1
+            end
+        elseif AiUtility.client:m_vecVelocity():getMagnitude() < 50 then
+            if self.useCooldown:isElapsedThenRestart(0.5) and diff < 15 then
                 cmd.in_use = 1
             end
         end

@@ -70,17 +70,11 @@ function AiStateEvade:assess()
     end
 
     local player = AiUtility.client
-    local playerOrigin = player:getOrigin()
-
-    for _, inferno in Entity.find("CInferno") do
-        if playerOrigin:getDistance(inferno:m_vecOrigin()) < 350 and not player:m_bIsDefusing() == 1 then
-            return AiState.priority.EVADE
-        end
-    end
 
     if self.shotBoltActionRifleTimer:isStarted() and
         not self.shotBoltActionRifleTimer:isElapsedThenStop(self.shotBoltActionRifleTime) and
-        player:isHoldingBoltActionRifle() then
+        player:isHoldingBoltActionRifle()
+    then
         return AiState.priority.EVADE
     end
 

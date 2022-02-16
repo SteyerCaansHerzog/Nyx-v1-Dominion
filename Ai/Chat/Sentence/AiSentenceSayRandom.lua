@@ -159,11 +159,11 @@ function AiSentenceTemplate:__init()
     self.structures = {}
     self.insertions = {}
     self.timer = Timer:new():start()
-    self.interval = Client.getRandomFloat(60, 120)
+    self.interval = Client.getRandomFloat(300, 500)
 
     Callbacks.netUpdateEnd(function()
         if self.timer:isElapsedThenRestart(self.interval) then
-            self.interval = Client.getRandomFloat(90, 200)
+            self.interval = Client.getRandomFloat(300, 500)
 
             self:speakMultipleRaw(Table.getRandom(self.messages))
         end

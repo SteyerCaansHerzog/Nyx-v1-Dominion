@@ -42,7 +42,7 @@ function AiActionSetBaseState:__init()
 	end)
 
 	Callbacks.roundStart(function()
-		Client.execute("showconsole")
+		Client.openConsole()
 	end)
 end
 

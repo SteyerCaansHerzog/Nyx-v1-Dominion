@@ -18,8 +18,6 @@ local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
-
-local Steamworks = require "gamesense/steamworks"
 --}}}
 
 --{{{ Modules
@@ -311,9 +309,7 @@ function AiController:initFields()
 
 	self.actions = actions
 
-	AiChat:new({
-		sentences = self.sentences
-	})
+	AiChat:new({sentences = self.sentences})
 
 	if Config.isLiveClient and not Table.contains(Config.administrators, Panorama.MyPersonaAPI.GetXuid()) then
 		self.client = DominionClient:new()
@@ -789,7 +785,7 @@ function AiController:renderUi()
 		return
 	end
 
-	local screenBgColor = Color:rgba(0, 0, 0, 75)
+	local screenBgColor = Color:rgba(0, 0, 0, 150)
 
 	if not player:isAlive() then
 		name = name .. " (DEAD)"
@@ -800,6 +796,7 @@ function AiController:renderUi()
 	local screenDimensions = Client.getScreenDimensions()
 
 	Vector2:new():drawSurfaceRectangle(screenDimensions, screenBgColor)
+	Vector2:new():drawBlur(screenDimensions, 255, 10)
 
 	self.states.engage:render()
 

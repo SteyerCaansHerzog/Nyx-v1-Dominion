@@ -108,37 +108,7 @@ local AiUtility = {
         Weapons.FAMAS, Weapons.GALIL, Weapons.M4A1, Weapons.AUG, Weapons.AK47, Weapons.AWP, Weapons.SG553, Weapons.SSG08
     },
     weaponPriority = AiWeaponPriorityGeneral,
-    weaponNames = AiWeaponNames,
-    traceOptionsPathfinding = {
-        skip = function(eid)
-            local entity = Entity:create(eid)
-
-            if entity.classname == "CDynamicProp" or entity.classname == "CFuncBrush" or entity.classname == "CBaseEntity" then
-                return false
-            end
-
-            if entity.classname ~= "CWorld" then
-                return true
-            end
-        end,
-        mask = Trace.mask.PLAYERSOLID,
-        type = Trace.type.EVERYTHING
-    },
-    traceOptionsAttacking = {
-        skip = function(eid)
-            local entity = Entity:create(eid)
-
-            if entity.classname == "CFuncBrush" then
-                return false
-            end
-
-            if entity.classname ~= "CWorld" then
-                return true
-            end
-        end,
-        mask = Trace.mask.SHOT,
-        type = Trace.type.EVERYTHING
-    }
+    weaponNames = AiWeaponNames
 }
 
 --- @return void
@@ -159,6 +129,51 @@ function AiUtility:initFields()
     self.dormantAt = {}
     self.enemies = {}
     self.teammates = {}
+
+    local solidPathfindingEntities = {
+        CDynamicProp = true,
+        CFuncBrush = true,
+        CBaseEntity = true,
+        CPropDoorRotating = true,
+    }
+
+    self.traceOptionsPathfinding = {
+        skip = function(eid)
+            local entity = Entity:create(eid)
+
+            if solidPathfindingEntities[entity.classname] then
+                return false
+            end
+
+            if entity.classname ~= "CWorld" then
+                return true
+            end
+        end,
+        mask = Trace.mask.PLAYERSOLID,
+        type = Trace.type.EVERYTHING
+    }
+
+    local solidAttackingEntities = {
+        CFuncBrush = true,
+        CBaseEntity = true,
+        CPropDoorRotating = true,
+    }
+
+    self.traceOptionsAttacking = {
+        skip = function(eid)
+            local entity = Entity:create(eid)
+
+            if solidAttackingEntities[entity.classname] then
+                return false
+            end
+
+            if entity.classname ~= "CWorld" then
+                return true
+            end
+        end,
+        mask = Trace.mask.SHOT,
+        type = Trace.type.EVERYTHING
+    }
 end
 
 --- @return void
@@ -303,7 +318,6 @@ function AiUtility:initEvents()
         local origin = Client.getOrigin()
         local eyeOrigin = Client.getEyeOrigin()
         local cameraAngles = Client.getCameraAngles()
-        local playerEid = Client.getEid()
 
         self.enemies = {}
         self.teammates = {}

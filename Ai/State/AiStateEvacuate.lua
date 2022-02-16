@@ -16,8 +16,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field reachedDestination boolean
 --- @field node Node
 local AiStateEvacuate = {
-    name = "Evacuate",
-    canDelayActivation = true
+    name = "Evacuate"
 }
 
 --- @param fields AiStateEvacuate

@@ -1,9 +1,9 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local Color = require "gamesense/Nyx/v1/Api/Color"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
@@ -35,10 +35,14 @@ end
 function AiStateChickenInteraction:__init()
     self.blacklist = {}
     self.cooldownTimer = Timer:new():startThenElapse()
-    self.interaction = Client.getChance(2) and "kill" or "collect"
+    self.interaction = Table.getRandom({
+        "kill", "collect"
+    })
 
     Callbacks.levelInit(function()
-        self.interaction = Client.getChance(2) and "kill" or "collect"
+        self.interaction = Table.getRandom({
+            "kill", "collect"
+        })
     end)
 
     Callbacks.roundStart(function()

@@ -23,7 +23,7 @@ function AiSentenceSayKills:__init()
     self.__parent.__init(self)
 
     self.probability = 3
-    self.maxUses = 6
+    self.maxUses = 8
 
     self.structures = {
         DEATH_WP = {
@@ -121,7 +121,7 @@ function AiSentenceSayKills:__init()
         if e.victim:isClient() and e.attacker:isEnemy() then
             if e.weapon == "knife" then
                 self:speak("DEATH_WP")
-            elseif e.weapon == "p90" or e.weapon == "scar20" or e.weapon == "g3sg" then
+            elseif e.weapon == "p90" or e.weapon == "scar20" or e.weapon == "g3sg1" then
                 self:speak("DEATH_NOOB")
             elseif e.weapon == "hegrenade" or e.weapon == "inferno" then
                 self:speak("DEATH_NADE")

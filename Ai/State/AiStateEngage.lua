@@ -1339,7 +1339,7 @@ function AiStateEngage:engage(ai)
             end
 
             -- Find a visible node nearby.
-            if not self.isPathfindingDirectlyToEnemy and distance < 512 then
+            if not self.isPathfindingDirectlyToEnemy and distance < 1024 then
                 local trace = Trace.getLineToPosition(targetEyeOrigin, node.origin, AiUtility.traceOptionsPathfinding)
 
                 if not trace.isIntersectingGeometry then
@@ -1481,46 +1481,51 @@ function AiStateEngage:attack(ai)
         return
     end
 
-    -- Shoot through smokes.
-    if self:shootThroughSmokes(ai, enemy) then
-        return
-    end
-
     -- Shoot last position.
     if not next(AiUtility.visibleEnemies) and self.watchOrigin then
         self:watchAngle(ai)
     end
 
+    -- Wallbang and smokebang.
     if not AiUtility.visibleEnemies[enemy.eid] then
         local lastSeenAgo = self.noticedPlayerTimers[enemy.eid]:get() - 0.25
 
         if AiUtility.isBombBeingDefusedByEnemy or (lastSeenAgo > 0 and lastSeenAgo < 1) then
             local eyeOrigin = Client.getEyeOrigin()
-            local wallbangOrigin = enemy:getOrigin():offset(0, 0, 48)
-            local eid, dmg = eyeOrigin:getTraceBullet(wallbangOrigin, Client.getEid())
+            local bangOrigin = enemy:getOrigin():offset(0, 0, 46)
+            local eid, dmg = eyeOrigin:getTraceBullet(bangOrigin, Client.getEid())
 
-            local canWallbang = true
+            local canBang = true
 
             if player:hasSniper() then
                 if ammoRatio < 1 then
-                    canWallbang = false
+                    canBang = false
                 elseif dmg < 60 then
-                    canWallbang = false
+                    canBang = false
                 end
             else
                 if ammoRatio < 0.25 then
-                    canWallbang = false
+                    canBang = false
                 elseif ammoRatio < 0.5 and dmg < 33 then
-                    canWallbang = false
+                    canBang = false
                 elseif dmg < 10 then
-                    canWallbang = false
+                    canBang = false
                 end
             end
 
-            if eid == enemy.eid and canWallbang and not eyeOrigin:isRayIntersectingSmoke(wallbangOrigin) then
+            local isOccludedBySmoke = eyeOrigin:isRayIntersectingSmoke(bangOrigin)
+            local canShoot = false
+
+            if canBang and isOccludedBySmoke then
+                canShoot = true
+            elseif canBang and eid == enemy.eid then
+                canShoot = true
+            end
+
+            if canShoot then
                 Client.draw(Vector3.drawCircleOutline, self.shootAtOrigin, 12, 2, Color:hsla(30, 1, 0.5, 200))
 
-                self:shoot(ai, self.shootAtOrigin, self:getShootFov(Client.getCameraAngles(), eyeOrigin, wallbangOrigin) / 2.5)
+                self:shoot(ai, self.shootAtOrigin, self:getShootFov(Client.getCameraAngles(), eyeOrigin, bangOrigin) / 2.5)
 
                 return
             end
@@ -1583,8 +1588,6 @@ function AiStateEngage:attack(ai)
     -- React to visible enemy.
     if self.reactionTimer:isElapsed(self.currentReactionTime) and AiUtility.visibleEnemies[enemy.eid] then
         if shootFov < 12 then
-            ai.controller.canLookAwayFromFlash = false
-
             self.sprayTimer:start()
             self.watchTimer:start()
             self.lastSeenTimers[enemy.eid]:start()
@@ -1678,7 +1681,7 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
         ai.view:lookAtLocation(aimAt, self.aimSpeed)
     end
 
-    -- Do not shoot teammates
+    -- Do not shoot teammates.
     local clientEyeOrigin = Client.getEyeOrigin()
     local distanceToHitbox = clientEyeOrigin:getDistance(aimAt)
     local correctedAngles = Client.getCameraAngles() + AiUtility.client:m_aimPunchAngle() * 2
@@ -1687,22 +1690,22 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
     for _, vertex in pairs(box) do
         local trace = Trace.getLineToPosition(clientEyeOrigin, vertex, {
             skip = function(eid)
-                -- Ignore client
+                -- Ignore client.
                 if eid == entity.get_local_player() then
                     return true
                 end
 
-                -- Ignore non-player entities
+                -- Ignore non-player entities.
                 if eid < 0 or eid > 64 then
                     return true
                 end
 
-                -- Collide with teammates
+                -- Collide with teammates.
                 if not entity.is_enemy(eid) then
                     return false
                 end
 
-                -- Ignore enemies
+                -- Ignore enemies.
                 return true
             end,
             mask = Trace.mask.SHOT,
@@ -1714,22 +1717,25 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
         end
     end
 
-    -- Auto-stop
+    -- Auto-stop.
     if fov < 20 then
         self:autoStop(ai)
     end
 
-    -- RCS
+    -- RCS.
     ai.view.isRcsEnabled = self.isRcsEnabled
 
-    -- Scope
+    -- Scope.
     if player:isHoldingSniper() and fov < 8 then
         Client.scope()
     end
 
+    -- Don't shoot whilst running.
     if player:m_vecVelocity():getMagnitude() > 100 then
         return
     end
+
+    ai.controller.canLookAwayFromFlash = false
 
     local weapon = Entity:create(player:m_hActiveWeapon())
     local ammo = weapon:m_iClip1()
@@ -1818,38 +1824,6 @@ function AiStateEngage:getHitbox(enemy)
 end
 
 --- @param ai AiOptions
---- @param enemy Player
---- @return boolean
-function AiStateEngage:shootThroughSmokes(ai, enemy)
-    local cameraAngles = Client.getCameraAngles()
-    local eyeOrigin = Client.getEyeOrigin()
-    local testHitbox = enemy:getHitboxPosition(Player.hitbox.PELVIS)
-    local testOrigin = eyeOrigin:getTraceLine(testHitbox, Client.getEid())
-    local isOccludedBySmoke = eyeOrigin:isRayIntersectingSmoke(testOrigin)
-    local isClose = testOrigin:getDistance(testHitbox) < 32
-
-    if isOccludedBySmoke
-        and isClose
-        and not AiUtility.visibleEnemies[self.bestTarget.eid]
-        and self.shootAtOrigin
-        and not self.lastSoundTimer:isElapsed(1)
-    then
-        local fov = cameraAngles:getFov(eyeOrigin, self.shootAtOrigin)
-        local shootFov = Math.clamp(Math.pct(eyeOrigin:getDistance(self.shootAtOrigin), 512), 0, 90) * fov
-
-        if self.noticedPlayerTimers[enemy.eid]:get() < 1 then
-            self:shoot(ai, self.shootAtOrigin * 2, shootFov, self.bestTarget)
-        else
-            ai.view:lookAtLocation(self.shootAtOrigin, self.slowAimSpeed)
-        end
-
-        return true
-    else
-        return false
-    end
-end
-
---- @param ai AiOptions
 --- @return void
 function AiStateEngage:ferrariPeek(ai)
     local enemy = self.bestTarget
@@ -1865,9 +1839,10 @@ function AiStateEngage:ferrariPeek(ai)
     local angleToEnemy = playerOrigin:getAngle(enemyOrigin)
     local forward = angleToEnemy:getForward()
 
+    --- @type Vector3[]
     local directions = {
-        angleToEnemy:getLeft(),
-        angleToEnemy:getRight()
+        Left = angleToEnemy:getLeft(),
+        Right = angleToEnemy:getRight()
     }
 
     local startPoints = {
@@ -1921,9 +1896,9 @@ function AiStateEngage:ferrariPeek(ai)
                         if eid == enemy.eid or fraction == 1 then
                             successes = successes + 1
 
-                            if successes >= 3 then
+                            if successes >= 2 then
                                 isVisible = true
-                                moveAngles = playerOrigin:getAngle(traceOrigin)
+                                moveAngles = Vector3:new():getAngle(direction)
 
                                 break
                             end
@@ -2233,120 +2208,38 @@ end
 function AiStateEngage:setAimSkill(skill)
     self.skill = skill
 
-    local skills = {
-        [0] = {
-            reactionTime = 0.4,
-            anticipateTime = 0.2,
-            sprayTime = 0.5,
-            aimSpeed = 3,
-            slowAimSpeed = 3,
-            recoilControl = 2.5,
-            aimOffset = 20,
-            aimInaccurateOffset = 40
-        },
-        [1] = {
-            reactionTime = 0.3,
-            anticipateTime = 0.15,
-            sprayTime = 0.5,
-            aimSpeed = 4,
-            slowAimSpeed = 3,
-            recoilControl = 2.5,
-            aimOffset = 16,
-            aimInaccurateOffset = 35
-        },
-        [2] = {
-            reactionTime = 0.25,
-            anticipateTime = 0.1,
-            sprayTime = 0.5,
-            aimSpeed = 4,
-            slowAimSpeed = 3,
-            recoilControl = 2.2,
-            aimOffset = 14,
-            aimInaccurateOffset = 30
-        },
-        [3] = {
-            reactionTime = 0.2,
-            anticipateTime = 0.05,
-            sprayTime = 0.5,
-            aimSpeed = 5,
-            slowAimSpeed = 4,
-            recoilControl = 2.2,
-            aimOffset = 12,
-            aimInaccurateOffset = 26
-        },
-        [4] = {
-            reactionTime = 0.2,
-            anticipateTime = 0.05,
-            sprayTime = 0.5,
-            aimSpeed = 6,
-            slowAimSpeed = 4,
-            recoilControl = 2,
-            aimOffset = 10,
-            aimInaccurateOffset = 24
-        },
-        [5] = {
-            reactionTime = 0.16,
-            anticipateTime = 0.05,
-            sprayTime = 0.5,
-            aimSpeed = 6,
-            slowAimSpeed = 4,
-            recoilControl = 2,
-            aimOffset = 8,
-            aimInaccurateOffset = 22
-        },
-        [6] = {
-            reactionTime = 0.14,
-            anticipateTime = 0.05,
-            sprayTime = 0.5,
-            aimSpeed = 8,
-            slowAimSpeed = 6,
-            recoilControl = 2,
-            aimOffset = 8,
-            aimInaccurateOffset = 20
-        },
-        [7] = {
-            reactionTime = 0.12,
-            anticipateTime = 0.05,
-            sprayTime = 0.33,
-            aimSpeed = 10,
-            slowAimSpeed = 8,
-            recoilControl = 2,
-            aimOffset = 6,
-            aimInaccurateOffset = 18
-        },
-        [8] = {
-            reactionTime = 0.1,
-            anticipateTime = 0.05,
-            sprayTime = 0.33,
-            aimSpeed = 10,
-            slowAimSpeed = 8,
-            recoilControl = 2,
-            aimOffset = 4,
-            aimInaccurateOffset = 16
-        },
-        [9] = {
-            reactionTime = 0.1,
-            anticipateTime = 0.05,
-            sprayTime = 0.33,
-            aimSpeed = 12,
-            slowAimSpeed = 8,
-            recoilControl = 2,
-            aimOffset = 2,
-            aimInaccurateOffset = 14
-        },
-        [10] = {
-            reactionTime = 0.0,
-            anticipateTime = 0.00,
-            sprayTime = 0.33,
-            aimSpeed = 12,
-            slowAimSpeed = 8,
-            recoilControl = 2,
-            aimOffset = 0,
-            aimInaccurateOffset = 0
-        },
+    local skillMinimum = {
+        reactionTime = 0.3,
+        anticipateTime = 0.2,
+        sprayTime = 0.66,
+        aimSpeed = 4,
+        slowAimSpeed = 2.5,
+        recoilControl = 2.5,
+        aimOffset = 32,
+        aimInaccurateOffset = 128
     }
 
-    for k, v in pairs(skills[skill]) do
+    local skillMaximum = {
+        reactionTime = 0.01,
+        anticipateTime = 0.01,
+        sprayTime = 0.4,
+        aimSpeed = 10,
+        slowAimSpeed = 5,
+        recoilControl = 2,
+        aimOffset = 0,
+        aimInaccurateOffset = 16
+    }
+
+    local totalSkillLevels = 10
+    local skillPct = skill / totalSkillLevels
+
+    local skillCurrent = {}
+
+    for field, value in pairs(skillMinimum) do
+        skillCurrent[field] = Animate.lerp(value, skillMaximum[field], skillPct)
+    end
+
+    for k, v in pairs(skillCurrent) do
         self[k] = v
     end
 end

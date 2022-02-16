@@ -366,7 +366,7 @@ function AiVoicePackGenericBase:speakRoundEndWon()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 1,
-		maxDelay = 4
+		maxDelay = 6
 	})
 end
 
@@ -378,7 +378,7 @@ function AiVoicePackGenericBase:speakRoundEndLost()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 1,
-		maxDelay = 4
+		maxDelay = 6
 	})
 end
 
@@ -390,7 +390,7 @@ function AiVoicePackGenericBase:speakRoundEndHalftime()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 1,
-		maxDelay = 8
+		maxDelay = 9
 	})
 end
 --}}}
@@ -587,7 +587,10 @@ function AiVoicePackGenericBase:speakGifting()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 1,
-		maxDelay = 1.5
+		maxDelay = 1.5,
+		condition = function()
+			return AiUtility.client:isAlive()
+		end
 	})
 end
 
@@ -599,19 +602,22 @@ function AiVoicePackGenericBase:speakGratitude()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0.33,
-		maxDelay = 1
+		maxDelay = 1,
+		condition = function()
+			return AiUtility.client:isAlive()
+		end
 	})
 end
 
 --- @return void
 function AiVoicePackGenericBase:speakAgreement()
 	self:speak(self:getGroupDynamic("Agreement"), {
-		chance = 1,
+		chance = 6,
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 1.5,
-		maxDelay = 3,
+		minDelay = 2,
+		maxDelay = 4,
 		condition = function()
 			return AiUtility.client:isAlive()
 		end
@@ -628,8 +634,8 @@ function AiVoicePackGenericBase:speakNoProblem()
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 0.33,
-		maxDelay = 1,
+		minDelay = 2,
+		maxDelay = 4,
 		condition = function()
 			return AiUtility.client:isAlive()
 		end
