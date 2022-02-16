@@ -83,6 +83,7 @@ local AiChatCommandKnow = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiC
 local AiChatCommandOk = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandOk"
 local AiChatCommandAssist = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandAssist"
 local AiChatCommandReload = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandReload"
+local AiChatCommandSave = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSave"
 local AiChatCommandSkill = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkill"
 local AiChatCommandSkillRng = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkillRng"
 local AiChatCommandSkipMatch = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkipMatch"
@@ -194,6 +195,7 @@ local AiController = {
 		know = AiChatCommandKnow,
 		ok = AiChatCommandOk,
 		reload = AiChatCommandReload,
+		save = AiChatCommandSave,
 		scramble = AiChatCommandScramble,
 		silence = AiChatCommandSilence,
 		skill = AiChatCommandSkill,
@@ -491,8 +493,9 @@ function AiController:buyGrenades(limit)
 	end
 end
 
+--- @param isImmediate boolean
 --- @return void
-function AiController:autoBuy()
+function AiController:autoBuy(isImmediate)
 	if not DominionMenu.enableAutoBuy:get() or not self.canBuyThisRound then
 		return
 	end
@@ -501,7 +504,13 @@ function AiController:autoBuy()
 	local minDelay = freezeTime * 0.5
 	local maxDelay = freezeTime * 0.9
 
-	local buyAfter = Client.getRandomFloat(minDelay, maxDelay)
+	local buyAfter
+
+	if isImmediate then
+		buyAfter = Client.getRandomFloat(0, 0.5)
+	else
+		buyAfter = Client.getRandomFloat(minDelay, maxDelay)
+	end
 
 	Client.fireAfter(buyAfter, function()
 		if not Server.isConnected() then

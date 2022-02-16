@@ -1,8 +1,9 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
+local Trace = require "gamesense/Nyx/v1/Api/Trace"
 --}}}
 
 --{{{ Modules
@@ -15,6 +16,8 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @class AiStateEvacuate : AiState
 --- @field reachedDestination boolean
 --- @field node Node
+--- @field isForcedToSave boolean
+--- @field isBombPlanted boolean
 local AiStateEvacuate = {
     name = "Evacuate"
 }
@@ -26,49 +29,122 @@ function AiStateEvacuate:new(fields)
 end
 
 --- @return void
+function AiStateEvacuate:__init()
+    self.isForcedToSave = false
+
+    Callbacks.roundPrestart(function()
+    	self:reset()
+    end)
+end
+
+--- @return void
 function AiStateEvacuate:assess()
-    if AiUtility.isRoundOver then
-        return AiState.priority.ROUND_OVER
+    -- A human has told us to save this round.
+    if self.isForcedToSave then
+        return AiState.priority.SAVE_ROUND
     end
 
-    local bomb = AiUtility.plantedBomb
-
-    if not bomb then
-        return AiState.priority.IGNORE
-    end
-
-    if AiUtility.isBombBeingDefusedByEnemy then
-        return AiState.priority.IGNORE
-    end
-
-    local player = AiUtility.client
-
-    if player:isCounterTerrorist() then
-        if player:m_bIsDefusing() == 1 then
+    if AiUtility.client:isCounterTerrorist() then
+        -- We're defusing, we shouldn't evacuate.
+        -- We can only be defusing if we have time.
+        if AiUtility.client:m_bIsDefusing() == 1 then
             return AiState.priority.IGNORE
         end
 
-        if not AiUtility.canDefuse then
+        -- We should save.
+        if self:isRoundWinProbabilityLow() then
+            return AiState.priority.SAVE_ROUND
+        end
+
+        -- We're not able to defuse the bomb due to time.
+        if AiUtility.plantedBomb and not AiUtility.canDefuse then
             return AiState.priority.EVACUATE
         end
-    else
-        if AiUtility.bombDetonationTime < 15 then
+    elseif AiUtility.client:isTerrorist() then
+        -- We should save.
+        if self:isRoundWinProbabilityLow() then
+            return AiState.priority.SAVE_ROUND
+        end
+
+        -- The enemy likely cannot defuse now, and we need to leave the site.
+        if AiUtility.plantedBomb and not AiUtility.isBombBeingDefusedByEnemy and AiUtility.bombDetonationTime < 15 then
             return AiState.priority.EVACUATE
         end
+    end
+
+    -- Round is effectively over.
+    if AiUtility.isRoundOver or AiUtility.enemiesAlive == 0 then
+        return AiState.priority.ROUND_OVER
     end
 
     return AiState.priority.IGNORE
 end
 
+--- @return boolean
+function AiStateEvacuate:isRoundWinProbabilityLow()
+    local roundsPlayed = Entity.getGameRules():m_totalRoundsPlayed()
+    local maxRounds = cvar.mp_maxrounds:get_int()
+    local halfTime = math.ceil(maxRounds / 2)
+
+    -- First round, last round of half, last round of game.
+    if roundsPlayed == 0 or roundsPlayed == (maxRounds - 1) or roundsPlayed == (halfTime - 1) then
+        return false
+    end
+
+    -- We have no valuables.
+    if not AiUtility.client:hasPrimary() then
+        return false
+    end
+
+    local teamDisparity = AiUtility.teammatesAlive - AiUtility.enemiesAlive
+    local isBombPlanted = AiUtility.isBombPlanted()
+
+    if AiUtility.client:isCounterTerrorist() then
+        -- 5v1 scenario.
+        if teamDisparity <= -4 then
+            return true
+        end
+
+        -- Bomb is down. This makes our odds really bad.
+        if isBombPlanted then
+            -- 5v2 scenario.
+            if teamDisparity <= -3 then
+                return true
+            end
+
+            -- We're last, there's 2+ enemies, and we're low.
+            if AiUtility.isLastAlive and AiUtility.enemiesAlive >= 2 and AiUtility.client:m_iHealth() <= 33 then
+                return true
+            end
+        end
+    elseif AiUtility.client:isTerrorist() then
+        -- We haven't planted. This makes our odds really bad.
+        if not isBombPlanted then
+            -- 5v1 scenario.
+            if teamDisparity <= -4 then
+                return true
+            end
+
+            -- We're last, there's 2+ enemies, and we're low.
+            if AiUtility.isLastAlive and AiUtility.enemiesAlive >= 3 and AiUtility.client:m_iHealth() <= 33 then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
 --- @param ai AiOptions
 --- @return void
 function AiStateEvacuate:activate(ai)
-    local node = self:getHideNode(ai, AiUtility.bombPlantedAt)
+    local node = self:getHideNode(ai)
 
     if not node then
         return
     end
 
+    self.isBombPlanted = AiUtility.isBombPlanted()
     self.node = node
 
     ai.nodegraph:pathfind(node.origin, {
@@ -83,6 +159,11 @@ function AiStateEvacuate:activate(ai)
     })
 end
 
+--- @return void
+function AiStateEvacuate:reset()
+    self.isForcedToSave = false
+end
+
 --- @param ai AiOptions
 --- @return void
 function AiStateEvacuate:think(ai)
@@ -92,29 +173,92 @@ function AiStateEvacuate:think(ai)
         return
     end
 
-    local player = AiUtility.client
+    if not self.isBombPlanted and AiUtility.isBombPlanted() then
+        self:activate(ai)
 
-    if player:getOrigin():getDistance(self.node.origin) < 200 then
-        ai.view:lookInDirection(self.node.direction, 7)
+        return
+    end
+
+    for _, teammate in pairs(AiUtility.teammates) do
+        if teammate:getOrigin():getDistance(self.node.origin) < 32 then
+            self.node = nil
+
+            self:activate(ai)
+        end
+    end
+
+    local trace = Trace.getLineToPosition(AiUtility.client:getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking)
+    local distance = AiUtility.client:getOrigin():getDistance(self.node.origin)
+
+    if distance < 32 then
+        ai.cmd.in_duck = 1
+    end
+
+    if not trace.isIntersectingGeometry and distance < 200 then
         ai.controller.canUseKnife = false
+
+        ai.view:lookInDirection(self.node.direction, 7)
     end
 end
 
 --- @param ai AiOptions
---- @param site string
 --- @return Node
-function AiStateEvacuate:getHideNode(ai, site)
-    local bombSite = site == "A" and ai.nodegraph.objectiveA or ai.nodegraph.objectiveB
-    local checkOrigin = site and bombSite.origin or AiUtility.client:getOrigin()
+function AiStateEvacuate:getHideNode(ai)
     local nodes = {}
+    local clientOrigin = AiUtility.client:getOrigin()
+    local plantOrigin
 
-    for _, node in pairs(ai.nodegraph.nodes) do
-        if node.type == Node.types.HIDE and node.origin:getDistance(checkOrigin) > 1500 then
-            table.insert(nodes, node)
-        end
+    if AiUtility.plantedBomb then
+        plantOrigin = AiUtility.plantedBomb:getOrigin()
     end
 
-    return nodes[Client.getRandomInt(1, #nodes)]
+    if self.isForcedToSave then
+        --- @type Node
+        local closestNode
+        local closestNodeDistance = math.huge
+
+        for _, node in pairs(ai.nodegraph.nodes) do repeat
+            -- Node is too close to planted bomb.
+            if plantOrigin and node.origin:getDistance(plantOrigin) < 2500 then
+                break
+            end
+
+            local distanceToClient = clientOrigin:getDistance(node.origin)
+            local isAvailable = true
+
+            -- Teammate is already in this spot.
+            for _, teammate in pairs(AiUtility.teammates) do
+                if teammate:getOrigin():getDistance(node.origin) < 32 then
+                    isAvailable = false
+
+                    break
+                end
+            end
+
+            -- This node is fine.
+            if isAvailable and node.type == Node.types.HIDE and distanceToClient < closestNodeDistance then
+                closestNodeDistance = distanceToClient
+
+                closestNode = node
+            end
+        until true end
+
+        return closestNode
+    else
+        -- Find a random node.
+        for _, node in pairs(ai.nodegraph.nodes) do repeat
+            -- Node is too close to planted bomb.
+            if plantOrigin and node.origin:getDistance(plantOrigin) < 2500 then
+                break
+            end
+
+            if node.type == Node.types.HIDE then
+                table.insert(nodes, node)
+            end
+        until true end
+
+        return nodes[Client.getRandomInt(1, #nodes)]
+    end
 end
 
 return Nyx.class("AiStateEvacuate", AiStateEvacuate, AiState)

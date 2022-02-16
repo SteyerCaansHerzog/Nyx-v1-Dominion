@@ -4,8 +4,6 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ Modules
 local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
-local AiStateCheck = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateCheck"
-local AiStatePatrol = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePatrol"
 --}}}
 
 --{{{ AiChatCommandStop
@@ -34,6 +32,7 @@ function AiChatCommandStop:invoke(ai, sender, args)
     ai.states.boost:reset()
     ai.states.follow:reset()
     ai.states.wait:reset()
+    ai.states.evacuate:reset()
 end
 
 return Nyx.class("AiChatCommandStop", AiChatCommandStop, AiChatCommand)

@@ -6,7 +6,6 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ Modules
 local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
-local AiStateEngage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEngage"
 --}}}
 
 --{{{ AiChatCommandSkillRng
@@ -26,8 +25,8 @@ function AiChatCommandSkillRng:invoke(ai, sender, args)
         return
     end
 
-    local skillMin = Math.clamp(tonumber(args[1]), 0, 4)
-    local skillMax = Math.clamp(tonumber(args[2]), 0, 4)
+    local skillMin = Math.clamp(tonumber(args[1]), 0, 10)
+    local skillMax = Math.clamp(tonumber(args[2]), 0, 10)
     local skill = Client.getRandomInt(skillMin, skillMax)
 
     ai.states.engage:setAimSkill(skill)

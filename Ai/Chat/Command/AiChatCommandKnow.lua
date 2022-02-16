@@ -1,12 +1,10 @@
 --{{{ Dependencies
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 --}}}
 
 --{{{ Modules
 local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
-local AiStateEngage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEngage"
 --}}}
 
 --{{{ AiChatCommandKnow
@@ -14,7 +12,7 @@ local AiStateEngage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEngage"
 local AiChatCommandKnow = {
     cmd = "know",
     requiredArgs = 0,
-    isAdminOnly = false
+    isAdminOnly = true
 }
 
 --- @param ai AiController

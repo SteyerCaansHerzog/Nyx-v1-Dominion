@@ -76,6 +76,7 @@ local AiWeaponNames = {
 --- @field bomb Entity
 --- @field bombCarrier Player
 --- @field bombDetonationTime number
+--- @field bombPlantedAt string
 --- @field canDefuse boolean
 --- @field client Player
 --- @field closestEnemy Player
@@ -98,6 +99,7 @@ local AiWeaponNames = {
 --- @field plantedBomb Entity
 --- @field roundTimer Timer
 --- @field teammates Player[]
+--- @field teammatesAlive number
 --- @field traceOptionsPathfinding TraceOptions
 --- @field traceOptionsAttacking TraceOptions
 --- @field visibleEnemies Player[]
@@ -129,6 +131,8 @@ function AiUtility:initFields()
     self.dormantAt = {}
     self.enemies = {}
     self.teammates = {}
+    self.enemiesAlive = 0
+    self.teammatesAlive = 0
 
     local solidPathfindingEntities = {
         CDynamicProp = true,
@@ -324,6 +328,24 @@ function AiUtility:initEvents()
         self.visibleEnemies = {}
         self.closestEnemy = nil
         self.isLastAlive = true
+        self.enemiesAlive = 0
+        -- Very funny Valve.
+        self.teammatesAlive = -1
+
+        local playerResource = entity.get_player_resource()
+
+        for eid = 1, globals.maxplayers() do
+            local isEnemy = entity.is_enemy(eid)
+            local isAlive = entity.get_prop(playerResource, "m_bAlive", eid)
+
+            if isAlive == 1 then
+                if isEnemy then
+                    self.enemiesAlive = self.enemiesAlive + 1
+                else
+                    self.teammatesAlive = self.teammatesAlive + 1
+                end
+            end
+        end
 
         for _, teammate in Player.find(function(p)
             return p:isTeammate() and p:isAlive() and not p:isClient()

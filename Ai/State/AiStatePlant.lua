@@ -115,10 +115,6 @@ function AiStatePlant:assess(nodegraph)
         return AiState.priority.PLANT_ACTIVE
     end
 
-    if playerOrigin:getDistance(site.origin) < 1024 then
-        return AiState.priority.PLANT_IGNORE_NADES
-    end
-
     return AiState.priority.PLANT_PASSIVE
 end
 

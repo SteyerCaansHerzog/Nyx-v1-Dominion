@@ -43,6 +43,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field objectiveADefend Node[]
 --- @field objectiveADefendDefuser Node[]
 --- @field objectiveAHold Node[]
+--- @field objectiveAHide Node[]
 --- @field objectiveAPlant Node[]
 --- @field objectiveAPush Node[]
 --- @field objectiveB Node
@@ -50,6 +51,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field objectiveBDefend Node[]
 --- @field objectiveBDefendDefuser Node[]
 --- @field objectiveBHold Node[]
+--- @field objectiveBHide Node[]
 --- @field objectiveBlock Node[]
 --- @field objectiveBPlant Node[]
 --- @field objectiveBPush Node[]
@@ -255,6 +257,7 @@ function Nodegraph:setupNodegraph()
         [Node.types.PLANT] = "Plant",
         [Node.types.DEFEND] = "Defend",
         [Node.types.DEFEND_DEFUSER] = "DefendDefuser",
+        [Node.types.HIDE] = "Hide",
         [Node.types.HOLD] = "Hold",
         [Node.types.PUSH] = "Push",
         [Node.types.SMOKE_DEFEND] = "SmokeDefend",
@@ -282,9 +285,10 @@ function Nodegraph:setupNodegraph()
         [Node.types.PLANT] = true,
         [Node.types.DEFEND] = true,
         [Node.types.DEFEND_DEFUSER] = true,
+        [Node.types.HIDE] = true,
         [Node.types.HOLD] = true,
         [Node.types.PUSH] = true,
-        [Node.types.CHOKE] = true
+        [Node.types.CHOKE] = true,
     }
 
     local isTraversalNode = {
@@ -400,6 +404,10 @@ function Nodegraph:renderNodegraph()
     local cameraOrigin = Client.getCameraOrigin()
 
     for _, node in pairs(self.nodes) do
+        if node.type == Node.types.HIDE then
+            --node.origin:drawScaledCircleOutline(100, 20, Color)
+        end
+
         local alpha = Math.pcti(cameraOrigin:getDistance(node.origin), 1000) * 255
 
         if alpha > 0 then
@@ -417,7 +425,7 @@ function Nodegraph:renderNodegraph()
                     lineColor = color
                 end
 
-                node.origin:drawLine(connection.origin, lineColor, 0.25)
+                node.origin:drawLine(connection.origin, lineColor, 0.5)
             end
 
             local thickness = node.active and 15 or 6

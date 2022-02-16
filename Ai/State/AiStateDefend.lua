@@ -86,7 +86,7 @@ function AiStateDefend:__init()
 
     Callbacks.bombPlanted(function()
     	Client.fireAfter(1, function()
-            if AiUtility.plantedBomb and AiUtility.client:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) > 1250 then
+            if AiUtility.plantedBomb and AiUtility.client:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) > 1000 then
                 self.getToSiteTimer:start()
             end
     	end)
@@ -96,6 +96,11 @@ end
 --- @param nodegraph Nodegraph
 --- @return number
 function AiStateDefend:assess(nodegraph)
+    -- No point saving if there are no enemies to save from.
+    if AiUtility.enemiesAlive == 0 then
+        return AiState.priority.IGNORE
+    end
+
     local player = AiUtility.client
     local bomb = AiUtility.plantedBomb
 

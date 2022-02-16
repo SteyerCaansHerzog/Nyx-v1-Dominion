@@ -23,7 +23,7 @@ function AiChatCommandBuy:invoke(ai, sender, args)
         return
     end
 
-    ai:autoBuy()
+    ai:autoBuy(true)
 end
 
 return Nyx.class("AiChatCommandBuy", AiChatCommandBuy, AiChatCommand)

@@ -1,6 +1,4 @@
 --{{{ Dependencies
-local Client = require "gamesense/Nyx/v1/Api/Client"
-local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 --}}}
@@ -8,7 +6,6 @@ local Player = require "gamesense/Nyx/v1/Api/Player"
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
-local AiStateDrop = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDrop"
 --}}}
 
 --{{{ AiChatCommandDrop

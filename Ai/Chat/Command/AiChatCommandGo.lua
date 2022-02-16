@@ -1,18 +1,11 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
 --}}}
 
 --{{{ Modules
 local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
-local AiStateCheck = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateCheck"
-local AiStateDefend = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefend"
 local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGrenadeBase"
-local AiStatePatrol = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePatrol"
-local AiStatePlant = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePlant"
-local AiStatePush = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePush"
-local AiStateSweep = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSweep"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 
