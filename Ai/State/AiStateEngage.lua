@@ -1279,7 +1279,7 @@ function AiStateEngage:engage(ai)
     if self:canHoldAngle(ai) then
         if ai.nodegraph.path then
             self.isHoldingAngle = Client.getChance(1)
-            self.isHoldingAngleDucked = Client.getChance(4)
+            self.isHoldingAngleDucked = AiUtility.client:hasSniper() or Client.getChance(4)
 
             if self.isHoldingAngle then
                 ai.nodegraph:clearPath("Enemy is around corner")
@@ -1291,28 +1291,28 @@ function AiStateEngage:engage(ai)
         -- Jiggling whilst scoped might look stupid.
         if AiUtility.client:isHoldingSniper() then
             Client.scope()
+        end
+
+        if self.isHoldingAngleDucked then
+            ai.cmd.in_duck = 1
         else
-            if self.isHoldingAngleDucked then
-                ai.cmd.in_duck = 1
-            else
-                if self.jiggleTimer:isElapsedThenRestart(self.jiggleTime) then
-                    self.jiggleDirection = self.jiggleDirection == "Left" and "Right" or "Left"
-                end
-
-                --- @type Vector3
-                local direction
-
-                if self.jiggleDirection == "Left" then
-                    direction = Client.getCameraAngles():getLeft()
-                else
-                    direction = Client.getCameraAngles():getRight()
-                end
-
-                ai.nodegraph.moveAngle = direction:getAngleFromForward()
+            if self.jiggleTimer:isElapsedThenRestart(self.jiggleTime) then
+                self.jiggleDirection = self.jiggleDirection == "Left" and "Right" or "Left"
             end
 
-            return
+            --- @type Vector3
+            local direction
+
+            if self.jiggleDirection == "Left" then
+                direction = Client.getCameraAngles():getLeft()
+            else
+                direction = Client.getCameraAngles():getRight()
+            end
+
+            ai.nodegraph.moveAngle = direction:getAngleFromForward()
         end
+
+        return
     end
 
     if not ai.nodegraph.path and ai.nodegraph:canPathfind() then
