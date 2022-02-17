@@ -1278,7 +1278,7 @@ function AiStateEngage:engage(ai)
     -- Don't peek the angle. Hold it.
     if self:canHoldAngle(ai) then
         if ai.nodegraph.path then
-            self.isHoldingAngle = Client.getChance(2)
+            self.isHoldingAngle = Client.getChance(1)
             self.isHoldingAngleDucked = Client.getChance(4)
 
             if self.isHoldingAngle then
@@ -1286,14 +1286,12 @@ function AiStateEngage:engage(ai)
             end
         end
 
-        if self.isHoldingAngle then
-            self.patienceTimer:ifPausedThenStart()
+        self.patienceTimer:ifPausedThenStart()
 
-            -- Jiggling whilst scoped might look stupid.
-            if AiUtility.client:isHoldingSniper() then
-                Client.scope()
-            end
-
+        -- Jiggling whilst scoped might look stupid.
+        if AiUtility.client:isHoldingSniper() then
+            Client.scope()
+        else
             if self.isHoldingAngleDucked then
                 ai.cmd.in_duck = 1
             else
@@ -1314,8 +1312,6 @@ function AiStateEngage:engage(ai)
             end
 
             return
-        else
-            self.patienceTimer:stop()
         end
     end
 

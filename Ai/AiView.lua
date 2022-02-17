@@ -349,11 +349,6 @@ function AiView:think(cmd)
         return
     end
 
-    -- Don't set view angles during warmup. The bots look in random directions. People keep noticing it.
-    if Entity.getGameRules():m_bWarmupPeriod() == 1 then
-        return
-    end
-
     local player = AiUtility.client
     local origin = player:getOrigin()
     local aimPunchAngles = player:m_aimPunchAngle()

@@ -11,7 +11,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Config = {
     administrators = {
         "76561198373386496", -- Braff
-        "76561198105632069", -- ?
+        "76561198339559079", -- Britney Spears
         "76561198991038413" -- dusty
     },
     isDebugging = false,

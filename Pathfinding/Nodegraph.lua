@@ -369,7 +369,7 @@ function Nodegraph:renderNodegraph()
 
     if Menu.visualiseDirectPathing:get() then
         local playerOrigin = Player.getClient():getOrigin():offset(0, 0, 16)
-        local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 16, 16, 18)
+        local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 14, 14, 18)
 
         for _, searchNode in pairs(self.nodes) do
             if playerOrigin:getDistance(searchNode.origin) < 256 then
@@ -873,7 +873,7 @@ end
 function Nodegraph:setConnections(node, pathLine)
     node.connections = {}
 
-    local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 16, 16, 18)
+    local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 14, 14, 18)
 
     for _, searchNode in pairs(self.nodes) do
         if searchNode.id ~= node.id and node.origin:getDistance(searchNode.origin) < 256 then
@@ -908,16 +908,8 @@ function Nodegraph:processMovement(cmd)
         return
     end
 
-    if not self.path then
-        self.task = "Idle"
-
-        return
-    end
-
     local player = AiUtility.client
     local origin = player:getOrigin()
-    local node = self.path[self.pathCurrent]
-
     local isAllowedToMove = self.isAllowedToMove
 
     self.isAllowedToMove = true
@@ -941,8 +933,15 @@ function Nodegraph:processMovement(cmd)
         self:executeMovement(cmd, self.moveAngle)
 
         self.cachedPathfindMoveAngle = self.moveAngle
-        self.moveAngle = nil
     end
+
+    if not self.path then
+        self.task = "Idle"
+
+        return
+    end
+
+    local node = self.path[self.pathCurrent]
 
     if not node then
         if self.pathfindOptions.onComplete then
@@ -963,17 +962,14 @@ function Nodegraph:processMovement(cmd)
 
     self.cachedPathfindMoveAngle = angleToNode
 
-    self:executeMovement(cmd, angleToNode)
-
-    -- Avoid teammates.
-    if self:avoidTeammates(cmd) then
-        --return
+    if not self.moveAngle then
+        self:executeMovement(cmd, angleToNode)
     end
 
-    -- Avoid clipping the sides of walls.
-    if self:avoidClipping(cmd) then
-        --return
-    end
+    self.moveAngle = nil
+
+    self:avoidTeammates(cmd)
+    self:avoidClipping(cmd)
 
     -- Deal with jumping and ducking.
     -- Auto-duck in-air, except when falling.
@@ -1217,8 +1213,6 @@ function Nodegraph:executeMovement(cmd, moveAngle)
     }
 
     moveAngle:set(0)
-
-    local origin = Client.getOrigin()
 
     --- @type fun(): void
     local closestCallback

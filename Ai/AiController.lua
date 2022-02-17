@@ -1292,12 +1292,6 @@ function AiController:think(cmd)
 		return
 	end
 
-	local gameRules = Entity.getGameRules()
-
-	if gameRules:m_bWarmupPeriod() == 1 then
-		return
-	end
-
 	local player = AiUtility.client
 
 	if not player:isAlive() then
