@@ -286,7 +286,7 @@ function AiView:setIdealLookAhead(idealViewAngles)
     lookOrigin:offset(0, 0, 46)
 
     -- Set look speed so we don't use the speed set by AI behaviour.
-    self.lookSpeed = 2.6
+    self.lookSpeed = 2.5
 
     -- Generate our look ahead view angles.
     idealViewAngles:setFromAngle(Client.getEyeOrigin():getAngle(lookOrigin))

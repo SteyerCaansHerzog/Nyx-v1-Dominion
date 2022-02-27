@@ -45,12 +45,13 @@ local AiPriority = {
     SAVE_ROUND = 37,
     ENGAGE_VISIBLE = 38,
     AVOID_INFERNO = 39,
-    DEFUSE_COVERED = 40,
-    PLANT_COVERED = 41,
-    DROP = 42,
-    EVADE = 43,
-    ENGAGE_PANIC = 44,
-    DEVELOPER = 45,
+    ENGAGE_PANIC = 40,
+    DEFUSE_COVERED = 41,
+    PLANT_COVERED = 42,
+    DROP = 43,
+    EVADE = 44,
+    DEFUSE_STICK = 45,
+    DEVELOPER = 46,
 }
 
 local priorityMap = {}

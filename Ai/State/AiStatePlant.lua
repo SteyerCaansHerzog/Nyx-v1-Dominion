@@ -93,13 +93,13 @@ function AiStatePlant:assess(nodegraph)
     local closestPlantNode = nodegraph:getClosestNodeOf(playerOrigin, Node.types.PLANT)
     local isCovered = false
     local isOnSite = playerOrigin:getDistance(site.origin) < 600
-    local isOnPlant = playerOrigin:getDistance(closestPlantNode.origin) < 128
+    local isOnPlant = playerOrigin:getDistance(closestPlantNode.origin) < 150
 
     if isOnSite then
         for _, teammate in pairs(AiUtility.teammates) do
             local teammateOrigin = teammate:getOrigin()
 
-            local distance = 400
+            local distance = 650
 
             if playerOrigin:getDistance(teammateOrigin) < distance then
                 isCovered = true

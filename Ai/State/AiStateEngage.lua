@@ -27,6 +27,16 @@ local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
+--{{{ Enums
+local WeaponMode = {
+    PISTOL = 1,
+    LIGHT = 2,
+    SHOTGUN = 3,
+    HEAVY = 4,
+    SNIPER = 5,
+}
+--}}}
+
 --{{{ AiStateEngage
 --- @class AiStateEngage : AiState
 --- @field activeWeapon string
@@ -39,8 +49,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field bestTarget Player
 --- @field blockTime number
 --- @field blockTimer Timer
---- @field canAutoStop boolean
---- @field canCrouch boolean
+--- @field canRunAndShoot boolean
 --- @field isPreAimViableForHoldingAngle boolean
 --- @field currentReactionTime number
 --- @field enemySpottedCooldown Timer
@@ -103,6 +112,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field watchTime number
 --- @field watchTimer Timer
 --- @field aimInaccurateOffset number
+--- @field weaponMode number
 local AiStateEngage = {
     name = "Engage"
 }
@@ -410,8 +420,6 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateEngage:activate(ai)
-    self.canCrouch = Client.getChance(2)
-
     if self.enemySpottedCooldown:isElapsedThenRestart(60) then
         local player = AiUtility.client
 
@@ -692,10 +700,10 @@ end
 --- @field ranges table
 --- @field firerates table
 --- @field runAtCloseRange boolean
---- @field closeRange number
 --- @field priorityHitbox number
 --- @field isBoltAction boolean
 --- @field isRcsEnabled table
+--- @field weaponMode number
 --- @field evaluate fun(): boolean
 ---
 --- @param enemy Player
@@ -708,35 +716,11 @@ function AiStateEngage:setWeaponStats(enemy)
     local player = AiUtility.client
     local weapon = player:getWeapon()
     local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
-
     --- @type AiStateEngageWeaponStats[]
     local weaponTypes = {
         {
-            name = "LMG",
-            ranges = {
-                long = 2,
-                medium = 1,
-                short = 0
-            },
-            firerates = {
-                long = 0,
-                medium = 0,
-                short = 0
-            },
-            isRcsEnabled = {
-                long = true,
-                medium = true,
-                short = true
-            },
-            runAtCloseRange = true,
-            closeRange = 512,
-            priorityHitbox = Player.hitbox.NECK,
-            evaluate = function()
-                return player:isHoldingLmg()
-            end
-        },
-        {
             name = "Auto-Sniper",
+            weaponMode = WeaponMode.SNIPER,
             ranges = {
                 long = 2000,
                 medium = 1500,
@@ -753,7 +737,6 @@ function AiStateEngage:setWeaponStats(enemy)
                 short = true
             },
             runAtCloseRange = true,
-            closeRange = 1024,
             priorityHitbox = Player.hitbox.NECK,
             evaluate = function()
                 return player:isHoldingWeapons({
@@ -763,7 +746,82 @@ function AiStateEngage:setWeaponStats(enemy)
             end
         },
         {
+            name = "AWP",
+            weaponMode = WeaponMode.SNIPER,
+            ranges = {
+                long = 2000,
+                medium = 1000,
+                short = 0
+            },
+            firerates = {
+                long = 0,
+                medium = 0,
+                short = 0
+            },
+            isRcsEnabled = {
+                long = false,
+                medium = false,
+                short = false
+            },
+            runAtCloseRange = false,
+            priorityHitbox = Player.hitbox.SPINE_2,
+            isBoltAction = true,
+            evaluate = function()
+                return csgoWeapon.name == "AWP"
+            end
+        },
+        {
+            name = "Scout",
+            weaponMode = WeaponMode.SNIPER,
+            ranges = {
+                long = 2000,
+                medium = 1000,
+                short = 0
+            },
+            firerates = {
+                long = 0,
+                medium = 0,
+                short = 0
+            },
+            isRcsEnabled = {
+                long = false,
+                medium = false,
+                short = false
+            },
+            runAtCloseRange = false,
+            priorityHitbox = Player.hitbox.HEAD,
+            isBoltAction = true,
+            evaluate = function()
+                return csgoWeapon.name == "SSG 08"
+            end
+        },
+        {
+            name = "LMG",
+            weaponMode = WeaponMode.HEAVY,
+            ranges = {
+                long = 2,
+                medium = 1,
+                short = 0
+            },
+            firerates = {
+                long = 0,
+                medium = 0,
+                short = 0
+            },
+            isRcsEnabled = {
+                long = true,
+                medium = true,
+                short = true
+            },
+            runAtCloseRange = true,
+            priorityHitbox = Player.hitbox.NECK,
+            evaluate = function()
+                return player:isHoldingLmg()
+            end
+        },
+        {
             name = "Rifle",
+            weaponMode = WeaponMode.HEAVY,
             ranges = {
                 long = 1500,
                 medium = 1000,
@@ -780,14 +838,63 @@ function AiStateEngage:setWeaponStats(enemy)
                 short = true
             },
             runAtCloseRange = false,
-            closeRange = 0,
             priorityHitbox = Player.hitbox.HEAD,
             evaluate = function()
                 return player:isHoldingRifle()
             end
         },
         {
+            name = "Shotgun",
+            weaponMode = WeaponMode.SHOTGUN,
+            ranges = {
+                long = 0,
+                medium = 0,
+                short = 0
+            },
+            firerates = {
+                long = 0,
+                medium = 0,
+                short = 0
+            },
+            isRcsEnabled = {
+                long = false,
+                medium = false,
+                short = false
+            },
+            runAtCloseRange = true,
+            priorityHitbox = Player.hitbox.NECK,
+            evaluate = function()
+                return player:isHoldingShotgun()
+            end
+        },
+        {
+            name = "SMG",
+            weaponMode = WeaponMode.LIGHT,
+            ranges = {
+                long = 1600,
+                medium = 1400,
+                short = 0
+            },
+            firerates = {
+                long = 0.15,
+                medium = 0.1,
+                short = 0
+            },
+            isRcsEnabled = {
+                long = true,
+                medium = true,
+                short = true
+            },
+            runAtCloseRange = true,
+            priorityHitbox = Player.hitbox.NECK,
+            evaluate = function()
+                return player:isHoldingSmg()
+            end
+        },
+        {
             name = "Desert Eagle",
+            -- The Deagle really cannot use pistol shooting/movement logic.
+            weaponMode = WeaponMode.HEAVY,
             ranges = {
                 long = 750,
                 medium = 300,
@@ -804,7 +911,6 @@ function AiStateEngage:setWeaponStats(enemy)
                 short = true
             },
             runAtCloseRange = false,
-            closeRange = 0,
             priorityHitbox = Player.hitbox.HEAD,
             evaluate = function()
                 return csgoWeapon.name == "Desert Eagle"
@@ -812,6 +918,7 @@ function AiStateEngage:setWeaponStats(enemy)
         },
         {
             name = "Revolver",
+            weaponMode = WeaponMode.HEAVY,
             ranges = {
                 long = 2000,
                 medium = 1000,
@@ -828,17 +935,43 @@ function AiStateEngage:setWeaponStats(enemy)
                 short = false
             },
             runAtCloseRange = false,
-            closeRange = 0,
             priorityHitbox = Player.hitbox.HEAD,
             evaluate = function()
                 return csgoWeapon.name == "R8 Revolver"
             end
         },
         {
-            name = "Pistol",
+            name = "CZ-75",
+            weaponMode = WeaponMode.LIGHT,
             ranges = {
-                long = 1250,
-                medium = 650,
+                long = 900,
+                medium = 450,
+                short = 0
+            },
+            firerates = {
+                long = 0.45,
+                medium = 0.2,
+                short = 0.05
+            },
+            isRcsEnabled = {
+                long = true,
+                medium = true,
+                short = true
+            },
+            runAtCloseRange = true,
+            priorityHitbox = Player.hitbox.HEAD,
+            evaluate = function()
+                local weapon = CsgoWeapons[player:getWeapon():m_iItemDefinitionIndex()]
+
+                return weapon.name == "CZ75-Auto"
+            end
+        },
+        {
+            name = "Pistol",
+            weaponMode = WeaponMode.PISTOL,
+            ranges = {
+                long = 1300,
+                medium = 750,
                 short = 0
             },
             firerates = {
@@ -852,84 +985,9 @@ function AiStateEngage:setWeaponStats(enemy)
                 short = true
             },
             runAtCloseRange = true,
-            closeRange = 600,
             priorityHitbox = Player.hitbox.HEAD,
             evaluate = function()
                 return player:isHoldingPistol()
-            end
-        },
-        {
-            name = "SMG",
-            ranges = {
-                long = 1250,
-                medium = 1000,
-                short = 0
-            },
-            firerates = {
-                long = 0.18,
-                medium = 0.13,
-                short = 0
-            },
-            isRcsEnabled = {
-                long = true,
-                medium = true,
-                short = true
-            },
-            runAtCloseRange = true,
-            closeRange = 900,
-            priorityHitbox = Player.hitbox.NECK,
-            evaluate = function()
-                return player:isHoldingSmg()
-            end
-        },
-        {
-            name = "AWP",
-            ranges = {
-                long = 2000,
-                medium = 1000,
-                short = 0
-            },
-            firerates = {
-                long = 0,
-                medium = 0,
-                short = 0
-            },
-            isRcsEnabled = {
-                long = false,
-                medium = false,
-                short = false
-            },
-            runAtCloseRange = false,
-            closeRange = 0,
-            priorityHitbox = Player.hitbox.SPINE_2,
-            isBoltAction = true,
-            evaluate = function()
-                return csgoWeapon.name == "AWP"
-            end
-        },
-        {
-            name = "Scout",
-            ranges = {
-                long = 2000,
-                medium = 1000,
-                short = 0
-            },
-            firerates = {
-                long = 0,
-                medium = 0,
-                short = 0
-            },
-            isRcsEnabled = {
-                long = false,
-                medium = false,
-                short = false
-            },
-            runAtCloseRange = false,
-            closeRange = 0,
-            priorityHitbox = Player.hitbox.HEAD,
-            isBoltAction = true,
-            evaluate = function()
-                return csgoWeapon.name == "SSG 08"
             end
         },
     }
@@ -965,14 +1023,14 @@ function AiStateEngage:setWeaponStats(enemy)
         self.isRcsEnabled = true
     end
 
+    self.weaponMode = selectedWeaponType.weaponMode
     self.activeWeapon = selectedWeaponType.name
     self.priorityHitbox = selectedWeaponType.priorityHitbox
-    self.canAutoStop = selectedWeaponType.runAtCloseRange and distance < selectedWeaponType.closeRange
 
     if selectedWeaponType.runAtCloseRange then
-        self.canAutoStop = distance >= selectedWeaponType.closeRange
+        self.canRunAndShoot = distance < selectedWeaponType.ranges.medium
     else
-        self.canAutoStop = true
+        self.canRunAndShoot = false
     end
 end
 
@@ -1110,21 +1168,18 @@ end
 function AiStateEngage:walk(ai)
     local player = AiUtility.client
     local canWalk
-    local playerEid = Client.getEid()
 
     if self.bestTarget and AiUtility.closestEnemy then
-        local eyeOrigin = Client.getEyeOrigin()
-        local predictedEyeOrigin = eyeOrigin + player:m_vecVelocity() * 0.8
-
-        predictedEyeOrigin = eyeOrigin:getTraceLine(predictedEyeOrigin, playerEid)
-
-        local _, fraction, eid = predictedEyeOrigin:getTraceLine(self.bestTarget:getHitboxPosition(Player.hitbox.NECK), playerEid)
+        local clientEyeOrigin = Client.getEyeOrigin()
+        local predictedEyeOrigin = clientEyeOrigin + player:m_vecVelocity() * 0.8
         local enemyOrigin = AiUtility.closestEnemy:getOrigin()
-        local distance = eyeOrigin:getDistance(enemyOrigin)
+        local distance = clientEyeOrigin:getDistance(enemyOrigin)
+        local trace = Trace.getLineToPosition(predictedEyeOrigin, self.bestTarget:getOrigin():offset(0, 0, 48), AiUtility.traceOptionsAttacking)
+        local shootFov = self:getShootFov(self.bestTarget:getCameraAngles(), self.bestTarget:getEyeOrigin(), clientEyeOrigin)
 
-        if player:isCounterTerrorist() and AiUtility.plantedBomb and distance > 350 then
+        if player:isCounterTerrorist() and AiUtility.plantedBomb and distance > 350 and AiUtility.bombDetonationTime > 15 then
             canWalk = false
-        elseif eid == self.bestTarget.eid or fraction == 1 then
+        elseif not trace.isIntersectingGeometry and shootFov < 20 then
             canWalk = false
         elseif distance < 1200 then
             canWalk = true
@@ -1155,6 +1210,11 @@ end
 function AiStateEngage:canHoldAngle(ai)
     -- Activates if the enemy is near a corner, but not too close to it.
     if not self.isPreAimViableForHoldingAngle then
+        return false
+    end
+
+    -- The enemy is visible.
+    if AiUtility.visibleEnemies[self.bestTarget.eid] then
         return false
     end
 
@@ -1216,6 +1276,8 @@ function AiStateEngage:canHoldAngle(ai)
     if AiUtility.client:isTerrorist() and not AiUtility.isBombBeingDefusedByEnemy then
         --- @type GameStateTimeData
         local timeData = Table.fromPanorama(Panorama.GameStateAPI.GetTimeDataJSO())
+
+        Panorama.GameStateAPI.GetScoreDataJSO()
 
         if not AiUtility.plantedBomb then
             -- We don't have much time remaining in the round, so we ought not to stand around.
@@ -1296,20 +1358,7 @@ function AiStateEngage:engage(ai)
         if self.isHoldingAngleDucked then
             ai.cmd.in_duck = 1
         else
-            if self.jiggleTimer:isElapsedThenRestart(self.jiggleTime) then
-                self.jiggleDirection = self.jiggleDirection == "Left" and "Right" or "Left"
-            end
-
-            --- @type Vector3
-            local direction
-
-            if self.jiggleDirection == "Left" then
-                direction = Client.getCameraAngles():getLeft()
-            else
-                direction = Client.getCameraAngles():getRight()
-            end
-
-            ai.nodegraph.moveAngle = direction:getAngleFromForward()
+            self:actionJiggle(ai, self.jiggleTime)
         end
 
         return
@@ -1613,73 +1662,65 @@ function AiStateEngage:getShootFov(angle, vectorA, vectorB)
 end
 
 --- @param ai AiOptions
---- @param hitbox Vector3
+--- @param aimAtBaseOrigin Vector3
 --- @param fov number
 --- @param enemy Player
 --- @return void
-function AiStateEngage:shoot(ai, hitbox, fov, enemy)
-    if not hitbox then
+function AiStateEngage:shoot(ai, aimAtBaseOrigin, fov, enemy)
+    -- Nothing to shoot at.
+    if not aimAtBaseOrigin then
         return
     end
 
+    -- Prevent jumping obstacles. This can kill us.
     ai.nodegraph.canJump = false
 
-    self.hitboxOffset = Vector3:new(
-        Animate.sine(0, self.aimOffset, 3.1),
-        Animate.sine(0, self.aimOffset, 2.3),
-        Animate.sine(0, self.aimOffset / 3, 4)
-    )
+    local distance = AiUtility.client:getOrigin():getDistance(aimAtBaseOrigin)
 
-    local eyeOrigin = Client.getEyeOrigin()
-    local player = AiUtility.client
+    -- Update the offset to the shoot origin.
+    if distance < 200 then
+        self.hitboxOffset = Vector3:new(
+            Animate.sine(0, self.aimOffset * 0.2, 3.1),
+            Animate.sine(0, self.aimOffset * 0.2, 2.3),
+            Animate.sine(0, self.aimOffset * 0.2 / 3, 4)
+        )
+    else
+        self.hitboxOffset = Vector3:new(
+            Animate.sine(0, self.aimOffset, 3.1),
+            Animate.sine(0, self.aimOffset, 2.3),
+            Animate.sine(0, self.aimOffset / 3, 4)
+        )
+    end
 
-    local aimAt = hitbox + self.hitboxOffset
+    -- Real origin to shoot at.
+    local aimAtOrigin = aimAtBaseOrigin + self.hitboxOffset
 
-    Client.draw(Vector3.drawCircle, hitbox, 3, Color:hsla(0, 1, 0.5, 150))
-    Client.draw(Vector3.drawCircleOutline, aimAt, 10, 3, Color:hsla(0, 1, 0.5, 100))
-    Client.draw(Vector3.drawCircle, aimAt, 2, Color:hsla(0, 1, 0.5, 150))
-    Client.draw(Vector3.drawLine, hitbox, aimAt, Color:hsla(0, 1, 0.5, 75))
+    -- Draw debugging visualisers.
+    Client.draw(Vector3.drawCircle, aimAtBaseOrigin, 3, Color:hsla(0, 1, 0.5, 150))
+    Client.draw(Vector3.drawCircleOutline, aimAtOrigin, 10, 3, Color:hsla(0, 1, 0.5, 100))
+    Client.draw(Vector3.drawCircle, aimAtOrigin, 2, Color:hsla(0, 1, 0.5, 150))
+    Client.draw(Vector3.drawLine, aimAtBaseOrigin, aimAtOrigin, Color:hsla(0, 1, 0.5, 75))
 
+    local clientEyeOrigin = Client.getEyeOrigin()
+
+    -- We have an actual target to shoot, and not just some point in space.
     if enemy then
+        -- Enemy is dormant. They aren't, and cannot be, visible.
         if enemy:isDormant() then
             return
         end
 
-        local trace = Trace.getLineToPosition(eyeOrigin, hitbox, AiUtility.traceOptionsAttacking)
+        local trace = Trace.getLineToPosition(clientEyeOrigin, aimAtBaseOrigin, AiUtility.traceOptionsAttacking)
 
+        -- Enemy is behind a wall. We have other code responsible for wallbanging.
         if trace.isIntersectingGeometry then
             return
         end
     end
 
-    local distance = eyeOrigin:getDistance(hitbox)
-    local fireDelay = 1
-
-    if distance > 1500 then
-        fireDelay = 0.4
-    elseif distance > 1000 then
-        fireDelay = 0.3
-    elseif distance > 500 then
-        fireDelay = 0.25
-    else
-        fireDelay = 0.15
-    end
-
-    if player:isHoldingSniper() then
-        if self.scopedTimer:isElapsed(fireDelay * 0.4) then
-            ai.view.isCrosshairFloating = false
-
-            ai.view:lookAtLocation(aimAt, self.aimSpeed * 3)
-        end
-    else
-        ai.view.isCrosshairFloating = false
-
-        ai.view:lookAtLocation(aimAt, self.aimSpeed)
-    end
-
-    -- Do not shoot teammates.
-    local clientEyeOrigin = Client.getEyeOrigin()
-    local distanceToHitbox = clientEyeOrigin:getDistance(aimAt)
+    -- Avoid shooting at teammates if possible.
+    -- This will not be perfect, but it'll help most of the time.
+    local distanceToHitbox = clientEyeOrigin:getDistance(aimAtOrigin)
     local correctedAngles = Client.getCameraAngles() + AiUtility.client:m_aimPunchAngle() * 2
     local box = (clientEyeOrigin + correctedAngles:getForward() * distanceToHitbox):getBox(Vector3.align.CENTER, 16)
 
@@ -1708,53 +1749,262 @@ function AiStateEngage:shoot(ai, hitbox, fov, enemy)
             type = Trace.type.ENTITIES_ONLY
         })
 
+        -- We're probably going to hit a teammate.
         if trace.isIntersectingGeometry then
             return
         end
     end
 
-    -- Auto-stop.
-    if fov < 20 then
-        self:autoStop(ai)
-    end
-
-    -- RCS.
+    -- Set RCS parameters.
+    -- RCS should be off for snipers and shotguns, and on for rifles, SMGs, and pistols.
     ai.view.isRcsEnabled = self.isRcsEnabled
 
-    -- Scope.
-    if player:isHoldingSniper() and fov < 8 then
-        Client.scope()
+    -- Don't look away from flashbangs.
+    ai.controller.canLookAwayFromFlash = false
+
+    -- Set mouse movement parameters.
+    ai.view.isCrosshairFloating = false
+    ai.view.isCrosshairSmoothed = false
+    ai.view.isCrosshairUsingVelocity = true
+
+    -- Select which method to use to perform shooting logic.
+    local shootModes = {
+        [WeaponMode.PISTOL] = AiStateEngage.shootPistol,
+        [WeaponMode.LIGHT] = AiStateEngage.shootLight,
+        [WeaponMode.SHOTGUN] = AiStateEngage.shootShotgun,
+        [WeaponMode.HEAVY] = AiStateEngage.shootHeavy,
+        [WeaponMode.SNIPER] = AiStateEngage.shootSniper
+    }
+
+    local method = shootModes[self.weaponMode]
+
+    -- Heavy automatic as default weapon type.
+    if not method then
+        method = AiStateEngage.shootHeavy
     end
 
-    -- Don't shoot whilst running.
-    if player:m_vecVelocity():getMagnitude() > 100 then
+    local weapon = Entity:create(AiUtility.client:m_hActiveWeapon())
+    local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
+
+    method(self, ai, aimAtOrigin, fov, csgoWeapon)
+end
+
+--- @param ai AiOptions
+--- @param aimAtOrigin Vector3
+--- @param fov number
+--- @param weapon CsgoWeapon
+--- @return void
+function AiStateEngage:shootPistol(ai, aimAtOrigin, fov, weapon)
+    local distance = Client.getEyeOrigin():getDistance(aimAtOrigin)
+    local isVelocityOk = true
+
+    if distance > 1350 then
+        ai.cmd.in_duck = 1
+    elseif not self.canRunAndShoot then
+        self:actionJiggle(ai, self.jiggleTime * 0.66)
+
+        isVelocityOk = AiUtility.client:m_vecVelocity():getMagnitude() < 100
+    end
+
+    local aimSpeed = self.aimSpeed
+
+    if distance < 500 then
+        aimSpeed = self.aimSpeed * 1.5
+    end
+
+    ai.view:lookAtLocation(aimAtOrigin, aimSpeed)
+
+    if fov < 4
+        and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
+        and isVelocityOk
+    then
+        ai.cmd.in_attack = 1
+    end
+end
+
+--- @param ai AiOptions
+--- @param aimAtOrigin Vector3
+--- @param fov number
+--- @param weapon CsgoWeapon
+--- @return void
+function AiStateEngage:shootLight(ai, aimAtOrigin, fov, weapon)
+    local distance = Client.getEyeOrigin():getDistance(aimAtOrigin)
+    local aimSpeed = self.aimSpeed
+
+    if distance < 500 then
+        aimSpeed = self.aimSpeed * 1.5
+    end
+
+    ai.view:lookAtLocation(aimAtOrigin, aimSpeed)
+
+    if not self.canRunAndShoot then
+        self:actionCounterStrafe(ai)
+    end
+
+    if fov < 4
+        and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
+    then
+        ai.cmd.in_attack = 1
+    end
+end
+
+--- @param ai AiOptions
+--- @param aimAtOrigin Vector3
+--- @param fov number
+--- @param weapon CsgoWeapon
+--- @return void
+function AiStateEngage:shootShotgun(ai, aimAtOrigin, fov, weapon)
+    local distance = Client.getEyeOrigin():getDistance(aimAtOrigin)
+    local aimSpeed = self.aimSpeed
+
+    if distance < 500 then
+        aimSpeed = self.aimSpeed * 1.5
+    end
+
+    ai.view:lookAtLocation(aimAtOrigin, aimSpeed)
+
+    if distance > 1000 then
         return
     end
 
-    ai.controller.canLookAwayFromFlash = false
-
-    local weapon = Entity:create(player:m_hActiveWeapon())
-    local ammo = weapon:m_iClip1()
-
-    if player:isHoldingSniper() then
-        local fireUnderVelocity = CsgoWeapons[weapon:m_iItemDefinitionIndex()].max_player_speed / 5
-
-        if player:m_vecVelocity():getMagnitude() < fireUnderVelocity and
-            self.scopedTimer:isElapsed(fireDelay) and
-            player:m_bIsScoped() == 1 and
-            (fov and fov < 3)
-        then
-            ai.cmd.in_attack = 1
-        end
-    else
-        ai.view.recoilControl = self.recoilControl
-
-        if fov < 4 and ammo and ammo > 0 then
-            if self.tapFireTimer:isElapsedThenRestart(self.tapFireTime) then
-               ai.cmd.in_attack = 1
-            end
-        end
+    if fov < 4
+        and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
+    then
+        ai.cmd.in_attack = 1
     end
+end
+
+--- @param ai AiOptions
+--- @param aimAtOrigin Vector3
+--- @param fov number
+--- @param weapon CsgoWeapon
+--- @return void
+function AiStateEngage:shootHeavy(ai, aimAtOrigin, fov, weapon)
+    ai.view:lookAtLocation(aimAtOrigin, self.aimSpeed)
+
+    if self.isTargetEasilyShot then
+        self:actionCounterStrafe(ai)
+    else
+        self:actionStop(ai)
+    end
+
+    local isVelocityOk = AiUtility.client:m_vecVelocity():getMagnitude() < 100
+
+    if fov < 4
+        and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
+        and isVelocityOk
+    then
+        ai.cmd.in_attack = 1
+    end
+end
+
+--- @param ai AiOptions
+--- @param aimAtOrigin Vector3
+--- @param fov number
+--- @param weapon CsgoWeapon
+--- @return void
+function AiStateEngage:shootSniper(ai, aimAtOrigin, fov, weapon)
+    local distance = Client.getEyeOrigin():getDistance(aimAtOrigin)
+    local fireDelay = 0.66
+
+    -- Set the delay of our shooting to be roughly accurate as we scope.
+    if distance > 1500 then
+        fireDelay = 0.4
+    elseif distance > 1000 then
+        fireDelay = 0.3
+    elseif distance > 500 then
+        fireDelay = 0.25
+    else
+        fireDelay = 0.15
+    end
+
+    -- Create a "flick" effect when aiming.
+    if self.scopedTimer:isElapsed(fireDelay * 0.4) then
+        ai.view:lookAtLocation(aimAtOrigin, self.aimSpeed * 3)
+    end
+
+    if fov < 8 then
+        Client.scope()
+    end
+
+    -- Always come to a complete stop when using snipers.
+    self:actionStop(ai)
+
+    -- We can shoot when we're this slow.
+    local fireUnderVelocity = weapon.max_player_speed / 5
+
+    if fov < 3
+        and self.scopedTimer:isElapsedThenStop(fireDelay)
+        and AiUtility.client:m_bIsScoped() == 1
+        and AiUtility.client:m_vecVelocity():getMagnitude() < fireUnderVelocity
+    then
+        ai.cmd.in_attack = 1
+    end
+end
+
+--- @param ai AiOptions
+--- @param period number
+--- @return void
+function AiStateEngage:actionJiggle(ai, period)
+    -- Alternate movement directions.
+    if self.jiggleTimer:isElapsedThenRestart(period) then
+        self.jiggleDirection = self.jiggleDirection == "Left" and "Right" or "Left"
+    end
+
+    --- @type Vector3
+    local direction
+
+    if self.jiggleDirection == "Left" then
+        direction = Client.getCameraAngles():getLeft()
+    else
+        direction = Client.getCameraAngles():getRight()
+    end
+
+    ai.nodegraph.moveAngle = direction:getAngleFromForward()
+end
+
+--- @param ai AiOptions
+--- @return void
+function AiStateEngage:actionCounterStrafe(ai)
+    if self.isTargetEasilyShot then
+        -- Duck for better accuracy.
+        ai.cmd.in_duck = 1
+    else
+        local velocity = AiUtility.client:m_vecVelocity()
+
+        -- Stop moving when our velocity has fallen below threshold.
+        if velocity:getMagnitude() < 70 then
+            return
+        end
+
+        local inverseVelocity = -velocity
+
+        -- Counter our current velocity.
+        ai.nodegraph.moveAngle = inverseVelocity:getAngleFromForward()
+    end
+end
+
+--- @param ai AiOptions
+--- @return void
+function AiStateEngage:actionStop(ai)
+    if self.isTargetEasilyShot then
+        -- Duck for better accuracy.
+        ai.cmd.in_duck = 1
+    end
+
+    local velocity = AiUtility.client:m_vecVelocity()
+
+    -- Stop moving when our velocity has fallen below threshold.
+    if velocity:getMagnitude() < 70 then
+        ai.nodegraph.isAllowedToMove = false
+
+        return
+    end
+
+    local inverseVelocity = -velocity
+
+    -- Counter our current velocity.
+    ai.nodegraph.moveAngle = inverseVelocity:getAngleFromForward()
 end
 
 --- @param enemy Player
@@ -1828,6 +2078,10 @@ function AiStateEngage:ferrariPeek(ai)
         return
     end
 
+    if AiUtility.visibleEnemies[enemy.eid] then
+        return
+    end
+
     local player = AiUtility.client
     local playerEid = Client.getEid()
     local playerOrigin = player:getOrigin()
@@ -1852,7 +2106,7 @@ function AiStateEngage:ferrariPeek(ai)
     local steps = 2
     local stepDistance = 16
     --- @type Angle
-    local moveAngles
+    local moveAngle
 
     local iDebug = 0
     local successes = 0
@@ -1894,7 +2148,7 @@ function AiStateEngage:ferrariPeek(ai)
 
                             if successes >= 2 then
                                 isVisible = true
-                                moveAngles = Vector3:new():getAngle(direction)
+                                moveAngle = Vector3:new():getAngle(direction)
 
                                 break
                             end
@@ -1907,7 +2161,7 @@ function AiStateEngage:ferrariPeek(ai)
         end
     end
 
-    if moveAngles then
+    if moveAngle then
         if player:m_vecVelocity():getMagnitude() < 50 then
             self.ferrariPeekStuckTimer:ifPausedThenStart()
         else
@@ -1919,8 +2173,7 @@ function AiStateEngage:ferrariPeek(ai)
         end
 
         if self.ferrariPeekCooldownTimer:isElapsed(5) then
-            ai.nodegraph.moveSpeed = 450
-            ai.nodegraph.moveAngle = moveAngles
+            ai.nodegraph.moveAngle = moveAngle
         end
     end
 end
@@ -2169,36 +2422,6 @@ function AiStateEngage:pathfindBlockedEnemy(ai, enemy)
     end
 end
 
---- @param ai AiOptions
---- @return void
-function AiStateEngage:autoStop(ai)
-    if not self.canAutoStop then
-        ai.cmd.in_duck = 1
-
-        return
-    end
-
-    local player = AiUtility.client
-
-    if self.isTargetEasilyShot then
-        ai.cmd.in_duck = 1
-
-        local inverseVelocity = -player:m_vecVelocity()
-
-        if inverseVelocity:getMagnitude() < 75 then
-            ai.nodegraph.isAllowedToMove = false
-
-            return
-        end
-
-        local velocityAngles = inverseVelocity:normalize():getAngleFromForward()
-
-        ai.nodegraph.moveAngle = velocityAngles
-    else
-        ai.nodegraph.isAllowedToMove = false
-    end
-end
-
 --- @param skill number
 --- @return void
 function AiStateEngage:setAimSkill(skill)
@@ -2208,7 +2431,7 @@ function AiStateEngage:setAimSkill(skill)
         reactionTime = 0.3,
         anticipateTime = 0.2,
         sprayTime = 0.66,
-        aimSpeed = 4,
+        aimSpeed = 5,
         slowAimSpeed = 2.5,
         recoilControl = 2.5,
         aimOffset = 32,
@@ -2219,8 +2442,8 @@ function AiStateEngage:setAimSkill(skill)
         reactionTime = 0.01,
         anticipateTime = 0.01,
         sprayTime = 0.4,
-        aimSpeed = 10,
-        slowAimSpeed = 5,
+        aimSpeed = 7,
+        slowAimSpeed = 4,
         recoilControl = 2,
         aimOffset = 0,
         aimInaccurateOffset = 16

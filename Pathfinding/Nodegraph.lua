@@ -425,7 +425,7 @@ function Nodegraph:renderNodegraph()
                     lineColor = color
                 end
 
-                node.origin:drawLine(connection.origin, lineColor, 0.5)
+                node.origin:drawLine(connection.origin, lineColor, 0.25)
             end
 
             local thickness = node.active and 15 or 6
@@ -864,7 +864,7 @@ end
 
 --- @return boolean
 function Nodegraph:canPathfind()
-    return not self.lastPathfindTimer:isStarted() or self.lastPathfindTimer:isElapsed(1)
+    return not self.lastPathfindTimer:isStarted() or self.lastPathfindTimer:isElapsed(0.2)
 end
 
 --- @param node Node

@@ -105,6 +105,7 @@ local AiWeaponNames = {
 --- @field visibleEnemies Player[]
 --- @field weaponNames string[]
 --- @field weaponPriority AiWeaponPriorityGeneral
+--- @field defuseTimer Timer
 local AiUtility = {
     mainWeapons = {
         Weapons.FAMAS, Weapons.GALIL, Weapons.M4A1, Weapons.AUG, Weapons.AK47, Weapons.AWP, Weapons.SG553, Weapons.SSG08
@@ -127,6 +128,7 @@ function AiUtility:initFields()
     self.enemyDistances = Table.populateForMaxPlayers(math.huge)
     self.enemyFovs = Table.populateForMaxPlayers(math.huge)
     self.roundTimer = Timer:new()
+    self.defuseTimer = Timer:new()
     self.lastKnownOrigin = {}
     self.dormantAt = {}
     self.enemies = {}
@@ -139,6 +141,7 @@ function AiUtility:initFields()
         CFuncBrush = true,
         CBaseEntity = true,
         CPropDoorRotating = true,
+        CPhysicsProp = true,
     }
 
     self.traceOptionsPathfinding = {
@@ -189,7 +192,8 @@ function AiUtility:initEvents()
         self.enemyFovs = Table.populateForMaxPlayers(math.huge)
         self.lastKnownOrigin = {}
         self.dormantAt = {}
-        self.enemiesAlive = 5
+
+        self.defuseTimer:stop()
     end)
 
     Callbacks.roundEnd(function()
@@ -272,6 +276,10 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombBeginDefuse(function(e)
+        if e.player:isClient() then
+            self.defuseTimer:start()
+        end
+
         if not e.player:isClient() and e.player:isTeammate() then
             self.isBombBeingDefusedByTeammate = true
         elseif e.player:isEnemy() then
@@ -280,6 +288,10 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombAbortDefuse(function(e)
+        if e.player:isClient() then
+            self.defuseTimer:stop()
+        end
+
         if not e.player:isClient() and e.player:isTeammate() then
             self.isBombBeingDefusedByTeammate = true
         elseif e.player:isEnemy() then
@@ -288,6 +300,10 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombDefused(function(e)
+        if e.player:isClient() then
+            self.defuseTimer:stop()
+        end
+
         if not e.player:isClient() and e.player:isTeammate() then
             self.isBombBeingDefusedByTeammate = true
         elseif e.player:isEnemy() then

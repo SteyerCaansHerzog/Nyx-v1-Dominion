@@ -197,7 +197,7 @@ function AiStateEvacuate:think(ai)
     if not trace.isIntersectingGeometry and distance < 200 then
         ai.controller.canUseKnife = false
 
-        ai.view:lookInDirection(self.node.direction, 7)
+        ai.view:lookInDirection(self.node.direction, 4)
     end
 end
 

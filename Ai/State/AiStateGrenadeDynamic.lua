@@ -57,24 +57,27 @@ function AiStateGrenadeDynamic:assess()
     local clientEyeOrigin = Client.getEyeOrigin()
     local clientTestVisibilityBox = clientEyeOrigin:getPlane(Vector3.align.CENTER, 64)
 
-    -- Don't try flashes if it's not safe.
-    for _, enemy in pairs(AiUtility.enemies) do
-        local distance = clientEyeOrigin:getDistance(enemy:getOrigin())
+    -- We may as well commit if we're already about to throw.
+    if not self.isThrowing then
+        -- Don't try flashes if it's not safe.
+        for _, enemy in pairs(AiUtility.enemies) do
+            local distance = clientEyeOrigin:getDistance(enemy:getOrigin())
 
-        -- Enemy is too close.
-        if distance < 600 then
-            return AiState.priority.IGNORE
-        end
+            -- Enemy is too close.
+            if distance < 500 then
+                return AiState.priority.IGNORE
+            end
 
-        local enemyTestVisibilityBox = enemy:getEyeOrigin():getBox(Vector3.align.CENTER, 64)
+            local enemyTestVisibilityBox = enemy:getEyeOrigin():getBox(Vector3.align.CENTER, 64)
 
-        -- Enemy could peek us, or we could peek them.
-        for _, clientVertex in pairs(clientTestVisibilityBox) do
-            for _, enemyVertex in pairs(enemyTestVisibilityBox) do
-                local trace = Trace.getLineToPosition(clientVertex, enemyVertex, AiUtility.traceOptionsAttacking)
+            -- Enemy could peek us, or we could peek them.
+            for _, clientVertex in pairs(clientTestVisibilityBox) do
+                for _, enemyVertex in pairs(enemyTestVisibilityBox) do
+                    local trace = Trace.getLineToPosition(clientVertex, enemyVertex, AiUtility.traceOptionsAttacking)
 
-                if not trace.isIntersectingGeometry then
-                    return AiState.priority.IGNORE
+                    if not trace.isIntersectingGeometry then
+                        return AiState.priority.IGNORE
+                    end
                 end
             end
         end
@@ -91,7 +94,6 @@ function AiStateGrenadeDynamic:assess()
     end
 
     local bounds = Vector3:newBounds(Vector3.align.CENTER, 8)
-
 
     -- Angle to try our mentally handicapped flash prediction with.
     local predictionAngles = Angle:new(Client.getRandomFloat(-85, 25), Client.getRandomFloat(-180, 180))
@@ -224,7 +226,7 @@ function AiStateGrenadeDynamic:think(ai)
 
     local maxDiff = self.throwAngles:getMaxDiff(Client.getCameraAngles())
 
-    if maxDiff < 2
+    if maxDiff < 6
         and AiUtility.client:isHoldingWeapon(Weapons.FLASHBANG)
         and AiUtility.client:isAbleToAttack()
     then
@@ -248,7 +250,7 @@ function AiStateGrenadeDynamic:think(ai)
             ai.cmd.in_jump = 1
         end
 
-        Client.fireAfter(0.25, function()
+        Client.fireAfter(0.15, function()
             self.throwCooldownTimer:restart()
 
             self:reset()

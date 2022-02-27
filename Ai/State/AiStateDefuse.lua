@@ -1,10 +1,12 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
+local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
+local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
@@ -19,6 +21,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @class AiStateDefuse : AiState
 --- @field isDefusing boolean
 --- @field lookAtOffset Vector3
+--- @field inThrowTimer Timer
 local AiStateDefuse = {
     name = "Defuse"
 }
@@ -31,6 +34,7 @@ end
 
 --- @return void
 function AiStateDefuse:__init()
+    self.inThrowTimer = Timer:new()
     self.lookAtOffset = Vector3:newRandom(-16, 16)
 
     Callbacks.roundStart(function()
@@ -101,8 +105,20 @@ function AiStateDefuse:assess()
         end
     end
 
+    local defuseTime = AiUtility.client:m_bHasDefuser() == 1 and 5 or 10
+
+    if AiUtility.defuseTimer:isElapsed(defuseTime - 1) then
+        return AiState.priority.DEFUSE_STICK
+    end
+
     if player:m_bIsDefusing() == 1 and playerOrigin:getDistance(bomb:getOrigin()) < 64 and isCovered then
         return AiState.priority.DEFUSE_COVERED
+    end
+
+    for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
+        if playerOrigin:getDistance(smoke:m_vecOrigin()) < 80 then
+            return AiState.priority.DEFUSE_COVERED
+        end
     end
 
     if AiUtility.bombDetonationTime <= 15 then
@@ -171,7 +187,7 @@ function AiStateDefuse:think(ai)
     end
 
     if AiUtility.client:m_bIsDefusing() == 1 then
-        ai.view:lookInDirection(Client.getCameraAngles(), 5)
+        ai.view:lookInDirection(Client.getCameraAngles(), 4)
     elseif distance < 256 then
         ai.view:lookAtLocation(bombOrigin:clone():offset(5, -3, 14), 4.5)
     end
@@ -179,8 +195,32 @@ function AiStateDefuse:think(ai)
     if self.isDefusing then
         ai.controller.canReload = false
         ai.cmd.in_use = 1
+        ai.cmd.in_duck = 1
+        ai.view.isCrosshairFloating = false
 
-        return
+        if AiUtility.client:hasWeapon(Weapons.SMOKE)
+            and Table.isEmpty(AiUtility.visibleEnemies)
+            and (not AiUtility.closestEnemy or (AiUtility.closestEnemy and AiUtility.client:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) > 400))
+        then
+            ai.controller.canUseGear = false
+            ai.controller.states.evade.isBlocked = true
+
+            if not AiUtility.client:isHoldingWeapon(Weapons.SMOKE) then
+                Client.equipSmoke()
+            end
+
+            ai.view:lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 4.5)
+
+            if AiUtility.client:isAbleToAttack() then
+                if Client.getCameraAngles().p > 22 then
+                    self.inThrowTimer:ifPausedThenStart()
+                end
+
+                if self.inThrowTimer:isElapsedThenStop(0.1) then
+                    ai.cmd.in_attack2 = 1
+                end
+            end
+        end
     end
 end
 

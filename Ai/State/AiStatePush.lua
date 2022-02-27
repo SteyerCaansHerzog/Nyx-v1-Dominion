@@ -40,7 +40,7 @@ function AiStatePush:assess()
     local player = AiUtility.client
 
     if player:isTerrorist() and not self.isDeactivated and not AiUtility.isBombPlanted() then
-        if AiUtility.roundTimer:isElapsed(15) then
+        if AiUtility.roundTimer:isElapsed(20) then
             return AiState.priority.PUSH
         end
     end

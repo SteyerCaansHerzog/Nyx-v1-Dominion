@@ -540,10 +540,8 @@ function AiController:autoBuy(isImmediate)
 		local halftimeRounds = math.floor(cvar.mp_maxrounds:get_int() / 2)
 
 		if roundsPlayed == 0 or roundsPlayed == halftimeRounds then
-			Client.execute("buy p250")
-
 			if player:isCounterTerrorist() then
-				if Client.getChance(3) then
+				if Client.getChance(2) then
 					Client.execute("buy defuser")
 				else
 					self:buyGrenades(2)
@@ -640,11 +638,11 @@ function AiController:forceBuy()
 		return
 	end
 
-	local pistols = {
+	local cheap = {
 		"tec9; fn57"
 	}
 
-	local smgs = {
+	local expensive = {
 		"deagle",
 		"mac10; mp9",
 		"mp7",
@@ -659,9 +657,9 @@ function AiController:forceBuy()
 		if isBuyingNegev then
 			Client.execute("buy negev")
 		elseif isBuyingSmg then
-			Client.execute("buy %s;", Table.getRandom(smgs))
+			Client.execute("buy %s;", Table.getRandom(expensive))
 		else
-			Client.execute("buy %s;", Table.getRandom(pistols))
+			Client.execute("buy %s;", Table.getRandom(cheap))
 		end
 
 		if player:m_iArmor() < 33 then
@@ -1023,8 +1021,9 @@ function AiController:activities(ai)
 	if canUseKnife then
 		for _, dormantAt in pairs(AiUtility.dormantAt) do
 			local dormantTime = Time.getRealtime() - dormantAt
+			local period = (AiUtility.enemiesAlive == 0 or AiUtility.isBombPlanted()) and 1 or 3
 
-			if dormantTime < 3 then
+			if dormantTime < period then
 				canUseKnife = false
 			end
 		end
@@ -1168,7 +1167,7 @@ function AiController:antiFlash(ai)
 
 	Client.unscope()
 
-	ai.view:lookAtLocation(eyeOrigin:getAngle(self.flashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 8)
+	ai.view:lookAtLocation(eyeOrigin:getAngle(self.flashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 6)
 end
 
 --- @param cmd SetupCommandEvent
