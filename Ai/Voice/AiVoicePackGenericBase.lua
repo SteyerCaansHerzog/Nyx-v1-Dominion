@@ -425,11 +425,11 @@ end
 --- @return void
 function AiVoicePackGenericBase:speakGameEndWon()
 	self:speak(self:getGroupDynamic("GameEndWon"), {
-		chance = 3,
+		chance = 2,
 		interrupt = true,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 0.33,
+		minDelay = 1,
 		maxDelay = 6
 	})
 end
@@ -437,11 +437,11 @@ end
 --- @return void
 function AiVoicePackGenericBase:speakGameEndLost()
 	self:speak(self:getGroupDynamic("GameEndLost"), {
-		chance = 3,
+		chance = 2,
 		interrupt = true,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 0.33,
+		minDelay = 1,
 		maxDelay = 6
 	})
 end

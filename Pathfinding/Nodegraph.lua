@@ -20,6 +20,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AStar = require "gamesense/Nyx/v1/Dominion/Pathfinding/AStar"
+local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
@@ -1169,6 +1170,13 @@ end
 --- @param moveAngle Angle
 --- @return void
 function Nodegraph:executeMovement(cmd, moveAngle)
+    if Config.isUserInputSafe then
+        cmd.move_yaw = moveAngle.y
+        cmd.forwardmove = 450
+
+        return
+    end
+
     local directions = {
         [0] = function()
             cmd.forwardmove = 450

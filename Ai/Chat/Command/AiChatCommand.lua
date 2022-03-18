@@ -5,6 +5,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 --}}}
@@ -41,6 +42,10 @@ end
 function AiChatCommand:isValid(ai, sender, args)
     if self.requiredArgs and #args < self.requiredArgs then
 
+        return false
+    end
+
+    if sender:is(AiUtility.client) then
         return false
     end
 

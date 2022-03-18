@@ -2,13 +2,8 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
-local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
-local Voice = require "gamesense/Nyx/v1/Api/Voice"
-
-local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
 
 --{{{ Modules
@@ -21,10 +16,13 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @class AiStateDefend : AiState
 --- @field bombCarrier Player
 --- @field bombNearSite string
+--- @field canDuckAtNode boolean
 --- @field defendingSite string
 --- @field defendTime number
 --- @field defendTimer Timer
 --- @field equippedGun boolean
+--- @field getToSiteTimer Timer
+--- @field isAtDestination boolean
 --- @field isDefending boolean
 --- @field isDefendingBomb boolean
 --- @field isDefendingDefuser boolean
@@ -34,10 +32,6 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field jiggleTime number
 --- @field jiggleTimer Timer
 --- @field node Node
---- @field reachedDestination boolean
---- @field sectorClearTimer Timer
---- @field speakCooldownTimer Timer
---- @field getToSiteTimer Timer
 local AiStateDefend = {
     name = "Defend"
 }
@@ -52,7 +46,6 @@ end
 function AiStateDefend:__init()
     self.defendTimer = Timer:new()
     self.defendTime = Client.getRandomFloat(2, 6)
-    self.speakCooldownTimer = Timer:new(30):startThenElapse()
     self.jiggleTimer = Timer:new():start()
     self.jiggleTime = 0.66
     self.jiggleDirection = "Left"
@@ -69,7 +62,6 @@ function AiStateDefend:__init()
     end)
 
     Callbacks.roundEnd(function()
-        self.speakCooldownTimer:startThenElapse()
         self.isDefending = false
         self.isDefendingBomb = false
         self.isDefendingDefuser = false
@@ -168,35 +160,20 @@ function AiStateDefend:activate(ai, site, swapPair, useClosestSite)
     end
 
     self.node = node
-    self.reachedDestination = false
+    self.isAtDestination = false
+    self.canDuckAtNode = Client.getChance(2)
 
     ai.nodegraph:pathfind(node.origin, {
         objective = Node.types.GOAL,
         ignore = Client.getEid(),
         task = string.format("Defending %s site", node.site:upper()),
         onComplete = function()
-            self.reachedDestination = true
+            self.isAtDestination = true
             self.isDefending = true
 
             ai.nodegraph:log("Defending %s site", node.site)
         end
     })
-
-    if self.speakCooldownTimer:isElapsedThenRestart(self.speakCooldownTimer.time) then
-        local player = AiUtility.client
-        local playerOrigin = player:getOrigin()
-        local color = node.site == "a" and ai.radio.color.BLUE or ai.radio.color.PURPLE
-
-        local text
-
-        if playerOrigin:getDistance(node.origin) < 1024 then
-            text = "I'm %sdefending %sbombsite %s%s."
-        else
-            text = "I'm going to %sdefend %sbombsite %s%s."
-        end
-
-        ai.radio:speak(ai.radio.message.SPREAD_OUT, 1, 1, 2, text, ai.radio.color.YELLOW, color, node.site:upper(), ai.radio.color.DEFAULT)
-    end
 end
 
 --- @return void
@@ -229,7 +206,7 @@ function AiStateDefend:think(ai)
         return
     end
 
-    if not self.reachedDestination and not ai.nodegraph.path and ai.nodegraph:canPathfind() then
+    if not self.isAtDestination and not ai.nodegraph.path and ai.nodegraph:canPathfind() then
         self:activate(ai, self.defendingSite)
     end
 
@@ -246,8 +223,6 @@ function AiStateDefend:think(ai)
     end
 
     if distance < 32 then
-        ai.view.isCrosshairFloating = false
-
         if self.defendTimer:isElapsedThenRestart(self.defendTime) then
             self.defendTime = Client.getRandomFloat(3, 6)
 
@@ -278,10 +253,18 @@ function AiStateDefend:think(ai)
         local lookDirectionTrace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding)
         local nodeVisibleTrace = Trace.getLineToPosition(Client.getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking)
 
+        if self.canDuckAtNode and distance < 32 then
+            local duckTrace = Trace.getLineToPosition(self.node.origin:clone():offset(0, 0, 28), lookDirectionTrace.endPosition, AiUtility.traceOptionsAttacking)
+
+            if not duckTrace.isIntersectingGeometry then
+                ai.cmd.in_duck = 1
+            end
+        end
+
         self.defendTimer:ifPausedThenStart()
 
         if not nodeVisibleTrace.isIntersectingGeometry then
-            ai.view:lookAtLocation(lookDirectionTrace.endPosition, 4)
+            ai.view:lookAtLocation(lookDirectionTrace.endPosition, 4, ai.view.noiseType.MOVING, "Defend look at angle")
 
             ai.controller.isWalking = true
         end

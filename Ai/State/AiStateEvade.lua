@@ -47,7 +47,7 @@ function AiStateEvade:__init()
     self.changeAngleTime = 1
 
     Callbacks.weaponFire(function(e)
-        if e.player:isClient() and e.player:hasWeapons({ Weapons.AWP, Weapons.SSG08}) then
+        if e.player:isClient() and e.player:hasWeapons({Weapons.AWP, Weapons.SSG08}) then
             self.shotBoltActionRifleTimer:ifPausedThenStart()
         end
     end)
@@ -61,55 +61,31 @@ function AiStateEvade:assess()
         return AiState.priority.IGNORE
     end
 
+    -- No enemies to threaten us.
     if AiUtility.enemiesAlive == 0 then
         return AiState.priority.IGNORE
     end
 
+    -- Round is over.
     if AiUtility.isRoundOver then
         return AiState.priority.IGNORE
     end
 
     local player = AiUtility.client
-    local clientEyeOrigin = Client.getEyeOrigin()
-    local clientTestVisibilityBox = clientEyeOrigin:getPlane(Vector3.align.CENTER, 64)
-    local isSafe = true
 
-    for _, enemy in pairs(AiUtility.enemies) do
-        local distance = clientEyeOrigin:getDistance(enemy:getOrigin())
-
-        -- Enemy is too close.
-        if distance > 500 then
-            isSafe = false
-
-            break
-        end
-
-        local enemyTestVisibilityBox = enemy:getEyeOrigin():getBox(Vector3.align.CENTER, 64)
-
-        -- Enemy could peek us, or we could peek them.
-        for _, clientVertex in pairs(clientTestVisibilityBox) do
-            for _, enemyVertex in pairs(enemyTestVisibilityBox) do
-                local trace = Trace.getLineToPosition(clientVertex, enemyVertex, AiUtility.traceOptionsAttacking)
-
-                if not trace.isIntersectingGeometry then
-                    isSafe = false
-
-                    break
-                end
-            end
-        end
-    end
-
-    if isSafe then
+    -- We can be peeked by an enemy.
+    if not AiUtility.isClientThreatened then
         return AiState.priority.IGNORE
     end
 
+    -- We're flashed.
     if Client.isFlashed() then
         if not AiUtility.isClientPlanting and player:m_bIsDefusing() == 0 then
             return AiState.priority.EVADE
         end
     end
 
+    -- We fired an AWP or Scout.
     if self.shotBoltActionRifleTimer:isStarted() and
         not self.shotBoltActionRifleTimer:isElapsedThenStop(self.shotBoltActionRifleTime) and
         player:isHoldingBoltActionRifle()
@@ -117,10 +93,12 @@ function AiStateEvade:assess()
         return AiState.priority.EVADE
     end
 
-    if player:isReloading() and player:getReloadProgress() < 0.5 then
+    -- We're reloading.
+    if player:isReloading() and player:getReloadProgress() < 0.66 then
         return AiState.priority.EVADE
     end
 
+    -- We're switching weapons.
     if (next(AiUtility.visibleEnemies) or (AiUtility.lastVisibleEnemyTimer:isStarted() and not AiUtility.lastVisibleEnemyTimer:isElapsed(2)))
         and (Time.getCurtime() - player:m_flNextAttack()) <= 0
         and player:getWeapon().classname ~= "CC4"
@@ -204,7 +182,7 @@ function AiStateEvade:think(ai)
     end
 
     if ai.view.lastLookAtLocationOrigin then
-        ai.view:lookAtLocation(ai.view.lastLookAtLocationOrigin, 1)
+        ai.view:lookAtLocation(ai.view.lastLookAtLocationOrigin, ai.view.noiseType.MINOR, "Evade look at last spot")
     end
 end
 

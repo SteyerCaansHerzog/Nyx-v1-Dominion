@@ -44,6 +44,11 @@ function AiStateEvacuate:assess()
         return AiState.priority.SAVE_ROUND
     end
 
+    -- Fix to stop the AI saving in a 1v0 when bomb is down.
+    if AiUtility.enemiesAlive == 0 then
+        return AiState.priority.IGNORE
+    end
+
     if AiUtility.client:isCounterTerrorist() then
         -- We're defusing, we shouldn't evacuate.
         -- We can only be defusing if we have time.
@@ -58,7 +63,7 @@ function AiStateEvacuate:assess()
 
         -- We're not able to defuse the bomb due to time.
         if AiUtility.plantedBomb and not AiUtility.canDefuse then
-            return AiState.priority.EVACUATE
+            return AiState.priority.SAVE_ROUND
         end
     elseif AiUtility.client:isTerrorist() then
         -- We should save.
@@ -67,7 +72,7 @@ function AiStateEvacuate:assess()
         end
 
         -- The enemy likely cannot defuse now, and we need to leave the site.
-        if AiUtility.plantedBomb and not AiUtility.isBombBeingDefusedByEnemy and AiUtility.bombDetonationTime < 15 then
+        if AiUtility.plantedBomb and not AiUtility.isBombBeingDefusedByEnemy and AiUtility.bombDetonationTime < 10 then
             return AiState.priority.EVACUATE
         end
     end
@@ -197,7 +202,7 @@ function AiStateEvacuate:think(ai)
     if not trace.isIntersectingGeometry and distance < 200 then
         ai.controller.canUseKnife = false
 
-        ai.view:lookInDirection(self.node.direction, 4)
+        ai.view:lookInDirection(self.node.direction, 4, ai.view.noiseType.IDLE, "Evacuate look at angle")
     end
 end
 

@@ -156,7 +156,7 @@ function AiVoice:__init()
     end)
 
     Callbacks.roundEnd(function(e)
-        Client.onNextTick(function()
+        Client.fireAfter(0.1, function()
             local player = AiUtility.client
             local team = player:m_iTeamNum()
 

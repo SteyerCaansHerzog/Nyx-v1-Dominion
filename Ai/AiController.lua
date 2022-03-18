@@ -38,7 +38,7 @@ local AiStateEvade = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEvade"
 local AiStateFlashbang = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFlashbang"
 local AiStateFollow = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFollow"
 local AiStateGraffiti = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGraffiti"
-local AiStateGrenadeDynamic = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGrenadeDynamic"
+local AiStateFlashbangDynamic = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFlashbangDynamic"
 local AiStateHeGrenade = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateHeGrenade"
 local AiStateMolotov = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateMolotov"
 local AiStatePatrol = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePatrol"
@@ -71,7 +71,7 @@ local AiChatCommandAfk = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiCh
 local AiChatCommandBacktrack = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBacktrack"
 local AiChatCommandBomb = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBomb"
 local AiChatCommandBoost = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBoost"
-local AiChatCommandBuy = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBuy"
+local AiChatCommandBuy = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandRush"
 local AiChatCommandDisconnect = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandDisconnect"
 local AiChatCommandDrop = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandDrop"
 local AiChatCommandEco = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandEco"
@@ -80,9 +80,11 @@ local AiChatCommandFollow = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/A
 local AiChatCommandForce = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandForce"
 local AiChatCommandGo = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandGo"
 local AiChatCommandKnow = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandKnow"
+local AiChatCommandLog = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandLog"
 local AiChatCommandOk = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandOk"
 local AiChatCommandAssist = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandAssist"
 local AiChatCommandReload = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandReload"
+local AiChatCommandRush = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandRush"
 local AiChatCommandSave = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSave"
 local AiChatCommandSkill = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkill"
 local AiChatCommandSkillRng = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkillRng"
@@ -109,10 +111,6 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --{{{ AiController
 --- @class AiController : Class
 --- @field actions AiAction[]
---- @field antiAfkEnabled boolean
---- @field antiAfkLookAngles Angle
---- @field antiAfkMoveYaw number
---- @field antiAfkTimer Timer
 --- @field antiFlyTimer Timer
 --- @field antiFlyValues number
 --- @field canAvoidInfernos boolean
@@ -148,6 +146,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field unscopeTimer Timer
 --- @field view AiView
 --- @field voice AiVoice
+--- @field isisAntiAfkEnabled
 local AiController = {
 	states = {
 		avoidInfernos = AiStateAvoidInfernos,
@@ -163,7 +162,7 @@ local AiController = {
 		--flashbang = AiStateFlashbang,
 		follow = AiStateFollow,
 		graffiti = AiStateGraffiti,
-		grenadeDynamic = AiStateGrenadeDynamic,
+		flashbangDynamic = AiStateFlashbangDynamic,
 		heGrenade = AiStateHeGrenade,
 		chickenInteraction = AiStateChickenInteraction,
 		molotov = AiStateMolotov,
@@ -193,8 +192,10 @@ local AiController = {
 		force = AiChatCommandForce,
 		go = AiChatCommandGo,
 		know = AiChatCommandKnow,
+		log = AiChatCommandLog,
 		ok = AiChatCommandOk,
 		reload = AiChatCommandReload,
+		rush = AiChatCommandRush,
 		save = AiChatCommandSave,
 		scramble = AiChatCommandScramble,
 		silence = AiChatCommandSilence,
@@ -245,10 +246,7 @@ function AiController:initFields()
 		nodegraph = self.nodegraph
 	})
 
-	self.antiAfkEnabled = false
-	self.antiAfkLookAngles = Angle:new()
-	self.antiAfkMoveYaw = 0
-	self.antiAfkTimer = Timer:new():start()
+	self.isAntiAfkEnabled = false
 	self.antiFlyTimer = Timer:new():start()
 	self.antiFlyValues = {}
 	self.canBuyThisRound = true
@@ -271,7 +269,7 @@ function AiController:initFields()
 			self.nodegraph:clearPath("AI disabled")
 		end
 
-		self.view.enabled = value
+		self.view.isEnabled = value
 		self.lastPriority = nil
 		self.currentState = nil
 	end)
@@ -1106,15 +1104,7 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiController:antiAfk(ai)
-	if self.antiAfkTimer:isElapsedThenRestart(1) then
-		self.antiAfkLookAngles.p = Client.getRandomFloat(-10, 10)
-		self.antiAfkMoveYaw = Client.getRandomFloat(-180, 180)
-	end
-
-	ai.cmd.pitch = self.antiAfkLookAngles.p
-	ai.cmd.yaw = self.antiAfkLookAngles.y
-	ai.cmd.forwardmove = 125
-	ai.cmd.move_yaw = self.antiAfkMoveYaw
+	ai.cmd.in_duck = 1
 end
 
 --- @param ai AiOptions
@@ -1167,7 +1157,7 @@ function AiController:antiFlash(ai)
 
 	Client.unscope()
 
-	ai.view:lookAtLocation(eyeOrigin:getAngle(self.flashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 6)
+	ai.view:lookAtLocation(eyeOrigin:getAngle(self.flashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 6, "AiController avoid flashbang")
 end
 
 --- @param cmd SetupCommandEvent
@@ -1275,7 +1265,7 @@ function AiController:think(cmd)
 		return
 	end
 
-	if self.antiAfkEnabled then
+	if self.isAntiAfkEnabled then
 		self:antiAfk({
 			controller = self,
 			nodegraph = self.nodegraph,

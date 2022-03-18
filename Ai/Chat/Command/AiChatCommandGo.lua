@@ -88,20 +88,6 @@ function AiChatCommandGo:invoke(ai, sender, args)
                 ai.states.defend.defendingSite = objective
 
                 ai.states.defend:activate(ai, objective)
-
-                local siteNode = ai.nodegraph:getSiteNode(objective)
-                local team = player:m_iTeamNum()
-                local text
-
-                if team == 2 then
-                    text = "I'm %sgoing%s there now."
-                else
-                    text = "I'm %srotating%s there now."
-                end
-
-                if player:getOrigin():getDistance(siteNode.origin) > 1024 then
-                    ai.radio:speak(ai.radio.message.AGREE, 1, 0.33, 1, text, ai.radio.color.YELLOW, ai.radio.color.DEFAULT)
-                end
             end
         end
     end)

@@ -18,8 +18,8 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
---{{{ AiStateGrenadeDynamic
---- @class AiStateGrenadeDynamic : AiState
+--{{{ AiStateFlashbangDynamic
+--- @class AiStateFlashbangDynamic : AiState
 --- @field isActivated boolean
 --- @field isThrowing boolean
 --- @field canJumpThrow boolean
@@ -27,20 +27,22 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field throwAngles Angle
 --- @field throwCooldownTimer Timer
 --- @field throwTimer Timer
-local AiStateGrenadeDynamic = {
+--- @field throwAttemptCooldownTimer Timer
+local AiStateFlashbangDynamic = {
     name = "Grenade Dynamic"
 }
 
---- @param fields AiStateGrenadeDynamic
---- @return AiStateGrenadeDynamic
-function AiStateGrenadeDynamic:new(fields)
+--- @param fields AiStateFlashbangDynamic
+--- @return AiStateFlashbangDynamic
+function AiStateFlashbangDynamic:new(fields)
     return Nyx.new(self, fields)
 end
 
 --- @return void
-function AiStateGrenadeDynamic:__init()
+function AiStateFlashbangDynamic:__init()
     self.throwTimer = Timer:new()
     self.throwCooldownTimer = Timer:new():startThenElapse()
+    self.throwAttemptCooldownTimer = Timer:new():startThenElapse()
 
     Callbacks.roundStart(function()
     	self:reset()
@@ -48,9 +50,9 @@ function AiStateGrenadeDynamic:__init()
 end
 
 --- @return void
-function AiStateGrenadeDynamic:assess()
+function AiStateFlashbangDynamic:assess()
     -- Cooldown. We really need it.
-    if not self.throwCooldownTimer:isElapsed(12) then
+    if not self.throwCooldownTimer:isElapsed(12) or self.throwAttemptCooldownTimer:isElapsed(1.5) then
         return AiState.priority.IGNORE
     end
 
@@ -60,6 +62,7 @@ function AiStateGrenadeDynamic:assess()
     -- We may as well commit if we're already about to throw.
     if not self.isThrowing then
         -- Don't try flashes if it's not safe.
+        -- AiUtility.isClientThreatened is a little too generous so we're gonna use a smaller zone for threat detection.
         for _, enemy in pairs(AiUtility.enemies) do
             local distance = clientEyeOrigin:getDistance(enemy:getOrigin())
 
@@ -68,7 +71,7 @@ function AiStateGrenadeDynamic:assess()
                 return AiState.priority.IGNORE
             end
 
-            local enemyTestVisibilityBox = enemy:getEyeOrigin():getBox(Vector3.align.CENTER, 64)
+            local enemyTestVisibilityBox = enemy:getEyeOrigin():getBox(Vector3.align.CENTER, 100, 100, 32)
 
             -- Enemy could peek us, or we could peek them.
             for _, clientVertex in pairs(clientTestVisibilityBox) do
@@ -98,7 +101,7 @@ function AiStateGrenadeDynamic:assess()
     -- Angle to try our mentally handicapped flash prediction with.
     local predictionAngles = Angle:new(Client.getRandomFloat(-85, 25), Client.getRandomFloat(-180, 180))
 
-    -- I literally threw a flash into the sky and asked for the distance from my eye sockets to the detonation point.
+    -- I literally threw a flash into the sky and asked God for the approximate distance it flew before going off.
     local predictionDistance = 700
 
     -- Oh Source, do tell us where this stray nade "prediction" went?
@@ -109,7 +112,7 @@ function AiStateGrenadeDynamic:assess()
     })
 
     -- Throw away traces that end too close to us because they're useless and will just blind the AI.
-    -- Although, the AI would probably want to be blind if it pulled up its own hood and found this demented-ass method.
+    -- Although, the AI would probably want to be blind if it pulled up its own hood and found this demented-ass logic.
     if clientEyeOrigin:getDistance(impactTrace.endPosition) < 400 then
         return AiState.priority.IGNORE
     end
@@ -175,7 +178,7 @@ end
 
 --- @param ai AiOptions
 --- @return void
-function AiStateGrenadeDynamic:activate(ai)
+function AiStateFlashbangDynamic:activate(ai)
     ai.nodegraph:clearPath("throw a dynamic grenade")
 
     self.isActivated = true
@@ -183,14 +186,16 @@ end
 
 --- @param ai AiOptions
 --- @return void
-function AiStateGrenadeDynamic:deactivate(ai)
+function AiStateFlashbangDynamic:deactivate(ai)
     Client.equipPrimary()
+
+    self.throwAttemptCooldownTimer:restart()
 
     self:reset()
 end
 
 --- @return void
-function AiStateGrenadeDynamic:reset()
+function AiStateFlashbangDynamic:reset()
     self.throwAngles = nil
     self.isThrowing = false
     self.canJumpThrow = false
@@ -202,7 +207,7 @@ end
 
 --- @param ai AiOptions
 --- @return void
-function AiStateGrenadeDynamic:think(ai)
+function AiStateFlashbangDynamic:think(ai)
     if AiUtility.isRoundOver or not self.targetPlayer:isAlive() then
         self:reset()
 
@@ -214,7 +219,6 @@ function AiStateGrenadeDynamic:think(ai)
     ai.controller.canLookAwayFromFlash = false
     ai.controller.isQuickStopping = true
     ai.nodegraph.isAllowedToAvoidTeammates = false
-    ai.view.isCrosshairFloating = true
     ai.view.isCrosshairUsingVelocity = true
     ai.view.isCrosshairSmoothed = false
 
@@ -222,11 +226,11 @@ function AiStateGrenadeDynamic:think(ai)
         Client.equipFlashbang()
     end
 
-    ai.view:lookInDirection(self.throwAngles, 4.5)
+    ai.view:lookInDirection(self.throwAngles, 4.5, ai.view.noiseType.IDLE, "FlashbangDynamic look at throw angle")
 
     local maxDiff = self.throwAngles:getMaxDiff(Client.getCameraAngles())
 
-    if maxDiff < 6
+    if maxDiff < 15
         and AiUtility.client:isHoldingWeapon(Weapons.FLASHBANG)
         and AiUtility.client:isAbleToAttack()
     then
@@ -258,5 +262,5 @@ function AiStateGrenadeDynamic:think(ai)
     end
 end
 
-return Nyx.class("AiStateGrenadeDynamic", AiStateGrenadeDynamic, AiState)
+return Nyx.class("AiStateFlashbangDynamic", AiStateFlashbangDynamic, AiState)
 --}}}

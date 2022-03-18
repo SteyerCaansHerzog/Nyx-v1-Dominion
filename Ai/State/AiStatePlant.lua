@@ -165,7 +165,9 @@ function AiStatePlant:activate(ai, site)
 
         ai.radio:speak(ai.radio.message.FOLLOW_ME, 1, 0.5, 1, "I'm %staking%s the %sbomb%s to %sbombsite %s%s.", ai.radio.color.YELLOW, ai.radio.color.DEFAULT, ai.radio.color.GOLD, ai.radio.color.DEFAULT, color, self.plantAt:upper(), ai.radio.color.DEFAULT)
 
-        if not AiUtility.isLastAlive then
+        local distanceToSite = origin:getDistance(ai.nodegraph:getNearestSiteNode(origin).origin)
+
+        if not AiUtility.isLastAlive and distanceToSite > 800 then
             ai.voice.pack:speakRequestTeammatesToPush(self.plantAt)
         end
     end
@@ -182,7 +184,7 @@ function AiStatePlant:think(ai)
     local distance = player:getOrigin():getDistance(self.node.origin)
 
     if distance < 72 then
-        ai.view:lookInDirection(self.node.direction, 3)
+        ai.view:lookInDirection(self.node.direction, 5, ai.view.noiseType.IDLE, "Plant look at angle")
         ai.controller.isQuickStopping = true
     end
 

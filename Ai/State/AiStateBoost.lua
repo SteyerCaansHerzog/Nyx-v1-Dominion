@@ -135,9 +135,9 @@ function AiStateBoost:think(ai)
                 ai.cmd.in_duck = 1
             end
 
-            ai.view:lookAtLocation(self.boostPlayer:getHitboxPosition(Player.hitbox.NECK), 2)
+            ai.view:lookAtLocation(self.boostPlayer:getHitboxPosition(Player.hitbox.NECK), 2, ai.view.noiseType.IDLE, "Boost look at booster")
         else
-            ai.view:lookInDirection(self.boostLookAngles, 2)
+            ai.view:lookInDirection(self.boostLookAngles, 2, ai.view.noiseType.IDLE, "Boost copy booster direction")
         end
     end
 end

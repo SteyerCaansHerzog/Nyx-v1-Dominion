@@ -478,7 +478,7 @@ function AiStateEngage:think(ai)
 
     self:tellRotate(ai)
     self:walk(ai)
-    self:engage(ai)
+    self:moveOnBestTarget(ai)
 end
 
 --- @param ai AiOptions
@@ -586,6 +586,10 @@ end
 --- @param player Player
 --- @return void
 function AiStateEngage:unnoticeEnemy(player)
+    if not self.noticedPlayerTimers[player.eid] then
+        return
+    end
+
     self.noticedPlayerTimers[player.eid]:stop()
     self.noticedLoudPlayerTimers[player.eid]:stop()
 end
@@ -767,7 +771,7 @@ function AiStateEngage:setWeaponStats(enemy)
             priorityHitbox = Player.hitbox.SPINE_2,
             isBoltAction = true,
             evaluate = function()
-                return csgoWeapon.name == "AWP"
+                return player:isHoldingWeapon(Weapons.AWP)
             end
         },
         {
@@ -792,7 +796,7 @@ function AiStateEngage:setWeaponStats(enemy)
             priorityHitbox = Player.hitbox.HEAD,
             isBoltAction = true,
             evaluate = function()
-                return csgoWeapon.name == "SSG 08"
+                return player:isHoldingWeapon(Weapons.SSG08)
             end
         },
         {
@@ -838,7 +842,7 @@ function AiStateEngage:setWeaponStats(enemy)
                 short = true
             },
             runAtCloseRange = false,
-            priorityHitbox = Player.hitbox.HEAD,
+            priorityHitbox = Player.hitbox.SPINE_3,
             evaluate = function()
                 return player:isHoldingRifle()
             end
@@ -961,9 +965,7 @@ function AiStateEngage:setWeaponStats(enemy)
             runAtCloseRange = true,
             priorityHitbox = Player.hitbox.HEAD,
             evaluate = function()
-                local weapon = CsgoWeapons[player:getWeapon():m_iItemDefinitionIndex()]
-
-                return weapon.name == "CZ75-Auto"
+                return csgoWeapon.name == "CZ75-Auto"
             end
         },
         {
@@ -1324,8 +1326,8 @@ end
 
 --- @param ai AiOptions
 --- @return void
-function AiStateEngage:engage(ai)
-    self:attack(ai)
+function AiStateEngage:moveOnBestTarget(ai)
+    self:attackBestTarget(ai)
 
     if not self.bestTarget then
         return
@@ -1422,15 +1424,16 @@ end
 
 --- @param ai AiOptions
 --- @return void
-function AiStateEngage:attack(ai)
+function AiStateEngage:attackBestTarget(ai)
     if not Menu.master:get() or not Menu.enableAi:get() or not Menu.enableAimbot:get() then
         return
     end
 
     -- Prevent certain generic behaviours.
     ai.controller.canUseKnife = false
-    ai.nodegraph.isAllowedToAvoidTeammates = false
     ai.controller.canInspectWeapon = false
+    ai.nodegraph.isAllowedToAvoidTeammates = false
+    ai.view.isAllowedToWatchCorners = false
 
     -- Prevent reloading/unscoping when enemies are visible.
     if next(AiUtility.visibleEnemies) then
@@ -1459,6 +1462,9 @@ function AiStateEngage:attack(ai)
     if not self:hasNoticedEnemies() then
         return
     end
+
+    -- Wide-peek enemies.
+    self:ferrariPeek(ai)
 
     -- Block overpowered spray transfers.
     if not self.blockTimer:isElapsed(self.blockTime) then
@@ -1591,9 +1597,6 @@ function AiStateEngage:attack(ai)
         return
     end
 
-    -- Wide-peek enemies.
-    self:ferrariPeek(ai)
-
     self.isTargetEasilyShot = visibleHitboxCount >= 8
 
     -- Begin watching last angle.
@@ -1626,7 +1629,7 @@ function AiStateEngage:attack(ai)
 
     -- Make sure the default mouse movement isn't active while the enemy is visible but the reaction timer hasn't elapsed.
     if AiUtility.visibleEnemies[enemy.eid] and shootFov < 40 then
-        ai.view:lookAtLocation(hitbox, 2.5)
+        ai.view:lookAtLocation(hitbox, 2.5, ai.view.noiseType.IDLE, "Engage prepare to react")
         Client.draw(Vector3.drawCircleOutline, hitbox, 12, 2, Color:hsla(50, 1, 0.5, 200))
     end
 
@@ -1640,12 +1643,12 @@ function AiStateEngage:attack(ai)
             self:noticeEnemy(enemy, 4096, false, "In shoot FoV")
             self:shoot(ai, hitbox, shootFov, enemy)
         elseif shootFov < 40 then
-            ai.view:lookAtLocation(hitbox, self.aimSpeed * 0.8)
+            ai.view:lookAtLocation(hitbox, self.aimSpeed * 0.8, ai.view.noiseType.MINOR, "Engage find enemy under 40 FoV")
 
             self.watchTimer:start()
             self.lastSeenTimers[enemy.eid]:start()
         elseif shootFov >= 40 and self:hasNoticedEnemy(enemy) then
-            ai.view:lookAtLocation(hitbox, self.slowAimSpeed)
+            ai.view:lookAtLocation(hitbox, self.slowAimSpeed, ai.view.noiseType.MINOR, "Engage find enemy over 40 FoV")
         end
     end
 end
@@ -1763,7 +1766,6 @@ function AiStateEngage:shoot(ai, aimAtBaseOrigin, fov, enemy)
     ai.controller.canLookAwayFromFlash = false
 
     -- Set mouse movement parameters.
-    ai.view.isCrosshairFloating = false
     ai.view.isCrosshairSmoothed = false
     ai.view.isCrosshairUsingVelocity = true
 
@@ -1804,6 +1806,8 @@ function AiStateEngage:shootPistol(ai, aimAtOrigin, fov, weapon)
         self:actionJiggle(ai, self.jiggleTime * 0.66)
 
         isVelocityOk = AiUtility.client:m_vecVelocity():getMagnitude() < 100
+    elseif AiUtility.totalThreats > 1 then
+        self:actionBackUp(ai)
     end
 
     local aimSpeed = self.aimSpeed
@@ -1812,7 +1816,7 @@ function AiStateEngage:shootPistol(ai, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-    ai.view:lookAtLocation(aimAtOrigin, aimSpeed)
+    ai.view:lookAtLocation(aimAtOrigin, aimSpeed, ai.view.noiseType.MINOR, "Engage look at target")
 
     if fov < 4
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
@@ -1835,10 +1839,12 @@ function AiStateEngage:shootLight(ai, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-    ai.view:lookAtLocation(aimAtOrigin, aimSpeed)
+    ai.view:lookAtLocation(aimAtOrigin, aimSpeed, ai.view.noiseType.MINOR, "Engage look at target")
 
     if not self.canRunAndShoot then
         self:actionCounterStrafe(ai)
+    elseif AiUtility.totalThreats > 1 then
+        self:actionBackUp(ai)
     end
 
     if fov < 4
@@ -1861,10 +1867,14 @@ function AiStateEngage:shootShotgun(ai, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-    ai.view:lookAtLocation(aimAtOrigin, aimSpeed)
+    ai.view:lookAtLocation(aimAtOrigin, aimSpeed, ai.view.noiseType.MINOR, "Engage look at target")
 
     if distance > 1000 then
         return
+    end
+
+    if AiUtility.totalThreats > 1 then
+        self:actionBackUp(ai)
     end
 
     if fov < 4
@@ -1880,7 +1890,7 @@ end
 --- @param weapon CsgoWeapon
 --- @return void
 function AiStateEngage:shootHeavy(ai, aimAtOrigin, fov, weapon)
-    ai.view:lookAtLocation(aimAtOrigin, self.aimSpeed)
+    ai.view:lookAtLocation(aimAtOrigin, self.aimSpeed, ai.view.noiseType.MINOR, "Engage look at target")
 
     if self.isTargetEasilyShot then
         self:actionCounterStrafe(ai)
@@ -1920,7 +1930,7 @@ function AiStateEngage:shootSniper(ai, aimAtOrigin, fov, weapon)
 
     -- Create a "flick" effect when aiming.
     if self.scopedTimer:isElapsed(fireDelay * 0.4) then
-        ai.view:lookAtLocation(aimAtOrigin, self.aimSpeed * 3)
+        ai.view:lookAtLocation(aimAtOrigin, self.aimSpeed * 3, ai.view.noiseType.MINOR, "Engage look at target")
     end
 
     if fov < 8 then
@@ -1940,6 +1950,15 @@ function AiStateEngage:shootSniper(ai, aimAtOrigin, fov, weapon)
     then
         ai.cmd.in_attack = 1
     end
+end
+
+--- @param ai AiOptions
+--- @return void
+function AiStateEngage:actionBackUp(ai)
+    -- Move backwards because we don't feel like deliberately peeking the entire enemy team at once.
+    local angleToEnemy = Client.getOrigin():getAngle(self.bestTarget:getOrigin())
+
+    ai.nodegraph.moveAngle = -angleToEnemy
 end
 
 --- @param ai AiOptions
@@ -1969,6 +1988,11 @@ function AiStateEngage:actionCounterStrafe(ai)
     if self.isTargetEasilyShot then
         -- Duck for better accuracy.
         ai.cmd.in_duck = 1
+
+        -- Move backwards because we don't feel like deliberately peeking the entire enemy team at once.
+        if AiUtility.totalThreats > 1 then
+            self:actionBackUp(ai)
+        end
     else
         local velocity = AiUtility.client:m_vecVelocity()
 
@@ -2083,7 +2107,6 @@ function AiStateEngage:ferrariPeek(ai)
     end
 
     local player = AiUtility.client
-    local playerEid = Client.getEid()
     local playerOrigin = player:getOrigin()
     local enemyOrigin = enemy:getOrigin()
     local angleToEnemy = playerOrigin:getAngle(enemyOrigin)
@@ -2103,12 +2126,10 @@ function AiStateEngage:ferrariPeek(ai)
     }
 
     local isVisible = false
-    local steps = 2
+    local steps = 3
     local stepDistance = 16
     --- @type Angle
     local moveAngle
-
-    local iDebug = 0
     local successes = 0
 
     for _, startPoint in pairs(startPoints) do
@@ -2128,10 +2149,9 @@ function AiStateEngage:ferrariPeek(ai)
 
                 local startOffset = playerOrigin + startPoint
                 local traceOrigin = startOffset + (direction * i * stepDistance)
-                local _, fraction = startOffset:getTraceLine(traceOrigin, playerEid)
-                iDebug = iDebug + 1
+                local trace = Trace.getLineToPosition(startOffset, traceOrigin, AiUtility.traceOptionsAttacking)
 
-                if fraction == 1 then
+                if not trace.isIntersectingGeometry then
                     for _, hitbox in pairs(enemy:getHitboxPositions({
                         Player.hitbox.HEAD,
                         Player.hitbox.LEFT_LOWER_LEG,
@@ -2139,16 +2159,14 @@ function AiStateEngage:ferrariPeek(ai)
                         Player.hitbox.LEFT_LOWER_ARM,
                         Player.hitbox.RIGHT_LOWER_ARM,
                     })) do
-                        local _, fraction, eid = traceOrigin:getTraceLine(hitbox, playerEid)
+                        local trace = Trace.getLineToPosition(traceOrigin, hitbox, AiUtility.traceOptionsAttacking)
 
-                        iDebug = iDebug + 1
-
-                        if eid == enemy.eid or fraction == 1 then
+                        if not trace.isIntersectingGeometry then
                             successes = successes + 1
 
                             if successes >= 2 then
                                 isVisible = true
-                                moveAngle = Vector3:new():getAngle(direction)
+                                moveAngle = direction:getAngleFromForward()
 
                                 break
                             end
@@ -2211,9 +2229,9 @@ function AiStateEngage:preAimThroughCorners(ai)
     local isPeeking = false
 
     for _, hitbox in pairs(hitboxes) do
-        local _, fraction, eid = testOrigin:getTraceLine(hitbox, playerEid)
+        local trace = Trace.getLineToPosition(testOrigin, hitbox, AiUtility.traceOptionsAttacking)
 
-        if eid == target.eid or fraction == 1 then
+        if not trace.isIntersectingGeometry then
             isPeeking = true
 
             break
@@ -2225,17 +2243,22 @@ function AiStateEngage:preAimThroughCorners(ai)
     end
 
     -- Don't pre-aim if the enemy is about to peek us.
-    local targetVelocity = target:m_vecVelocity() * 0.4
+    local targetVelocity = target:m_vecVelocity()
+    local targetSpeed = targetVelocity:getMagnitude()
 
-    for _, hitbox in pairs(hitboxes) do
-        hitbox = hitbox + targetVelocity
+    if targetSpeed > 100 then
+        targetVelocity = targetVelocity * 0.4
 
-        local _, fraction, eid = playerOrigin:getTraceLine(hitbox, playerEid)
+        for _, hitbox in pairs(hitboxes) do
+            hitbox = hitbox + targetVelocity
 
-        if eid == target.eid or fraction == 1 then
-            self.preAimThroughCornerBlockTimer:start()
+            local _, fraction, eid = playerOrigin:getTraceLine(hitbox, playerEid)
 
-            return
+            if eid == target.eid or fraction == 1 then
+                self.preAimThroughCornerBlockTimer:start()
+
+                return
+            end
         end
     end
 
@@ -2253,7 +2276,7 @@ function AiStateEngage:preAimThroughCorners(ai)
 
     self.preAimTarget = self.bestTarget
 
-    ai.view:lookAtLocation(self.preAimCornerOrigin, self.slowAimSpeed)
+    ai.view:lookAtLocation(self.preAimCornerOrigin, self.slowAimSpeed, ai.view.noiseType.NONE, "Engage look through corner")
     Client.draw(Vector3.drawCircleOutline, self.preAimCornerOrigin, 16, 2, Color:hsla(100, 1, 0.5, 150))
 end
 
@@ -2353,9 +2376,8 @@ function AiStateEngage:preAimAboutCorners(ai)
     end
 
     ai.controller.canUnscope = false
-    ai.view.isCrosshairFloating = false
 
-    ai.view:lookAtLocation(closestVertex, self.slowAimSpeed)
+    ai.view:lookAtLocation(closestVertex, self.slowAimSpeed, ai.view.noiseType.NONE, "Engage look at corner")
     Client.draw(Vector3.drawCircleOutline, closestVertex, 12, 2, Color:hsla(200, 1, 0.5, 200))
 end
 
@@ -2378,7 +2400,7 @@ function AiStateEngage:watchAngle(ai)
         self.watchOrigin = nil
     end
 
-    ai.view:lookAtLocation(self.watchOrigin, self.aimSpeed)
+    ai.view:lookAtLocation(self.watchOrigin, self.aimSpeed, ai.view.noiseType.IDLE, "Engage watch last spot")
     Client.draw(Vector3.drawCircleOutline, self.watchOrigin, 16, 2, Color:hsla(300, 1, 0.5, 200))
 end
 

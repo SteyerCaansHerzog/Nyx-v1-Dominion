@@ -90,7 +90,7 @@ function AiStateFollow:think(ai)
     end
 
     if distance < 256 then
-        ai.view:lookAtLocation(self.followingPlayer:getHitboxPosition(Player.hitbox.HEAD), 2)
+        ai.view:lookAtLocation(self.followingPlayer:getHitboxPosition(Player.hitbox.HEAD), 2, ai.view.noiseType.IDLE, "Follow look at player")
     end
 end
 

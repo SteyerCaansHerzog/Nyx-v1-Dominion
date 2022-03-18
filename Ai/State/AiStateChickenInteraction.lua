@@ -158,7 +158,7 @@ function AiStateChickenInteraction:think(ai)
     end
 
     if distance < 200 then
-        ai.view:lookAtLocation(chickenOrigin, 5.5)
+        ai.view:lookAtLocation(chickenOrigin, 5.5, ai.view.noiseType.MINOR, "ChickenInteraction look at chicken")
     end
 
     local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), chickenOrigin)

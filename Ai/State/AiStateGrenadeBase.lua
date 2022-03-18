@@ -242,11 +242,10 @@ function AiStateGrenadeBase:think(ai)
     if distance < 150 then
         ai.nodegraph.moveAngle = playerOrigin:getAngle(self.node.origin)
         ai.nodegraph.isAllowedToAvoidTeammates = false
-        ai.view.isCrosshairFloating = false
         ai.view.isCrosshairUsingVelocity = false
         ai.view.isCrosshairSmoothed = true
 
-        ai.view:lookInDirection(self.node.direction, 5)
+        ai.view:lookInDirection(self.node.direction, 5, ai.view.noiseType.NONE, "GrenadeBase look at line-up")
 
         local deltaAngles = self.node.direction:getAbsDiff(Client.getCameraAngles())
 

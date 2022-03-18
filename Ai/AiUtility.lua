@@ -106,6 +106,10 @@ local AiWeaponNames = {
 --- @field weaponNames string[]
 --- @field weaponPriority AiWeaponPriorityGeneral
 --- @field defuseTimer Timer
+--- @field threatOrigin Vector3
+--- @field threatUpdateTimer Timer
+--- @field totalThreats number
+--- @field isClientThreatened boolean
 local AiUtility = {
     mainWeapons = {
         Weapons.FAMAS, Weapons.GALIL, Weapons.M4A1, Weapons.AUG, Weapons.AK47, Weapons.AWP, Weapons.SG553, Weapons.SSG08
@@ -135,6 +139,7 @@ function AiUtility:initFields()
     self.teammates = {}
     self.enemiesAlive = 0
     self.teammatesAlive = 0
+    self.threatUpdateTimer = Timer:new():startThenElapse()
 
     local solidPathfindingEntities = {
         CDynamicProp = true,
@@ -450,6 +455,60 @@ function AiUtility:initEvents()
             end
 
             self.canDefuse = time > defuseTime
+        end
+
+        -- Update threats.
+        local eyeOrigin = Client.getEyeOrigin() + AiUtility.client:m_vecVelocity() * 0.5
+        local threatUpdateTime = self.threatOrigin and 2.5 or 0.5
+        local threats = 0
+
+        -- Don't update the watch origin too often, or it'll be obvious this is effectively wallhacking.
+        if self.threatUpdateTimer:isElapsedThenRestart(threatUpdateTime) then
+            self.threatOrigin = nil
+            self.isClientThreatened = false
+
+            for _, enemy in pairs(AiUtility.enemies) do
+                local enemyOffset = enemy:getOrigin():offset(0, 0, 64)
+                local angle = eyeOrigin:getAngle(enemyOffset):offset(0, 90)
+                local steps = 16
+                local stepDistance = 180 / 16
+                --- @type Vector3
+                local closestPoint
+                local closestPointDistance = math.huge
+
+                for _ = 1, steps do
+                    -- Trace our circle and collide with walls.
+                    local wallTrace = Trace.getLineAtAngle(enemyOffset, angle, Table.merge(AiUtility.traceOptionsAttacking, {
+                        distance = 350
+                    }))
+
+                    wallTrace.endPosition:lerp(enemyOffset, 0.25)
+
+                    -- Trace to see if we can see the previous trace.
+                    local testTrace = Trace.getLineToPosition(wallTrace.endPosition, eyeOrigin, AiUtility.traceOptionsAttacking)
+
+                    -- Set the closest point to the enemy as the best point to look at.
+                    if not testTrace.isIntersectingGeometry then
+                        local distance = enemyOffset:getDistance(testTrace.endPosition)
+
+                        if distance < closestPointDistance then
+                            closestPointDistance = distance
+                            closestPoint = wallTrace.endPosition
+                        end
+                    end
+
+                    angle:offset(0, stepDistance)
+                end
+
+                if closestPoint then
+                    self.threatOrigin = closestPoint
+                    self.isClientThreatened = true
+
+                    threats = threats + 1
+                end
+            end
+
+            self.totalThreats = threats
         end
     end)
 end

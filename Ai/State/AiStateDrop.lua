@@ -68,11 +68,11 @@ function AiStateDrop:think(ai)
     local player = AiUtility.client
     local hitbox = self.requestingPlayer:getOrigin():offset(0, 0, 64)
 
-    ai.view:lookAtLocation(hitbox, 8)
+    ai.view:lookAtLocation(hitbox, 8, ai.view.noiseType.MINOR, "Drop look at requester")
 
     local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), hitbox)
 
-    if fov < 4 then
+    if fov < 20 then
         self.droppingGearTimer:ifPausedThenStart()
 
         if Entity.getGameRules():m_bFreezePeriod() == 1 and not AiUtility.client:hasWeapons(AiUtility.mainWeapons) and player:m_iAccount() > 3200 then
@@ -86,7 +86,9 @@ function AiStateDrop:think(ai)
 
             Client.fireAfter(Client.getRandomFloat(0.75, 1.25), function()
                 if not player:hasWeapons(AiUtility.mainWeapons) then
-                    if player:m_iAccount() >= 3200 then
+                    local balance = player:m_iAccount()
+
+                    if not balance or (balance and balance >= 3200) then
                         Client.execute("buy m4a4; buy ak47; buy m4a1_silencer")
                     end
                 end

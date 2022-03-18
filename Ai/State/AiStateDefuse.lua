@@ -90,18 +90,26 @@ function AiStateDefuse:assess()
         return AiState.priority.IGNORE
     end
 
-    local playerOrigin = player:getOrigin()
-    local isCovered = false
-
     if AiUtility.isBombBeingDefusedByTeammate then
         return AiState.priority.IGNORE
     end
 
-    for _, teammate in pairs(AiUtility.teammates) do
-        if playerOrigin:getDistance(teammate:getOrigin()) < 512 then
-            isCovered = true
+    local clientOrigin = player:getOrigin()
+    local isCovered = false
+    local nearestTeammateDistance = math.huge
+    local bombOrigin = AiUtility.plantedBomb:m_vecOrigin()
 
-            break
+    for _, teammate in pairs(AiUtility.teammates) do
+        local teammateOrigin = teammate:getOrigin()
+
+        if clientOrigin:getDistance(teammateOrigin) < 512 then
+            isCovered = true
+        end
+
+        local teammateDistanceToBomb = teammateOrigin:getDistance(bombOrigin)
+
+        if teammateDistanceToBomb < nearestTeammateDistance then
+            nearestTeammateDistance = teammateDistanceToBomb
         end
     end
 
@@ -111,14 +119,22 @@ function AiStateDefuse:assess()
         return AiState.priority.DEFUSE_STICK
     end
 
-    if player:m_bIsDefusing() == 1 and playerOrigin:getDistance(bomb:getOrigin()) < 64 and isCovered then
+    if player:m_bIsDefusing() == 1 and clientOrigin:getDistance(bomb:getOrigin()) < 64 and isCovered then
         return AiState.priority.DEFUSE_COVERED
     end
 
-    for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
-        if playerOrigin:getDistance(smoke:m_vecOrigin()) < 80 then
-            return AiState.priority.DEFUSE_COVERED
+    local clientDistanceToBomb = clientOrigin:getDistance(bombOrigin)
+
+    if clientDistanceToBomb < 80 then
+        for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
+            if clientOrigin:getDistance(smoke:m_vecOrigin()) < 80 then
+                return AiState.priority.DEFUSE_COVERED
+            end
         end
+    end
+
+    if isCovered and clientDistanceToBomb < 256 and clientDistanceToBomb < nearestTeammateDistance then
+        -- todo return AiState.priority.DEFEND_ACTIVE makes them spazz out
     end
 
     if AiUtility.bombDetonationTime <= 15 then
@@ -178,7 +194,6 @@ function AiStateDefuse:think(ai)
     local distance = AiUtility.client:getOrigin():getDistance(bombOrigin)
 
     if distance < 64 then
-        ai.view.isCrosshairFloating = false
         ai.view.isCrosshairUsingVelocity = false
 
         self.isDefusing = true
@@ -187,16 +202,15 @@ function AiStateDefuse:think(ai)
     end
 
     if AiUtility.client:m_bIsDefusing() == 1 then
-        ai.view:lookInDirection(Client.getCameraAngles(), 4)
+        ai.view:lookInDirection(Client.getCameraAngles(), 4, ai.view.noiseType.NONE, "Defuse keep current angles")
     elseif distance < 256 then
-        ai.view:lookAtLocation(bombOrigin:clone():offset(5, -3, 14), 4.5)
+        ai.view:lookAtLocation(bombOrigin:clone():offset(5, -3, 14), 4.5, ai.view.noiseType.MOVING, "Defuse look at bomb")
     end
 
     if self.isDefusing then
         ai.controller.canReload = false
         ai.cmd.in_use = 1
         ai.cmd.in_duck = 1
-        ai.view.isCrosshairFloating = false
 
         if AiUtility.client:hasWeapon(Weapons.SMOKE)
             and Table.isEmpty(AiUtility.visibleEnemies)
@@ -209,7 +223,7 @@ function AiStateDefuse:think(ai)
                 Client.equipSmoke()
             end
 
-            ai.view:lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 4.5)
+            ai.view:lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 4.5, ai.view.noiseType.NONE, "Defuse look to drop smoke")
 
             if AiUtility.client:isAbleToAttack() then
                 if Client.getCameraAngles().p > 22 then

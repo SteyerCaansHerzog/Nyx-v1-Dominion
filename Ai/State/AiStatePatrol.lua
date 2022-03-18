@@ -113,7 +113,7 @@ function AiStatePatrol:think(ai)
             if bomb then
                 local bombOrigin = bomb:m_vecOrigin()
 
-                ai.view:lookAtLocation(bombOrigin, 4)
+                ai.view:lookAtLocation(bombOrigin, 4, ai.view.noiseType.MINOR, "Patrol look at bomb")
 
                 local deltaAngles = Client.getEyeOrigin():getAngle(bombOrigin):getAbsDiff(Client.getCameraAngles())
 

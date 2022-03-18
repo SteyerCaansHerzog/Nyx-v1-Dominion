@@ -185,7 +185,6 @@ function AiStateWatch:think(ai)
 
     if distance < 100 then
         ai.controller.isQuickStopping = true
-        ai.view.isCrosshairFloating = false
         ai.controller.canUnscope = false
         ai.nodegraph.isAllowedToAvoidTeammates = false
     end
@@ -194,7 +193,7 @@ function AiStateWatch:think(ai)
         local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
         local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding)
 
-        ai.view:lookAtLocation(trace.endPosition, 3)
+        ai.view:lookAtLocation(trace.endPosition, 3, ai.view.noiseType.IDLE, "Watch look at angle")
 
         ai.controller.canUseKnife = false
 

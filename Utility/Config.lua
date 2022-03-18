@@ -7,7 +7,8 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --- @field administrators string[]
 --- @field isDebugging boolean
 --- @field isJoiningServerOnStartup boolean
---- @field isLiveClient boolean When true, this bot will connect to the Nyx Dominion AI Service and act as a client.
+--- @field isLiveClient boolean When true, the bot will connect to the Nyx Dominion AI Service and act as a client.
+--- @field isUserInputSafe boolean When true, the bot will emulate the keyboard. Results in less accurate movement.
 local Config = {
     administrators = {
         "76561198373386496", -- Braff
@@ -16,7 +17,8 @@ local Config = {
     },
     isDebugging = false,
     isJoiningServerOnStartup = false,
-    isLiveClient = false
+    isLiveClient = false,
+    isUserInputSafe = true
 }
 
 return Nyx.class("Config", Config)
