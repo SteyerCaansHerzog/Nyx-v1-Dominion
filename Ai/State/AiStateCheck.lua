@@ -2,11 +2,11 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
 --}}}
 
 --{{{ Modules
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
@@ -14,6 +14,8 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @class AiStateCheck : AiState
 --- @field node Node
 --- @field isChecking boolean
+--- @field abortDistance number
+--- @field objectiveName string
 local AiStateCheck = {
     name = "Check"
 }
@@ -26,6 +28,8 @@ end
 
 --- @return void
 function AiStateCheck:__init()
+    self.abortDistance = Client.getRandomInt(64, 256)
+
     Callbacks.roundStart(function()
     	self:reset()
     end)
@@ -52,6 +56,8 @@ function AiStateCheck:activate(ai, spawn)
 
     local objectiveName = Node.typesName[spawn.type]
 
+    self.objectiveName = objectiveName
+
     ai.nodegraph:pathfind(spawn.origin, {
         objective = Node.types.GOAL,
         retry = false,
@@ -72,7 +78,19 @@ end
 
 --- @param ai AiOptions
 --- @return void
-function AiStateCheck:think(ai) end
+function AiStateCheck:think(ai)
+    self.activity = string.format("Going to check %s", self.objectiveName)
+
+    local distance = AiUtility.client:getOrigin():getDistance(self.node.origin)
+
+    if distance < 350 then
+        self.activity = string.format("Checking %s", self.objectiveName)
+    end
+
+    if distance < self.abortDistance then
+        self.isChecking = false
+    end
+end
 
 --- @param ai AiOptions
 --- @param spawn string

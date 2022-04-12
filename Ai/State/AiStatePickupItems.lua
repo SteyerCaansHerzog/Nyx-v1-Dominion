@@ -2,9 +2,9 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
+local CsgoWeapons = require "gamesense/csgo_weapons"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
@@ -21,11 +21,12 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 
 --{{{ AiStatePickupItems
 --- @class AiStatePickupItems : AiState
---- @field item Entity
 --- @field currentPriority number
---- @field useCooldown Timer
---- @field lookAtItem boolean
 --- @field entityBlacklist boolean[]
+--- @field item Entity
+--- @field lookAtItem boolean
+--- @field recalculateItemsTimer Timer
+--- @field useCooldown Timer
 local AiStatePickupItems = {
     name = "PickupItems"
 }
@@ -39,11 +40,28 @@ end
 --- @return void
 function AiStatePickupItems:__init()
     self.useCooldown = Timer:new():startThenElapse()
+    self.recalculateItemsTimer = Timer:new():startThenElapse()
     self.entityBlacklist = {}
+
+    Callbacks.runCommand(function()
+        if self.recalculateItemsTimer:isElapsedThenRestart(2) then
+            self.item = nil
+        end
+    end)
 
     Callbacks.roundStart(function()
         self.item = nil
         self.entityBlacklist = {}
+    end)
+
+    Callbacks.itemRemove(function(e)
+        self.item = nil
+    end)
+
+    Callbacks.itemPickup(function(e)
+        if e.player:isClient() then
+            self.item = nil
+        end
     end)
 end
 
@@ -88,21 +106,58 @@ function AiStatePickupItems:assess()
     --- @type Entity
     local chosenWeapon
     local highestPriority = -1
+    local closestDistance = math.huge
 
-    for _, weapon in Entity.find(AiUtility.weaponNames) do
+    for _, weapon in Entity.find(AiUtility.weaponNames) do repeat
+        -- Item is blacklisted due to being out of reach.
+        if self.entityBlacklist[weapon.eid] then
+            break
+        end
+
+        -- Entity isn't valid anymore.
+        if not weapon:isValid() then
+            break
+        end
+
+        -- Item has been picked up.
+        if weapon:m_hOwner() then
+            break
+        end
+
         local priority = AiUtility.weaponPriority[weapon.classname]
 
-        if not self.entityBlacklist[weapon.eid] and
-            not weapon:m_hOwner()
-            and weapon:isValid()
-            and (priority and priority > highestPriority)
-            and origin:getDistance(weapon:m_vecOrigin()) < 1024
-        then
-            highestPriority = priority
-            chosenWeapon = weapon
+        -- Item is not in our list of items worth picking up.
+        if not priority then
+            break
         end
-    end
 
+        local distance = origin:getDistance(weapon:m_vecOrigin())
+
+        -- Item is too far away.
+        if distance > 1024 then
+            break
+        end
+
+        if priority < highestPriority then
+            -- Item is lower priority than the best item we've found.
+
+            break
+        elseif priority == highestPriority then
+            -- Item is the same priority as the best item we've found.
+
+            -- Item is closer to us, so it's better to want this one instead. Otherwise ignore it.
+            if distance < closestDistance then
+                closestDistance = distance
+            else
+                break
+            end
+        end
+
+        highestPriority = priority
+        chosenWeapon = weapon
+    until true end
+
+    -- We have an item we would like, and it's better than anything we have equipped.
     if chosenWeapon and highestPriority > lowestPriority then
         self.item = chosenWeapon
         self.lookAtItem = true
@@ -157,13 +212,23 @@ function AiStatePickupItems:activate(ai) end
 --- @return void
 function AiStatePickupItems:deactivate()
     if self.item and self.item:m_hOwner() == Client.getEid() then
-        Client.equipAnyWeapon()
+        if AiUtility.client:hasPrimary() then
+            Client.equipPrimary()
+        else
+            Client.equipPistol()
+        end
     end
 end
 
 --- @param ai AiOptions
 --- @return void
 function AiStatePickupItems:think(ai)
+    local weapon = CsgoWeapons[self.item:m_iItemDefinitionIndex()]
+
+    if weapon then
+        self.activity = string.format("Picking up %s", weapon.name)
+    end
+
     local owner = self.item:m_hOwnerEntity()
     local isDefuseKit = self.item.classname == "CEconEntity"
 
@@ -209,7 +274,7 @@ function AiStatePickupItems:think(ai)
         })
     end
 
-    if self.lookAtItem and distance < 200 then
+    if self.lookAtItem and distance < 250 then
         ai.view:lookAtLocation(weaponOrigin, 5, ai.view.noiseType.IDLE, "PickupItems look at item")
     end
 

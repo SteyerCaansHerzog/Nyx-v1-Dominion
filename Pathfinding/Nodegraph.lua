@@ -409,7 +409,7 @@ function Nodegraph:renderNodegraph()
             --node.origin:drawScaledCircleOutline(100, 20, Color)
         end
 
-        local alpha = Math.pcti(cameraOrigin:getDistance(node.origin), 1000) * 255
+        local alpha = Math.getInversedFloat(cameraOrigin:getDistance(node.origin), 1000) * 255
 
         if alpha > 0 then
             local color = Node.typesColor[node.type]:clone()
@@ -417,7 +417,7 @@ function Nodegraph:renderNodegraph()
 
             color.a = alpha
 
-            colorFont.a = Math.pcti(cameraOrigin:getDistance(node.origin), 256) * 255
+            colorFont.a = Math.getInversedFloat(cameraOrigin:getDistance(node.origin), 256) * 255
 
             for _, connection in pairs(node.connections) do
                 local lineColor = Color:rgba(150, 150, 150, math.min(35, alpha))
@@ -447,7 +447,7 @@ function Nodegraph:renderNodegraph()
             local text = string.format("[%s] %s%s", node.id, Node.typesCode[node.type], site)
 
             if colorFont.a > 0 then
-                node.origin:clone():offset(0, 0, 14):drawSurfaceText(Font.SMALL, colorFont, "c", text)
+                node.origin:clone():offset(0, 0, 14):drawSurfaceText(Font.TINY, colorFont, "c", text)
             end
 
             if node.direction then

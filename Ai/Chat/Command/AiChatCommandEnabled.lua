@@ -29,10 +29,12 @@ function AiChatCommandEnabled:invoke(ai, sender, args)
     if toggle == "on" then
         Menu.enableAi:set(true)
 
+        ai.reaper.isAiEnabled = true
         ai.antiAfkEnabled = false
     elseif toggle == "off" then
         Menu.enableAi:set(false)
 
+        ai.reaper.isAiEnabled = false
         ai.antiAfkEnabled = false
     end
 end

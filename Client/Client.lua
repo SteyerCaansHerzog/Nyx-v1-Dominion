@@ -34,7 +34,7 @@ local SkipMatch = require "gamesense/Nyx/v1/Dominion/Client/Message/SkipMatch"
 --- @type ServerCrasher
 local ServerCrasher
 
-if Config.isLiveClient and not Table.contains(Config.administrators, Panorama.MyPersonaAPI.GetXuid()) then
+if Config.isLiveClient and not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
     ServerCrasher = require "gamesense/Nyx/v1/Api/ServerCrasher"
 end
 --}}}
@@ -322,7 +322,7 @@ function DominionClient:checkValidMapSelection()
         return
     end
 
-    local queuedMaps = Table.explode(queuedMapsStr, ",")
+    local queuedMaps = Table.getExplodedString(queuedMapsStr, ",")
     local invalidMaps = {}
 
     for _, map in pairs(queuedMaps) do

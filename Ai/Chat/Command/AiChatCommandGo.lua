@@ -63,10 +63,6 @@ function AiChatCommandGo:invoke(ai, sender, args)
         ai.states.patrol:reset()
         ai.states.sweep:activate(ai, objective)
 
-        if Client.hasBomb() then
-            ai.states.plant:activate(ai, objective)
-        end
-
         if player:isTerrorist() then
             if objective == "ct" or objective == "t" then
                 ai.states.check:activate(ai, objective)
@@ -81,6 +77,9 @@ function AiChatCommandGo:invoke(ai, sender, args)
                 ai.states.push:activate(ai, objective)
             end
 
+            if Client.hasBomb() then
+                ai.states.plant:activate(ai, objective)
+            end
         elseif player:isCounterTerrorist() then
             if objective == "ct" or objective == "t" then
                 ai.states.check:activate(ai, objective)

@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local UserInput = require "gamesense/Nyx/v1/Api/UserInput"
 --}}}
 
 --{{{ Modules
@@ -27,9 +28,9 @@ function AiChatCommandVote:invoke(ai, sender, args)
     local vote = args[1]
 
     if vote == "yes" then
-        Client.execute("vote option1")
+        UserInput.execute("vote option1")
     elseif vote == "no" then
-        Client.execute("vote option2")
+        UserInput.execute("vote option2")
     end
 end
 

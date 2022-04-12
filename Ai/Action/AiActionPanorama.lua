@@ -81,7 +81,7 @@ function AiActionPanorama:autoAcceptAdminInvites()
 		for j = 0, 5 do
 			local xuid = Panorama.PartyBrowserAPI.GetPartyMemberXuid(lobbyId, j)
 
-			if Table.contains(Config.administrators, xuid) then
+			if Config.isAdministrator(xuid) then
 				Panorama.PartyBrowserAPI.ActionJoinParty(lobbyId)
 
 				found = true
@@ -127,7 +127,7 @@ end
 --- @param player Player
 --- @return void
 function AiActionPanorama:unmutePlayer(player)
-	local steamid64 = player:getSteam64()
+	local steamid64 = player:getSteamId64()
 
 	if Panorama.GameStateAPI.IsSelectedPlayerMuted(steamid64) then
 		Panorama.GameStateAPI.ToggleMute(steamid64)
@@ -139,7 +139,7 @@ function AiActionPanorama:unmutePlayers()
 	for _, player in Player.findAll(function()
 		return true
 	end) do
-		local steamid64 = player:getSteam64()
+		local steamid64 = player:getSteamId64()
 
 		if Panorama.GameStateAPI.IsSelectedPlayerMuted(steamid64) then
 			Panorama.GameStateAPI.ToggleMute(steamid64)

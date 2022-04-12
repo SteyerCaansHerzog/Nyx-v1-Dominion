@@ -133,10 +133,6 @@ function AiStateDefuse:assess()
         end
     end
 
-    if isCovered and clientDistanceToBomb < 256 and clientDistanceToBomb < nearestTeammateDistance then
-        -- todo return AiState.priority.DEFEND_ACTIVE makes them spazz out
-    end
-
     if AiUtility.bombDetonationTime <= 15 then
         return AiState.priority.DEFUSE_EXPEDITE
     end
@@ -190,6 +186,8 @@ function AiStateDefuse:think(ai)
         return
     end
 
+    self.activity = "Retaking bombsite"
+
     local bombOrigin = bomb:m_vecOrigin()
     local distance = AiUtility.client:getOrigin():getDistance(bombOrigin)
 
@@ -208,6 +206,8 @@ function AiStateDefuse:think(ai)
     end
 
     if self.isDefusing then
+        self.activity = "Defusing the bomb"
+
         ai.controller.canReload = false
         ai.cmd.in_use = 1
         ai.cmd.in_duck = 1

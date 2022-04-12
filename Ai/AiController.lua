@@ -14,6 +14,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
+local UserInput = require "gamesense/Nyx/v1/Api/UserInput"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 
@@ -106,6 +107,7 @@ local DominionClient = require "gamesense/Nyx/v1/Dominion/Client/Client"
 local DominionMenu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 --}}}
 
 --{{{ AiController
@@ -129,8 +131,9 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field deactivatedNodesByBlock table<number, Node[]>
 --- @field dynamicSkillHasDied number
 --- @field dynamicSkillRoundKills number
---- @field flashbangs number[]
 --- @field flashbang Entity
+--- @field flashbangs number[]
+--- @field isAntiAfkEnabled boolean
 --- @field isAutoBuyArmourBlocked boolean
 --- @field isQuickStopping boolean
 --- @field isWalking boolean
@@ -146,7 +149,6 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field unscopeTimer Timer
 --- @field view AiView
 --- @field voice AiVoice
---- @field isisAntiAfkEnabled
 local AiController = {
 	states = {
 		avoidInfernos = AiStateAvoidInfernos,
@@ -180,7 +182,7 @@ local AiController = {
 	commands = {
 		afk = AiChatCommandAfk,
 		assist = AiChatCommandAssist,
-		backtrack = AiChatCommandBacktrack,
+		bt = AiChatCommandBacktrack,
 		bomb = AiChatCommandBomb,
 		boost = AiChatCommandBoost,
 		buy = AiChatCommandBuy,
@@ -242,6 +244,10 @@ end
 
 --- @return void
 function AiController:initFields()
+	self.reaper = Reaper:new({
+		ai = self
+	})
+
 	self.view = AiView:new({
 		nodegraph = self.nodegraph
 	})
@@ -304,14 +310,16 @@ function AiController:initFields()
 	local actions = {}
 
 	for id, action in pairs(self.actions) do
-		actions[id] = action:new()
+		actions[id] = action:new({
+			ai = self
+		})
 	end
 
 	self.actions = actions
 
 	AiChat:new({sentences = self.sentences})
 
-	if Config.isLiveClient and not Table.contains(Config.administrators, Panorama.MyPersonaAPI.GetXuid()) then
+	if Config.isLiveClient and not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
 		self.client = DominionClient:new()
 	end
 end
@@ -348,6 +356,10 @@ function AiController:initEvents()
 	end)
 
 	Callbacks.roundStart(function()
+		if not self.reaper.isEnabled then
+			Client.openConsole()
+		end
+
 		self.isAutoBuyArmourBlocked = true
 
 		Client.fireAfter(1, function()
@@ -362,7 +374,7 @@ function AiController:initEvents()
 				self.states.engage.skill = self.states.engage.skill - 1
 			end
 
-			self.states.engage.skill = Math.clamp(self.states.engage.skill, 0, 10)
+			self.states.engage.skill = Math.getClamped(self.states.engage.skill, 0, 10)
 		end
 
 		self.dynamicSkillHasDied = false
@@ -417,7 +429,7 @@ function AiController:initEvents()
 				return
 			end
 
-			Client.execute("buy vest; buy vesthelm")
+			UserInput.execute("buy vest; buy vesthelm")
 		end)
 	end)
 
@@ -464,6 +476,16 @@ function AiController:initEvents()
 
 		self:chatCommands(e)
 	end)
+
+	Callbacks.weaponFire(function(e)
+		if not DominionMenu.master:get() or not DominionMenu.enableAi:get() then
+			return
+		end
+
+		if e.player:isClient() and e.player:isHoldingBoltActionRifle() then
+			Client.unscope(true)
+		end
+	end)
 end
 
 --- @param limit number
@@ -483,7 +505,7 @@ function AiController:buyGrenades(limit)
 	for _, nade in pairs(nades) do
 		if i <= limit then
 			Client.fireAfter(Client.getRandomFloat(0.25, 1), function()
-				Client.execute(nade)
+				UserInput.execute(nade)
 			end)
 
 			i = i + 1
@@ -525,7 +547,7 @@ function AiController:autoBuy(isImmediate)
 		for _, weapon in pairs(AiUtility.mainWeapons) do
 			if player:hasWeapon(weapon) then
 				if player:m_iArmor() < 33 then
-					Client.execute("buy vest; buy vesthelm")
+					UserInput.execute("buy vest; buy vesthelm")
 				end
 
 				self:buyGrenades(grenadeLimit)
@@ -540,7 +562,7 @@ function AiController:autoBuy(isImmediate)
 		if roundsPlayed == 0 or roundsPlayed == halftimeRounds then
 			if player:isCounterTerrorist() then
 				if Client.getChance(2) then
-					Client.execute("buy defuser")
+					UserInput.execute("buy defuser")
 				else
 					self:buyGrenades(2)
 				end
@@ -569,13 +591,13 @@ function AiController:autoBuy(isImmediate)
 		end
 
 		if Client.getChance(15) and balance > 2000 and balance < 3500 then
-			Client.execute("buy vest; buy ssg08;")
+			UserInput.execute("buy vest; buy ssg08;")
 
 			self:buyGrenades(1)
 		end
 
 		if canBuyAwp then
-			Client.execute("buy awp")
+			UserInput.execute("buy awp")
 
 			canBuyUtility = true
 		elseif canBuyRifle then
@@ -583,13 +605,13 @@ function AiController:autoBuy(isImmediate)
 			local isBuyingScopedRifle = balance > 4500 and Client.getChance(3)
 
 			if isBuyingCheapRifle then
-				Client.execute("buy famas; buy galilar")
+				UserInput.execute("buy famas; buy galilar")
 
 				grenadeLimit = 2
 			elseif isBuyingScopedRifle then
-				Client.execute("buy aug; buy sg556")
+				UserInput.execute("buy aug; buy sg556")
 			else
-				Client.execute("buy m4a4; buy ak47; buy m4a1_silencer")
+				UserInput.execute("buy m4a4; buy ak47; buy m4a1_silencer")
 			end
 
 			canBuyUtility = true
@@ -597,11 +619,11 @@ function AiController:autoBuy(isImmediate)
 
 		if canBuyUtility then
 			if player:m_iArmor() < 33 then
-				Client.execute("buy vest; buy vesthelm")
+				UserInput.execute("buy vest; buy vesthelm")
 			end
 
 			if player:isCounterTerrorist() then
-				Client.execute("buy defuser")
+				UserInput.execute("buy defuser")
 			end
 
 			self:buyGrenades(grenadeLimit)
@@ -616,7 +638,7 @@ function AiController:forceBuy()
 	for _, weapon in pairs(AiUtility.mainWeapons) do
 		if player:hasWeapon(weapon) then
 			if player:m_iArmor() < 33 then
-				Client.execute("buy vest; buy vesthelm")
+				UserInput.execute("buy vest; buy vesthelm")
 			end
 
 			return
@@ -653,15 +675,15 @@ function AiController:forceBuy()
 		local isBuyingNegev = (balance - 2500 >= 0) and Client.getChance(5)
 
 		if isBuyingNegev then
-			Client.execute("buy negev")
+			UserInput.execute("buy negev")
 		elseif isBuyingSmg then
-			Client.execute("buy %s;", Table.getRandom(expensive))
+			UserInput.execute("buy %s;", Table.getRandom(expensive))
 		else
-			Client.execute("buy %s;", Table.getRandom(cheap))
+			UserInput.execute("buy %s;", Table.getRandom(cheap))
 		end
 
 		if player:m_iArmor() < 33 then
-			Client.execute("buy vest; buy vesthelm")
+			UserInput.execute("buy vest; buy vesthelm")
 		end
 
 		self:buyGrenades(1)
@@ -682,7 +704,7 @@ function AiController:chatCommands(e)
 		return
 	end
 
-	local input = Table.explode(e.text:sub(2), " ")
+	local input = Table.getExplodedString(e.text:sub(2), " ")
 	local cmd = table.remove(input, 1)
 	local command = self.commands[cmd]
 
@@ -790,32 +812,31 @@ function AiController:renderUi()
 		return
 	end
 
-	local screenBgColor = Color:rgba(0, 0, 0, 150)
+	local screenBgColor = Color:rgba(0, 0, 0, 200)
 
 	if not player:isAlive() then
 		name = name .. " (DEAD)"
 		nameBgColor = Color:rgba(255, 50, 50, 255)
-		screenBgColor = Color:rgba(200, 25, 25, 255)
+		screenBgColor = Color:rgba(150, 25, 25, 150)
 	end
 
 	local screenDimensions = Client.getScreenDimensions()
 
 	Vector2:new():drawSurfaceRectangle(screenDimensions, screenBgColor)
-	Vector2:new():drawBlur(screenDimensions, 255, 10)
 
 	self.states.engage:render()
 
-	local nameWidth = ISurface.getTextSize(Font.TITLE, name)
+	local nameWidth = ISurface.getTextSize(Font.MEDIUM_BOLD, name)
 
 	uiPos:clone():offset(-5):drawSurfaceRectangle(Vector2:new(nameWidth + 10, 25), nameBgColor)
-	uiPos:drawSurfaceText(Font.TITLE, teamColors[player:m_iTeamNum()], "l", name)
+	uiPos:drawSurfaceText(Font.MEDIUM_BOLD, teamColors[player:m_iTeamNum()], "l", name)
 	uiPos:offset(0, offset)
 
 	uiPos:clone():offset(-5, 5):drawSurfaceRectangle(spacerDimensions, spacerColor)
 	uiPos:offset(0, 10)
 
 	if self.client and self.client.allocation then
-		uiPos:drawSurfaceText(Font.MEDIUM, fontColor, "l", string.format(
+		uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
 			"Session with %s",
 			self.client.allocation.host
 		))
@@ -846,7 +867,7 @@ function AiController:renderUi()
 		enemyWins = tWins
 	end
 
-	uiPos:drawSurfaceText(Font.MEDIUM, fontColor, "l", string.format(
+	uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
 		"%s Match: Score %i : %i | KD %i/%i (%.2f)",
 		roundType,
 		teamWins,
@@ -860,10 +881,10 @@ function AiController:renderUi()
 
 	local fps = Client.getFpsDelayed()
 	local tickErrorPct = math.max(0, (1 - (fps / (1 / globals.tickinterval())))) * 100
-	local hue = Math.pct(Math.clamp(fps, 0, 70), 70) * 120
+	local hue = Math.getFloat(Math.getClamped(fps, 0, 70), 70) * 120
 	local fpsColor = Color:hsla(hue, 0.8, 0.6)
 
-	uiPos:drawSurfaceText(Font.MEDIUM, fpsColor, "l", string.format(
+	uiPos:drawSurfaceText(Font.SMALL, fpsColor, "l", string.format(
 		"FPS: %i (ERR %.1f%%)",
 		fps,
 		tickErrorPct
@@ -872,7 +893,7 @@ function AiController:renderUi()
 	uiPos:offset(0, offset)
 
 	if not DominionMenu.enableAi:get() then
-		uiPos:drawSurfaceText(Font.TITLE, Color:hsla(0, 0.8, 0.6, 255), "l", "AI DISABLED")
+		uiPos:drawSurfaceText(Font.MEDIUM_BOLD, Color:hsla(0, 0.8, 0.6, 255), "l", "AI DISABLED")
 
 		uiPos:offset(0, offset)
 
@@ -890,7 +911,7 @@ function AiController:renderUi()
 			svrColor = Color:hsla(50, 0.8, 0.6, 255)
 		end
 
-		uiPos:drawSurfaceText(Font.MEDIUM, svrColor, "l", string.format(
+		uiPos:drawSurfaceText(Font.SMALL, svrColor, "l", string.format(
 			"SVR: %ims / %.2f%% loss",
 			ping,
 			loss
@@ -899,7 +920,7 @@ function AiController:renderUi()
 		uiPos:offset(0, offset)
 	end
 
-	uiPos:drawSurfaceText(Font.MEDIUM, fontColor, "l", string.format(
+	uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
 		"Skill Level: %i",
 		self.states.engage.skill
 	))
@@ -914,14 +935,14 @@ function AiController:renderUi()
 	uiPos:offset(0, 10)
 
 	if self.currentState then
-		uiPos:drawSurfaceText(Font.MEDIUM, fontColor, "l", string.format(
+		uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
 			"Behaviour: %s",
 			self.currentState.name
 		))
 
 		uiPos:offset(0, offset)
 
-		uiPos:drawSurfaceText(Font.MEDIUM, fontColor, "l", string.format(
+		uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
 			"Priority: %s [%i]",
 			AiState.priorityMap[self.lastPriority],
 			self.lastPriority
@@ -931,7 +952,7 @@ function AiController:renderUi()
 	end
 
 	if self.nodegraph.task then
-		uiPos:drawSurfaceText(Font.MEDIUM, fontColor, "l", string.format(
+		uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
 			"Task: %s",
 			self.nodegraph.task
 		))
@@ -946,7 +967,7 @@ function AiController:renderUi()
 		local node = self.nodegraph.path[self.nodegraph.pathCurrent]
 
 		if node then
-			uiPos:drawSurfaceText(Font.MEDIUM, Node.typesColor[node.type], "l", string.format(
+			uiPos:drawSurfaceText(Font.SMALL, Node.typesColor[node.type], "l", string.format(
 				"Next node: %s [%i]",
 				Node.typesName[node.type],
 				node.id
@@ -958,7 +979,7 @@ function AiController:renderUi()
 		local goalNode = self.nodegraph.pathEnd
 
 		if goalNode then
-			uiPos:drawSurfaceText(Font.MEDIUM, fontColor, "l", string.format(
+			uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
 				"Distance to goal: %iu",
 				player:getOrigin():getDistance(goalNode.origin)
 			))
@@ -969,7 +990,7 @@ function AiController:renderUi()
 
 	local failsColor =  self.nodegraph.pathfindFails > 0 and Color:hsla(0, 0.8, 0.6) or fontColor
 
-	uiPos:drawSurfaceText(Font.MEDIUM, failsColor, "l", string.format(
+	uiPos:drawSurfaceText(Font.SMALL, failsColor, "l", string.format(
 		"Pathfind fails: %i",
 		self.nodegraph.pathfindFails
 	))
@@ -1012,6 +1033,36 @@ function AiController:activities(ai)
 	self.canReload = true
 	self.canUseKnife = true
 
+	local player = AiUtility.client
+	local origin = player:getOrigin()
+
+	if canReload and not AiUtility.isClientThreatened then
+		local weapon = Entity:create(player:m_hActiveWeapon())
+		local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
+		local ammo = weapon:m_iClip1()
+		local maxAmmo = csgoWeapon.primary_clip_size
+
+		local reloadRatio = 0.9
+
+		if AiUtility.closestEnemy then
+			local closestEnemyDistance = origin:getDistance(AiUtility.closestEnemy:getOrigin())
+
+			if closestEnemyDistance > 1000 then
+				reloadRatio = 0.75
+			elseif closestEnemyDistance > 750 then
+				reloadRatio = 0.55
+			elseif closestEnemyDistance > 500 then
+				reloadRatio = 0.25
+			elseif closestEnemyDistance > 250 then
+				reloadRatio = 0
+			end
+		end
+
+		if ammo / maxAmmo < reloadRatio then
+			ai.cmd.in_reload = 1
+		end
+	end
+
 	if not canUseGear then
 		return
 	end
@@ -1027,10 +1078,7 @@ function AiController:activities(ai)
 		end
 	end
 
-	local player = AiUtility.client
-	local origin = player:getOrigin()
-
-	if player:isReloading() then
+	if AiUtility.isClientThreatened then
 		canUseKnife = false
 	end
 
@@ -1040,48 +1088,13 @@ function AiController:activities(ai)
 		canUseKnife = false
 	end
 
-	local bomb = AiUtility.plantedBomb
-
-	if bomb then
-		local mustDefuse = next(AiUtility.enemies) and false or true
-
-		if mustDefuse then
-			canReload = false
-		end
-	end
-
-	local isHoldingKnife = player:isHoldingWeapon(Weapons.KNIFE)
-
-	if isHoldingKnife and not canUseKnife then
-		Client.equipAnyWeapon()
-	elseif not isHoldingKnife and canUseKnife then
+	if canUseKnife then
 		Client.equipKnife()
-	end
-
-	if canReload then
-		local weapon = Entity:create(player:m_hActiveWeapon())
-		local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
-		local ammo = weapon:m_iClip1()
-		local maxAmmo = csgoWeapon.primary_clip_size
-
-		local reloadRatio = 0.9
-
-		if AiUtility.closestEnemy then
-			local closestEnemyDistance = origin:getDistance(AiUtility.closestEnemy:getOrigin())
-
-			if closestEnemyDistance > 1024 then
-				reloadRatio = 0.75
-			elseif closestEnemyDistance > 512 then
-				reloadRatio = 0.2
-			elseif closestEnemyDistance > 256 then
-				reloadRatio = 0.1
-			elseif closestEnemyDistance > 0 then
-				reloadRatio = 0
-			end
-		end
-
-		if ammo / maxAmmo < reloadRatio then
-			ai.cmd.in_reload = 1
+	else
+		if AiUtility.client:hasPrimary() then
+			Client.equipPrimary()
+		else
+			Client.equipPistol()
 		end
 	end
 
@@ -1155,9 +1168,15 @@ function AiController:antiFlash(ai)
 		return
 	end
 
-	Client.unscope()
+	local canLookAwayFromFlash = self.canLookAwayFromFlash
 
-	ai.view:lookAtLocation(eyeOrigin:getAngle(self.flashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 6, "AiController avoid flashbang")
+	self.canLookAwayFromFlash = true
+
+	if canLookAwayFromFlash then
+		Client.unscope()
+
+		ai.view:lookAtLocation(eyeOrigin:getAngle(self.flashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 6, "AiController avoid flashbang")
+	end
 end
 
 --- @param cmd SetupCommandEvent
@@ -1261,6 +1280,10 @@ function AiController:think(cmd)
 		return
 	end
 
+	if Entity.getGameRules():m_bWarmupPeriod() == 1 then
+		return
+	end
+
 	if not AiUtility.client then
 		return
 	end
@@ -1278,6 +1301,8 @@ function AiController:think(cmd)
 	self:unblockNodes()
 
 	if not DominionMenu.master:get() or not DominionMenu.enableAi:get() then
+		Client.cancelEquip()
+
 		return
 	end
 
@@ -1292,7 +1317,7 @@ function AiController:think(cmd)
 	local highestPriority = -1
 
 	for _, state in pairs(self.states) do
-		local priority = state:assess(self.nodegraph)
+		local priority = state:assess(self.nodegraph, self)
 
 		if priority > highestPriority then
 			currentState = state

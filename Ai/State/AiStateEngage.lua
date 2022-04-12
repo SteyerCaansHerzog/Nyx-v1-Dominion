@@ -43,6 +43,7 @@ local WeaponMode = {
 --- @field aimAdjustmentMaxAccuracy number
 --- @field aimAdjustmentPitch number
 --- @field aimAdjustmentYaw number
+--- @field aimInaccurateOffset number
 --- @field aimOffset number
 --- @field aimSpeed number
 --- @field anticipateTime number
@@ -50,26 +51,25 @@ local WeaponMode = {
 --- @field blockTime number
 --- @field blockTimer Timer
 --- @field canRunAndShoot boolean
---- @field isPreAimViableForHoldingAngle boolean
 --- @field currentReactionTime number
 --- @field enemySpottedCooldown Timer
 --- @field enemyVisibleTime number
 --- @field enemyVisibleTimer Timer
---- @field ferrariPeekCooldownTimer Timer
---- @field ferrariPeekStuckTimer Timer
+--- @field equipPistolTimer Timer
 --- @field hitboxOffset Vector3
 --- @field hitboxOffsetTimer Timer
 --- @field ignoreDormancyTime number
 --- @field ignoreDormancyTimer Timer
 --- @field ignorePlayerAfter number
+--- @field isBestTargetVisible boolean
 --- @field isHoldingAngle boolean
 --- @field isHoldingAngleDucked boolean
 --- @field isIgnoringDormancy boolean
 --- @field isPathfindingDirectlyToEnemy boolean
+--- @field isPreAimViableForHoldingAngle boolean
 --- @field isRcsEnabled boolean
 --- @field isSneaking boolean
 --- @field isTargetEasilyShot boolean
---- @field isVisibleToAimSystem boolean
 --- @field jiggleDirection string
 --- @field jiggleTime number
 --- @field jiggleTimer Timer
@@ -77,19 +77,19 @@ local WeaponMode = {
 --- @field lastMoveDirection Vector3
 --- @field lastSeenTimers Timer[]
 --- @field lastSoundTimer Timer
---- @field noticedPlayerTimers Timer[]
 --- @field noticedLoudPlayerTimers Timer[]
+--- @field noticedPlayerTimers Timer[]
 --- @field onGroundTime Timer
 --- @field onGroundTimer Timer
---- @field patienceTimer Timer
 --- @field patienceCooldownTimer Timer
---- @field preAimAroundCornersTime number
---- @field preAimAroundCornersTimer Timer
---- @field preAimCornerOrigin Vector3
---- @field preAimOrigin Vector3
---- @field preAimOriginTimer Timer
+--- @field patienceTimer Timer
+--- @field preAimAboutCornersAimOrigin Vector3
+--- @field preAimAboutCornersCenterOrigin Vector3
+--- @field preAimAboutCornersUpdateTimer Timer
 --- @field preAimTarget Player
---- @field preAimThroughCornerBlockTimer Timer
+--- @field preAimThroughCornersBlockTimer Timer
+--- @field preAimThroughCornersOrigin Vector3
+--- @field preAimThroughCornersUpdateTimer Timer
 --- @field priorityHitbox number
 --- @field reactionTime number
 --- @field reactionTimer Timer
@@ -98,23 +98,30 @@ local WeaponMode = {
 --- @field setBestTargetTimer Timer
 --- @field shootAtOrigin Vector3
 --- @field skill number
+--- @field skillLevelMax number
+--- @field skillLevelMin number
 --- @field slowAimSpeed number
+--- @field smokeWallBangHoldTimer Timer
 --- @field sprayTime number
 --- @field sprayTimer Timer
+--- @field strafePeekCooldownTimer Timer
+--- @field strafePeekStuckTimer Timer
 --- @field tapFireTime number
 --- @field tapFireTimer Timer
 --- @field tellRotateTimer Timer
---- @field updatePreAimOriginTime Timer
---- @field updatePreAimOriginTimer Timer
+--- @field visibleReactionTimer Timer
 --- @field walkCheckCount number
 --- @field walkCheckTimer Timer
 --- @field watchOrigin Vector3
 --- @field watchTime number
 --- @field watchTimer Timer
---- @field aimInaccurateOffset number
 --- @field weaponMode number
+--- @field visualizerCallbacks function[]
+--- @field visualizerExpiryTimers Timer[]
 local AiStateEngage = {
-    name = "Engage"
+    name = "Engage",
+    skillLevelMin = 0,
+    skillLevelMax = 10
 }
 
 --- @param fields AiStateEngage
@@ -131,35 +138,52 @@ end
 
 --- @return void
 function AiStateEngage:initFields()
-    self.skill = 4
-    self.enemyVisibleTimer = Timer:new()
-    self.enemyVisibleTime = 0.66
-    self.watchTimer = Timer:new()
-    self.watchTime = 2
+    self.aimAdjustmentPitch = 0
+    self.aimAdjustmentYaw = 0
     self.anticipateTime = 0.1
-    self.ignorePlayerAfter = 25
-    self.onGroundTimer = Timer:new()
-    self.onGroundTime = 0.1
-    self.ignoreDormancyTimer = Timer:new():startThenElapse()
+    self.blockTime = 0.25
+    self.blockTimer = Timer:new():startThenElapse()
+    self.currentReactionTime = 0
+    self.enemySpottedCooldown = Timer:new():startThenElapse()
+    self.enemyVisibleTime = 0.66
+    self.enemyVisibleTimer = Timer:new()
+    self.equipPistolTimer = Timer:new()
+    self.hitboxOffsetTimer = Timer:new():startThenElapse()
     self.ignoreDormancyTime = 6.5
+    self.ignoreDormancyTimer = Timer:new():startThenElapse()
+    self.ignorePlayerAfter = 25
     self.isIgnoringDormancy = false
     self.isSneaking = false
-    self.blockTimer = Timer:new():startThenElapse()
-    self.blockTime = 0.25
-    self.lastSoundTimer = Timer:new():start()
-    self.preAimOriginDelayed = Vector3:new()
-    self.preAimOriginTimer = Timer:new():startThenElapse()
-    self.setBestTargetTimer = Timer:new():startThenElapse()
-    self.ferrariPeekStuckTimer = Timer:new()
-    self.ferrariPeekCooldownTimer = Timer:new():startThenElapse()
-    self.preAimThroughCornerBlockTimer = Timer:new():startThenElapse()
-    self.jiggleTimer = Timer:new():startThenElapse()
-    self.jiggleTime = Client.getRandomFloat(0.33, 0.66)
     self.jiggleDirection = "Left"
-    self.patienceTimer = Timer:new()
-    self.patienceCooldownTimer = Timer:new():startThenElapse()
-
+    self.jiggleTime = Client.getRandomFloat(0.33, 0.66)
+    self.jiggleTimer = Timer:new():startThenElapse()
+    self.lastSoundTimer = Timer:new():start()
     self.noticedPlayerTimers = {}
+    self.onGroundTime = 0.1
+    self.onGroundTimer = Timer:new()
+    self.patienceCooldownTimer = Timer:new():startThenElapse()
+    self.patienceTimer = Timer:new()
+    self.preAimAboutCornersUpdateTimer = Timer:new():startThenElapse()
+    self.preAimOriginDelayed = Vector3:new()
+    self.preAimThroughCornersBlockTimer = Timer:new():startThenElapse()
+    self.preAimThroughCornersUpdateTimer = Timer:new():startThenElapse()
+    self.reactionTimer = Timer:new()
+    self.scopedTimer = Timer:new()
+    self.setBestTargetTimer = Timer:new():startThenElapse()
+    self.sprayTimer = Timer:new()
+    self.strafePeekCooldownTimer = Timer:new():startThenElapse()
+    self.strafePeekStuckTimer = Timer:new()
+    self.tapFireTime = 0.2
+    self.tapFireTimer = Timer:new():start()
+    self.tellRotateTimer = Timer:new():startThenElapse()
+    self.walkCheckCount = 0
+    self.walkCheckTimer = Timer:new():start()
+    self.watchTime = 2
+    self.watchTimer = Timer:new()
+    self.smokeWallBangHoldTimer = Timer:new()
+    self.visibleReactionTimer = Timer:new()
+    self.visualizerCallbacks = {}
+    self.visualizerExpiryTimers = {}
 
     for i = 1, 64 do
         self.noticedPlayerTimers[i] = Timer:new()
@@ -177,33 +201,10 @@ function AiStateEngage:initFields()
         self.lastSeenTimers[i] = Timer:new()
     end
 
-    self.tapFireTime = 0.2
-    self.tapFireTimer = Timer:new():start()
-
-    self.reactionTimer = Timer:new()
-    self.sprayTimer = Timer:new()
-    self.aimAdjustmentPitch = 0
-    self.aimAdjustmentYaw = 0
-    self.currentReactionTime = 0
-    self.scopedTimer = Timer:new()
-    self.tellRotateTimer = Timer:new():startThenElapse()
-    self.walkCheckTimer = Timer:new():start()
-    self.walkCheckCount = 0
-    self.hitboxOffsetTimer = Timer:new():startThenElapse()
-    self.enemySpottedCooldown = Timer:new():startThenElapse()
-    self.preAimAroundCornersTimer = Timer:new()
-    self.preAimAroundCornersTime = 1
-    self.updatePreAimOriginTimer = Timer:new():startThenElapse()
-    self.updatePreAimOriginTime = 1.2
-
     Menu.enableAimbot = Menu.group:checkbox("    > Enable Aimbot"):setParent(Menu.enableAi)
     Menu.visualiseAimbot = Menu.group:checkbox("    > Visualise Aimbot"):setParent(Menu.enableAimbot)
-    Menu.aimSkillLevel = Menu.group:slider("    > Aim Skill Level", 0, 10, {
-        default = 4,
-        unit = "x"
-    }):addCallback(function(item)
-        self:setAimSkill(item:get())
-    end):setParent(Menu.enableAi)
+
+    self:setAimSkill(5)
 end
 
 --- @return void
@@ -303,16 +304,12 @@ function AiStateEngage:initEvents()
     end)
 
     Callbacks.weaponReload(function(e)
-        self:noticeEnemy(e.player, 700, false, "Reloaded")
+        self:noticeEnemy(e.player, 800, false, "Reloaded")
     end)
 
     Callbacks.weaponFire(function(e)
-        if e.player:isClient() and e.player:isHoldingBoltActionRifle() then
-            Client.unscope(true)
-        end
-
         if CsgoWeapons[e.weapon].is_melee_weapon then
-            self:noticeEnemy(e.player, 256, true, "Knifed")
+            self:noticeEnemy(e.player, 700, true, "Knifed")
 
             return
         end
@@ -331,7 +328,11 @@ function AiStateEngage:initEvents()
             return
         end
 
-        if AiUtility.client:getOrigin():getDistance(e.origin) > 128 then
+        local eyeOrigin = Client.getEyeOrigin()
+
+        local rayIntersection = eyeOrigin:getRayClosestPoint(e.shooter:getEyeOrigin(), e.origin)
+
+        if eyeOrigin:getDistance(rayIntersection) > 256 then
             return
         end
 
@@ -387,31 +388,31 @@ function AiStateEngage:assess()
     end
 
     if self.sprayTimer:isStarted() then
-        return AiState.priority.ENGAGE_VISIBLE
+        return AiState.priority.ENGAGE_ACTIVE
     end
 
     for _, enemy in pairs(AiUtility.enemies) do
         if AiUtility.visibleEnemies[enemy.eid] and self:hasNoticedEnemy(enemy) then
-            return AiState.priority.ENGAGE_VISIBLE
+            return AiState.priority.ENGAGE_ACTIVE
         end
     end
 
     if not AiUtility.plantedBomb then
         if self.reactionTimer:isStarted() then
-            return AiState.priority.ENGAGE_VISIBLE
+            return AiState.priority.ENGAGE_ACTIVE
         end
 
         if self.watchTimer:isStarted() then
-            return AiState.priority.ENGAGE_VISIBLE
+            return AiState.priority.ENGAGE_ACTIVE
         end
     end
 
     if AiUtility.isBombBeingDefusedByEnemy then
-        return AiState.priority.ENGAGE_VISIBLE
+        return AiState.priority.ENGAGE_ACTIVE
     end
 
     if self:hasNoticedEnemies() then
-        return AiState.priority.ENGAGE_NEARBY
+        return AiState.priority.ENGAGE_PASSIVE
     end
 
     return AiState.priority.IGNORE
@@ -479,6 +480,7 @@ function AiStateEngage:think(ai)
     self:tellRotate(ai)
     self:walk(ai)
     self:moveOnBestTarget(ai)
+    self:attackBestTarget(ai)
 end
 
 --- @param ai AiOptions
@@ -687,7 +689,7 @@ function AiStateEngage:setBestTarget()
     end
 
     if (selectedEnemy and self.bestTarget) and not selectedEnemy:is(self.bestTarget) then
-        self.preAimOriginTimer:elapse()
+        self.preAimAboutCornersUpdateTimer:elapse()
     end
 
     self:setWeaponStats(selectedEnemy)
@@ -1038,7 +1040,19 @@ end
 
 --- @return void
 function AiStateEngage:render()
-    if not Menu.master:get() or not Menu.enableAi:get() or not Menu.enableAimbot:get() or not Menu.visualiseAimbot:get() then
+    if not Menu.master:get() or not Menu.enableAi:get() or not Menu.enableAimbot:get() then
+        return
+    end
+
+    for id, callback in pairs(self.visualizerCallbacks) do
+        callback()
+
+        if self.visualizerExpiryTimers[id]:isElapsedThenStop(0.1) then
+            self.visualizerCallbacks[id] = nil
+        end
+    end
+
+    if not Menu.visualiseAimbot:get() then
         return
     end
 
@@ -1056,14 +1070,13 @@ function AiStateEngage:render()
         player:m_iKills(), player:m_iDeaths(), player:getKdRatio()
     )
 
-    local kdColor = Color:hsla(0, 0.8, 0.6):setHue(Math.clamp(Math.pct(player:getKdRatio(), 2), 0, 1) * 100)
+    local kdColor = Color:hsla(0, 0.8, 0.6):setHue(Math.getClamped(Math.getFloat(player:getKdRatio(), 2), 0, 1) * 100)
 
     self:renderText(uiPos, kdColor, kd)
     self:renderTimer("REACT", uiPos, self.reactionTimer, self.currentReactionTime)
     self:renderTimer("BLOCK", uiPos, self.blockTimer, self.blockTime)
     self:renderTimer("WATCH", uiPos, self.watchTimer, self.watchTime)
     self:renderTimer("SEE", uiPos, self.enemyVisibleTimer, self.enemyVisibleTime)
-    self:renderTimer("PRE-AIM", uiPos, self.preAimAroundCornersTimer, self.preAimAroundCornersTime)
     self:renderTimer("SPRAY", uiPos, self.sprayTimer, self.sprayTime)
     self:renderTimer("TAPPING", uiPos, self.tapFireTimer, self.tapFireTime)
     self:renderTimer("IGNORE DORMANCY", uiPos, self.ignoreDormancyTimer, self.ignoreDormancyTime)
@@ -1125,6 +1138,18 @@ function AiStateEngage:renderEmpty(uiPos)
     uiPos:offset(0, offset)
 end
 
+--- @param callback fun(): void
+--- @return void
+function AiStateEngage:addVisualizer(id, callback)
+    self.visualizerCallbacks[id] = callback
+
+    if not self.visualizerExpiryTimers[id] then
+        self.visualizerExpiryTimers[id] = Timer:new()
+    end
+
+    self.visualizerExpiryTimers[id]:start()
+end
+
 --- @param uiPos Vector2
 --- @param color Color
 --- @vararg string
@@ -1134,7 +1159,7 @@ function AiStateEngage:renderText(uiPos, color, ...)
 
     color = color or Color:hsla(0, 0, 0.9)
 
-    uiPos:drawSurfaceText(Font.MEDIUM, color, "r", string.format(...))
+    uiPos:drawSurfaceText(Font.SMALL, color, "r", string.format(...))
 
     uiPos:offset(0, offset)
 end
@@ -1151,7 +1176,7 @@ function AiStateEngage:renderTimer(title, uiPos, timer, time, color)
     local timerColor = Color:hsla(100 * pct, 0.8, 0.6)
     local timerBgColor = Color:hsla(100 * pct, 0.4, 0.2, 100)
 
-    uiPos:drawSurfaceText(Font.MEDIUM, color, "r", string.format(
+    uiPos:drawSurfaceText(Font.SMALL, color, "r", string.format(
         "%s - %.2f / %.2f",
         title,
         timer:get() < time and timer:get() or time,
@@ -1179,17 +1204,25 @@ function AiStateEngage:walk(ai)
         local trace = Trace.getLineToPosition(predictedEyeOrigin, self.bestTarget:getOrigin():offset(0, 0, 48), AiUtility.traceOptionsAttacking)
         local shootFov = self:getShootFov(self.bestTarget:getCameraAngles(), self.bestTarget:getEyeOrigin(), clientEyeOrigin)
 
-        if player:isCounterTerrorist() and AiUtility.plantedBomb and distance > 350 and AiUtility.bombDetonationTime > 15 then
-            canWalk = false
-        elseif not trace.isIntersectingGeometry and shootFov < 20 then
-            canWalk = false
-        elseif distance < 1200 then
+        if distance < 1200 then
             canWalk = true
+        end
+
+        if player:isCounterTerrorist() and AiUtility.plantedBomb then
+            if AiUtility.bombDetonationTime < 15 then
+                canWalk = false
+            elseif distance > 350 then
+                canWalk = false
+            end
+        end
+
+        if not trace.isIntersectingGeometry and shootFov < 20 then
+            canWalk = false
         end
     end
 
     if self.walkCheckTimer:isElapsedThenRestart(0.15) then
-        self.walkCheckCount = Math.clamp(self.walkCheckCount - 1, 0, 20)
+        self.walkCheckCount = Math.getClamped(self.walkCheckCount - 1, 0, 20)
     end
 
     if self.walkCheckCount >= 10 then
@@ -1244,7 +1277,6 @@ function AiStateEngage:canHoldAngle(ai)
 
     -- Don't hold if the enemy is planting or has planted the bomb.
     if AiUtility.client:isCounterTerrorist() and not AiUtility.plantedBomb and not AiUtility.isBombBeingPlantedByEnemy then
-
         -- If we're the closest to enemy, maybe don't permanently hold the angle.
         if self.bestTarget then
             local isClosestToEnemy = true
@@ -1257,11 +1289,6 @@ function AiStateEngage:canHoldAngle(ai)
 
                     break
                 end
-            end
-
-            if isClosestToEnemy then
-                -- Leaving this unused for now.
-                --return false
             end
         end
 
@@ -1327,11 +1354,11 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateEngage:moveOnBestTarget(ai)
-    self:attackBestTarget(ai)
-
     if not self.bestTarget then
         return
     end
+
+    self.activity = "Moving on enemy"
 
     local targetOrigin = self.bestTarget:getOrigin()
 
@@ -1341,6 +1368,8 @@ function AiStateEngage:moveOnBestTarget(ai)
 
     -- Don't peek the angle. Hold it.
     if self:canHoldAngle(ai) then
+        self.activity = "Holding enemy"
+
         if ai.nodegraph.path then
             self.isHoldingAngle = Client.getChance(1)
             self.isHoldingAngleDucked = AiUtility.client:hasSniper() or Client.getChance(4)
@@ -1430,10 +1459,9 @@ function AiStateEngage:attackBestTarget(ai)
     end
 
     -- Prevent certain generic behaviours.
-    ai.controller.canUseKnife = false
+    ai.controller.canUseGear = false
     ai.controller.canInspectWeapon = false
     ai.nodegraph.isAllowedToAvoidTeammates = false
-    ai.view.isAllowedToWatchCorners = false
 
     -- Prevent reloading/unscoping when enemies are visible.
     if next(AiUtility.visibleEnemies) then
@@ -1447,11 +1475,15 @@ function AiStateEngage:attackBestTarget(ai)
     if self.sprayTimer:isStarted() and not self.sprayTimer:isElapsed(self.sprayTime) then
         ai.controller.canReload = false
 
-        self:shoot(ai, self.watchOrigin, 3, self.bestTarget)
+        if self.bestTarget and not AiUtility.visibleEnemies[self.bestTarget.eid] then
+            self:shoot(ai, self.watchOrigin, self.bestTarget)
+        elseif not self.bestTarget then
+            self:shoot(ai, self.watchOrigin)
+        end
     end
 
     -- Reset reaction delay.
-    if not next(AiUtility.visibleEnemies) then
+    if not self.bestTarget or not self:hasNoticedEnemy(self.bestTarget) then
         self.reactionTimer:stop()
     end
 
@@ -1462,9 +1494,6 @@ function AiStateEngage:attackBestTarget(ai)
     if not self:hasNoticedEnemies() then
         return
     end
-
-    -- Wide-peek enemies.
-    self:ferrariPeek(ai)
 
     -- Block overpowered spray transfers.
     if not self.blockTimer:isElapsed(self.blockTime) then
@@ -1481,19 +1510,27 @@ function AiStateEngage:attackBestTarget(ai)
     local ammoRatio = ammo / maxAmmo
 
     -- Swap guns when out of ammo.
-    if self.lastPriority == AiState.priority.ENGAGE_VISIBLE then
+    if self.lastPriority == AiState.priority.ENGAGE_ACTIVE then
         local ammoLeftRatio = ammo / maxAmmo
 
         if ammoLeftRatio == 0 then
             if AiUtility.client:isHoldingPrimary() then
+                self.equipPistolTimer:start()
+
                 Client.equipPistol()
             end
         end
-    elseif self.lastPriority == AiState.priority.ENGAGE_NEARBY then
+    elseif self.lastPriority == AiState.priority.ENGAGE_PASSIVE then
         -- Ensure bot is holding a weapon.
-        if not player:isHoldingGun() or player:isHoldingPistol() then
-            Client.equipAnyWeapon()
+        if AiUtility.client:hasPrimary() then
+            Client.equipPrimary()
+        else
+            Client.equipPistol()
         end
+    end
+
+    if self.equipPistolTimer:isStarted() and not self.equipPistolTimer:isElapsed(3) then
+        ai.controller.states.evade.isBlocked = true
     end
 
     -- Target we intend to engage.
@@ -1511,38 +1548,61 @@ function AiStateEngage:attackBestTarget(ai)
         return
     end
 
+    local eyeOrigin = Client.getEyeOrigin()
+    local enemyOrigin = enemy:getOrigin()
+    local lastSeenEnemyTimer = self.lastSeenTimers[enemy.eid]
+
+    self.currentReactionTime = (lastSeenEnemyTimer:isStarted() and not lastSeenEnemyTimer:isElapsed(2)) and self.anticipateTime or self.reactionTime
+
+    local shootFov = self:getShootFov(Client.getCameraAngles(), eyeOrigin, enemyOrigin)
+
+    -- Begin reaction timer.
+    if self:hasNoticedEnemy(enemy) then
+        self.reactionTimer:ifPausedThenStart()
+    end
+
+    if AiUtility.visibleEnemies[enemy.eid] then
+        self.visibleReactionTimer:ifPausedThenStart()
+    else
+        self.visibleReactionTimer:stop()
+    end
+
+    local offsetModifier = Math.getClampedFloat(eyeOrigin:getDistance(enemyOrigin), 1000, 0, 700)
     local horizontal = self.aimInaccurateOffset
     local vertical = self.aimInaccurateOffset / 3
 
     self.shootAtOrigin = enemy:getOrigin():offset(0, 0, 48) + Vector3:new(
-        Animate.sine(0, horizontal, 3),
-        Animate.sine(0, horizontal, 2),
-        Animate.sine(0, vertical, 2.5)
+        Animate.sine(0, horizontal * offsetModifier, 3),
+        Animate.sine(0, horizontal * offsetModifier, 2),
+        Animate.sine(0, vertical * offsetModifier, 2.5)
     )
 
     -- Ensure player is holding weapon.
     if not player:isHoldingGun() then
-        Client.equipAnyWeapon()
+        if AiUtility.client:hasPrimary() then
+            Client.equipPrimary()
+        else
+            Client.equipPistol()
+        end
     end
 
     -- Shoot while blind.
     if Client.isFlashed() and AiUtility.visibleEnemies[enemy.eid] then
-        self:shoot(ai, self.shootAtOrigin, 10, enemy)
+        self:shoot(ai, self.shootAtOrigin, enemy)
 
         return
     end
 
     -- Shoot last position.
-    if not next(AiUtility.visibleEnemies) and self.watchOrigin then
+    if not next(AiUtility.visibleEnemies) then
         self:watchAngle(ai)
     end
 
     -- Wallbang and smokebang.
     if not AiUtility.visibleEnemies[enemy.eid] then
-        local lastSeenAgo = self.noticedPlayerTimers[enemy.eid]:get() - 0.25
+        local lastNoticedAgo = self.noticedPlayerTimers[enemy.eid]:get()
 
-        if AiUtility.isBombBeingDefusedByEnemy or (lastSeenAgo > 0 and lastSeenAgo < 1) then
-            local eyeOrigin = Client.getEyeOrigin()
+        if AiUtility.isBombBeingDefusedByEnemy or (lastNoticedAgo >= 0 and lastNoticedAgo < 1) then
             local bangOrigin = enemy:getOrigin():offset(0, 0, 46)
             local eid, dmg = eyeOrigin:getTraceBullet(bangOrigin, Client.getEid())
 
@@ -1567,6 +1627,10 @@ function AiStateEngage:attackBestTarget(ai)
             local isOccludedBySmoke = eyeOrigin:isRayIntersectingSmoke(bangOrigin)
             local canShoot = false
 
+            if self.smokeWallBangHoldTimer:isStarted() and not self.smokeWallBangHoldTimer:isElapsed(1) then
+                canShoot = true
+            end
+
             if canBang and isOccludedBySmoke then
                 canShoot = true
             elseif canBang and eid == enemy.eid then
@@ -1574,9 +1638,13 @@ function AiStateEngage:attackBestTarget(ai)
             end
 
             if canShoot then
-                Client.draw(Vector3.drawCircleOutline, self.shootAtOrigin, 12, 2, Color:hsla(30, 1, 0.5, 200))
+                self.smokeWallBangHoldTimer:ifPausedThenStart()
 
-                self:shoot(ai, self.shootAtOrigin, self:getShootFov(Client.getCameraAngles(), eyeOrigin, bangOrigin) / 2.5)
+                self:addVisualizer("bang", function()
+                    self.shootAtOrigin:drawCircleOutline(12, 2, Color:hsla(30, 1, 0.5, 200))
+                end)
+
+                self:shoot(ai, self.shootAtOrigin)
 
                 return
             end
@@ -1588,7 +1656,7 @@ function AiStateEngage:attackBestTarget(ai)
 
     -- Pre-aim angle.
     -- Pre-aim hitbox when peeking.
-    if self:hasNoticedEnemy(enemy) then
+    if self:hasNoticedEnemy(enemy) and self.reactionTimer:isElapsed(self.reactionTime) then
         self:preAimAboutCorners(ai)
         self:preAimThroughCorners(ai)
     end
@@ -1602,7 +1670,7 @@ function AiStateEngage:attackBestTarget(ai)
     -- Begin watching last angle.
     if AiUtility.visibleEnemies[enemy.eid] then
         if hitbox then
-            self.watchOrigin = hitbox
+            self.watchOrigin = enemyOrigin:offset(0, 0, 60)
         end
 
         self.enemyVisibleTimer:ifPausedThenStart()
@@ -1610,38 +1678,29 @@ function AiStateEngage:attackBestTarget(ai)
         self.enemyVisibleTimer:stop()
     end
 
-    local lastSeenEnemyTimer = self.lastSeenTimers[enemy.eid]
-
-    self.currentReactionTime = (lastSeenEnemyTimer:isStarted() and not lastSeenEnemyTimer:isElapsed(2)) and self.anticipateTime or self.reactionTime
-
-    local eyeOrigin = Client.getEyeOrigin()
-    local shootFov = self:getShootFov(Client.getCameraAngles(), eyeOrigin, hitbox)
-
-    -- Begin reaction timer.
-    if AiUtility.visibleEnemies[enemy.eid] and (self:hasNoticedEnemy(enemy) or shootFov < 35) then
-        self.reactionTimer:ifPausedThenStart()
-    end
-
-    if AiUtility.visibleEnemies[enemy.eid] then
-        -- Do not look away from flashbangs.
-        ai.controller.canLookAwayFromFlash = false
+    -- Wide-peek enemies.
+    if not self.visibleReactionTimer:isElapsed(self.reactionTime * 1.1) then
+        self:strafePeek(ai)
     end
 
     -- Make sure the default mouse movement isn't active while the enemy is visible but the reaction timer hasn't elapsed.
     if AiUtility.visibleEnemies[enemy.eid] and shootFov < 40 then
         ai.view:lookAtLocation(hitbox, 2.5, ai.view.noiseType.IDLE, "Engage prepare to react")
-        Client.draw(Vector3.drawCircleOutline, hitbox, 12, 2, Color:hsla(50, 1, 0.5, 200))
+
+        self:addVisualizer("hold", function()
+            hitbox:drawCircleOutline(12, 2, Color:hsla(50, 1, 0.5, 200))
+        end)
     end
 
     -- React to visible enemy.
-    if self.reactionTimer:isElapsed(self.currentReactionTime) and AiUtility.visibleEnemies[enemy.eid] then
+    if self.visibleReactionTimer:isElapsed(self.currentReactionTime) and AiUtility.visibleEnemies[enemy.eid] then
         if shootFov < 12 then
             self.sprayTimer:start()
             self.watchTimer:start()
             self.lastSeenTimers[enemy.eid]:start()
 
             self:noticeEnemy(enemy, 4096, false, "In shoot FoV")
-            self:shoot(ai, hitbox, shootFov, enemy)
+            self:shoot(ai, hitbox, enemy)
         elseif shootFov < 40 then
             ai.view:lookAtLocation(hitbox, self.aimSpeed * 0.8, ai.view.noiseType.MINOR, "Engage find enemy under 40 FoV")
 
@@ -1661,22 +1720,29 @@ function AiStateEngage:getShootFov(angle, vectorA, vectorB)
     local distance = vectorA:getDistance(vectorB)
     local fov = angle:getFov(vectorA, vectorB)
 
-    return Math.clamp(Math.pct(distance, 512), 0, 90) * fov
+    return Math.getClamped(Math.getFloat(distance, 512), 0, 90) * fov
 end
 
 --- @param ai AiOptions
 --- @param aimAtBaseOrigin Vector3
---- @param fov number
 --- @param enemy Player
 --- @return void
-function AiStateEngage:shoot(ai, aimAtBaseOrigin, fov, enemy)
+function AiStateEngage:shoot(ai, aimAtBaseOrigin, enemy)
+    self.activity = "Shooting enemy"
+
     -- Nothing to shoot at.
     if not aimAtBaseOrigin then
         return
     end
 
+    -- Don't shoot when in-air.
+    if not AiUtility.client:getFlag(Player.flags.FL_ONGROUND) then
+        return
+    end
+
     -- Prevent jumping obstacles. This can kill us.
     ai.nodegraph.canJump = false
+    ai.controller.canLookAwayFromFlash = false
 
     local distance = AiUtility.client:getOrigin():getDistance(aimAtBaseOrigin)
 
@@ -1695,14 +1761,33 @@ function AiStateEngage:shoot(ai, aimAtBaseOrigin, fov, enemy)
         )
     end
 
+    local resonated
+
+    if enemy then
+        resonated = Math.getResonated({
+            Math.getClampedInversedFloat(distance, 700, 0, 750),
+            Math.getClampedInversedFloat(enemy:m_vecVelocity():getMagnitude(), 145, 100, 450)
+        })
+    else
+        resonated = 1
+    end
+
+    self.hitboxOffset = Vector3:new(
+        Animate.sine(0, self.aimOffset * resonated, 3.1),
+        Animate.sine(0, self.aimOffset * resonated, 2.3),
+        Animate.sine(0, (self.aimOffset * resonated) / 2, 4)
+    )
+
     -- Real origin to shoot at.
     local aimAtOrigin = aimAtBaseOrigin + self.hitboxOffset
 
     -- Draw debugging visualisers.
-    Client.draw(Vector3.drawCircle, aimAtBaseOrigin, 3, Color:hsla(0, 1, 0.5, 150))
-    Client.draw(Vector3.drawCircleOutline, aimAtOrigin, 10, 3, Color:hsla(0, 1, 0.5, 100))
-    Client.draw(Vector3.drawCircle, aimAtOrigin, 2, Color:hsla(0, 1, 0.5, 150))
-    Client.draw(Vector3.drawLine, aimAtBaseOrigin, aimAtOrigin, Color:hsla(0, 1, 0.5, 75))
+    self:addVisualizer("shoot",function()
+        aimAtBaseOrigin:drawCircle(3, Color:hsla(0, 1, 0.5, 150))
+        aimAtOrigin:drawCircleOutline(10, 3, Color:hsla(0, 1, 0.5, 100))
+        aimAtOrigin:drawCircle(2, Color:hsla(0, 1, 0.5, 150))
+        aimAtBaseOrigin:drawLine(aimAtOrigin, Color:hsla(0, 1, 0.5, 75))
+    end)
 
     local clientEyeOrigin = Client.getEyeOrigin()
 
@@ -1758,12 +1843,11 @@ function AiStateEngage:shoot(ai, aimAtBaseOrigin, fov, enemy)
         end
     end
 
+    local fov = self:getShootFov(Client.getCameraAngles(), Client.getEyeOrigin(), aimAtOrigin)
+
     -- Set RCS parameters.
     -- RCS should be off for snipers and shotguns, and on for rifles, SMGs, and pistols.
     ai.view.isRcsEnabled = self.isRcsEnabled
-
-    -- Don't look away from flashbangs.
-    ai.controller.canLookAwayFromFlash = false
 
     -- Set mouse movement parameters.
     ai.view.isCrosshairSmoothed = false
@@ -1800,10 +1884,10 @@ function AiStateEngage:shootPistol(ai, aimAtOrigin, fov, weapon)
     local distance = Client.getEyeOrigin():getDistance(aimAtOrigin)
     local isVelocityOk = true
 
-    if distance > 1350 then
+    if distance > 600 then
         ai.cmd.in_duck = 1
     elseif not self.canRunAndShoot then
-        self:actionJiggle(ai, self.jiggleTime * 0.66)
+        self:actionJiggle(ai, self.jiggleTime * 0.33)
 
         isVelocityOk = AiUtility.client:m_vecVelocity():getMagnitude() < 100
     elseif AiUtility.totalThreats > 1 then
@@ -1812,13 +1896,13 @@ function AiStateEngage:shootPistol(ai, aimAtOrigin, fov, weapon)
 
     local aimSpeed = self.aimSpeed
 
-    if distance < 500 then
+    if distance < 600 then
         aimSpeed = self.aimSpeed * 1.5
     end
 
     ai.view:lookAtLocation(aimAtOrigin, aimSpeed, ai.view.noiseType.MINOR, "Engage look at target")
 
-    if fov < 4
+    if fov < 7
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
         and isVelocityOk
     then
@@ -1847,7 +1931,7 @@ function AiStateEngage:shootLight(ai, aimAtOrigin, fov, weapon)
         self:actionBackUp(ai)
     end
 
-    if fov < 4
+    if fov < 9
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
     then
         ai.cmd.in_attack = 1
@@ -1877,7 +1961,7 @@ function AiStateEngage:shootShotgun(ai, aimAtOrigin, fov, weapon)
         self:actionBackUp(ai)
     end
 
-    if fov < 4
+    if fov < 10
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
     then
         ai.cmd.in_attack = 1
@@ -1900,7 +1984,7 @@ function AiStateEngage:shootHeavy(ai, aimAtOrigin, fov, weapon)
 
     local isVelocityOk = AiUtility.client:m_vecVelocity():getMagnitude() < 100
 
-    if fov < 4
+    if fov < 8
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
         and isVelocityOk
     then
@@ -1933,7 +2017,7 @@ function AiStateEngage:shootSniper(ai, aimAtOrigin, fov, weapon)
         ai.view:lookAtLocation(aimAtOrigin, self.aimSpeed * 3, ai.view.noiseType.MINOR, "Engage look at target")
     end
 
-    if fov < 8 then
+    if fov < 12 then
         Client.scope()
     end
 
@@ -1943,7 +2027,7 @@ function AiStateEngage:shootSniper(ai, aimAtOrigin, fov, weapon)
     -- We can shoot when we're this slow.
     local fireUnderVelocity = weapon.max_player_speed / 5
 
-    if fov < 3
+    if fov < 4
         and self.scopedTimer:isElapsedThenStop(fireDelay)
         and AiUtility.client:m_bIsScoped() == 1
         and AiUtility.client:m_vecVelocity():getMagnitude() < fireUnderVelocity
@@ -1955,6 +2039,10 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateEngage:actionBackUp(ai)
+    if not self.bestTarget then
+        return
+    end
+
     -- Move backwards because we don't feel like deliberately peeking the entire enemy team at once.
     local angleToEnemy = Client.getOrigin():getAngle(self.bestTarget:getOrigin())
 
@@ -2088,21 +2176,17 @@ function AiStateEngage:getHitbox(enemy)
         end
     end
 
-    self.isVisibleToAimSystem = visibleHitboxCount > 0
+    self.isBestTargetVisible = visibleHitboxCount > 0
 
     return targetHitbox, visibleHitboxCount
 end
 
 --- @param ai AiOptions
 --- @return void
-function AiStateEngage:ferrariPeek(ai)
+function AiStateEngage:strafePeek(ai)
     local enemy = self.bestTarget
 
     if not enemy then
-        return
-    end
-
-    if AiUtility.visibleEnemies[enemy.eid] then
         return
     end
 
@@ -2126,8 +2210,8 @@ function AiStateEngage:ferrariPeek(ai)
     }
 
     local isVisible = false
-    local steps = 3
-    local stepDistance = 16
+    local steps = 2
+    local stepDistance = 25
     --- @type Angle
     local moveAngle
     local successes = 0
@@ -2181,16 +2265,16 @@ function AiStateEngage:ferrariPeek(ai)
 
     if moveAngle then
         if player:m_vecVelocity():getMagnitude() < 50 then
-            self.ferrariPeekStuckTimer:ifPausedThenStart()
+            self.strafePeekStuckTimer:ifPausedThenStart()
         else
-            self.ferrariPeekStuckTimer:stop()
+            self.strafePeekStuckTimer:stop()
         end
 
-        if self.ferrariPeekStuckTimer:isElapsedThenStop(1) then
-            self.ferrariPeekCooldownTimer:start()
+        if self.strafePeekStuckTimer:isElapsedThenStop(1) then
+            self.strafePeekCooldownTimer:start()
         end
 
-        if self.ferrariPeekCooldownTimer:isElapsed(5) then
+        if self.strafePeekCooldownTimer:isElapsed(5) then
             ai.nodegraph.moveAngle = moveAngle
         end
     end
@@ -2205,7 +2289,7 @@ function AiStateEngage:preAimThroughCorners(ai)
         return
     end
 
-    if self.isVisibleToAimSystem then
+    if self.isBestTargetVisible then
         return
     end
 
@@ -2216,13 +2300,19 @@ function AiStateEngage:preAimThroughCorners(ai)
         return
     end
 
-    if not self.preAimThroughCornerBlockTimer:isElapsed(0.8) then
+    if not self.preAimThroughCornersBlockTimer:isElapsed(0.8) then
         return
     end
 
     local playerEid = Client.getEid()
     local playerOrigin = player:getOrigin()
-    local hitboxes = target:getHitboxPositions()
+    local hitboxes = target:getHitboxPositions({
+        Player.hitbox.HEAD,
+        Player.hitbox.LEFT_LOWER_LEG,
+        Player.hitbox.RIGHT_LOWER_LEG,
+        Player.hitbox.LEFT_LOWER_ARM,
+        Player.hitbox.RIGHT_LOWER_ARM,
+    })
 
     -- Determine if we're about to peek the target.
     local testOrigin = Client.getEyeOrigin() + (clientVelocity * 0.4)
@@ -2255,19 +2345,19 @@ function AiStateEngage:preAimThroughCorners(ai)
             local _, fraction, eid = playerOrigin:getTraceLine(hitbox, playerEid)
 
             if eid == target.eid or fraction == 1 then
-                self.preAimThroughCornerBlockTimer:start()
+                self.preAimThroughCornersBlockTimer:start()
 
                 return
             end
         end
     end
 
-    if self.updatePreAimOriginTimer:isElapsedThenRestart(self.updatePreAimOriginTime) then
+    if self.preAimThroughCornersUpdateTimer:isElapsedThenRestart(1.2) then
         local hitboxPosition = target:getHitboxPosition(Player.hitbox.HEAD)
         local distance = playerOrigin:getDistance(hitboxPosition)
-        local offsetRange = Math.pct(Math.clamp(distance, 0, 1024), 1024) * 100
+        local offsetRange = Math.getFloat(Math.getClamped(distance, 0, 1024), 1024) * 100
 
-        self.preAimCornerOrigin = hitboxPosition:offset(
+        self.preAimThroughCornersOrigin = hitboxPosition:offset(
             Client.getRandomFloat(-offsetRange, offsetRange),
             Client.getRandomFloat(-offsetRange, offsetRange),
             Client.getRandomFloat(-8, 2)
@@ -2276,8 +2366,11 @@ function AiStateEngage:preAimThroughCorners(ai)
 
     self.preAimTarget = self.bestTarget
 
-    ai.view:lookAtLocation(self.preAimCornerOrigin, self.slowAimSpeed, ai.view.noiseType.NONE, "Engage look through corner")
-    Client.draw(Vector3.drawCircleOutline, self.preAimCornerOrigin, 16, 2, Color:hsla(100, 1, 0.5, 150))
+    ai.view:lookAtLocation(self.preAimThroughCornersOrigin, 6, ai.view.noiseType.NONE, "Engage look through corner")
+
+    self:addVisualizer("pre through", function()
+        self.preAimThroughCornersOrigin:drawCircleOutline(16, 2, Color:hsla(100, 1, 0.5, 150))
+    end)
 end
 
 --- @param ai AiOptions
@@ -2287,15 +2380,29 @@ function AiStateEngage:preAimAboutCorners(ai)
         return
     end
 
-    if self.bestTarget:getFlag(Player.flags.FL_ONGROUND) and self.preAimOriginTimer:isElapsedThenRestart(0.5) then
-        self.preAimOrigin = self.bestTarget:getOrigin():offset(0, 0, 60)
-    end
+    self.preAimAboutCornersCenterOrigin = self.bestTarget:getOrigin():offset(0, 0, 60)
 
-    if not self.preAimOrigin then
+    if not self.preAimAboutCornersCenterOrigin then
         return
     end
 
-    if self.isVisibleToAimSystem then
+    if self.isBestTargetVisible then
+        return
+    end
+
+    if self.preAimAboutCornersAimOrigin then
+        ai.controller.canUnscope = false
+
+        ai.view:lookAtLocation(self.preAimAboutCornersAimOrigin, self.slowAimSpeed, ai.view.noiseType.NONE, "Engage look at corner")
+
+        self:addVisualizer("pre about", function()
+            if self.preAimAboutCornersAimOrigin then
+                self.preAimAboutCornersAimOrigin:drawCircleOutline(12, 2, Color:hsla(200, 1, 0.5, 200))
+            end
+        end)
+    end
+
+    if not self.preAimAboutCornersUpdateTimer:isElapsedThenRestart(0.33) then
         return
     end
 
@@ -2305,23 +2412,23 @@ function AiStateEngage:preAimAboutCorners(ai)
     local bands = {
         {
             distance = 40,
-            points = 8
+            points = 3
         },
         {
             distance = 80,
-            points = 16
+            points = 5
         },
         {
             distance = 150,
-            points = 32
+            points = 8
         },
         {
             distance = 200,
-            points = 32
+            points = 10
         }
     }
 
-    local bandDirection = eyeOrigin:getAngle(self.preAimOrigin):set(0):offset(nil, 90)
+    local bandDirection = eyeOrigin:getAngle(self.preAimAboutCornersCenterOrigin):set(0):offset(nil, 90)
     local isVisible = false
     --- @type Vector3
     local closestVertex
@@ -2337,10 +2444,10 @@ function AiStateEngage:preAimAboutCorners(ai)
 
         for i = 1, band.points do
             local direction = Angle:new(0, vertexInterval * i) + (bandDirection)
-            local vertex = self.preAimOrigin + (direction:getForward() * band.distance)
-            local _, fraction = self.preAimOrigin:getTraceLine(vertex, self.bestTarget.eid)
+            local vertex = self.preAimAboutCornersCenterOrigin + (direction:getForward() * band.distance)
+            local trace = Trace.getLineToPosition(self.preAimAboutCornersCenterOrigin, vertex, AiUtility.traceOptionsAttacking)
 
-            if fraction == 1 then
+            if not trace.isIntersectingGeometry then
                 local _, fraction = vertex:getTraceLine(eyeOrigin, player.eid)
 
                 if fraction == 1 then
@@ -2359,26 +2466,19 @@ function AiStateEngage:preAimAboutCorners(ai)
         end
     end
 
+    self.preAimAboutCornersAimOrigin = closestVertex
+
     if not closestVertex then
         self.isPreAimViableForHoldingAngle = false
 
         return
     end
 
-    self.watchOrigin = closestVertex
-
-    self.watchTimer:start()
-
     if closestBand == 2 or closestBand == 3 then
         self.isPreAimViableForHoldingAngle = true
     else
         self.isPreAimViableForHoldingAngle = false
     end
-
-    ai.controller.canUnscope = false
-
-    ai.view:lookAtLocation(closestVertex, self.slowAimSpeed, ai.view.noiseType.NONE, "Engage look at corner")
-    Client.draw(Vector3.drawCircleOutline, closestVertex, 12, 2, Color:hsla(200, 1, 0.5, 200))
 end
 
 --- @param ai AiOptions
@@ -2401,7 +2501,12 @@ function AiStateEngage:watchAngle(ai)
     end
 
     ai.view:lookAtLocation(self.watchOrigin, self.aimSpeed, ai.view.noiseType.IDLE, "Engage watch last spot")
-    Client.draw(Vector3.drawCircleOutline, self.watchOrigin, 16, 2, Color:hsla(300, 1, 0.5, 200))
+
+    self:addVisualizer("watch", function()
+        if self.watchOrigin then
+            self.watchOrigin:drawCircleOutline(16, 2, Color:hsla(300, 1, 0.5, 200))
+        end
+    end)
 end
 
 --- @param ai AiOptions
@@ -2450,13 +2555,13 @@ function AiStateEngage:setAimSkill(skill)
     self.skill = skill
 
     local skillMinimum = {
-        reactionTime = 0.3,
-        anticipateTime = 0.2,
-        sprayTime = 0.66,
-        aimSpeed = 5,
-        slowAimSpeed = 2.5,
+        reactionTime = 0.35,
+        anticipateTime = 0.1,
+        sprayTime = 0.6,
+        aimSpeed = 10,
+        slowAimSpeed = 3,
         recoilControl = 2.5,
-        aimOffset = 32,
+        aimOffset = 48,
         aimInaccurateOffset = 128
     }
 
@@ -2464,16 +2569,14 @@ function AiStateEngage:setAimSkill(skill)
         reactionTime = 0.01,
         anticipateTime = 0.01,
         sprayTime = 0.4,
-        aimSpeed = 7,
+        aimSpeed = 15,
         slowAimSpeed = 4,
         recoilControl = 2,
         aimOffset = 0,
         aimInaccurateOffset = 16
     }
 
-    local totalSkillLevels = 10
-    local skillPct = skill / totalSkillLevels
-
+    local skillPct = skill / self.skillLevelMax
     local skillCurrent = {}
 
     for field, value in pairs(skillMinimum) do

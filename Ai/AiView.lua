@@ -303,7 +303,7 @@ local function grad(hash, x, y, z)
     return r
 end
 
-local function noise(x, y, z)
+local function getPerlinNoise(x, y, z)
     local X = math.floor(x % 255)
     local Y = math.floor(y % 255)
     local Z = math.floor(z % 255)
@@ -410,7 +410,7 @@ function AiView:initFields()
     self.lastCameraAngles = Client.getCameraAngles()
     self.lookAtAngles = Client.getCameraAngles()
     self.lookSpeed = 0
-    self.lookSpeedModifier = 1.5
+    self.lookSpeedModifier = 1.2
     self.recoilControl = 2
     self.useCooldown = Timer:new():start()
     self.velocity = Angle:new()
@@ -587,18 +587,23 @@ function AiView:setViewAngles()
     -- It's overriden by AI behaviours, look ahead of the active path, or rest.
     --- @type Angle
     local idealViewAngles = Client.getCameraAngles()
+    local smoothingCutoffThreshold = 0
 
     if self.overrideViewAngles then
         -- AI wants to look at something particular.
         self:setIdealOverride(idealViewAngles)
+
+        smoothingCutoffThreshold = 0.66
     elseif self.nodegraph.path then
         -- Perform generic look behaviour.
         self:setIdealLookAhead(idealViewAngles)
         -- Watch corners enemies are actually occluded by.
         self:setIdealWatchCorner(idealViewAngles)
         -- Check corners enemies can be behind. This particular logic is also more realistic looking, albeit flawed
-        -- than watch corner.
+        -- compared to watch corner.
         self:setIdealCheckCorner(idealViewAngles)
+
+        smoothingCutoffThreshold = 3
     end
 
     --- @type Angle
@@ -623,7 +628,7 @@ function AiView:setViewAngles()
         -- Real humans don't smoothly move their mouse directly and precisely onto the exact point
         -- in space they want to look at. It is approximate and falls just short. 0.5 yaw/pitch delta
         -- is accurate, but cuts off just before the mouse will appear to be literally lerping to a point.
-        if cameraAngles:getMaxDiff(targetViewAngles) < 0.5 then
+        if cameraAngles:getMaxDiff(targetViewAngles) < smoothingCutoffThreshold then
             return
         end
     end
@@ -683,35 +688,35 @@ function AiView:setTargetNoise(targetViewAngles)
 
     -- Change between "in movement" and "standing still" noise parameters.
     if self.noise.isBasedOnVelocity then
-        velocityMod = Math.clamp(Math.pct(5 + velocity, 450) * 1, 0, 450)
+        velocityMod = Math.getClamped(Math.getFloat(5 + velocity, 450) * 1, 0, 450)
     end
 
     -- How intense the noise is.
     local timeExponent = Time.getRealtime() * self.noise.timeExponent
 
     -- High frequency, low amplitude.
-    self.pitchFine = noise(
+    self.pitchFine = getPerlinNoise(
         self.noise.pitchFineX * timeExponent,
         self.noise.pitchFineY * timeExponent,
         self.noise.pitchFineZ * timeExponent
     ) * 2 * velocityMod
 
     -- Low frequency, high amplitude.
-    self.pitchSoft = noise(
+    self.pitchSoft = getPerlinNoise(
         self.noise.pitchSoftX * timeExponent,
         self.noise.pitchSoftY * timeExponent,
         self.noise.pitchSoftZ * timeExponent
     ) * 10 * velocityMod
 
     -- High frequence, low amplitude.
-    self.yawFine = noise(
+    self.yawFine = getPerlinNoise(
         self.noise.yawFineX * timeExponent,
         self.noise.yawFineY * timeExponent,
         self.noise.yawFineZ * timeExponent
     ) * 2 * velocityMod
 
     -- Low frequency, high amplitude.
-    self.yawSoft = noise(
+    self.yawSoft = getPerlinNoise(
         self.noise.yawSoftX * timeExponent,
         self.noise.yawSoftY * timeExponent,
         self.noise.yawSoftZ * timeExponent
@@ -736,14 +741,14 @@ function AiView:setTargetVelocity(targetViewAngles)
     self.lastCameraAngles = cameraAngles
 
     -- Clamp the velocity within boundary.
-    self.velocity.p = Math.clamp(self.velocity.p, -self.velocityBoundary, self.velocityBoundary)
-    self.velocity.y = Math.clamp(self.velocity.y, -self.velocityBoundary, self.velocityBoundary)
+    self.velocity.p = Math.getClamped(self.velocity.p, -self.velocityBoundary, self.velocityBoundary)
+    self.velocity.y = Math.getClamped(self.velocity.y, -self.velocityBoundary, self.velocityBoundary)
 
     -- Reset the velocity to 0,0 over time.
     self.velocity:approach(Angle:new(), self.velocityResetSpeed)
 
     -- Velocity sine. This should make the over-swing become non-parallel to the aim target.
-    local velocitySine = Angle:new(Animate.sine(0, Math.clamp(self.velocity:getMagnitude() * 0.5, -8, 8), 1), 0)
+    local velocitySine = Angle:new(Animate.sine(0, Math.getClamped(self.velocity:getMagnitude() * 0.5, -8, 8), 1), 0)
 
     targetViewAngles:setFromAngle(targetViewAngles + (self.velocity + velocitySine))
 end
@@ -760,8 +765,8 @@ function AiView:setTargetCurve(targetViewAngles)
     local deltaYaw = math.abs(targetViewAngles.p - self.viewAngles.p)
 
     -- Scale the floating effect based on the difference.
-    local modPitch = Math.clamp(Math.pct(deltaPitch, 180), 0, 1)
-    local modYaw = Math.clamp(Math.pct(deltaYaw, 50), 0, 1)
+    local modPitch = Math.getClamped(Math.getFloat(deltaPitch, 180), 0, 1)
+    local modYaw = Math.getClamped(Math.getFloat(deltaYaw, 50), 0, 1)
 
     targetViewAngles:set(
         targetViewAngles.p + floatPitch * modPitch,
@@ -807,7 +812,7 @@ function AiView:setIdealLookAhead(idealViewAngles)
     lookOrigin:offset(0, 0, 46)
 
     -- Set look speed so we don't use the speed set by AI behaviour.
-    self.lookSpeed = 2.5
+    self.lookSpeed = 2
     self.lookNote = "AiView look ahead of path"
 
     -- Generate our look ahead view angles.
@@ -856,7 +861,7 @@ function AiView:setIdealCheckCorner(idealViewAngles)
             local trace = Trace.getLineAtAngle(checkOrigin, closestCheckNode.direction, AiUtility.traceOptionsPathfinding)
 
             -- Set look speed so we don't use the speed set by AI behaviour.
-            self.lookSpeed = 4.5
+            self.lookSpeed = 4
             self.lookNote = "AiView check corner"
 
             idealViewAngles:setFromAngle(clientEyeOrigin:getAngle(trace.endPosition))
@@ -877,10 +882,10 @@ function AiView:setIdealWatchCorner(idealViewAngles)
 
     -- I actually refactored something for once, instead of doing it in 4 places in slightly different ways.
     -- No, don't open AiStateEvade. Don't look in there.
-    if AiUtility.isClientThreatened then
-        idealViewAngles:setFromAngle(Client.getEyeOrigin():getAngle(AiUtility.threatOrigin))
+    if AiUtility.clientThreatenedFromOrigin then
+        idealViewAngles:setFromAngle(Client.getEyeOrigin():getAngle(AiUtility.clientThreatenedFromOrigin))
 
-        self.lookSpeed = 4
+        self.lookSpeed = 5
         self.lookNote = "AiView watch corner"
 
         self:setNoiseType(AiViewNoiseType.MOVING)

@@ -92,14 +92,14 @@ function AiStatePlant:assess(nodegraph)
     local site = nodegraph:getSiteNode(siteName)
     local closestPlantNode = nodegraph:getClosestNodeOf(playerOrigin, Node.types.PLANT)
     local isCovered = false
-    local isOnSite = playerOrigin:getDistance(site.origin) < 600
-    local isOnPlant = playerOrigin:getDistance(closestPlantNode.origin) < 150
+    local isOnSite = playerOrigin:getDistance(site.origin) < 450
+    local isOnPlant = playerOrigin:getDistance(closestPlantNode.origin) < 100
 
     if isOnSite then
         for _, teammate in pairs(AiUtility.teammates) do
             local teammateOrigin = teammate:getOrigin()
 
-            local distance = 650
+            local distance = 450
 
             if playerOrigin:getDistance(teammateOrigin) < distance then
                 isCovered = true
@@ -176,6 +176,8 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStatePlant:think(ai)
+    self.activity = "Going to plant bomb"
+
     if not self.node then
         self:activate(ai)
     end
@@ -189,11 +191,11 @@ function AiStatePlant:think(ai)
     end
 
     if distance < 80 then
-        ai.controller.canUseKnife = false
+        self.activity = "Planting bomb"
 
-        if not player:isHoldingWeapon(Weapons.C4) then
-            Client.equipBomb()
-        end
+        ai.controller.canUseGear = false
+
+        Client.equipBomb()
     end
 
     if self.isPlanting then

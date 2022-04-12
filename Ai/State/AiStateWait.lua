@@ -21,7 +21,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field waitingOnPlayer Player
 --- @field waitingOrigin Vector3
 local AiStateWait = {
-    name = "Follow"
+    name = "Wait"
 }
 
 --- @param fields AiStateWait
@@ -79,7 +79,9 @@ end
 
 --- @param ai AiOptions
 --- @return void
-function AiStateWait:think(ai) end
+function AiStateWait:think(ai)
+    self.activity = "Waiting on teammate"
+end
 
 --- @param ai AiOptions
 --- @return void

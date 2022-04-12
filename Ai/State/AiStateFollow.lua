@@ -80,6 +80,8 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateFollow:think(ai)
+    self.activity = "Following teammate"
+
     local followingPlayerOrigin = self.followingPlayer:getOrigin()
     local distance = followingPlayerOrigin:getDistance(self.lastFollowingPlayOrigin)
 

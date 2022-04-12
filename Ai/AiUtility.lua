@@ -1,7 +1,9 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Color = require "gamesense/Nyx/v1/Api/Color"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -12,6 +14,10 @@ local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
+--}}}
+
+--{{{ Modules
+local DominionMenu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 --}}}
 
 --{{{ Enums
@@ -103,11 +109,13 @@ local AiWeaponNames = {
 --- @field traceOptionsPathfinding TraceOptions
 --- @field traceOptionsAttacking TraceOptions
 --- @field visibleEnemies Player[]
+--- @field isEnemyVisible boolean
 --- @field weaponNames string[]
 --- @field weaponPriority AiWeaponPriorityGeneral
 --- @field defuseTimer Timer
---- @field threatOrigin Vector3
+--- @field clientThreatenedFromOrigin Vector3
 --- @field threatUpdateTimer Timer
+--- @field threats boolean[]
 --- @field totalThreats number
 --- @field isClientThreatened boolean
 local AiUtility = {
@@ -120,26 +128,27 @@ local AiUtility = {
 
 --- @return void
 function AiUtility:__setup()
-    self:initFields()
-    self:initEvents()
+    AiUtility.initFields()
+    AiUtility.initEvents()
 end
 
 --- @return void
 function AiUtility:initFields()
-    self.client = Player.getClient()
-    self.visibleEnemies = {}
-    self.lastVisibleEnemyTimer = Timer:new()
-    self.enemyDistances = Table.populateForMaxPlayers(math.huge)
-    self.enemyFovs = Table.populateForMaxPlayers(math.huge)
-    self.roundTimer = Timer:new()
-    self.defuseTimer = Timer:new()
-    self.lastKnownOrigin = {}
-    self.dormantAt = {}
-    self.enemies = {}
-    self.teammates = {}
-    self.enemiesAlive = 0
-    self.teammatesAlive = 0
-    self.threatUpdateTimer = Timer:new():startThenElapse()
+    AiUtility.client = Player.getClient()
+    AiUtility.visibleEnemies = {}
+    AiUtility.lastVisibleEnemyTimer = Timer:new()
+    AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
+    AiUtility.enemyFovs = Table.populateForMaxPlayers(math.huge)
+    AiUtility.roundTimer = Timer:new()
+    AiUtility.defuseTimer = Timer:new()
+    AiUtility.lastKnownOrigin = {}
+    AiUtility.dormantAt = {}
+    AiUtility.enemies = {}
+    AiUtility.teammates = {}
+    AiUtility.enemiesAlive = 0
+    AiUtility.teammatesAlive = 0
+    AiUtility.totalThreats = 0
+    AiUtility.threatUpdateTimer = Timer:new():startThenElapse()
 
     local solidPathfindingEntities = {
         CDynamicProp = true,
@@ -149,7 +158,7 @@ function AiUtility:initFields()
         CPhysicsProp = true,
     }
 
-    self.traceOptionsPathfinding = {
+    AiUtility.traceOptionsPathfinding = {
         skip = function(eid)
             local entity = Entity:create(eid)
 
@@ -171,7 +180,7 @@ function AiUtility:initFields()
         CPropDoorRotating = true,
     }
 
-    self.traceOptionsAttacking = {
+    AiUtility.traceOptionsAttacking = {
         skip = function(eid)
             local entity = Entity:create(eid)
 
@@ -191,301 +200,338 @@ end
 --- @return void
 function AiUtility:initEvents()
     Callbacks.roundStart(function()
-        self.canDefuse = nil
-        self.visibleEnemies = {}
-        self.enemyDistances = Table.populateForMaxPlayers(math.huge)
-        self.enemyFovs = Table.populateForMaxPlayers(math.huge)
-        self.lastKnownOrigin = {}
-        self.dormantAt = {}
+        AiUtility.canDefuse = nil
+        AiUtility.visibleEnemies = {}
+        AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
+        AiUtility.enemyFovs = Table.populateForMaxPlayers(math.huge)
+        AiUtility.lastKnownOrigin = {}
+        AiUtility.dormantAt = {}
 
-        self.defuseTimer:stop()
+        AiUtility.defuseTimer:stop()
     end)
 
     Callbacks.roundEnd(function()
-        self.roundTimer:stop()
+        AiUtility.roundTimer:stop()
 
-        self.isRoundOver = true
+        AiUtility.isRoundOver = true
     end)
 
     Callbacks.roundFreezeEnd(function()
-        self.roundTimer:start()
+        AiUtility.roundTimer:start()
 
-        self.enemiesAlive = 0
+        AiUtility.enemiesAlive = 0
 
         for _, _ in Player.findAll(function(p)
             return p:isEnemy()
         end) do
-            self.enemiesAlive = self.enemiesAlive + 1
+            AiUtility.enemiesAlive = AiUtility.enemiesAlive + 1
         end
     end)
 
     Callbacks.init(function()
-    	self.bombCarrier = nil
-        self.enemiesAlive = 5
-        self.client = Player.getClient()
+    	AiUtility.bombCarrier = nil
+        AiUtility.enemiesAlive = 5
+        AiUtility.client = Player.getClient()
     end)
 
     Callbacks.roundPrestart(function(e)
-        self.bombCarrier = nil
-        self.isRoundOver = false
-        self.isBombBeingDefusedByEnemy = false
-        self.isBombBeingDefusedByTeammate = false
-        self.isBombBeingPlantedByEnemy = false
-        self.isBombBeingPlantedByTeammate = false
-        self.isClientPlanting = false
+        AiUtility.bombCarrier = nil
+        AiUtility.isRoundOver = false
+        AiUtility.isBombBeingDefusedByEnemy = false
+        AiUtility.isBombBeingDefusedByTeammate = false
+        AiUtility.isBombBeingPlantedByEnemy = false
+        AiUtility.isBombBeingPlantedByTeammate = false
+        AiUtility.isClientPlanting = false
     end)
 
     Callbacks.itemPickup(function(e)
         if e.item == "c4" then
-            self.bombCarrier = e.player
+            AiUtility.bombCarrier = e.player
         end
     end)
 
     Callbacks.itemEquip(function(e)
         if e.item == "c4" then
-            self.bombCarrier = e.player
+            AiUtility.bombCarrier = e.player
         end
     end)
 
     Callbacks.itemRemove(function(e)
         if e.item == "c4" then
-            self.bombCarrier = nil
+            AiUtility.bombCarrier = nil
         end
     end)
 
     Callbacks.bombBeginPlant(function(e)
         if e.player:isClient() then
-            self.isClientPlanting = true
+            AiUtility.isClientPlanting = true
         elseif e.player:isTeammate() then
-            self.isBombBeingPlantedByTeammate = true
+            AiUtility.isBombBeingPlantedByTeammate = true
         elseif e.player:isEnemy() then
-            self.isBombBeingPlantedByEnemy = true
+            AiUtility.isBombBeingPlantedByEnemy = true
         end
     end)
 
     Callbacks.bombAbortPlant(function(e)
         if e.player:isClient() then
-            self.isClientPlanting = false
+            AiUtility.isClientPlanting = false
         elseif e.player:isTeammate() then
-            self.isBombBeingPlantedByTeammate = false
+            AiUtility.isBombBeingPlantedByTeammate = false
         elseif e.player:isEnemy() then
-            self.isBombBeingPlantedByEnemy = false
+            AiUtility.isBombBeingPlantedByEnemy = false
         end
     end)
 
     Callbacks.bombPlanted(function()
-    	self.bombCarrier = nil
-        self.isClientPlanting = false
-        self.isBombBeingPlantedByEnemy = false
-        self.isBombBeingPlantedByTeammate = false
+    	AiUtility.bombCarrier = nil
+        AiUtility.isClientPlanting = false
+        AiUtility.isBombBeingPlantedByEnemy = false
+        AiUtility.isBombBeingPlantedByTeammate = false
     end)
 
     Callbacks.bombBeginDefuse(function(e)
         if e.player:isClient() then
-            self.defuseTimer:start()
+            AiUtility.defuseTimer:start()
         end
 
         if not e.player:isClient() and e.player:isTeammate() then
-            self.isBombBeingDefusedByTeammate = true
+            AiUtility.isBombBeingDefusedByTeammate = true
         elseif e.player:isEnemy() then
-            self.isBombBeingDefusedByEnemy = true
+            AiUtility.isBombBeingDefusedByEnemy = true
         end
     end)
 
     Callbacks.bombAbortDefuse(function(e)
         if e.player:isClient() then
-            self.defuseTimer:stop()
+            AiUtility.defuseTimer:stop()
         end
 
         if not e.player:isClient() and e.player:isTeammate() then
-            self.isBombBeingDefusedByTeammate = true
+            AiUtility.isBombBeingDefusedByTeammate = false
         elseif e.player:isEnemy() then
-            self.isBombBeingDefusedByEnemy = true
+            AiUtility.isBombBeingDefusedByEnemy = false
         end
     end)
 
     Callbacks.bombDefused(function(e)
         if e.player:isClient() then
-            self.defuseTimer:stop()
+            AiUtility.defuseTimer:stop()
         end
 
         if not e.player:isClient() and e.player:isTeammate() then
-            self.isBombBeingDefusedByTeammate = true
+            AiUtility.isBombBeingDefusedByTeammate = false
         elseif e.player:isEnemy() then
-            self.isBombBeingDefusedByEnemy = true
+            AiUtility.isBombBeingDefusedByEnemy = false
         end
     end)
 
     Callbacks.playerDeath(function(e)
         if e.victim:isClient() then
-            self.canDefuse = nil
-            self.visibleEnemies = {}
-            self.enemyDistances = Table.populateForMaxPlayers(math.huge)
-            self.enemyFovs = Table.populateForMaxPlayers(math.huge)
-            self.lastKnownOrigin = {}
-            self.dormantAt = {}
+            AiUtility.canDefuse = nil
+            AiUtility.visibleEnemies = {}
+            AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
+            AiUtility.enemyFovs = Table.populateForMaxPlayers(math.huge)
+            AiUtility.lastKnownOrigin = {}
+            AiUtility.dormantAt = {}
         elseif e.victim:isEnemy() then
-            self.enemiesAlive = self.enemiesAlive - 1
+            AiUtility.enemiesAlive = AiUtility.enemiesAlive - 1
         end
     end)
 
     Callbacks.runCommand(function()
-        self.client = Player.getClient()
-        self.bomb = Entity.findOne("CC4")
-        self.plantedBomb = Entity.findOne("CPlantedC4")
+        AiUtility.updateMisc()
+        AiUtility.updateThreats()
+        AiUtility.updateEnemies()
+        AiUtility.updateAllPlayers()
+    end)
+end
 
-        if self.plantedBomb and not self.isRoundOver then
-            self.weaponPriority = AiWeaponPriorityClutch
-        else
-            self.weaponPriority = AiWeaponPriorityGeneral
+--- @return void
+function AiUtility.updateMisc()
+    AiUtility.client = Player.getClient()
+    AiUtility.bomb = Entity.findOne("CC4")
+    AiUtility.plantedBomb = Entity.findOne("CPlantedC4")
+
+    if AiUtility.plantedBomb and not AiUtility.isRoundOver then
+        AiUtility.weaponPriority = AiWeaponPriorityClutch
+    else
+        AiUtility.weaponPriority = AiWeaponPriorityGeneral
+    end
+end
+
+--- @return void
+function AiUtility.updateEnemies()
+    AiUtility.enemies = {}
+    AiUtility.visibleEnemies = {}
+    AiUtility.closestEnemy = nil
+    AiUtility.isLastAlive = true
+    AiUtility.enemiesAlive = 0
+    AiUtility.isEnemyVisible = false
+
+    local clientOrigin = Client.getOrigin()
+    local clientEyeOrigin = Client.getEyeOrigin()
+    local cameraAngles = Client.getCameraAngles()
+
+    local closestEnemy
+    local closestDistance = math.huge
+
+    for _, enemy in Player.find(function(p)
+        return p:isEnemy() and p:isAlive()
+    end) do
+        plist.set(enemy.eid, "Correction active", false)
+
+        AiUtility.enemies[enemy.eid] = enemy
+
+        if not enemy:isDormant() then
+            AiUtility.dormantAt[enemy.eid] = Time.getRealtime()
         end
 
-        local origin = Client.getOrigin()
-        local eyeOrigin = Client.getEyeOrigin()
-        local cameraAngles = Client.getCameraAngles()
+        local fov = cameraAngles:getFov(clientEyeOrigin, enemy:getHitboxPosition(Player.hitbox.SPINE_1))
 
-        self.enemies = {}
-        self.teammates = {}
-        self.visibleEnemies = {}
-        self.closestEnemy = nil
-        self.isLastAlive = true
-        self.enemiesAlive = 0
-        -- Very funny Valve.
-        self.teammatesAlive = -1
+        AiUtility.enemyFovs[enemy.eid] = fov
 
-        local playerResource = entity.get_player_resource()
+        local enemyOrigin = enemy:getOrigin()
 
-        for eid = 1, globals.maxplayers() do
-            local isEnemy = entity.is_enemy(eid)
-            local isAlive = entity.get_prop(playerResource, "m_bAlive", eid)
+        local distance = clientOrigin:getDistance(enemyOrigin)
 
-            if isAlive == 1 then
-                if isEnemy then
-                    self.enemiesAlive = self.enemiesAlive + 1
-                else
-                    self.teammatesAlive = self.teammatesAlive + 1
-                end
-            end
+        if distance < closestDistance then
+            closestDistance = distance
+            closestEnemy = enemy
         end
 
-        for _, teammate in Player.find(function(p)
-            return p:isTeammate() and p:isAlive() and not p:isClient()
-        end) do
-            self.teammates[teammate.eid] = teammate
-            self.isLastAlive = false
-        end
+        AiUtility.enemyDistances[enemy.eid] = distance
 
-        local closestEnemy
-        local closestDistance = math.huge
+        local isVisible = false
 
-        for _, enemy in Player.find(function(p)
-            return p:isEnemy() and p:isAlive()
-        end) do
-            self.enemies[enemy.eid] = enemy
+        if not enemy:isDormant() then
+            for _, hitbox in pairs(enemy:getHitboxPositions()) do
+                local trace = Trace.getLineToPosition(clientEyeOrigin, hitbox, AiUtility.traceOptionsAttacking)
 
-            if not enemy:isDormant() then
-                self.dormantAt[enemy.eid] = Time.getRealtime()
-            end
+                if not trace.isIntersectingGeometry then
+                    if not clientEyeOrigin:isRayIntersectingSmoke(hitbox) then
+                        isVisible = true
 
-            local fov = cameraAngles:getFov(eyeOrigin, enemy:getHitboxPosition(Player.hitbox.SPINE_1))
-
-            self.enemyFovs[enemy.eid] = fov
-
-            local enemyOrigin = enemy:getOrigin()
-
-            local distance = origin:getDistance(enemyOrigin)
-
-            if distance < closestDistance then
-                closestDistance = distance
-                closestEnemy = enemy
-            end
-
-            self.enemyDistances[enemy.eid] = distance
-
-            local visibleHitboxes = 0
-
-            if not enemy:isDormant() then
-                for _, hitbox in pairs(enemy:getHitboxPositions()) do
-                    local trace = Trace.getLineToPosition(eyeOrigin, hitbox, AiUtility.traceOptionsAttacking)
-
-                    if not trace.isIntersectingGeometry then
-                        if enemy:m_bIsDefusing() == 1 then
-                            visibleHitboxes = visibleHitboxes + 1
-                        else
-                            if not eyeOrigin:isRayIntersectingSmoke(hitbox) then
-                                visibleHitboxes = visibleHitboxes + 1
-                            end
-                        end
+                        break
                     end
                 end
             end
+        end
 
-            if visibleHitboxes > 0 then
-                self.visibleEnemies[enemy.eid] = enemy
+        if isVisible then
+            AiUtility.visibleEnemies[enemy.eid] = enemy
+
+            AiUtility.isEnemyVisible = true
+            AiUtility.isClientThreatened = true
+            AiUtility.clientThreatenedFromOrigin = enemyOrigin:clone():offset(0, 0, 64)
+        elseif enemy:m_bIsDefusing() == 1 then
+            AiUtility.visibleEnemies[enemy.eid] = enemy
+        end
+    end
+
+    if closestEnemy then
+        AiUtility.closestEnemy = closestEnemy
+    end
+
+    if next(AiUtility.visibleEnemies) then
+        AiUtility.lastVisibleEnemyTimer:stop()
+    else
+        AiUtility.lastVisibleEnemyTimer:ifPausedThenStart()
+    end
+
+    local bomb = AiUtility.plantedBomb
+
+    if bomb then
+        local explodeAt = bomb:m_flC4Blow()
+        local time = explodeAt - globals.curtime()
+
+        AiUtility.bombDetonationTime = math.max(0, time)
+
+        if time <= 0 then
+            return
+        end
+
+        local playerHasKit = Player.getClient():m_bHasDefuser() == 1
+        local defuseTime = 10
+
+        if playerHasKit then
+            defuseTime = 5
+        end
+
+        AiUtility.canDefuse = time > defuseTime
+    end
+end
+
+--- @return void
+function AiUtility.updateAllPlayers()
+    AiUtility.teammates = {}
+    -- Very funny Valve.
+    AiUtility.teammatesAlive = -1
+
+    local playerResource = entity.get_player_resource()
+
+    for eid = 1, globals.maxplayers() do
+        local isEnemy = entity.is_enemy(eid)
+        local isAlive = entity.get_prop(playerResource, "m_bAlive", eid)
+
+        if isAlive == 1 then
+            if isEnemy then
+                AiUtility.enemiesAlive = AiUtility.enemiesAlive + 1
+            else
+                AiUtility.teammatesAlive = AiUtility.teammatesAlive + 1
             end
         end
+    end
 
-        if closestEnemy then
-            self.closestEnemy = closestEnemy
-        end
+    for _, teammate in Player.find(function(p)
+        return p:isTeammate() and p:isAlive() and not p:isClient()
+    end) do
+        AiUtility.teammates[teammate.eid] = teammate
+        AiUtility.isLastAlive = false
+    end
+end
 
-        if next(AiUtility.visibleEnemies) then
-            self.lastVisibleEnemyTimer:stop()
-        else
-            self.lastVisibleEnemyTimer:ifPausedThenStart()
-        end
+--- @return void
+function AiUtility.updateThreats()
+    AiUtility.threats = {}
 
-        local bomb = AiUtility.plantedBomb
+    if  DominionMenu.enableAi:get() and AiUtility.clientThreatenedFromOrigin then
+        Client.draw(Vector3.drawCircleOutline, AiUtility.clientThreatenedFromOrigin, 30, 3, Color:hsla(0, 1, 1, 75))
+    end
 
-        if bomb then
-            local explodeAt = bomb:m_flC4Blow()
-            local time = explodeAt - globals.curtime()
+    -- Update threats.
+    local eyeOrigin = Client.getEyeOrigin() + AiUtility.client:m_vecVelocity():set(nil, nil, 0) * 0.4
+    local threatUpdateTime = AiUtility.clientThreatenedFromOrigin and 0.3 or 0.1
+    local threats = 0
 
-            AiUtility.bombDetonationTime = math.max(0, time)
+    -- Don't update the threat origin too often, or it'll be obvious this is effectively wallhacking.
+    if AiUtility.threatUpdateTimer:isElapsedThenRestart(threatUpdateTime) then
+        AiUtility.clientThreatenedFromOrigin = nil
+        AiUtility.isClientThreatened = false
 
-            if time <= 0 then
-                return
-            end
+        local clientPlane = eyeOrigin:getPlane(Vector3.align.CENTER, 64)
 
-            local playerHasKit = Player.getClient():m_bHasDefuser() == 1
-            local defuseTime = 10
+        for _, enemy in pairs(AiUtility.enemies) do
+            local enemyOffset = enemy:getOrigin():offset(0, 0, 72)
+            local bandAngle = eyeOrigin:getAngle(enemyOffset):set(0):offset(0, 90)
+            local enemyAngle = eyeOrigin:getAngle(enemyOffset)
+            local steps = 8
+            local stepDistance = 180 / steps
+            --- @type Vector3
+            local closestPoint
+            local closestPointDistance = math.huge
+            local absPitch = math.abs(enemyAngle.p)
+            local traceExtension = 1 - Math.getFloat(Math.getClamped(absPitch, 0, 75), 90)
+            local traceDistance = 200 * traceExtension
+            local lowestFov = math.huge
 
-            if playerHasKit then
-                defuseTime = 5
-            end
+            for _ = 1, steps do
+                local testOrigin = enemyOffset + bandAngle:getForward() * traceDistance
+                local wallTrace = Trace.getLineToPosition(enemyOffset, testOrigin, AiUtility.traceOptionsAttacking)
 
-            self.canDefuse = time > defuseTime
-        end
-
-        -- Update threats.
-        local eyeOrigin = Client.getEyeOrigin() + AiUtility.client:m_vecVelocity() * 0.5
-        local threatUpdateTime = self.threatOrigin and 2.5 or 0.5
-        local threats = 0
-
-        -- Don't update the watch origin too often, or it'll be obvious this is effectively wallhacking.
-        if self.threatUpdateTimer:isElapsedThenRestart(threatUpdateTime) then
-            self.threatOrigin = nil
-            self.isClientThreatened = false
-
-            for _, enemy in pairs(AiUtility.enemies) do
-                local enemyOffset = enemy:getOrigin():offset(0, 0, 64)
-                local angle = eyeOrigin:getAngle(enemyOffset):offset(0, 90)
-                local steps = 16
-                local stepDistance = 180 / 16
-                --- @type Vector3
-                local closestPoint
-                local closestPointDistance = math.huge
-
-                for _ = 1, steps do
-                    -- Trace our circle and collide with walls.
-                    local wallTrace = Trace.getLineAtAngle(enemyOffset, angle, Table.merge(AiUtility.traceOptionsAttacking, {
-                        distance = 350
-                    }))
-
-                    wallTrace.endPosition:lerp(enemyOffset, 0.25)
-
+                for _, vertex in pairs(clientPlane) do
                     -- Trace to see if we can see the previous trace.
-                    local testTrace = Trace.getLineToPosition(wallTrace.endPosition, eyeOrigin, AiUtility.traceOptionsAttacking)
+                    local testTrace = Trace.getLineToPosition(wallTrace.endPosition, vertex, AiUtility.traceOptionsAttacking)
+                    local fov = enemyAngle:getFov(eyeOrigin, wallTrace.endPosition)
 
                     -- Set the closest point to the enemy as the best point to look at.
                     if not testTrace.isIntersectingGeometry then
@@ -495,22 +541,29 @@ function AiUtility:initEvents()
                             closestPointDistance = distance
                             closestPoint = wallTrace.endPosition
                         end
+
+                        if fov < lowestFov and fov < 20 then
+                            lowestFov = fov
+
+                            AiUtility.clientThreatenedFromOrigin = wallTrace.endPosition
+                        end
                     end
-
-                    angle:offset(0, stepDistance)
                 end
 
-                if closestPoint then
-                    self.threatOrigin = closestPoint
-                    self.isClientThreatened = true
-
-                    threats = threats + 1
-                end
+                bandAngle:offset(0, stepDistance)
             end
 
-            self.totalThreats = threats
+            if closestPoint then
+                AiUtility.isClientThreatened = true
+
+                threats = threats + 1
+
+                AiUtility.threats[enemy.eid] = true
+            end
         end
-    end)
+
+        AiUtility.totalThreats = threats
+    end
 end
 
 --- @return boolean

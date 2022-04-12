@@ -13,7 +13,6 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
-local AiStateEvade = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEvade"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
@@ -33,7 +32,6 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field throwTimer Timer
 --- @field throwTime number
 --- @field reachedDestination boolean
---- @field switchWeaponsCooldown Timer
 --- @field cooldownTimer Timer
 --- @field inBehaviorTimer Timer
 --- @field usedNodes Timer[]
@@ -56,7 +54,6 @@ function AiStateGrenadeBase:__init()
     self.inBehaviorTimer = Timer:new()
     self.throwTimer = Timer:new()
     self.throwTime = 0.2
-    self.switchWeaponsCooldown = Timer:new():start()
 
     Callbacks.grenadeThrown(function(e)
         if e.player:isClient() then
@@ -66,11 +63,19 @@ function AiStateGrenadeBase:__init()
             AiStateGrenadeBase.cooldownTimer:start()
         end
     end)
+
+    Callbacks.roundStart(function()
+    	self.globalCooldownTimer:restart()
+    end)
 end
 
 --- @param nodegraph Nodegraph
 --- @return void
 function AiStateGrenadeBase:assess(nodegraph)
+    if AiUtility.isRoundOver or AiUtility.enemiesAlive == 0 then
+        return AiState.priority.IGNORE
+    end
+
     if AiUtility.roundTimer:isStarted() and not AiUtility.roundTimer:isElapsed(self.usableAfter) then
         return AiState.priority.IGNORE
     end
@@ -194,12 +199,18 @@ end
 
 --- @return void
 function AiStateGrenadeBase:deactivate()
-    Client.equipAnyWeapon()
+    if AiUtility.client:hasPrimary() then
+        Client.equipPrimary()
+    else
+        Client.equipPistol()
+    end
 end
 
 --- @param ai AiOptions
 --- @return void
 function AiStateGrenadeBase:think(ai)
+    self.activity = string.format("Going to throw %s", self.name)
+
     if self.node and AiStateGrenadeBase.usedNodes[self.node.id] then
         self.node = nil
 
@@ -219,24 +230,22 @@ function AiStateGrenadeBase:think(ai)
 
     local distance = playerOrigin:getDistance(self.node.origin)
 
-    if distance < 250 then
-        if not player:isHoldingWeapons(self.weapons) and self.switchWeaponsCooldown:isElapsedThenRestart(self.throwTime) then
-            self.equipFunction()
-        end
-    end
-
-    if distance < 200 then
-        ai.controller.canUseKnife = false
-        ai.controller.canLookAwayFromFlash = false
-        ai.controller.isQuickStopping = true
-    end
-
     if distance < 20 then
         ai.nodegraph.isAllowedToMove = false
     end
 
     if distance < 46 then
         self.throwTimer:ifPausedThenStart()
+    end
+
+    if distance < 250 then
+        self.activity = string.format("Throwing %s", self.name)
+
+        ai.controller.canUseGear = false
+        ai.controller.canLookAwayFromFlash = false
+        ai.controller.isQuickStopping = true
+
+        self.equipFunction()
     end
 
     if distance < 150 then

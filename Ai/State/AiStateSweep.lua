@@ -57,7 +57,9 @@ end
 
 --- @param ai AiOptions
 --- @return void
-function AiStateSweep:think(ai) end
+function AiStateSweep:think(ai)
+    self.activity = "Sweeping the map"
+end
 
 --- @param ai AiOptions
 --- @param site string

@@ -20,16 +20,18 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 
 --{{{ AiStateFlashbangDynamic
 --- @class AiStateFlashbangDynamic : AiState
+--- @field canJumpThrow boolean
 --- @field isActivated boolean
 --- @field isThrowing boolean
---- @field canJumpThrow boolean
 --- @field targetPlayer Player
 --- @field throwAngles Angle
---- @field throwCooldownTimer Timer
---- @field throwTimer Timer
 --- @field throwAttemptCooldownTimer Timer
+--- @field throwCooldownTimer Timer
+--- @field throwFromOrigin Vector3
+--- @field throwTimer Timer
+--- @field threatCooldownTimer Timer
 local AiStateFlashbangDynamic = {
-    name = "Grenade Dynamic"
+    name = "Flashang Dynamic"
 }
 
 --- @param fields AiStateFlashbangDynamic
@@ -43,6 +45,7 @@ function AiStateFlashbangDynamic:__init()
     self.throwTimer = Timer:new()
     self.throwCooldownTimer = Timer:new():startThenElapse()
     self.throwAttemptCooldownTimer = Timer:new():startThenElapse()
+    self.threatCooldownTimer = Timer:new():startThenElapse()
 
     Callbacks.roundStart(function()
     	self:reset()
@@ -52,43 +55,32 @@ end
 --- @return void
 function AiStateFlashbangDynamic:assess()
     -- Cooldown. We really need it.
-    if not self.throwCooldownTimer:isElapsed(12) or self.throwAttemptCooldownTimer:isElapsed(1.5) then
+    if not self.throwCooldownTimer:isElapsed(12) then
+        return AiState.priority.IGNORE
+    end
+
+    -- Don't let them spam when attempting this behaviour.
+    if not self.throwAttemptCooldownTimer:isElapsed(1.5) then
+        return AiState.priority.IGNORE
+    end
+
+    -- We were just threatened by an enemy, so we don't want to try again too soon.
+    if not self.threatCooldownTimer:isElapsed(5) then
         return AiState.priority.IGNORE
     end
 
     local clientEyeOrigin = Client.getEyeOrigin()
-    local clientTestVisibilityBox = clientEyeOrigin:getPlane(Vector3.align.CENTER, 64)
 
-    -- We may as well commit if we're already about to throw.
-    if not self.isThrowing then
-        -- Don't try flashes if it's not safe.
-        -- AiUtility.isClientThreatened is a little too generous so we're gonna use a smaller zone for threat detection.
-        for _, enemy in pairs(AiUtility.enemies) do
-            local distance = clientEyeOrigin:getDistance(enemy:getOrigin())
+    -- AI is threatened. Don't try, or abort, throwing a flashbang.
+    if AiUtility.isClientThreatened then
+        self.threatCooldownTimer:start()
 
-            -- Enemy is too close.
-            if distance < 500 then
-                return AiState.priority.IGNORE
-            end
-
-            local enemyTestVisibilityBox = enemy:getEyeOrigin():getBox(Vector3.align.CENTER, 100, 100, 32)
-
-            -- Enemy could peek us, or we could peek them.
-            for _, clientVertex in pairs(clientTestVisibilityBox) do
-                for _, enemyVertex in pairs(enemyTestVisibilityBox) do
-                    local trace = Trace.getLineToPosition(clientVertex, enemyVertex, AiUtility.traceOptionsAttacking)
-
-                    if not trace.isIntersectingGeometry then
-                        return AiState.priority.IGNORE
-                    end
-                end
-            end
-        end
+        return AiState.priority.IGNORE
     end
 
     -- We already found an angle to not-blind a totally-suspecting enemy player with.
     if self.throwAngles then
-        return AiState.priority.DYNAMIC_GRENADE
+        return AiState.priority.FLASHBANG_DYNAMIC
     end
 
     -- Don't bother if we don't even have a flashbang on us.
@@ -107,7 +99,7 @@ function AiStateFlashbangDynamic:assess()
     -- Oh Source, do tell us where this stray nade "prediction" went?
     local impactTrace = Trace.getHullAtAngle(clientEyeOrigin, predictionAngles, bounds, {
         skip = AiUtility.client.eid,
-        mask = Trace.mask.VISIBLE,
+        mask = Trace.mask.SHOT,
         distance = predictionDistance
     })
 
@@ -126,7 +118,7 @@ function AiStateFlashbangDynamic:assess()
         -- Not using getHitboxPosition because getOrigin works on dormancy. That and CSGO's hitbox positions are more demented than this code.
         local blindTrace = Trace.getHullToPosition(impactTrace.endPosition, enemyTestOrigin, bounds, {
             skip = enemy.eid,
-            mask = Trace.mask.VISIBLE
+            mask = Trace.mask.SHOT
         })
 
         -- No line of sight. Lucky for him.
@@ -163,6 +155,7 @@ function AiStateFlashbangDynamic:assess()
         local isVisibleWhenJumping = not trace.isIntersectingGeometry
 
         self.canJumpThrow = not isVisibleWhenJumping and predictionAngles.p < -40
+        self.throwFromOrigin = Client.getOrigin()
 
         Client.onNextTick(function()
             if not self.isActivated then
@@ -170,7 +163,7 @@ function AiStateFlashbangDynamic:assess()
             end
         end)
 
-        return AiState.priority.DYNAMIC_GRENADE
+        return AiState.priority.FLASHBANG_DYNAMIC
     until true end
 
     return AiState.priority.IGNORE
@@ -196,11 +189,12 @@ end
 
 --- @return void
 function AiStateFlashbangDynamic:reset()
-    self.throwAngles = nil
-    self.isThrowing = false
     self.canJumpThrow = false
-    self.targetPlayer = nil
     self.isActivated = false
+    self.isThrowing = false
+    self.targetPlayer = nil
+    self.throwAngles = nil
+    self.throwFromOrigin = nil
 
     self.throwTimer:stop()
 end
@@ -208,14 +202,24 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateFlashbangDynamic:think(ai)
-    if AiUtility.isRoundOver or not self.targetPlayer:isAlive() then
+    self.activity = "Throwing Flashbang"
+
+    -- If we're not in a throw, and the round is over or our target has died, then do not throw.
+    if not self.isThrowing and (AiUtility.isRoundOver or not self.targetPlayer:isAlive()) then
+        self:reset()
+
+        return
+    end
+
+    -- We've moved too far.
+    if Client.getOrigin():getDistance(self.throwFromOrigin) > 32 then
         self:reset()
 
         return
     end
 
     ai.controller.states.evade.isBlocked = true
-    ai.controller.canUseKnife = false
+    ai.controller.canUseGear = false
     ai.controller.canLookAwayFromFlash = false
     ai.controller.isQuickStopping = true
     ai.nodegraph.isAllowedToAvoidTeammates = false

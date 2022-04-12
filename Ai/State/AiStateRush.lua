@@ -75,6 +75,8 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateRush:think(ai)
+    self.activity = "Rushing"
+
     if not ai.nodegraph.path then
         self.canRushThisRound = false
     end

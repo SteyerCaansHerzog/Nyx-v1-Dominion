@@ -48,7 +48,9 @@ function AiStateDeveloper:reset() end
 
 --- @param ai AiOptions
 --- @return void
-function AiStateDeveloper:think(ai) end
+function AiStateDeveloper:think(ai)
+    self.activity = "Testing"
+end
 
 return Nyx.class("AiStateDeveloper", AiStateDeveloper, AiState)
 --}}}

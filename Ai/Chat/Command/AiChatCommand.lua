@@ -45,16 +45,29 @@ function AiChatCommand:isValid(ai, sender, args)
         return false
     end
 
-    if sender:is(AiUtility.client) then
-        return false
-    end
+    local steamId64 = sender:getSteamId64()
+    local isSenderAdmin = Config.isAdministrator(steamId64)
 
-    local isSenderAdmin = Table.contains(Config.administrators, sender:getSteam64())
+    if ai.reaper.isEnabled then
+        if self.isAdminOnly and not isSenderAdmin then
+            if ai.reaper.manifest.steamId64Map[steamId64] then
+                return true
+            end
 
-    if self.isAdminOnly and not isSenderAdmin then
-        return false
-    elseif not sender:isTeammate() and not isSenderAdmin then
-        return false
+            return false
+        elseif not sender:isTeammate() and not isSenderAdmin then
+            return false
+        end
+    else
+        if sender:is(AiUtility.client) then
+            return false
+        end
+
+        if self.isAdminOnly and not isSenderAdmin then
+            return false
+        elseif not sender:isTeammate() and not isSenderAdmin then
+            return false
+        end
     end
 
     return true

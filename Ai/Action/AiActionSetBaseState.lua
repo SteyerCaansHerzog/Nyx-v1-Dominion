@@ -3,6 +3,8 @@ local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
+local Process = require "gamesense/Nyx/v1/Api/Process"
+local Server = require "gamesense/Nyx/v1/Api/Server"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 
 local Steamworks = require "gamesense/steamworks"
@@ -11,15 +13,13 @@ local Steamworks = require "gamesense/steamworks"
 --{{{ Modules
 local AiAction = require "gamesense/Nyx/v1/Dominion/Ai/Action/AiAction"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
---}}}
-
---{{{ FFI
-local isAppFocused = vtable_bind("engine.dll", "VEngineClient014", 196, "bool(__thiscall*)(void*)")
+local Performance = require "gamesense/Nyx/v1/Dominion/Utility/Performance"
 --}}}
 
 --{{{ AiActionSetBaseState
 --- @class AiActionSetBaseState : AiAction
---- @field lastAppFocusState boolean
+--- @field isEnabled boolean
+--- @field lastAppFocused boolean
 local AiActionSetBaseState = {}
 
 --- @param fields AiActionSetBaseState
@@ -31,19 +31,70 @@ end
 --- @return void
 function AiActionSetBaseState:__init()
 	self:setClientLoaderLock()
+	self:setMisc()
 
-	if Config.isLiveClient and not Table.contains(Config.administrators, Panorama.MyPersonaAPI.GetXuid()) then
+	if not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
 		self:purgeSteamFriendsList()
 		self:setCrosshair()
+
+		self.isEnabled = true
 	end
 
 	Callbacks.frameGlobal(function()
+		if not self.isEnabled then
+			return
+		end
+
 		self:setAppFocusedFps()
 	end)
+end
 
-	Callbacks.roundStart(function()
-		Client.openConsole()
-	end)
+--- @return void
+function AiActionSetBaseState:setMisc()
+	if self.ai.reaper.isEnabled then
+		return
+	end
+
+	-- Prevent loading configuration on master accounts.
+	if not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
+		config.load("Nyx-v1-Dominion")
+
+		Performance.enable()
+
+		local materials = {
+			"vgui_white",
+			"vgui/hud/800corner1",
+			"vgui/hud/800corner2",
+			"vgui/hud/800corner3",
+			"vgui/hud/800corner4"
+		}
+
+		client.set_event_callback("paint", function()
+			local r, g, b, a = 75, 75, 75, 175
+
+			for i=1, #materials do
+				local mat = materials[i]
+
+				materialsystem.find_material(mat):alpha_modulate(a)
+				materialsystem.find_material(mat):color_modulate(r, g, b)
+			end
+		end)
+
+		Client.fireAfter(5, function()
+			if Config.isJoiningServerOnStartup then
+				Client.execute("connect 108.61.237.59:27015; password 2940")
+			end
+		end)
+	else
+		if Config.isDebugging then
+			local Debug = require "gamesense/Nyx/v1/Api/Debug"
+			local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
+
+			Debug:new({
+				VectorsAngles.Vector3
+			})
+		end
+	end
 end
 
 --- @return void
@@ -53,26 +104,27 @@ end
 
 --- @return void
 function AiActionSetBaseState:setAppFocusedFps()
-	local isAppFocusedState = isAppFocused()
+	if self.ai.reaper.isEnabled then
+		return
+	end
 
-	if isAppFocusedState ~= self.lastAppFocusState then
-		self.lastAppFocusState = isAppFocusedState
+	Client.setTextMode(Server.isIngame())
 
-		if isAppFocusedState then
+	local isAppFocused = Process.isAppFocused()
+
+	if isAppFocused ~= self.lastAppFocused then
+		self.lastAppFocused = isAppFocused
+
+		if isAppFocused then
 			cvar.fps_max_menu:set_int(30)
 		else
-			cvar.fps_max_menu:set_int(1)
+			cvar.fps_max_menu:set_int(2)
 		end
 	end
 end
 
 --- @return void
 function AiActionSetBaseState:purgeSteamFriendsList()
-	-- Please don't delete my main account's friends list.
-	if Panorama.MyPersonaAPI.GetXuid() == "76561199102984662" then
-		return
-	end
-
 	local ISteamFriends = Steamworks.ISteamFriends
 	local EFriendFlags = Steamworks.EFriendFlags
 
@@ -101,9 +153,7 @@ function AiActionSetBaseState:setCrosshair()
 		cl_crosshairthickness = {1, 1.5},
 		cl_crosshairsize = {2, 3},
 		cl_crosshairgap = {1, 2, 3},
-		cl_crosshairdot = {0, 0, 1},
 		cl_crosshaircolor = {0, 1, 2, 4, 5},
-		cl_crosshair_t = {0, 0, 0, 0, 0, 0, 1},
 		cl_crosshair_outlinethickness = {0.5, 1},
 	}
 

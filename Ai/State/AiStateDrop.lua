@@ -2,8 +2,8 @@
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
+local UserInput = require "gamesense/Nyx/v1/Api/UserInput"
 --}}}
 
 --{{{ Modules
@@ -16,13 +16,13 @@ local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 --- @field droppingGearTimer Timer
 --- @field isDroppingGear boolean
 --- @field requestingPlayer Player
---- @field requestableGear fun(): nil
+--- @field requestableGear fun(): nil This is the equip function to equip the item to drop.
+--- @field requestedGear string
 local AiStateDrop = {
     name = "Drop",
-    isDelayedWhenActivated = false,
     requestableGear = {
         bomb = Client.equipBomb,
-        gun = Client.equipAnyWeapon
+        weapon = Client.equipPrimary
     }
 }
 
@@ -44,6 +44,7 @@ end
 function AiStateDrop:dropGear(player, requestedGear)
     self.requestingPlayer = player
     self.isDroppingGear = true
+    self.requestedGear = requestedGear
 
     self.requestableGear[requestedGear]()
 end
@@ -62,6 +63,8 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateDrop:think(ai)
+    self.activity = string.format("Dropping %s", self.requestedGear)
+
     ai.controller.canLookAwayFromFlash = false
     ai.controller.canUseGear = false
 
@@ -76,7 +79,7 @@ function AiStateDrop:think(ai)
         self.droppingGearTimer:ifPausedThenStart()
 
         if Entity.getGameRules():m_bFreezePeriod() == 1 and not AiUtility.client:hasWeapons(AiUtility.mainWeapons) and player:m_iAccount() > 3200 then
-            Client.execute("buy m4a4; buy ak47; buy m4a1_silencer")
+            UserInput.execute("buy m4a4; buy ak47; buy m4a1_silencer")
         end
 
         if self.droppingGearTimer:isElapsedThenStop(0.33) then
@@ -89,7 +92,7 @@ function AiStateDrop:think(ai)
                     local balance = player:m_iAccount()
 
                     if not balance or (balance and balance >= 3200) then
-                        Client.execute("buy m4a4; buy ak47; buy m4a1_silencer")
+                        UserInput.execute("buy m4a4; buy ak47; buy m4a1_silencer")
                     end
                 end
             end)

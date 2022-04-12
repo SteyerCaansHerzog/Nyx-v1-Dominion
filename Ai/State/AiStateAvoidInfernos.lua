@@ -36,7 +36,7 @@ function AiStateAvoidInfernos:assess()
     for _, inferno in Entity.find("CInferno") do
         local distance = clientOrigin:getDistance(inferno:m_vecOrigin())
 
-        if distance < 250 then
+        if distance < 220 then
             self.inferno = inferno
 
             return AiState.priority.AVOID_INFERNO
@@ -64,6 +64,8 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateAvoidInfernos:think(ai)
+    self.activity = "Getting out of a fire"
+
     local clientOrigin = AiUtility.client:getOrigin()
     local eyeOrigin = Client.getEyeOrigin()
     local cameraAngles = Client.getCameraAngles()

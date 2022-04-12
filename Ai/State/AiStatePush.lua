@@ -76,6 +76,14 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStatePush:think(ai)
+    if not self.site then
+        return
+    end
+
+    if self.site then
+        self.activity = string.format("Pushing %s", self.site:upper())
+    end
+
     if not ai.nodegraph.path and ai.nodegraph:canPathfind() then
         self:activate(ai, self.site)
     end

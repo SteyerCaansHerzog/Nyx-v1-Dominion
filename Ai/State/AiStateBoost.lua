@@ -90,6 +90,8 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateBoost:think(ai)
+    self.activity = "Going to boost teammate"
+
     if ai.nodegraph.pathfindFails > 0 then
         self:reset()
 
@@ -119,8 +121,8 @@ function AiStateBoost:think(ai)
         )
     end
 
-    if originDistance < 64 and senderDistance < 72 then
-        self.isBoosting = true
+    if originDistance < 200 then
+        self.activity = "Waiting to boost teammate"
     end
 
     if senderDistance < 500 and originDistance < 200 then
@@ -139,6 +141,11 @@ function AiStateBoost:think(ai)
         else
             ai.view:lookInDirection(self.boostLookAngles, 2, ai.view.noiseType.IDLE, "Boost copy booster direction")
         end
+    end
+
+    if originDistance < 64 and senderDistance < 72 then
+        self.activity = "Boosting teammate"
+        self.isBoosting = true
     end
 end
 

@@ -106,6 +106,8 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStatePatrol:think(ai)
+    self.activity = "Going to patrol bomb"
+
     if ai.priority == AiState.priority.PATROL_BOMB then
         if not self.hasNotifiedTeamOfBomb then
             local bomb = AiUtility.bomb
@@ -158,6 +160,8 @@ function AiStatePatrol:think(ai)
         local origin = player:getOrigin()
 
         if origin:getDistance(self.patrolOrigin) < 1024 then
+            self.activity = "Patrolling bomb"
+
             ai.controller.isWalking = true
             ai.controller.canUseKnife = false
         end

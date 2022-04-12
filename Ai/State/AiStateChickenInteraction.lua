@@ -56,7 +56,15 @@ function AiStateChickenInteraction:assess()
         return AiState.priority.IGNORE
     end
 
+    if not AiUtility.client:isHoldingKnife() then
+        self.targetChicken = nil
+
+        return AiState.priority.IGNORE
+    end
+
     if AiUtility.plantedBomb then
+        self.targetChicken = nil
+
         return AiState.priority.IGNORE
     end
 
@@ -66,12 +74,6 @@ function AiStateChickenInteraction:assess()
 
     if self.targetChicken then
         return AiState.priority.INTERACT_WITH_CHICKEN
-    end
-
-    if not AiUtility.client:isHoldingKnife() then
-        self.targetChicken = nil
-
-        return AiState.priority.IGNORE
     end
 
     --- @type Entity
@@ -120,6 +122,12 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateChickenInteraction:think(ai)
+    if self.interaction == "kill" then
+        self.activity = "Killing a chicken"
+    elseif self.interaction == "collect" then
+        self.activity = "Collecting a chicken"
+    end
+
     if not AiUtility.client:isHoldingKnife() then
         self:reset()
 

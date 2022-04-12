@@ -24,7 +24,7 @@ function AiChatCommandSkill:invoke(ai, sender, args)
         return
     end
 
-    local skill = Math.clamp(tonumber(args[1]), 0, 10)
+    local skill = Math.getClamped(tonumber(args[1]), ai.states.engage.skillLevelMin, ai.states.engage.skillLevelMax)
 
     ai.states.engage:setAimSkill(skill)
 

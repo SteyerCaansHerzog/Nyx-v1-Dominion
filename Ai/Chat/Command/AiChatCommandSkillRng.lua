@@ -25,8 +25,8 @@ function AiChatCommandSkillRng:invoke(ai, sender, args)
         return
     end
 
-    local skillMin = Math.clamp(tonumber(args[1]), 0, 10)
-    local skillMax = Math.clamp(tonumber(args[2]), 0, 10)
+    local skillMin = Math.getClamped(tonumber(args[1]), 0, 10)
+    local skillMax = Math.getClamped(tonumber(args[2]), 0, 10)
     local skill = Client.getRandomInt(skillMin, skillMax)
 
     ai.states.engage:setAimSkill(skill)

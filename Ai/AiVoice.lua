@@ -13,6 +13,7 @@ local DominionMenu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiVoicePackAdrian = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackAdrian"
 local AiVoicePackBenji = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackBenji"
+local AiVoicePackCoen = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackCoen"
 local AiVoicePackConnor = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackConnor"
 local AiVoicePackD9 = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackD9"
 local AiVoicePackEdd = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackEdd"
@@ -47,6 +48,7 @@ local AiVoice = {
         AiVoicePackLaurentio,
         AiVoicePackMatteo,
         AiVoicePackTaylor,
+        AiVoicePackCoen,
     }
 }
 
@@ -342,8 +344,6 @@ function AiVoice:__init()
             end
         end
     end)
-
-
 end
 
 return Nyx.class("AiVoice", AiVoice)

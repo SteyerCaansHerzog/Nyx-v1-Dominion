@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local UserInput = require "gamesense/Nyx/v1/Api/UserInput"
 --}}}
 
 --{{{ Modules
@@ -31,7 +32,7 @@ function AiChatCommandRush:invoke(ai, sender, args)
 
     ai.canBuyThisRound = false
 
-    Client.execute("buy p250")
+    UserInput.execute("buy p250")
 
     ai.commands.go:invoke(ai, sender, "t")
 end

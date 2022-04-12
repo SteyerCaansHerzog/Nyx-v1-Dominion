@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
@@ -58,7 +59,11 @@ function AiStateDefend:__init()
     Callbacks.roundPrestart(function()
         self.getToSiteTimer:stop()
 
-        self.defendingSite = Client.getRandomInt(1, 2) == 1 and "a" or "b"
+        local operand = Client.getEid() + Entity.getGameRules():m_totalRoundsPlayed()
+
+        local site = (operand % 2) == 0 and "a" or "b"
+
+        self.defendingSite = site
     end)
 
     Callbacks.roundEnd(function()
@@ -186,6 +191,12 @@ function AiStateDefend:think(ai)
         return
     end
 
+    if AiUtility.client:isCounterTerrorist() then
+        self.activity = string.format("Going %s", self.defendingSite:upper())
+    else
+        self.activity = string.format("Pushing %s", self.defendingSite:upper())
+    end
+
     local player = AiUtility.client
     local distance = player:getOrigin():offset(0, 0, 18):getDistance(self.node.origin)
 
@@ -248,6 +259,18 @@ function AiStateDefend:think(ai)
         end
     end
 
+    if distance < 750 then
+        if AiUtility.client:isCounterTerrorist() then
+            self.activity = string.format("Defending %s", self.defendingSite:upper())
+        else
+            if bomb then
+                self.activity = string.format("Holding bomb", self.defendingSite:upper())
+            else
+                self.activity = string.format("Holding %s", self.defendingSite:upper())
+            end
+        end
+    end
+
     if distance < 256 then
         local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
         local lookDirectionTrace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding)
@@ -270,7 +293,11 @@ function AiStateDefend:think(ai)
         end
 
         if not player:isHoldingGun() then
-            Client.equipAnyWeapon()
+            if AiUtility.client:hasPrimary() then
+                Client.equipPrimary()
+            else
+                Client.equipPistol()
+            end
         end
 
         ai.controller.canUnscope = false

@@ -148,6 +148,8 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateWatch:think(ai)
+    self.activity = "Watching area"
+
     if AiUtility.plantedBomb then
         self:reset()
 
@@ -193,12 +195,16 @@ function AiStateWatch:think(ai)
         local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
         local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding)
 
-        ai.view:lookAtLocation(trace.endPosition, 3, ai.view.noiseType.IDLE, "Watch look at angle")
+        ai.view:lookAtLocation(trace.endPosition, 3, ai.view.noiseType.NONE, "Watch look at angle")
 
         ai.controller.canUseKnife = false
 
         if not AiUtility.client:isHoldingGun() then
-            Client.equipAnyWeapon()
+            if AiUtility.client:hasPrimary() then
+                Client.equipPrimary()
+            else
+                Client.equipPistol()
+            end
         end
     end
 

@@ -14,10 +14,10 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 
 --{{{ AiStateEvacuate
 --- @class AiStateEvacuate : AiState
---- @field reachedDestination boolean
---- @field node Node
---- @field isForcedToSave boolean
 --- @field isBombPlanted boolean
+--- @field isForcedToSave boolean
+--- @field node Node
+--- @field reachedDestination boolean
 local AiStateEvacuate = {
     name = "Evacuate"
 }
@@ -172,6 +172,8 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateEvacuate:think(ai)
+    self.activity = "Going to hide"
+
     if not self.node then
         self:activate(ai)
 
@@ -200,9 +202,14 @@ function AiStateEvacuate:think(ai)
     end
 
     if not trace.isIntersectingGeometry and distance < 200 then
+        self.activity = "Hiding"
+
         ai.controller.canUseKnife = false
 
-        ai.view:lookInDirection(self.node.direction, 4, ai.view.noiseType.IDLE, "Evacuate look at angle")
+        local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
+        local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding)
+
+        ai.view:lookAtLocation(trace.endPosition, 4, ai.view.noiseType.NONE, "Evacuate look at angle")
     end
 end
 

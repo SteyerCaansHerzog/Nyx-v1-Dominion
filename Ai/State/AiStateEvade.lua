@@ -53,8 +53,10 @@ function AiStateEvade:__init()
     end)
 end
 
+--- @param nodegraph Nodegraph
+--- @param ai AiController
 --- @return void
-function AiStateEvade:assess()
+function AiStateEvade:assess(nodegraph, ai)
     if self.isBlocked then
         self.isBlocked = nil
 
@@ -103,6 +105,11 @@ function AiStateEvade:assess()
         and (Time.getCurtime() - player:m_flNextAttack()) <= 0
         and player:getWeapon().classname ~= "CC4"
     then
+        return AiState.priority.EVADE
+    end
+
+    -- We're avoiding a flash.
+    if ai.flashbang then
         return AiState.priority.EVADE
     end
 
@@ -174,6 +181,9 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateEvade:think(ai)
+    self.activity = "Seeking cover"
+    ai.controller.canUseKnife = false
+
     --- @type Angle
     local cameraAngles
 

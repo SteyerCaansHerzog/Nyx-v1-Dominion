@@ -64,7 +64,7 @@ function AiChatCommandDrop:invoke(ai, sender, args)
         return
     end
 
-    ai.states.drop:dropGear(sender, "gun")
+    ai.states.drop:dropGear(sender, "weapon")
 end
 
 return Nyx.class("AiChatCommandDrop", AiChatCommandDrop, AiChatCommand)

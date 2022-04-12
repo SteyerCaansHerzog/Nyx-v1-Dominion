@@ -79,6 +79,8 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateGraffiti:think(ai)
+    self.activity = "Spraying graffiti"
+
     local newCameraAngles = Client.getCameraAngles()
 
     newCameraAngles.p = 80

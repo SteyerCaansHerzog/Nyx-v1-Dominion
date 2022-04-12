@@ -41,6 +41,10 @@ function AiChatCommandBoost:invoke(ai, sender, args)
         return
     end
 
+    if sender:isClient() then
+        return
+    end
+
     local senderCameraAngles = sender:getCameraAngles()
     local senderCameraBackward = senderCameraAngles:getBackward()
     local bounds = Vector3:newBounds(Vector3.align.CENTER, 8)
@@ -58,7 +62,7 @@ function AiChatCommandBoost:invoke(ai, sender, args)
         distances[teammate.eid] = senderOrigin:getDistance(teammate:getOrigin())
     end
 
-    local orderInQueue
+    local orderInQueue = 0
     local i = 0
 
     for k, _ in Table.sortedPairs(distances, function(a, b)

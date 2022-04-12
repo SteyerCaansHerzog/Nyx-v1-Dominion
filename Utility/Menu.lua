@@ -10,7 +10,7 @@ local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 --- @class DominionMenu : Class
 --- @field group Menu
 --- @field master MenuItem
---- @field enableHud MenuItem
+--- @field disableHud MenuItem
 --- @field limitFps MenuItem
 --- @field autoAcceptMatches MenuItem
 --- @field autoClosePopups MenuItem
@@ -36,6 +36,8 @@ local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 --- @field aimSkillLevel MenuItem
 --- @field visualiseAimbot MenuItem
 ---
+--- @field restoreReaperManifest MenuItem
+---
 --- @field standaloneQuickStop MenuItem
 local DominionMenu = {}
 
@@ -53,7 +55,7 @@ function DominionMenu:__init()
     self.group = menu
     self.master = menu:checkbox("Nyx Dominion")
 
-    self.enableHud = menu:checkbox("> Disable CS:GO HUD"):setParent(self.master):addCallback(function(item)
+    self.disableHud = menu:checkbox("> Disable CS:GO HUD"):setParent(self.master):addCallback(function(item)
         local value = item:get() and 1 or 0
 
         cvar.cl_draw_only_deathnotices:set_int(value)
