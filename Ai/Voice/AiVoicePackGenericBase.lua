@@ -138,7 +138,7 @@ function AiVoicePackGenericBase:speakClientHurtByEnemy(event)
 			minDelay = 1,
 			maxDelay = 1.5,
 			condition = function()
-				return AiUtility.client:isAlive()
+				return not AiUtility.isRoundOver and not AiUtility.isLastAlive and AiUtility.client:isAlive()
 			end
 		})
 	end
@@ -156,7 +156,7 @@ function AiVoicePackGenericBase:speakClientHurtByTeammate(event)
 			minDelay = 0.33,
 			maxDelay = 1,
 			condition = function()
-				return AiUtility.client:isAlive()
+				return not AiUtility.isRoundOver and not AiUtility.isLastAlive and AiUtility.client:isAlive()
 			end
 		})
 	end
@@ -185,7 +185,7 @@ function AiVoicePackGenericBase:speakRequestTeammatesToRotate(bombsite)
 		minDelay = 0.33,
 		maxDelay = 1,
 		condition = function()
-			return not AiUtility.isRoundOver
+			return not AiUtility.isRoundOver and not AiUtility.isLastAlive
 		end
 	})
 end
@@ -211,7 +211,7 @@ function AiVoicePackGenericBase:speakRequestTeammatesToPush(bombsite)
 		minDelay = 0.33,
 		maxDelay = 1,
 		condition = function()
-			return not AiUtility.isRoundOver
+			return not AiUtility.isRoundOver and not AiUtility.isLastAlive
 		end
 	})
 end
@@ -226,7 +226,10 @@ function AiVoicePackGenericBase:speakHearNearbyEnemies()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0.33,
-		maxDelay = 1
+		maxDelay = 1,
+		condition = function()
+			return not AiUtility.isRoundOver and not AiUtility.isLastAlive
+		end
 	})
 end
 
@@ -456,7 +459,10 @@ function AiVoicePackGenericBase:speakClientDefusingBomb()
 		lock = true,
 		ignoreLock = true,
 		minDelay = 0.33,
-		maxDelay = 1
+		maxDelay = 1,
+		condition = function()
+			return not AiUtility.isRoundOver and not AiUtility.isLastAlive
+		end
 	})
 end
 
@@ -468,7 +474,10 @@ function AiVoicePackGenericBase:speakEnemyDefusingBomb()
 		lock = true,
 		ignoreLock = true,
 		minDelay = 0.33,
-		maxDelay = 0.5
+		maxDelay = 0.5,
+		condition = function()
+			return not AiUtility.isRoundOver and not AiUtility.isLastAlive
+		end
 	})
 end
 
@@ -482,7 +491,7 @@ function AiVoicePackGenericBase:speakCannotDefuseBomb()
 		minDelay = 0.33,
 		maxDelay = 2,
 		condition = function()
-			return not AiUtility.isRoundOver
+			return not AiUtility.isRoundOver and not AiUtility.isLastAlive
 		end
 	})
 end
@@ -497,7 +506,7 @@ function AiVoicePackGenericBase:speakClientPlantingBomb()
 		minDelay = 0.33,
 		maxDelay = 1,
 		condition = function()
-			return not AiUtility.isRoundOver
+			return not AiUtility.isRoundOver and not AiUtility.isLastAlive
 		end
 	})
 end
@@ -510,7 +519,10 @@ function AiVoicePackGenericBase:speakEnemyPlantingBomb()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0.33,
-		maxDelay = 1
+		maxDelay = 1,
+		condition = function()
+			return not AiUtility.isRoundOver and not AiUtility.isLastAlive
+		end
 	})
 end
 
@@ -522,7 +534,10 @@ function AiVoicePackGenericBase:speakClientThrowingFlashbang()
 		lock = false,
 		ignoreLock = false,
 		minDelay = 0,
-		maxDelay = 0.1
+		maxDelay = 0.1,
+		condition = function()
+			return not AiUtility.isRoundOver and not AiUtility.isLastAlive
+		end
 	})
 end
 
@@ -534,7 +549,10 @@ function AiVoicePackGenericBase:speakClientThrowingSmoke()
 		lock = false,
 		ignoreLock = false,
 		minDelay = 0,
-		maxDelay = 0.1
+		maxDelay = 0.1,
+		condition = function()
+			return not AiUtility.isRoundOver and not AiUtility.isLastAlive
+		end
 	})
 end
 
@@ -546,7 +564,10 @@ function AiVoicePackGenericBase:speakClientThrowingHeGrenade()
 		lock = false,
 		ignoreLock = false,
 		minDelay = 0,
-		maxDelay = 0.1
+		maxDelay = 0.1,
+		condition = function()
+			return not AiUtility.isRoundOver and not AiUtility.isLastAlive
+		end
 	})
 end
 
@@ -558,7 +579,10 @@ function AiVoicePackGenericBase:speakClientThrowingIncendiary()
 		lock = false,
 		ignoreLock = false,
 		minDelay = 0,
-		maxDelay = 0.1
+		maxDelay = 0.1,
+		condition = function()
+			return not AiUtility.isRoundOver and not AiUtility.isLastAlive
+		end
 	})
 end
 --}}}
@@ -574,7 +598,7 @@ function AiVoicePackGenericBase:speakLastAlive()
 		minDelay = 1,
 		maxDelay = 4,
 		condition = function()
-			return AiUtility.client:isAlive()
+			return not AiUtility.isRoundOver and AiUtility.client:isAlive()
 		end
 	})
 end

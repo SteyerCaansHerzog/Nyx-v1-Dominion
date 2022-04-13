@@ -1233,6 +1233,10 @@ function AiStateEngage:walk(ai)
         canWalk = false
     end
 
+    if AiUtility.client:m_bIsScoped() == 1 then
+        canWalk = false
+    end
+
     self.isSneaking = canWalk
 
     if canWalk then

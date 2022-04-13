@@ -492,7 +492,7 @@ function AiView:initFields()
             yawSoftZ = 0.007,
         }),
         [AiViewNoiseType.MINOR] = AiViewNoise:new({
-            name = "Attacking",
+            name = "Minor",
             timeExponent = 50,
             isBasedOnVelocity = false,
             isRandomlyToggled = false,
@@ -796,7 +796,7 @@ function AiView:setIdealLookAhead(idealViewAngles)
         lookAheadTo = lookAheadTo - 1
     end
 
-    -- A valid node was found
+    -- A valid node was found.
     if not lookAheadNode then
         return
     end

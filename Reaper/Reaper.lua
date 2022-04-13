@@ -41,6 +41,12 @@ local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 --- @field callout string
 --- @field health number
 --- @field lastKeepAliveAt number
+--- @field team number
+--}}}
+
+--{{{ ReaperClientShared
+--- @class ReaperClientShared
+--- @field isForced boolean
 --}}}
 
 --{{{ ReaperClient
@@ -219,14 +225,15 @@ Nyx.class("ReaperManifest", ReaperManifest)
 --- @field lastFocusedState boolean
 --- @field manifest ReaperManifest
 --- @field keyOpenConsole VKey
---- @field keySuppressAiEnable VKey
---- @field isSuppressed boolean
+--- @field keyForceSwap VKey
+--- @field isForced boolean
 --- @field syncInfoTimer Timer
 --- @field infoPath string
 --- @field clientBoxFocusedOffset number
 local Reaper = {
 	gameConfig = "reaper",
-	infoPath = "lua/gamesense/Nyx/v1/Dominion/Resource/Data/ReaperClientInfo_%s.json"
+	infoPath = "lua/gamesense/Nyx/v1/Dominion/Resource/Data/ReaperClientInfo_%s.json",
+	sharedPath = "lua/gamesense/Nyx/v1/Dominion/Resource/Data/ReaperClientShared.json",
 }
 
 --- @param fields Reaper
@@ -249,10 +256,11 @@ function Reaper:initFields()
 	self.keyHotSwap = VKey:new(VKey.TAB)
 	self.keyTakeControl = VKey:new(VKey.F)
 	self.keyOpenConsole = VKey:new(VKey.PUNCT_BACKTICK)
-	self.keySuppressAiEnable = VKey:new(VKey.L)
+	self.keyForceSwap = VKey:new(VKey.Q)
 	self.syncInfoTimer = Timer:new():start()
 	self.manifest = ReaperManifest:new()
 	self.clientBoxFocusedOffset = 0
+	self.isForced = false
 
 	self.isEnabled = self.manifest.isEnabled
 
@@ -287,10 +295,6 @@ end
 
 --- @return void
 function Reaper:render()
-	if not Server.isIngame() then
-		return
-	end
-
 	--- @type Vector2
 	local drawPosition
 	local clientBoxDimensions = Vector2:new(350, 50)
@@ -328,17 +332,21 @@ function Reaper:render()
 
 		IS_FINE = Color:hsla(210, 0.0, 0.2, 100 * alphaMod),
 		IS_FLASHED = Color:hsla(0, 0, 1, 255 * alphaMod),
-
 		IS_ATTACKED = Color:hsla(26, 0.8, 0.5, 255 * alphaMod),
 		IS_THREATENED = Color:hsla(40, 0.5, 0.5, 100 * alphaMod),
 		IS_DEAD = Color:hsla(0, 0.5, 0.5, 50 * alphaMod),
-
 		IS_DISCONNECTED = Color:hsla(0, 0.0, 0.35, 100 * alphaMod),
-
 		IS_CLIENT_OUTLINE = Color:hsla(0, 0.0, 0.8, 255 * alphaMod),
 		IS_CLIENT_BG = Color:hsla(0, 0.0, 0.55, 100 * alphaMod),
 		IS_IN_SERVER = Color:hsla(205, 0.4, 0.5, 75 * alphaMod),
+
+		TERRORIST = Color:hsla(33, 0.8, 0.6, 255 * alphaMod),
+		COUNTER_TERRORIST = Color:hsla(195, 0.8, 0.6, 255 * alphaMod),
 	}
+
+	if self.isForced then
+		drawPosition:clone():offset(0, -30):drawSurfaceText(Font.MEDIUM, colors.TEXT_MUTED, "l", "Force Swap")
+	end
 
 	for _, client in pairs(self.manifest.clients) do repeat
 		if not client.info then
@@ -356,6 +364,7 @@ function Reaper:render()
 		local isClientStateOkayToShow = true
 		local isClient = client.steamId64 == self.manifest.client.steamId64
 		local isFocused = Process.isAppFocused()
+		local isInServer = player ~= nil
 
 		if isConnectionLost then
 			bgColor = colors.IS_DISCONNECTED
@@ -421,7 +430,11 @@ function Reaper:render()
 			drawPosition:offset(self.clientBoxFocusedOffset)
 			drawPosition:drawSurfaceRectangleOutline(2, 2, clientBoxDimensions, colors.IS_CLIENT_OUTLINE)
 		else
-			drawPosition:drawSurfaceRectangleOutline(2, 2, clientBoxDimensions, bgColor:clone():setAlpha(50 * alphaMod))
+			if isInServer then
+				drawPosition:drawSurfaceRectangleOutline(2, 2, clientBoxDimensions, colors.IS_IN_SERVER)
+			else
+				drawPosition:drawSurfaceRectangleOutline(2, 2, clientBoxDimensions, bgColor:clone():setAlpha(50 * alphaMod))
+			end
 		end
 
 		drawPosition:drawBlur(clientBoxDimensions, 1, 1)
@@ -450,6 +463,26 @@ function Reaper:render()
 		drawPosition:clone():offset(clientBoxDimensions.x - 14):drawSurfaceText(Font.SMALL_BOLD, colors.TEXT_MUTED, "c", client.info.skill)
 		drawPosition:clone():offset(clientBoxDimensions.x - 21, 6):drawSurfaceRectangleOutline(1, 4, Vector2:new(15, 10), colors.TEXT_MUTED:clone():setAlpha(33 * alphaMod))
 
+		-- Team
+		if client.info.team then
+			local teamColor
+			local teamName
+
+			if client.info.team == 2 then
+				teamColor = colors.TERRORIST
+				teamName = "T"
+			elseif client.info.team == 3 then
+				teamColor = colors.COUNTER_TERRORIST
+				teamName = "CT"
+			else
+				teamColor = colors.TEXT_MUTED
+				teamName = "-"
+			end
+
+			drawPosition:clone():offset(clientBoxDimensions.x - 14 - 28):drawSurfaceText(Font.SMALL_BOLD, teamColor, "c", teamName)
+			drawPosition:clone():offset(clientBoxDimensions.x - 21 - 28, 6):drawSurfaceRectangleOutline(1, 4, Vector2:new(15, 10), teamColor:clone():setAlpha(33 * alphaMod))
+		end
+
 		if isPlayerAlive then
 			if client.info.health then
 				local healthPct
@@ -463,8 +496,8 @@ function Reaper:render()
 				local healthColor = Color:hsla(100 * healthPct, 0.8, 0.6, 255 * alphaMod)
 
 				-- Health
-				drawPosition:clone():offset(clientBoxDimensions.x - 18 - 28):drawSurfaceText(Font.SMALL_BOLD, healthColor, "c", client.info.health)
-				drawPosition:clone():offset(clientBoxDimensions.x - 31 - 28, 6):drawSurfaceRectangleOutline(1, 4, Vector2:new(25, 10), healthColor:clone():setAlpha(33 * alphaMod))
+				drawPosition:clone():offset(clientBoxDimensions.x - 19 - 56):drawSurfaceText(Font.SMALL_BOLD, healthColor, "c", client.info.health)
+				drawPosition:clone():offset(clientBoxDimensions.x - 31 - 56, 6):drawSurfaceRectangleOutline(1, 4, Vector2:new(25, 10), healthColor:clone():setAlpha(33 * alphaMod))
 			end
 
 			if client.info.map then
@@ -486,6 +519,9 @@ end
 
 --- @return void
 function Reaper:think()
+	local isAppFocused = Process.isAppFocused()
+	local isInGame = Server.isIngame()
+
 	if self.syncInfoTimer:isElapsedThenRestart(0.05) then
 		local behavior = "Inactive"
 		local activity = "Inactive"
@@ -502,6 +538,7 @@ function Reaper:think()
 		local map
 		local callout
 		local health
+		local team
 		local isAlive = false
 
 		if Server.isIngame() then
@@ -509,6 +546,7 @@ function Reaper:think()
 			callout = Localization.get(AiUtility.client:m_szLastPlaceName())
 			health = AiUtility.client:m_iHealth()
 			isAlive = AiUtility.client:isAlive()
+			team = AiUtility.client:m_iTeamNum()
 		end
 
 		--- @type ReaperClientInfo
@@ -525,8 +563,31 @@ function Reaper:think()
 			map = map,
 			callout = callout,
 			health = health,
-			lastKeepAliveAt = Time.getUnixTimestamp()
+			lastKeepAliveAt = Time.getUnixTimestamp(),
+			team = team
 		}
+
+		if isAppFocused then
+			--- @type ReaperClientShared
+			local shared = {
+				isForced = self.isForced
+			}
+
+			writefile(self.sharedPath, json.stringify(shared))
+		else
+			local fileData = readfile(self.sharedPath)
+
+			if fileData then
+				pcall(function()
+					--- @type ReaperClientShared
+					local data = json.parse(fileData)
+
+					for k, v in pairs(data) do
+						self[k] = v
+					end
+				end)
+			end
+		end
 
 		writefile(string.format(self.infoPath, Panorama.MyPersonaAPI.GetXuid()), json.stringify(info))
 
@@ -538,22 +599,25 @@ function Reaper:think()
 			end
 
 			pcall(function()
-				local json = json.parse(info)
+				local data = json.parse(info)
 
-				client.info = json
+				client.info = data
 			end)
 		until true end
 	end
 
 	-- Allow input outside of games.
-	if not Server.isIngame() then
+	if not isInGame then
 		Client.setInput(true)
-
-		return
 	end
 
-	-- Check if we're tabbed into the client.
-	local isAppFocused = Process.isAppFocused()
+	if not self.isActive and self.keyForceSwap:wasPressed() then
+		self.isForced = not self.isForced
+	end
+
+	if self.isActive and isAppFocused then
+		self.isForced = false
+	end
 
 	-- The hot-swap key was pressed.
 	if self.keyHotSwap:wasPressed() and isAppFocused then
@@ -564,18 +628,6 @@ function Reaper:think()
 		self.ai.view.viewAngles = cameraAngles
 		self.ai.view.lookAtAngles = cameraAngles
 		self.ai.view.lastCameraAngles = cameraAngles
-
-		-- Deactivate this client.
-		-- Will put the current client into AI-mode.
-		-- If we're holding the suppress key, then we don't enable the AI on the client we're leaving.
-		-- This allows us to tab out of an account, but leaving the account "AFK" instead of running the AI on it.
-		if not self.keySuppressAiEnable:isHeld() then
-			self.isActive = false
-
-			self.isSuppressed = true
-		else
-			self.isSuppressed = false
-		end
 
 		-- Current client ID.
 		local originalIndex = self.manifest.client.index
@@ -611,6 +663,13 @@ function Reaper:think()
 				break
 			end
 
+			if not isInGame or self.isForced then
+				nextClient = client
+				isValid = true
+
+				break
+			end
+
 			-- No such client in our game. May have exited or crashed.
 			if not client.info.isInGame then
 				nextIndex = nextIndex + 1
@@ -632,6 +691,10 @@ function Reaper:think()
 
 		if not nextClient then
 			return
+		end
+
+		if nextClient.index == originalIndex then
+			self.isActive = false
 		end
 
 		-- Open the next window over our current ones.
@@ -709,49 +772,60 @@ function Reaper:think()
 		-- Enable input if the console has been opened.
 		Client.setInput(Client.isConsoleOpen())
 
-		local screenCenter = Client.getScreenDimensionsCenter()
-		--- @type Color
-		local color
-		local text
-		local player = Player.getClient()
+		if isInGame then
+			local screenCenter = Client.getScreenDimensionsCenter()
+			--- @type Color
+			local color
+			local text
+			local player = Player.getClient()
 
-		if player:isAlive() then
-			color = Color:rgba(255, 255, 255, 100)
-			text = "Press F to take control"
-		else
-			color = Color:rgba(255, 255, 255, 255)
-			text = "Player is dead"
-		end
+			if player:isAlive() then
+				color = Color:rgba(255, 255, 255, 100)
+				text = "Press F to take control"
+			else
+				color = Color:rgba(255, 255, 255, 255)
+				text = "Player is dead"
+			end
 
-		-- Hint or dead notice.
-		screenCenter:offset(0, 60):drawSurfaceText(
-			Font.LARGE, color, "c",
-			text
-		)
-
-		screenCenter:offset(0, 10)
-
-		-- Client name.
-		screenCenter:offset(0, 30):drawSurfaceText(
-			Font.LARGE_BOLD, color, "c",
-			Panorama.MyPersonaAPI.GetName()
-		)
-
-		screenCenter:offset(0, 15)
-
-		-- Client has admin permissions on Dominion.
-		if self.isClientAdmin then
-			screenCenter:offset(0, 20):drawSurfaceText(
-				Font.MEDIUM, Color:hsla(200, 0.8, 0.6, 200), "c",
-				"Administrator"
+			-- Hint or dead notice.
+			screenCenter:offset(0, 60):drawSurfaceText(
+				Font.LARGE, color, "c",
+				text
 			)
-		end
 
-		-- AI is disabled notice.
-		if not self.isAiEnabled then
-			screenCenter:offset(0, 20):drawSurfaceText(
-				Font.MEDIUM, Color:hsla(0, 0.8, 0.6, 200), "c",
-				"AI Disabled"
+			screenCenter:offset(0, 10)
+
+			-- Client name.
+			screenCenter:offset(0, 30):drawSurfaceText(
+				Font.LARGE_BOLD, color, "c",
+				Panorama.MyPersonaAPI.GetName()
+			)
+
+			screenCenter:offset(0, 15)
+
+			-- Client has admin permissions on Dominion.
+			if self.isClientAdmin then
+				screenCenter:offset(0, 20):drawSurfaceText(
+					Font.MEDIUM, Color:hsla(200, 0.8, 0.6, 200), "c",
+					"Administrator"
+				)
+			end
+
+			-- AI is disabled notice.
+			if not self.isAiEnabled then
+				screenCenter:offset(0, 20):drawSurfaceText(
+					Font.MEDIUM, Color:hsla(0, 0.8, 0.6, 200), "c",
+					"AI Disabled"
+				)
+			end
+		else
+			local screenCenter = Client.getScreenDimensionsCenter()
+			--- @type Color
+
+			-- Hint or dead notice.
+			screenCenter:offset(0, 60):drawSurfaceText(
+				Font.LARGE, Color:rgba(255, 255, 255, 255), "c",
+				"Press F to use menu"
 			)
 		end
 	end
