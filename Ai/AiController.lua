@@ -1275,6 +1275,15 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiController:think(cmd)
+	if not DominionMenu.enableAi:get() then
+		-- Fix issue with AI trying to equip the last gear forever.
+		if Client.isEquipping() then
+			Client.cancelEquip()
+		end
+
+		return
+	end
+
 	-- Possible fix for bug where logic loop still executes in spite of being out of a server.
 	if not Server.isIngame() then
 		return

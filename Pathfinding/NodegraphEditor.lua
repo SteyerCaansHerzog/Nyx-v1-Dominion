@@ -177,9 +177,7 @@ function NodegraphEditor:createNodes()
     end
 
     if self.selectedNode then
-        local radius = Render.scaleCircle(self.selectedNode.origin, 40)
-
-        self.selectedNode.origin:drawCircle(radius, Color:hsla(200, 0.8, 0.6, 80))
+        self.selectedNode.origin:drawScaledCircle(40, Color:hsla(200, 0.8, 0.6, 80))
 
         if self.keyAddNode:wasPressed() then
             local connectNode = self:selectNode()

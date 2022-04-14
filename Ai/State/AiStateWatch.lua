@@ -106,7 +106,7 @@ function AiStateWatch:getWatchNode(nodes, chance)
             break
         end
 
-        if clientOrigin:getDistance(node.origin) > 500 then
+        if clientOrigin:getDistance(node.origin) > 750 then
             break
         end
 

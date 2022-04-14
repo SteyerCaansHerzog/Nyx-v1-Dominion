@@ -19,10 +19,7 @@ local Config = {
         "76561198339559079", -- Britney Spears
         "76561198991038413", -- dusty
         "76561198816968549", -- Kirsty
-
-        -- Reaper
-        "76561198391892203",
-        "76561198249845606"
+        "76561199124289868", -- veysa49
     },
     isDebugging = false,
     isJoiningServerOnStartup = false,

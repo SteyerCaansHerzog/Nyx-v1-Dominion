@@ -3,6 +3,7 @@ local Animate = require "gamesense/Nyx/v1/Api/Animate"
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
+local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Localization = require "gamesense/Localization"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -42,6 +43,10 @@ local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 --- @field health number
 --- @field lastKeepAliveAt number
 --- @field team number
+--- @field lobbyMemberCount number
+--- @field isLobbyHost boolean
+--- @field isLobbyQueuing boolean
+--- @field isWarmup boolean
 --}}}
 
 --{{{ ReaperClientShared
@@ -295,10 +300,12 @@ end
 
 --- @return void
 function Reaper:render()
+	local totalClients = Table.getCount(self.manifest.clients)
+
 	--- @type Vector2
 	local drawPosition
 	local clientBoxDimensions = Vector2:new(350, 50)
-	local clientBoxTopOffset = -75
+	local clientBoxTopOffset = 40 - (totalClients * clientBoxDimensions.y / 2)
 	local clientBoxRightOffset = -300
 	local clientBoxBottomMargin = 12
 	local clientBoxLeftMargin = 25
@@ -327,6 +334,7 @@ function Reaper:render()
 		TEXT_MAIN = Color:hsla(0, 0, 1, 255 * alphaMod),
 		TEXT_MUTED = Color:hsla(0, 0, 0.66, 255 * alphaMod),
 		TEXT_DEAD = Color:hsla(0, 0.8, 0.6, 255 * alphaMod),
+		TEXT_ERROR = Color:hsla(18, 0.8, 0.6, 255 * alphaMod),
 		TEXT_ATTACKED = Color:hsla(26, 0.8, 0.55, 255 * alphaMod),
 		TEXT_THREATENED = Color:hsla(40, 0.5, 0.55, 255 * alphaMod),
 
@@ -345,7 +353,7 @@ function Reaper:render()
 	}
 
 	if self.isForced then
-		drawPosition:clone():offset(0, -30):drawSurfaceText(Font.MEDIUM, colors.TEXT_MUTED, "l", "Force Swap")
+		drawPosition:clone():offset(0, -30):drawSurfaceText(Font.MEDIUM, colors.TEXT_MUTED, "l", "Tab-Lock Off")
 	end
 
 	for _, client in pairs(self.manifest.clients) do repeat
@@ -364,12 +372,11 @@ function Reaper:render()
 		local isClientStateOkayToShow = true
 		local isClient = client.steamId64 == self.manifest.client.steamId64
 		local isFocused = Process.isAppFocused()
-		local isInServer = player ~= nil
 
 		if isConnectionLost then
 			bgColor = colors.IS_DISCONNECTED
-			nameColor = colors.TEXT_MUTED
-			infoColor = colors.TEXT_MUTED
+			nameColor = colors.TEXT_ERROR
+			infoColor = colors.TEXT_ERROR
 
 			isClientStateOkayToShow = false
 		elseif not client.info.isInGame then
@@ -430,11 +437,17 @@ function Reaper:render()
 			drawPosition:offset(self.clientBoxFocusedOffset)
 			drawPosition:drawSurfaceRectangleOutline(2, 2, clientBoxDimensions, colors.IS_CLIENT_OUTLINE)
 		else
-			if isInServer then
-				drawPosition:drawSurfaceRectangleOutline(2, 2, clientBoxDimensions, colors.IS_IN_SERVER)
+			local outlineColor
+
+			if isConnectionLost then
+				outlineColor = colors.TEXT_ERROR
+			elseif isPlayerInServer then
+				outlineColor = colors.IS_IN_SERVER
 			else
-				drawPosition:drawSurfaceRectangleOutline(2, 2, clientBoxDimensions, bgColor:clone():setAlpha(50 * alphaMod))
+				outlineColor = bgColor:clone():setAlpha(50 * alphaMod)
 			end
+
+			drawPosition:drawSurfaceRectangleOutline(2, 2, clientBoxDimensions, outlineColor)
 		end
 
 		drawPosition:drawBlur(clientBoxDimensions, 1, 1)
@@ -442,7 +455,7 @@ function Reaper:render()
 		drawPosition:clone():offset(5, 0):drawSurfaceText(Font.MEDIUM_LARGE, nameColor, "l", client.info.name)
 
 		if isConnectionLost then
-			drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, colors.TEXT_MUTED, "l", "CONNECTION LOST")
+			drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "No connection to client")
 
 			drawPosition:offset(0, clientBoxDimensions.y + clientBoxBottomMargin)
 
@@ -450,13 +463,49 @@ function Reaper:render()
 		end
 
 		if client.info.isInGame then
-			if isPlayerAlive then
+			if client.info.isWarmup then
+				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "Idling in warmup")
+			elseif isPlayerAlive then
 				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", client.info.activity)
 			else
 				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "Dead")
 			end
 		else
-			drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "Disconnected")
+			local isInLobby = false
+			local playerCount
+
+			if Panorama.LobbyAPI.IsSessionActive() then
+				local lobbyInfo = json.parse(tostring(Panorama.LobbyAPI.GetSessionSettings()))
+				playerCount = lobbyInfo.members.numPlayers
+
+				if playerCount > 1 then
+					isInLobby = true
+				end
+			end
+
+			if client.info.lobbyMemberCount then
+				local lobbyText
+
+				if client.info.isLobbyQueuing then
+					lobbyText = string.format(
+						"Queuing with %i people",
+						client.info.lobbyMemberCount
+					)
+				else
+					lobbyText = string.format(
+						"In a lobby with %i people",
+						client.info.lobbyMemberCount
+					)
+				end
+
+				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", lobbyText)
+
+				if client.info.lobbyMemberCount > 1 and client.info.isLobbyHost then
+					drawPosition:clone():offset(clientBoxDimensions.x - 5, 25):drawSurfaceText(Font.SMALL, infoColor, "r", "Host")
+				end
+			else
+				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "In the main menu")
+			end
 		end
 
 		-- Skill level
@@ -540,6 +589,7 @@ function Reaper:think()
 		local health
 		local team
 		local isAlive = false
+		local isWarmup = false
 
 		if Server.isIngame() then
 			map = globals.mapname()
@@ -547,6 +597,23 @@ function Reaper:think()
 			health = AiUtility.client:m_iHealth()
 			isAlive = AiUtility.client:isAlive()
 			team = AiUtility.client:m_iTeamNum()
+			isWarmup = Entity.getGameRules():m_bWarmupPeriod() == 1
+		end
+
+		local lobbyMemberCount
+		local isLobbyHost
+		local isLobbyQueuing
+
+		if Panorama.LobbyAPI.IsSessionActive() then
+			local lobbyInfo = json.parse(tostring(Panorama.LobbyAPI.GetSessionSettings()))
+			local numPlayers = lobbyInfo.members.numPlayers
+
+			if numPlayers > 1 then
+				lobbyMemberCount = numPlayers
+			end
+
+			isLobbyHost = Panorama.LobbyAPI.BIsHost()
+			isLobbyQueuing = Panorama.LobbyAPI.GetMatchmakingStatusString() ~= ""
 		end
 
 		--- @type ReaperClientInfo
@@ -564,7 +631,11 @@ function Reaper:think()
 			callout = callout,
 			health = health,
 			lastKeepAliveAt = Time.getUnixTimestamp(),
-			team = team
+			team = team,
+			lobbyMemberCount = lobbyMemberCount,
+			isLobbyHost = isLobbyHost,
+			isLobbyQueuing = isLobbyQueuing,
+			isWarmup = isWarmup
 		}
 
 		if isAppFocused then

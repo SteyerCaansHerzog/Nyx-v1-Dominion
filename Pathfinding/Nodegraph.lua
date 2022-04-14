@@ -90,7 +90,10 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field unblockTimer Timer
 --- @field unblockDuration number
 --- @field unblockLookAngles Angle
-local Nodegraph = {}
+--- @field isDebugging boolean
+local Nodegraph = {
+    isDebugging = false
+}
 
 --- @return Nodegraph
 function Nodegraph:new()
@@ -211,6 +214,10 @@ end
 --- @vararg string
 --- @return void
 function Nodegraph:log(...)
+    if not self.isDebugging then
+        return
+    end
+
     local message = string.format(...)
 
     if not message then
@@ -391,13 +398,9 @@ function Nodegraph:renderNodegraph()
                     playerOrigin:drawLine(searchNode.origin, Color:hsla(0, 0.8, 0.6, 100), 0.25)
                 end
 
-                local radius, thickness = Render.scaleCircle(searchNode.origin, 60, 10)
+                searchNode.origin:drawScaledCircleOutline(searchNode.origin, 60, 10, color)
 
-                searchNode.origin:drawCircleOutline(radius, thickness, color)
-
-                local radius = Render.scaleCircle(trace.endPosition, 14)
-
-                trace.endPosition:drawCircle(radius, color)
+                trace.endPosition:drawScaledCircle(14, color)
             end
         end
     end
@@ -405,10 +408,6 @@ function Nodegraph:renderNodegraph()
     local cameraOrigin = Client.getCameraOrigin()
 
     for _, node in pairs(self.nodes) do
-        if node.type == Node.types.HIDE then
-            --node.origin:drawScaledCircleOutline(100, 20, Color)
-        end
-
         local alpha = Math.getInversedFloat(cameraOrigin:getDistance(node.origin), 1000) * 255
 
         if alpha > 0 then
@@ -429,10 +428,9 @@ function Nodegraph:renderNodegraph()
                 node.origin:drawLine(connection.origin, lineColor, 0.25)
             end
 
-            local thickness = node.active and 15 or 6
-            local radius, thickness = Render.scaleCircle(node.origin, 33, thickness)
+            local radius, thickness = 33, (node.active and 15 or 6)
 
-            node.origin:drawCircleOutline(radius, thickness, color)
+            node.origin:drawScaledCircleOutline(radius, thickness, color)
 
             if self.pathMap and self.pathMap[node.id] then
                 node.origin:drawCircle(radius + 2, color:clone():setAlpha(math.min(150, alpha)))
@@ -452,9 +450,8 @@ function Nodegraph:renderNodegraph()
 
             if node.direction then
                 local directionOffset = node.origin + node.direction:getForward() * 16
-                local radius = Render.scaleCircle(directionOffset, 8, 0)
 
-                directionOffset:drawCircle(radius, color)
+                directionOffset:drawScaledCircle(8, color)
             end
         end
     end
