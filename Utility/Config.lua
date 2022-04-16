@@ -7,24 +7,18 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --- @class Config : Class
 --- @field administrators string[]
 --- @field isDebugging boolean
---- @field isJoiningServerOnStartup boolean
---- @field isLiveClient boolean When true, the bot will connect to the Nyx Dominion AI Service and act as a client.
---- @field isUserInputSafe boolean When true, the bot will emulate the keyboard. Results in less accurate movement.
+--- @field isLiveClient boolean
+--- @field isEmulatingRealUserInput boolean
+--- @field openAiApiKey string
 local Config = {
     administrators = {
-        -- Friends
-        "76561198138748363",
-        -- Main accounts
-        "76561198373386496", -- Braff
-        "76561198339559079", -- Britney Spears
-        "76561198991038413", -- dusty
-        "76561198816968549", -- Kirsty
-        "76561199124289868", -- veysa49
+        -- Add SteamID64 of accounts you wish to have as administrators.
+        -- These accounts can use extra chat commands.
     },
-    isDebugging = false,
-    isJoiningServerOnStartup = false,
-    isLiveClient = false,
-    isUserInputSafe = true
+    isDebugging = false, -- Enables debugging features.
+    isLiveClient = false, -- Enable this when running on the Dominion Service.
+    isEmulatingRealUserInput = false, -- Enable this to emulate mouse-keyboard. Results in less accurate movement. Avoids potential bot detection.
+    openAiApiKey = nil -- Set this to provide an API key for use with the Open AI chatbot.
 }
 
 --- @return void
