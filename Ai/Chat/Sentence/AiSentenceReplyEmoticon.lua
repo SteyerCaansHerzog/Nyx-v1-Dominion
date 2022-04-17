@@ -32,20 +32,22 @@ function AiSentenceReplyEmoticon:__init()
             ":)", ":(", ":|", "c:"
         }
     }
+end
 
-    Callbacks.playerChat(function(e)
-        if not self:isValidReplyTarget(e) then
-            return
-        end
+--- @param e PlayerChatEvent
+--- @return void
+function AiSentenceReplyEmoticon:replyToPlayerChat(e)
+    if not self:isValidReplyTarget(e) then
+        return
+    end
 
-        if not self.contains(e.text, {
-            "%:%)", "xd", "%:%("
-        }) then
-            return
-        end
+    if not self.contains(e.text, {
+        "%:%)", "xd", "%:%("
+    }) then
+        return
+    end
 
-        self:speak()
-    end)
+    self:speak()
 end
 
 return Nyx.class("AiSentenceReplyEmoticon", AiSentenceReplyEmoticon, AiSentence)

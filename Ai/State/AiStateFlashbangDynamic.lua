@@ -64,17 +64,15 @@ function AiStateFlashbangDynamic:assess()
         return AiState.priority.IGNORE
     end
 
-    -- We were just threatened by an enemy, so we don't want to try again too soon.
-    if not self.threatCooldownTimer:isElapsed(5) then
-        return AiState.priority.IGNORE
-    end
-
-    local clientEyeOrigin = Client.getEyeOrigin()
-
-    -- AI is threatened. Don't try, or abort, throwing a flashbang.
+    -- AI is threatened. Don't try to, or abort trying to, throw a flashbang.
     if AiUtility.isClientThreatened then
         self.threatCooldownTimer:start()
 
+        return AiState.priority.IGNORE
+    end
+
+    -- We were just threatened by an enemy, so we don't want to try again too soon.
+    if not self.threatCooldownTimer:isElapsed(5) then
         return AiState.priority.IGNORE
     end
 
@@ -88,6 +86,7 @@ function AiStateFlashbangDynamic:assess()
         return AiState.priority.IGNORE
     end
 
+    local clientEyeOrigin = Client.getEyeOrigin()
     local bounds = Vector3:newBounds(Vector3.align.CENTER, 8)
 
     -- Angle to try our mentally handicapped flash prediction with.

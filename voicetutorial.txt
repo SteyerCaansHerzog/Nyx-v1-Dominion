@@ -20,7 +20,7 @@ Notes:
 	- A small voice pack is about 200 files. A medium sized one is 300-400. A decently sized one is 500-600. 1000 is insane, but go ahead.
 
 Recording Groups:
-	- Agreement (6x) - the bot is agreeing with a teammte ("okay!" / "sure")
+	- Agreement (6x) - the bot is agreeing with a teammate ("okay!" / "sure")
 	- Apologize (6x) - the bot is apologizing ("sorry")
 	- CannotDefuseBomb (6x) - the bomb is no longer able to be defused (e.g. "shit, we don't have time")
 	- ClientDefusingBomb (6x) - the bot is on the bomb ("i'm defusing")
@@ -28,13 +28,13 @@ Recording Groups:
 	- ClientHurtByTeammate (6x) - the bot was tagged by a teammate ("can you not shoot me")
 	- ClientKilledByEnemy_Generic (12x) - the bot has been killed ("i'm down")
 	- ClientKilledByEnemy_Owned (6x) - the bot got killed through a smoke, wall, or by a nade ("fuck's sake" / "ok well i got destroyed")
-	- ClientKilledByTeammate (6x) - the bot has been killed by a teammte ("dude ..." / "bro you killed me")
+	- ClientKilledByTeammate (6x) - the bot has been killed by a teammate ("dude ..." / "bro you killed me")
 	- ClientPlantingBomb (6x) - the bot is planting ("planting!")
 	- ClientThrowingFlashbang (12x) - the bot is throwing a flashbang ("flashing!")
 	- ClientThrowingHeGrenade (6x) - the bot is throwing a HE grenade ("nading!")
 	- ClientThrowingIncendiary (6x) - the bot is throwing a molotov ("mollying!")
 	- ClientThrowingSmoke (6x) - the bot is throwing a smoke ("smoking!")
-	- Disagreement (6x) - the bot is disagreeing with a teammte ("no" / "no, sorry")
+	- Disagreement (6x) - the bot is disagreeing with a teammate ("no" / "no, sorry")
 	- EnemyDefusingBomb (6x) - the bot is telling the team that the enemy is defusing ("they're defusing!")
 	- EnemyHurtByClient (6x) - the bot has tagged an enemy ("he's tagged")
 	- EnemyKilledByClient_Generic (20x) - the bot has killed an enemy ("he's down")

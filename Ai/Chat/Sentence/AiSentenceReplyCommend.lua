@@ -43,28 +43,32 @@ function AiSentenceReplyCommend:__init()
             "", "lol", ":)", "<3", ":P"
         }
     }
+end
 
-    Callbacks.playerDeath(function(e)
-        if not e.attacker:isClient() or e.victim:isTeammate() then
-            return
-        end
+--- @param e PlayerChatEvent
+--- @return void
+function AiSentenceReplyCommend:replyToPlayerChat(e)
+    if not self.lastKilledPlayerTimers[e.sender.eid]:isStarted() or self.lastKilledPlayerTimers[e.sender.eid]:isElapsed(6) then
+        return
+    end
 
-        self.lastKilledPlayerTimers[e.victim.eid]:start()
-    end)
+    if not self.contains(e.text, {
+        "wp", "ns", "nice", "nice shot", "gj", "good job"
+    }) then
+        return
+    end
 
-    Callbacks.playerChat(function(e)
-        if not self.lastKilledPlayerTimers[e.sender.eid]:isStarted() or self.lastKilledPlayerTimers[e.sender.eid]:isElapsed(6) then
-            return
-        end
+    self:speak()
+end
 
-        if not self.contains(e.text, {
-            "wp", "ns", "nice", "nice shot", "gj", "good job"
-        }) then
-            return
-        end
+--- @param e PlayerDeathEvent
+--- @return void
+function AiSentenceReplyCommend:replyToPlayerDeath(e)
+    if not e.attacker:isClient() or e.victim:isTeammate() then
+        return
+    end
 
-        self:speak()
-    end)
+    self.lastKilledPlayerTimers[e.victim.eid]:start()
 end
 
 return Nyx.class("AiSentenceReplyCommend", AiSentenceReplyCommend, AiSentence)

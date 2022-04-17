@@ -5,6 +5,7 @@ local Color = require "gamesense/Nyx/v1/Api/Color"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Time = require "gamesense/Nyx/v1/Api/Time"
@@ -85,7 +86,9 @@ local AiWeaponNames = {
 --- @field bombPlantedAt string
 --- @field canDefuse boolean
 --- @field client Player
+--- @field clientThreatenedFromOrigin Vector3
 --- @field closestEnemy Player
+--- @field defuseTimer Timer
 --- @field dormantAt number[]
 --- @field enemies Player[]
 --- @field enemiesAlive number
@@ -95,10 +98,12 @@ local AiWeaponNames = {
 --- @field hasBomb Player
 --- @field isBombBeingDefusedByEnemy boolean
 --- @field isBombBeingDefusedByTeammate boolean
---- @field isLastAlive boolean
---- @field isClientPlanting boolean
 --- @field isBombBeingPlantedByEnemy boolean
 --- @field isBombBeingPlantedByTeammate boolean
+--- @field isClientPlanting boolean
+--- @field isClientThreatened boolean
+--- @field isEnemyVisible boolean
+--- @field isLastAlive boolean
 --- @field isRoundOver boolean
 --- @field lastVisibleEnemyTimer Timer
 --- @field mainWeapons number[]
@@ -106,18 +111,15 @@ local AiWeaponNames = {
 --- @field roundTimer Timer
 --- @field teammates Player[]
 --- @field teammatesAlive number
---- @field traceOptionsPathfinding TraceOptions
+--- @field threats boolean[]
+--- @field threatUpdateTimer Timer
+--- @field timeData GameStateTimeData
+--- @field totalThreats number
 --- @field traceOptionsAttacking TraceOptions
+--- @field traceOptionsPathfinding TraceOptions
 --- @field visibleEnemies Player[]
---- @field isEnemyVisible boolean
 --- @field weaponNames string[]
 --- @field weaponPriority AiWeaponPriorityGeneral
---- @field defuseTimer Timer
---- @field clientThreatenedFromOrigin Vector3
---- @field threatUpdateTimer Timer
---- @field threats boolean[]
---- @field totalThreats number
---- @field isClientThreatened boolean
 local AiUtility = {
     mainWeapons = {
         Weapons.FAMAS, Weapons.GALIL, Weapons.M4A1, Weapons.AUG, Weapons.AK47, Weapons.AWP, Weapons.SG553, Weapons.SSG08
@@ -357,6 +359,8 @@ function AiUtility.updateMisc()
     else
         AiUtility.weaponPriority = AiWeaponPriorityGeneral
     end
+
+    AiUtility.timeData = Table.fromPanorama(Panorama.GameStateAPI.GetTimeDataJSO())
 end
 
 --- @return void
@@ -499,7 +503,7 @@ function AiUtility.updateThreats()
     end
 
     -- Update threats.
-    local eyeOrigin = Client.getEyeOrigin() + AiUtility.client:m_vecVelocity():set(nil, nil, 0) * 0.4
+    local eyeOrigin = Client.getEyeOrigin() + AiUtility.client:m_vecVelocity():set(nil, nil, 0) * 0.33
     local threatUpdateTime = AiUtility.clientThreatenedFromOrigin and 0.3 or 0.1
     local threats = 0
 
@@ -508,7 +512,7 @@ function AiUtility.updateThreats()
         AiUtility.clientThreatenedFromOrigin = nil
         AiUtility.isClientThreatened = false
 
-        local clientPlane = eyeOrigin:getPlane(Vector3.align.CENTER, 64)
+        local clientPlane = eyeOrigin:getPlane(Vector3.align.CENTER, 75)
 
         for _, enemy in pairs(AiUtility.enemies) do
             local enemyOffset = enemy:getOrigin():offset(0, 0, 72)
@@ -521,7 +525,7 @@ function AiUtility.updateThreats()
             local closestPointDistance = math.huge
             local absPitch = math.abs(enemyAngle.p)
             local traceExtension = 1 - Math.getFloat(Math.getClamped(absPitch, 0, 75), 90)
-            local traceDistance = 200 * traceExtension
+            local traceDistance = 250 * traceExtension
             local lowestFov = math.huge
 
             for _ = 1, steps do

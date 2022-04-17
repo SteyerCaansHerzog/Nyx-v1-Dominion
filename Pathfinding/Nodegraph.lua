@@ -898,7 +898,6 @@ function Nodegraph:setConnections(node, pathLine)
         end
     end
 end
-
 --- @param cmd SetupCommandEvent
 --- @return void
 function Nodegraph:processMovement(cmd)
@@ -1069,20 +1068,15 @@ function Nodegraph:avoidTeammates(cmd)
 
     local player = AiUtility.client
 
-    -- This is probably not useful.
-    if player:m_vecVelocity():getMagnitude() > 200 then
-        return
-    end
-
     local isBlocked = false
     local origin = player:getOrigin()
-    local collisionOrigin = origin:clone():offset(0, 0, 36) + (self.cachedPathfindMoveAngle:clone():set(0):getForward() * 40)
-    local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 32, 32, 25)
+    local collisionOrigin = origin:clone():offset(0, 0, 36) + (self.cachedPathfindMoveAngle:clone():set(0):getForward() * 60)
+    local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 32, 32, 40)
     --- @type Player
     local blockingTeammate
 
     for _, teammate in pairs(AiUtility.teammates) do
-        if teammate:getOrigin():offset(0, 0, 36):isInBounds(collisionBounds) then
+        if teammate:getOrigin():offset(0, 0, 32):isInBounds(collisionBounds) then
             isBlocked = true
 
             blockingTeammate = teammate
@@ -1105,13 +1099,13 @@ function Nodegraph:avoidTeammates(cmd)
 
     if self.unblockTimer:isElapsedThenStop(self.unblockDuration) then
         self.unblockDirection = Client.getChance(2) and "Left" or "Right"
-        self.unblockDuration = Client.getRandomFloat(0.5, 1)
+        self.unblockDuration = Client.getRandomFloat(0.66, 1)
     end
 
     local directionMethod = string.format("get%s", self.unblockDirection)
     local eyeOrigin = Client.getEyeOrigin()
     local movementAngles = self.cachedPathfindMoveAngle
-    local directionOffset = eyeOrigin + movementAngles[directionMethod](movementAngles) * 32
+    local directionOffset = eyeOrigin + movementAngles[directionMethod](movementAngles) * 150
 
     self:executeMovement(cmd, eyeOrigin:getAngle(directionOffset))
 end
@@ -1167,7 +1161,7 @@ end
 --- @param moveAngle Angle
 --- @return void
 function Nodegraph:executeMovement(cmd, moveAngle)
-    if Config.isUserInputSafe then
+    if not Config.isEmulatingRealUserInput then
         cmd.move_yaw = moveAngle.y
         cmd.forwardmove = 450
 

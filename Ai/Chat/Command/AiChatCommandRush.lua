@@ -30,6 +30,10 @@ function AiChatCommandRush:invoke(ai, sender, args)
         return
     end
 
+    if ai.reaper.isActive then
+        return
+    end
+
     ai.canBuyThisRound = false
 
     UserInput.execute("buy p250")

@@ -16,6 +16,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
+local Voice = require "gamesense/Nyx/v1/Api/Voice"
 
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
@@ -235,6 +236,7 @@ Nyx.class("ReaperManifest", ReaperManifest)
 --- @field syncInfoTimer Timer
 --- @field infoPath string
 --- @field clientBoxFocusedOffset number
+--- @field savedCommunicationStates boolean[]
 local Reaper = {
 	gameConfig = "reaper",
 	infoPath = "lua/gamesense/Nyx/v1/Dominion/Resource/Data/ReaperClientInfo_%s.json",
@@ -268,6 +270,11 @@ function Reaper:initFields()
 	self.isForced = false
 
 	self.isEnabled = self.manifest.isEnabled
+
+	self.savedCommunicationStates = {
+		chatbotNormal = self.ai.chatbots.normal.isEnabled,
+		chatbotGpt3 = self.ai.chatbots.gpt3.isEnabled
+	}
 
 	DominionMenu.disableHud:set(false)
 	DominionMenu.limitFps:set(false)
@@ -331,25 +338,26 @@ function Reaper:render()
 	}
 
 	local colors = {
-		TEXT_MAIN = Color:hsla(0, 0, 1, 255 * alphaMod),
-		TEXT_MUTED = Color:hsla(0, 0, 0.66, 255 * alphaMod),
-		TEXT_DEAD = Color:hsla(0, 0.8, 0.6, 255 * alphaMod),
-		TEXT_ERROR = Color:hsla(18, 0.8, 0.6, 255 * alphaMod),
-		TEXT_ATTACKED = Color:hsla(26, 0.8, 0.55, 255 * alphaMod),
-		TEXT_THREATENED = Color:hsla(40, 0.5, 0.55, 255 * alphaMod),
+		COUNTER_TERRORIST = Color:rgba(71, 193, 234, 255),
+		TERRORIST = Color:rgba(234, 161, 71, 255),
 
-		IS_FINE = Color:hsla(210, 0.0, 0.2, 100 * alphaMod),
-		IS_FLASHED = Color:hsla(0, 0, 1, 255 * alphaMod),
-		IS_ATTACKED = Color:hsla(26, 0.8, 0.5, 255 * alphaMod),
-		IS_THREATENED = Color:hsla(40, 0.5, 0.5, 100 * alphaMod),
-		IS_DEAD = Color:hsla(0, 0.5, 0.5, 50 * alphaMod),
-		IS_DISCONNECTED = Color:hsla(0, 0.0, 0.35, 100 * alphaMod),
-		IS_CLIENT_OUTLINE = Color:hsla(0, 0.0, 0.8, 255 * alphaMod),
-		IS_CLIENT_BG = Color:hsla(0, 0.0, 0.55, 100 * alphaMod),
-		IS_IN_SERVER = Color:hsla(205, 0.4, 0.5, 75 * alphaMod),
+		IS_ATTACKED = Color:rgba(229, 113, 25, 255),
+		IS_CLIENT_BG = Color:rgba(140, 140, 140, 100),
+		IS_CLIENT_OUTLINE = Color:rgba(204, 204, 204, 255),
+		IS_DEAD = Color:rgba(191, 63, 63, 50),
+		IS_DISCONNECTED = Color:rgba(89, 89, 89, 100),
+		IS_FINE = Color:rgba(51, 51, 51, 100),
+		IS_FLASHED = Color:rgba(255, 255, 255, 255),
+		IS_IN_SERVER = Color:rgba(63, 138, 191, 75),
+		IS_THREATENED = Color:rgba(191, 148, 63, 100),
 
-		TERRORIST = Color:hsla(33, 0.8, 0.6, 255 * alphaMod),
-		COUNTER_TERRORIST = Color:hsla(195, 0.8, 0.6, 255 * alphaMod),
+		TEXT_ATTACKED = Color:rgba(248, 183, 133, 255),
+		TEXT_DEAD = Color:rgba(234, 71, 71, 255),
+		TEXT_ERROR = Color:rgba(234, 120, 71, 255),
+		TEXT_MAIN = Color:rgba(255, 255, 255, 255),
+		TEXT_MUTED = Color:rgba(168, 168, 168, 255),
+		TEXT_THREATENED = Color:rgba(249, 219, 158, 255),
+
 	}
 
 	if self.isForced then
@@ -437,6 +445,7 @@ function Reaper:render()
 			drawPosition:offset(self.clientBoxFocusedOffset)
 			drawPosition:drawSurfaceRectangleOutline(2, 2, clientBoxDimensions, colors.IS_CLIENT_OUTLINE)
 		else
+			--- @type Color
 			local outlineColor
 
 			if isConnectionLost then
@@ -508,11 +517,20 @@ function Reaper:render()
 			end
 		end
 
-		-- Skill level
-		drawPosition:clone():offset(clientBoxDimensions.x - 14):drawSurfaceText(Font.SMALL_BOLD, colors.TEXT_MUTED, "c", client.info.skill)
-		drawPosition:clone():offset(clientBoxDimensions.x - 21, 6):drawSurfaceRectangleOutline(1, 4, Vector2:new(15, 10), colors.TEXT_MUTED:clone():setAlpha(33 * alphaMod))
+		local skillHueAdd = Math.getFloat(client.info.skill, 10) * 140
+		local skillColor = Color:hsla(215 + skillHueAdd, 0.7, 0.8)
 
-		-- Team
+		-- Skill level.
+		drawPosition:clone():offset(clientBoxDimensions.x - 14):drawSurfaceText(Font.SMALL_BOLD, skillColor, "c", client.info.skill)
+		drawPosition:clone():offset(clientBoxDimensions.x - 21, 6):drawSurfaceRectangleOutline(1, 4, Vector2:new(15, 10), skillColor:clone():setAlpha(33 * alphaMod))
+		drawPosition:clone():offset(clientBoxDimensions.x - 25, 2):drawSurfaceRectangleGradient(
+			Vector2:new(24, 18),
+			skillColor:clone():setAlpha(8 * alphaMod),
+			skillColor:clone():setAlpha(48 * alphaMod),
+			"h"
+		)
+
+		-- Team.
 		if client.info.team then
 			local teamColor
 			local teamName
@@ -530,6 +548,12 @@ function Reaper:render()
 
 			drawPosition:clone():offset(clientBoxDimensions.x - 14 - 28):drawSurfaceText(Font.SMALL_BOLD, teamColor, "c", teamName)
 			drawPosition:clone():offset(clientBoxDimensions.x - 21 - 28, 6):drawSurfaceRectangleOutline(1, 4, Vector2:new(15, 10), teamColor:clone():setAlpha(33 * alphaMod))
+			drawPosition:clone():offset(clientBoxDimensions.x - 21 - 32, 2):drawSurfaceRectangleGradient(
+				Vector2:new(24, 18),
+				teamColor:clone():setAlpha(8 * alphaMod),
+				teamColor:clone():setAlpha(48 * alphaMod),
+				"h"
+			)
 		end
 
 		if isPlayerAlive then
@@ -544,9 +568,15 @@ function Reaper:render()
 
 				local healthColor = Color:hsla(100 * healthPct, 0.8, 0.6, 255 * alphaMod)
 
-				-- Health
+				-- Health.
 				drawPosition:clone():offset(clientBoxDimensions.x - 19 - 56):drawSurfaceText(Font.SMALL_BOLD, healthColor, "c", client.info.health)
 				drawPosition:clone():offset(clientBoxDimensions.x - 31 - 56, 6):drawSurfaceRectangleOutline(1, 4, Vector2:new(25, 10), healthColor:clone():setAlpha(33 * alphaMod))
+				drawPosition:clone():offset(clientBoxDimensions.x - 35 - 56, 2):drawSurfaceRectangleGradient(
+					Vector2:new(33, 18),
+					healthColor:clone():setAlpha(8 * alphaMod),
+					healthColor:clone():setAlpha(48 * alphaMod),
+					"h"
+				)
 			end
 
 			if client.info.map then
@@ -803,6 +833,22 @@ function Reaper:think()
 	if self.isActive ~= self.lastActiveState then
 		self.lastActiveState = self.isActive
 
+		-- Toggle communication states.
+		if self.isActive then
+			self.savedCommunicationStates = {
+				chatbotNormal = self.ai.chatbots.normal.isEnabled,
+				chatbotGpt3 = self.ai.chatbots.gpt3.isEnabled
+			}
+
+			self.ai.chatbots.normal.isEnabled = false
+			self.ai.chatbots.gpt3.isEnabled = false
+		else
+			self.ai.chatbots.normal.isEnabled = self.savedCommunicationStates.chatbotNormal
+			self.ai.chatbots.gpt3.isEnabled = self.savedCommunicationStates.chatbotGpt3
+		end
+
+		Voice.isEnabled = not self.isActive
+
 		-- Set all the appropriate settings when activating or deactivating clients.
 		if self.isActive then
 			if self.isAiEnabled then
@@ -853,6 +899,14 @@ function Reaper:think()
 			if player:isAlive() then
 				color = Color:rgba(255, 255, 255, 100)
 				text = "Press F to take control"
+
+				screenCenter:clone():offset(-62, 68):drawSurfaceRectangleOutline(1, 1, Vector2:new(16, 25), Color:rgba(255, 255, 255, 20))
+				screenCenter:clone():offset(-62, 68):drawSurfaceRectangleGradient(
+					Vector2:new(16, 25),
+					Color:rgba(255, 255, 255, 5),
+					Color:rgba(255, 255, 255, 20),
+					"h"
+				)
 			else
 				color = Color:rgba(255, 255, 255, 255)
 				text = "Player is dead"
@@ -877,7 +931,7 @@ function Reaper:think()
 			-- Client has admin permissions on Dominion.
 			if self.isClientAdmin then
 				screenCenter:offset(0, 20):drawSurfaceText(
-					Font.MEDIUM, Color:hsla(200, 0.8, 0.6, 200), "c",
+					Font.MEDIUM, color, "c",
 					"Administrator"
 				)
 			end
@@ -897,6 +951,14 @@ function Reaper:think()
 			screenCenter:offset(0, 60):drawSurfaceText(
 				Font.LARGE, Color:rgba(255, 255, 255, 255), "c",
 				"Press F to use menu"
+			)
+
+			screenCenter:clone():offset(-51, 8):drawSurfaceRectangleOutline(1, 1, Vector2:new(16, 25), Color:rgba(255, 255, 255, 20))
+			screenCenter:clone():offset(-51, 8):drawSurfaceRectangleGradient(
+				Vector2:new(16, 25),
+				Color:rgba(255, 255, 255, 5),
+				Color:rgba(255, 255, 255, 20),
+				"h"
 			)
 		end
 	end

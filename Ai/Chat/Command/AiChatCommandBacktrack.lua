@@ -39,21 +39,28 @@ function AiChatCommandBacktrack:invoke(ai, sender, args)
         return
     end
 
-    local toggle = args[1]
+    local state = args[1]
 
-    if toggle == "on" then
+    if state == "high" then
         for _, tab in pairs(self.tabs) do
             self.refWeaponTab:set(tab)
 
             self.refAccuracyBoost:set("High")
             self.refAccuracyBoostRange:set(64)
         end
-    elseif toggle == "off" then
+    elseif state == "low" then
         for _, tab in pairs(self.tabs) do
             self.refWeaponTab:set(tab)
 
             self.refAccuracyBoost:set("Low")
             self.refAccuracyBoostRange:set(16)
+        end
+    elseif state == "off" then
+        for _, tab in pairs(self.tabs) do
+            self.refWeaponTab:set(tab)
+
+            self.refAccuracyBoost:set("Off")
+            self.refAccuracyBoostRange:set(1)
         end
     end
 end

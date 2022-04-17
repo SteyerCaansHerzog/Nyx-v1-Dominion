@@ -42,10 +42,30 @@ function AiSentence:__init()
     end)
 end
 
---- @param chat PlayerChatEvent
+--- @param e PlayerChatEvent
+--- @return void
+function AiSentence:replyToPlayerChat(e) end
+
+--- @param e PlayerDeathEvent
+--- @return void
+function AiSentence:replyToPlayerDeath(e) end
+
+--- @return void
+function AiSentence:replyOnRoundStart() end
+
+--- @return void
+function AiSentence:replyOnRoundEnd() end
+
+--- @return void
+function AiSentence:replyOnMatchEnd() end
+
+--- @return void
+function AiSentence:replyOnTick() end
+
+--- @param e PlayerChatEvent
 --- @return boolean
-function AiSentence:isValidReplyTarget(chat)
-    return chat.sender:isEnemy()
+function AiSentence:isValidReplyTarget(e)
+    return e.sender:isEnemy()
 end
 
 --- @return boolean

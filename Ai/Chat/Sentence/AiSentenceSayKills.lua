@@ -96,52 +96,54 @@ function AiSentenceSayKills:__init()
             "", ".", "!"
         }
     }
+end
 
-    Callbacks.playerDeath(function(e)
-        local gameRules = Entity.getGameRules()
+--- @param e PlayerDeathEvent
+--- @return void
+function AiSentenceSayKills:replyToPlayerDeath(e)
+    local gameRules = Entity.getGameRules()
 
-        if gameRules:m_bWarmupPeriod() == 1 then
-            return
+    if gameRules:m_bWarmupPeriod() == 1 then
+        return
+    end
+
+    if e.attacker:isClient() and e.victim:isTeammate() then
+        self:speak("KILL_SORRY")
+    end
+
+    if e.attacker:isClient() and not e.victim:isTeammate() then
+        if e.weapon == "hegrenade" then
+            self:speak("KILL_KOBE")
+        elseif e.weapon == "inferno" or (e.penetrated > 0 and e.headshot) then
+            self:speak("KILL_INSULT")
         end
 
-        if e.attacker:isClient() and e.victim:isTeammate() then
-            self:speak("KILL_SORRY")
-        end
+        return
+    end
 
-        if e.attacker:isClient() and not e.victim:isTeammate() then
-            if e.weapon == "hegrenade" then
-                self:speak("KILL_KOBE")
-            elseif e.weapon == "inferno" or (e.penetrated > 0 and e.headshot) then
-                self:speak("KILL_INSULT")
-            end
-
-            return
+    if e.victim:isClient() and e.attacker:isEnemy() then
+        if e.weapon == "knife" then
+            self:speak("DEATH_WP")
+        elseif e.weapon == "p90" or e.weapon == "scar20" or e.weapon == "g3sg1" then
+            self:speak("DEATH_NOOB")
+        elseif e.weapon == "hegrenade" or e.weapon == "inferno" then
+            self:speak("DEATH_NADE")
+        elseif e.penetrated > 0 and e.headshot then
+            self:speak("DEATH_WP")
+        elseif e.noscope or e.attackerblind or e.thrusmoke then
+            self:speak("DEATH_WP")
+        elseif Client.getChance(8) then
+            self:speak("DEATH_WP")
         end
+    end
 
-        if e.victim:isClient() and e.attacker:isEnemy() then
-            if e.weapon == "knife" then
-                self:speak("DEATH_WP")
-            elseif e.weapon == "p90" or e.weapon == "scar20" or e.weapon == "g3sg1" then
-                self:speak("DEATH_NOOB")
-            elseif e.weapon == "hegrenade" or e.weapon == "inferno" then
-                self:speak("DEATH_NADE")
-            elseif e.penetrated > 0 and e.headshot then
-                self:speak("DEATH_WP")
-            elseif e.noscope or e.attackerblind or e.thrusmoke then
-                self:speak("DEATH_WP")
-            elseif Client.getChance(8) then
-                self:speak("DEATH_WP")
-            end
-        end
+    if e.victim:isClient() and e.attacker:isTeammate() then
+        self:speak("DEATH_BY_TEAMMATE")
+    end
 
-        if e.victim:isClient() and e.attacker:isTeammate() then
-            self:speak("DEATH_BY_TEAMMATE")
-        end
-
-        if e.victim:isEnemy() and e.attacker:isEnemy() then
-            self:speak("ENEMY_DEATH_BY_TEAMMATE")
-        end
-    end)
+    if e.victim:isEnemy() and e.attacker:isEnemy() then
+        self:speak("ENEMY_DEATH_BY_TEAMMATE")
+    end
 end
 
 return Nyx.class("AiSentenceSayKills", AiSentenceSayKills, AiSentence)

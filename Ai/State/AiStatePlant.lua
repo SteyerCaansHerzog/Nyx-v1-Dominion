@@ -92,30 +92,50 @@ function AiStatePlant:assess(nodegraph)
     local site = nodegraph:getSiteNode(siteName)
     local closestPlantNode = nodegraph:getClosestNodeOf(playerOrigin, Node.types.PLANT)
     local isCovered = false
-    local isOnSite = playerOrigin:getDistance(site.origin) < 450
-    local isOnPlant = playerOrigin:getDistance(closestPlantNode.origin) < 100
+    local distanceToSite = playerOrigin:getDistance(site.origin)
+    local isOnSite = distanceToSite < 600
+    local isNearSite = distanceToSite < 1200
+    local isOnPlant = playerOrigin:getDistance(closestPlantNode.origin) < 150
 
-    if isOnSite then
-        for _, teammate in pairs(AiUtility.teammates) do
-            local teammateOrigin = teammate:getOrigin()
+    for _, teammate in pairs(AiUtility.teammates) do
+        local teammateOrigin = teammate:getOrigin()
 
-            local distance = 450
+        local distance = 400
 
-            if playerOrigin:getDistance(teammateOrigin) < distance then
-                isCovered = true
+        if playerOrigin:getDistance(teammateOrigin) < distance then
+            isCovered = true
 
-                break
-            end
+            break
         end
     end
 
+    -- On plant-spot and covered.
     if isOnPlant and isCovered then
         return AiState.priority.PLANT_COVERED
-    elseif isOnSite and isCovered then
+    end
+
+    -- On site and covered.
+    if isOnSite and isCovered then
         return AiState.priority.PLANT_ACTIVE
     end
 
-    return AiState.priority.PLANT_PASSIVE
+    -- Near site and not threatened.
+    if isNearSite and not AiUtility.isClientThreatened then
+        return AiState.priority.PLANT_ACTIVE
+    end
+
+    -- Covered and not threatened.
+    if isCovered and not AiUtility.isClientThreatened then
+        return AiState.priority.PLANT_PASSIVE
+    end
+
+    -- Not much time left in the round.
+    if AiUtility.timeData.roundtime_remaining < 35 then
+        return AiState.priority.PLANT_PASSIVE
+    end
+
+    -- We have the bomb.
+    return AiState.priority.PLANT_GENERIC
 end
 
 --- @param ai AiOptions

@@ -6,10 +6,10 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
 --}}}
 
---{{{ AiChatCommandForce
---- @class AiChatCommandForce : AiChatCommand
-local AiChatCommandForce = {
-    cmd = "force",
+--{{{ AiChatCommandBuy
+--- @class AiChatCommandBuy : AiChatCommand
+local AiChatCommandBuy = {
+    cmd = "buy",
     requiredArgs = 0,
     isAdminOnly = false
 }
@@ -18,7 +18,7 @@ local AiChatCommandForce = {
 --- @param sender Player
 --- @param args string[]
 --- @return void
-function AiChatCommandForce:invoke(ai, sender, args)
+function AiChatCommandBuy:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return
     end
@@ -27,8 +27,8 @@ function AiChatCommandForce:invoke(ai, sender, args)
         return
     end
 
-    ai:forceBuy()
+    ai:autoBuy(true)
 end
 
-return Nyx.class("AiChatCommandForce", AiChatCommandForce, AiChatCommand)
+return Nyx.class("AiChatCommandBuy", AiChatCommandBuy, AiChatCommand)
 --}}}

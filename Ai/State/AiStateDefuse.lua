@@ -86,6 +86,11 @@ function AiStateDefuse:assess()
         return AiState.priority.IGNORE
     end
 
+    -- The enemy likely cannot defuse now, and we need to leave the site.
+    if not AiUtility.canDefuse then
+        return AiState.priority.IGNORE
+    end
+
     if bomb:m_bBombDefused() == 1 then
         return AiState.priority.IGNORE
     end
@@ -119,6 +124,10 @@ function AiStateDefuse:assess()
         return AiState.priority.DEFUSE_STICK
     end
 
+    if not AiUtility.isClientThreatened and AiUtility.bombDetonationTime < 15 then
+        return AiState.priority.DEFUSE_COVERED
+    end
+
     if player:m_bIsDefusing() == 1 and clientOrigin:getDistance(bomb:getOrigin()) < 64 and isCovered then
         return AiState.priority.DEFUSE_COVERED
     end
@@ -127,7 +136,7 @@ function AiStateDefuse:assess()
 
     if clientDistanceToBomb < 80 then
         for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
-            if clientOrigin:getDistance(smoke:m_vecOrigin()) < 80 then
+            if clientOrigin:getDistance(smoke:m_vecOrigin()) < 100 then
                 return AiState.priority.DEFUSE_COVERED
             end
         end

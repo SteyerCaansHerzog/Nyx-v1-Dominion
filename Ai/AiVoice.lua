@@ -27,13 +27,15 @@ local AiVoicePackTaylor = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePac
 
 --{{{ AiVoice
 --- @class AiVoice : Class
---- @field pack AiVoicePack
---- @field packs AiVoicePack[]
---- @field liveClientPacks number[]
---- @field packsListboxMap AiVoicePack[]
 --- @field clientWonLastRound boolean
 --- @field flashbangTimer Timer
+--- @field isEnabled boolean
+--- @field liveClientPacks number[]
+--- @field pack AiVoicePack
+--- @field packs AiVoicePack[]
+--- @field packsListboxMap AiVoicePack[]
 local AiVoice = {
+    isEnabled = true,
     packs = {
         -- Not live
         AiVoicePackEmpty,

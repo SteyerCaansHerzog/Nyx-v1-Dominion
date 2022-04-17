@@ -80,24 +80,26 @@ function AiSentenceReplyRacism:__init()
             "u really are"
         }
     }
+end
 
-    Callbacks.playerChat(function(e)
-        if not self:isValidReplyTarget(e) then
-            return
-        end
+--- @param e PlayerChatEvent
+--- @return void
+function AiSentenceReplyRacism:replyToPlayerChat(e)
+    if not self:isValidReplyTarget(e) then
+        return
+    end
 
-        if not self.contains(e.text, {
-            "nigger", "negro", "coon", "kaffir", "kaffer", "chink", "ching chong", "spick", "beaner", "wetback", "charlie"
-        }) then
-            return
-        end
+    if not self.contains(e.text, {
+        "nigger", "negro", "coon", "kaffir", "kaffer", "chink", "ching chong", "spick", "beaner", "wetback", "charlie"
+    }) then
+        return
+    end
 
-        if self.uses > 0 then
-            self:speak("STILL_RACIST")
-        else
-            self:speak("FIRST_TIME_RACIST")
-        end
-    end)
+    if self.uses > 0 then
+        self:speak("STILL_RACIST")
+    else
+        self:speak("FIRST_TIME_RACIST")
+    end
 end
 
 return Nyx.class("AiSentenceReplyRacism", AiSentenceReplyRacism, AiSentence)

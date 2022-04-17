@@ -410,7 +410,7 @@ function AiView:initFields()
     self.lastCameraAngles = Client.getCameraAngles()
     self.lookAtAngles = Client.getCameraAngles()
     self.lookSpeed = 0
-    self.lookSpeedModifier = 1.2
+    self.lookSpeedModifier = 1
     self.recoilControl = 2
     self.useCooldown = Timer:new():start()
     self.velocity = Angle:new()

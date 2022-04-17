@@ -19,7 +19,8 @@ local AiStateFlashbang = {
     executeNode = "objectiveFlashbangExecute",
     holdNode = "objectiveFlashbangHold",
     weapons = {Weapons.FLASHBANG},
-    equipFunction = Client.equipFlashbang
+    equipFunction = Client.equipFlashbang,
+    rangeThreshold = 1500
 }
 
 --- @return AiStateFlashbang

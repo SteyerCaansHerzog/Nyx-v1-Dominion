@@ -53,25 +53,11 @@ local AiStateSweep = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSweep"
 local AiStateWait = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWait"
 local AiStateWatch = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWatch"
 
-local AiSentenceReplyBot = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyBot"
-local AiSentenceReplyCheater = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyCheater"
-local AiSentenceReplyCommend = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyCommend"
-local AiSentenceReplyEmoticon = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyEmoticon"
-local AiSentenceReplyGay = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyGay"
-local AiSentenceReplyInsult = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyInsult"
-local AiSentenceReplyRacism = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyRacism"
-local AiSentenceReplyRank = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyRank"
-local AiSentenceReplySussy = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplySussy"
-local AiSentenceReplyWeeb = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceReplyWeeb"
-local AiSentenceSayAce = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceSayAce"
-local AiSentenceSayGg = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceSayGg"
-local AiSentenceSayKills = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceSayKills"
-local AiSentenceSayRandom = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Sentence/AiSentenceSayRandom"
-
 local AiChatCommandAfk = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandAfk"
 local AiChatCommandBacktrack = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBacktrack"
 local AiChatCommandBomb = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBomb"
 local AiChatCommandBoost = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBoost"
+local AiChatCommandChat = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandChat"
 local AiChatCommandBuy = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandRush"
 local AiChatCommandDisconnect = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandDisconnect"
 local AiChatCommandDrop = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandDrop"
@@ -96,7 +82,8 @@ local AiChatCommandStop = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiC
 local AiChatCommandVote = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandVote"
 local AiChatCommandWait = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandWait"
 
-local AiChat = require "gamesense/Nyx/v1/Dominion/Ai/AiChat"
+local AiChatbotNormal = require "gamesense/Nyx/v1/Dominion/Ai/Chat/AiChatbotNormal"
+local AiChatbotGpt3 = require "gamesense/Nyx/v1/Dominion/Ai/Chat/AiChatbotGpt3"
 local AiRadio = require "gamesense/Nyx/v1/Dominion/Ai/AiRadio"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
@@ -123,7 +110,7 @@ local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 --- @field canLookAwayFromFlash boolean
 --- @field canUnscope boolean
 --- @field canUseKnife boolean
---- @field chat AiChat
+--- @field chatbots AiChatbot[]
 --- @field client DominionClient
 --- @field commands AiChatCommand[]
 --- @field currentState AiState
@@ -140,7 +127,6 @@ local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 --- @field lastPriority number
 --- @field nodegraph Nodegraph
 --- @field radio AiRadio
---- @field sentences AiSentence[]
 --- @field states AiState[]
 --- @field unblockDirection string
 --- @field unblockNodesTimer Timer
@@ -185,6 +171,7 @@ local AiController = {
 		bt = AiChatCommandBacktrack,
 		bomb = AiChatCommandBomb,
 		boost = AiChatCommandBoost,
+		chat = AiChatCommandChat,
 		buy = AiChatCommandBuy,
 		disconnect = AiChatCommandDisconnect,
 		drop = AiChatCommandDrop,
@@ -208,25 +195,13 @@ local AiController = {
 		vote = AiChatCommandVote,
 		wait = AiChatCommandWait,
 	},
-	sentences = {
-		replyBot = AiSentenceReplyBot,
-		replyCheater = AiSentenceReplyCheater,
-		replyCommend = AiSentenceReplyCommend,
-		replyEmoticon = AiSentenceReplyEmoticon,
-		replyGay = AiSentenceReplyGay,
-		replyInsult = AiSentenceReplyInsult,
-		replyRacism = AiSentenceReplyRacism,
-		replyRank = AiSentenceReplyRank,
-		replySussy = AiSentenceReplySussy,
-		replyWeeb = AiSentenceReplyWeeb,
-		sayAce = AiSentenceSayAce,
-		sayGg = AiSentenceSayGg,
-		sayKills = AiSentenceSayKills,
-		sayRandom = AiSentenceSayRandom,
-	},
 	actions = {
 		panorama = AiActionPanorama,
 		setBaseState = AiActionSetBaseState,
+	},
+	chatbots = {
+		normal = AiChatbotNormal,
+		gpt3 = AiChatbotGpt3
 	}
 }
 
@@ -317,7 +292,13 @@ function AiController:initFields()
 
 	self.actions = actions
 
-	AiChat:new({sentences = self.sentences})
+	local chatbots = {}
+
+	for id, chatbot in pairs(self.chatbots) do
+		chatbots[id] = chatbot:new()
+	end
+
+	self.chatbots = chatbots
 
 	if Config.isLiveClient and not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
 		self.client = DominionClient:new()
@@ -341,8 +322,10 @@ function AiController:initEvents()
 		self:renderUi()
 	end)
 
-	Callbacks.setupCommand(function(cmd)
-		self:think(cmd)
+	Client.onNextTick(function()
+		Callbacks.setupCommand(function(cmd)
+			self:think(cmd)
+		end)
 	end)
 
 	Callbacks.playerDeath(function(e)
@@ -563,11 +546,13 @@ function AiController:autoBuy(isImmediate)
 			if player:isCounterTerrorist() then
 				if Client.getChance(2) then
 					UserInput.execute("buy defuser")
+
+					self:buyGrenades(4)
 				else
-					self:buyGrenades(2)
+					self:buyGrenades(4)
 				end
 			else
-				self:buyGrenades(2)
+				self:buyGrenades(4)
 			end
 
 			return
@@ -583,6 +568,7 @@ function AiController:autoBuy(isImmediate)
 		local canBuyRifle = balance - (team == 2 and 3000 or 3050) >= 0
 		local canBuyAwp = (balance - 5750 >= 0) and Client.getChance(3)
 		local canBuyUtility = false
+		local canBuyAllNades = balance > 7000
 
 		if (roundsPlayed == 1 or roundsPlayed == halftimeRounds + 1) and not canBuyRifle then
 			self:forceBuy()
@@ -624,6 +610,10 @@ function AiController:autoBuy(isImmediate)
 
 			if player:isCounterTerrorist() then
 				UserInput.execute("buy defuser")
+			end
+
+			if canBuyAllNades then
+				grenadeLimit = 4
 			end
 
 			self:buyGrenades(grenadeLimit)
@@ -1175,7 +1165,7 @@ function AiController:antiFlash(ai)
 	if canLookAwayFromFlash then
 		Client.unscope()
 
-		ai.view:lookAtLocation(eyeOrigin:getAngle(self.flashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 6, "AiController avoid flashbang")
+		ai.view:lookAtLocation(eyeOrigin:getAngle(self.flashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 4, "AiController avoid flashbang")
 	end
 end
 
@@ -1227,7 +1217,7 @@ end
 
 --- @return void
 function AiController:unblockNodes()
-	if not self.unblockNodesTimer:isElapsedThenStop(10) then
+	if not self.unblockNodesTimer:isElapsedThenStop(12) then
 		return
 	end
 
@@ -1235,6 +1225,10 @@ function AiController:unblockNodes()
 		for _, node in pairs(blockGroup) do
 			node.active = true
 		end
+	end
+
+	if self.nodegraph.path then
+		self.nodegraph:rePathfind()
 	end
 end
 

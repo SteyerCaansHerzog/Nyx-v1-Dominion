@@ -42,20 +42,22 @@ function AiSentenceReplySussy:__init()
             "", "."
         }
     }
+end
 
-    Callbacks.playerChat(function(e)
-        if not self:isValidReplyTarget(e) then
-            return
-        end
+--- @param e PlayerChatEvent
+--- @return void
+function AiSentenceReplySussy:replyToPlayerChat(e)
+    if not self:isValidReplyTarget(e) then
+        return
+    end
 
-        if not self.contains(e.text, {
-            "sussy", "baka"
-        }) then
-            return
-        end
+    if not self.contains(e.text, {
+        "sussy", "baka"
+    }) then
+        return
+    end
 
-        self:speak()
-    end)
+    self:speak()
 end
 
 return Nyx.class("AiSentenceReplySussy", AiSentenceReplySussy, AiSentence)

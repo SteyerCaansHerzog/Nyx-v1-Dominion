@@ -37,7 +37,7 @@ end
 
 --- @return void
 function AiStateCheck:assess()
-    return self.isChecking and AiState.priority.CHECK or AiStateCheck.priority.IGNORE
+    return self.isChecking and AiState.priority.CHECK_SPAWN or AiStateCheck.priority.IGNORE
 end
 
 --- @param ai AiOptions

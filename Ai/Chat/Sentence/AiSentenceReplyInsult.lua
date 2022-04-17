@@ -43,27 +43,29 @@ function AiSentenceReplyInsult:__init()
             "", ".", "?"
         }
     }
+end
 
-    Callbacks.playerChat(function(e)
-        if not self:isValidReplyTarget(e) then
-            return
-        end
+--- @param e PlayerChatEvent
+--- @return void
+function AiSentenceReplyInsult:replyToPlayerChat(e)
+    if not self:isValidReplyTarget(e) then
+        return
+    end
 
-        if not self.contains(e.text, {
-            "ur shit", "you're shit",
-            "suck",
-            "fuck you", "fuck u", "fuck off", "bitch",
-            "ur mom", "your mom", "ur sister", "your sister",
-            "ez", "easy", "rekt", "nn ", " nn", "sit", "sit dog", "hdf",
-            "kys", "go die",
-            "cunt", "bastard", "fag", "faggot", "retard", "fucker",
-            "loser"
-        }) then
-            return
-        end
+    if not self.contains(e.text, {
+        "ur shit", "you're shit",
+        "suck",
+        "fuck you", "fuck u", "fuck off", "bitch",
+        "ur mom", "your mom", "ur sister", "your sister",
+        "ez", "easy", "rekt", "nn ", " nn", "sit", "sit dog", "hdf",
+        "kys", "go die",
+        "cunt", "bastard", "fag", "faggot", "retard", "fucker",
+        "loser"
+    }) then
+        return
+    end
 
-        self:speak()
-    end)
+    self:speak()
 end
 
 return Nyx.class("AiSentenceReplyInsult", AiSentenceReplyInsult, AiSentence)

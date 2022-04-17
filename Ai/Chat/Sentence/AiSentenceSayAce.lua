@@ -32,35 +32,38 @@ function AiSentenceSayAce:__init()
 
     self.insertions = {
         COMMEND = {
-            "wp", "ns", "nice", "nice shot", "gj", "good job", "wow", "jesus"
+            "ace", "nice ace", "lol ace", "aced", "ace?"
         }
     }
+end
 
-    Callbacks.playerDeath(function(e)
-        local gameRules = Entity.getGameRules()
+--- @param e PlayerDeathEvent
+--- @return void
+function AiSentenceSayAce:replyToPlayerDeath(e)
+    local gameRules = Entity.getGameRules()
 
-        if gameRules:m_bWarmupPeriod() == 1 then
-            return
+    if gameRules:m_bWarmupPeriod() == 1 then
+        return
+    end
+
+    if not self.playerKills[e.attacker.eid] then
+        self.playerKills[e.attacker.eid] = 0
+    end
+
+    self.playerKills[e.attacker.eid] = self.playerKills[e.attacker.eid] + 1
+end
+
+--- @return void
+function AiSentenceSayAce:replyOnRoundStart()
+    for _, kills in pairs(self.playerKills) do
+        if kills >= 5 then
+            self:speak()
+
+            break
         end
+    end
 
-        if not self.playerKills[e.attacker.eid] then
-            self.playerKills[e.attacker.eid] = 0
-        end
-
-        self.playerKills[e.attacker.eid] = self.playerKills[e.attacker.eid] + 1
-    end)
-
-    Callbacks.roundStart(function()
-        for _, kills in pairs(self.playerKills) do
-            if kills >= 5 then
-                self:speak()
-
-                break
-            end
-        end
-
-        self.playerKills = {}
-    end)
+    self.playerKills = {}
 end
 
 return Nyx.class("AiSentenceSayAce", AiSentenceSayAce, AiSentence)

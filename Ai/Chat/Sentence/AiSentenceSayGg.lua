@@ -45,33 +45,36 @@ function AiSentenceSayGg:__init()
             "gh"
         },
         GG = {
-            "gg", "gg no re", "gg wp", "wp", "good game"
+            "gg", "gg wp", "wp", "good game"
         }
     }
+end
 
-    Callbacks.roundStart(function()
+--- @return void
+function AiSentenceSayGg:replyOnRoundStart()
+    local gameRules = Entity.getGameRules()
+    local roundsPlayed = gameRules:m_totalRoundsPlayed()
+
+    if roundsPlayed == 0 then
+        self:speak("GL")
+    end
+end
+
+--- @return void
+function AiSentenceSayGg:replyOnRoundEnd()
+    Client.onNextTick(function()
         local gameRules = Entity.getGameRules()
         local roundsPlayed = gameRules:m_totalRoundsPlayed()
 
-        if roundsPlayed == 0 then
-            self:speak("GL")
+        if roundsPlayed == math.ceil(cvar.mp_maxrounds:get_int() / 2) then
+            self:speak("GH")
         end
     end)
+end
 
-    Callbacks.roundEnd(function()
-        Client.onNextTick(function()
-            local gameRules = Entity.getGameRules()
-            local roundsPlayed = gameRules:m_totalRoundsPlayed()
-            
-            if roundsPlayed == math.ceil(cvar.mp_maxrounds:get_int() / 2) then
-                self:speak("GH")
-            end
-        end)
-    end)
-
-    Callbacks.csWinPanelMatch(function()
-        self:speak("GG")
-    end)
+--- @return void
+function AiSentenceSayGg:replyOnMatchEnd()
+    self:speak("GG")
 end
 
 return Nyx.class("AiSentenceSayGg", AiSentenceSayGg, AiSentence)

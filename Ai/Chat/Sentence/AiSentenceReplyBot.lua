@@ -46,18 +46,24 @@ function AiSentenceReplyBot:__init()
     }
 
     Callbacks.playerChat(function(e)
-        if not self:isValidReplyTarget(e) then
-            return
-        end
 
-        if not self.contains(e.text, {
-            "bot"
-        }) then
-            return
-        end
-
-        self:speak()
     end)
+end
+
+--- @param e PlayerChatEvent
+--- @return void
+function AiSentenceReplyBot:replyToPlayerChat(e)
+    if not self:isValidReplyTarget(e) then
+        return
+    end
+
+    if not self.contains(e.text, {
+        "bot"
+    }) then
+        return
+    end
+
+    self:speak()
 end
 
 return Nyx.class("AiSentenceReplyBot", AiSentenceReplyBot, AiSentence)

@@ -1,9 +1,9 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local Color = require "gamesense/Nyx/v1/Api/Color"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
+local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 
@@ -25,7 +25,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field holdNode string
 --- @field weapons string[]
 --- @field equipFunction fun(): nil
---- @field usableAfter number
+--- @field rangeThreshold number
 ---
 --- @field isInThrow boolean
 --- @field node Node
@@ -35,12 +35,13 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field cooldownTimer Timer
 --- @field inBehaviorTimer Timer
 --- @field usedNodes Timer[]
+--- @field threatCooldownTimer Timer
 local AiStateGrenadeBase = {
     name = "GrenadeBase",
     globalCooldownTimer = Timer:new():startThenElapse(),
     cooldownTimer = Timer:new():startThenElapse(),
     usedNodes = {},
-    usableAfter = 0
+    rangeThreshold = 2000
 }
 
 --- @param fields AiStateGrenadeBase
@@ -54,6 +55,7 @@ function AiStateGrenadeBase:__init()
     self.inBehaviorTimer = Timer:new()
     self.throwTimer = Timer:new()
     self.throwTime = 0.2
+    self.threatCooldownTimer = Timer:new():startThenElapse()
 
     Callbacks.grenadeThrown(function(e)
         if e.player:isClient() then
@@ -63,21 +65,33 @@ function AiStateGrenadeBase:__init()
             AiStateGrenadeBase.cooldownTimer:start()
         end
     end)
-
-    Callbacks.roundStart(function()
-    	self.globalCooldownTimer:restart()
-    end)
 end
 
 --- @param nodegraph Nodegraph
 --- @return void
 function AiStateGrenadeBase:assess(nodegraph)
+    if Entity.getGameRules():m_bFreezePeriod() == 1 then
+        return AiState.priority.IGNORE
+    end
+
+    if AiUtility.isClientThreatened then
+        self.threatCooldownTimer:restart()
+
+        return AiState.priority.IGNORE
+    end
+
+    if not self.threatCooldownTimer:isElapsed(3) then
+        return AiState.priority.IGNORE
+    end
+
     if AiUtility.isRoundOver or AiUtility.enemiesAlive == 0 then
         return AiState.priority.IGNORE
     end
 
-    if AiUtility.roundTimer:isStarted() and not AiUtility.roundTimer:isElapsed(self.usableAfter) then
-        return AiState.priority.IGNORE
+    local isCheckingEnemies = true
+
+    if AiUtility.client:isTerrorist() and not AiUtility.roundTimer:isElapsed(20) then
+        isCheckingEnemies = false
     end
 
     local grenadeNodes = self:getNodes(nodegraph)
@@ -123,10 +137,34 @@ function AiStateGrenadeBase:assess(nodegraph)
 
         local distance = playerOrigin:getDistance(grenadeNode.origin)
 
-        if distance < 512 and distance < closestDistance then
-            local bounds = grenadeNode.origin:getBounds(Vector3.align.BOTTOM, 400, 400, 64)
+        if distance < 600 and distance < closestDistance then
+            local bounds = grenadeNode.origin:getBounds(Vector3.align.BOTTOM, 500, 500, 64)
+            local isValidGrenadeNode = false
 
             if playerCenter:isInBounds(bounds) then
+                if isCheckingEnemies then
+                    for _, enemy in pairs(AiUtility.enemies) do
+                        local enemyOrigin = enemy:getOrigin()
+                        local enemyDistance = grenadeNode.origin:getDistance(enemyOrigin)
+
+                        if enemyDistance < self.rangeThreshold then
+                            local fov = grenadeNode.direction:clone():set(0, nil):getFov(grenadeNode.origin, enemyOrigin)
+
+                            if fov < 40 then
+                                isValidGrenadeNode = true
+
+                                break
+                            end
+                        end
+                    end
+                else
+                    isValidGrenadeNode = true
+                end
+
+                if not isValidGrenadeNode then
+                    break
+                end
+
                 closestDistance = distance
                 closestNode = grenadeNode
             end
@@ -142,7 +180,7 @@ function AiStateGrenadeBase:assess(nodegraph)
     end
 
     if self.node and self.isInThrow then
-        return AiState.priority.IN_THROW
+        return AiState.priority.THROWING_GRENADE
     end
 
     if AiUtility.isRoundOver then

@@ -24,6 +24,11 @@ function AiChatCommandEnabled:invoke(ai, sender, args)
         return
     end
 
+    -- Ignore the possessed Reaper client.
+    if ai.reaper.isActive then
+        return
+    end
+
     local toggle = args[1]
 
     if toggle == "on" then

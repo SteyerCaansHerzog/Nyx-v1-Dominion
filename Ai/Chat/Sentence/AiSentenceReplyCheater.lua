@@ -59,29 +59,35 @@ function AiSentenceReplyCheater:__init()
     }
 
     Callbacks.playerChat(function(e)
-        if not self:isValidReplyTarget(e) then
-            return
-        end
 
-        if not self.contains(e.text, {
-            "report id",
-            "cheater", "hacker",
-            "you're cheating", "your cheating", "ur cheating", "you cheating",
-            "you're hacking", "your hacking", "ur hacking", "you hacking",
-            "you cheat", "u cheat", "you hack", "u hack",
-            "stop cheating", "stop hacking",
-            "fucking cheating", "fucking cheater", "fucking hacker",
-            "nice cheats", "ez cheats", "nice cheat", "ez cheat", "aimbot", "aimlock", "nice soft",
-            "nice hack", "ez hack", "ez hack",
-            "vac", "-acc", "enjoy ban", "nice ow", "ow ban", "bb acc",
-            "why cheat", "why hack",
-            "so obvious", "ur obvious", "you're obvious"
-        }) then
-            return
-        end
-
-        self:speak()
     end)
+end
+
+--- @param e PlayerChatEvent
+--- @return void
+function AiSentenceReplyCheater:replyToPlayerChat(e)
+    if not self:isValidReplyTarget(e) then
+        return
+    end
+
+    if not self.contains(e.text, {
+        "report id",
+        "cheater", "hacker",
+        "you're cheating", "your cheating", "ur cheating", "you cheating",
+        "you're hacking", "your hacking", "ur hacking", "you hacking",
+        "you cheat", "u cheat", "you hack", "u hack",
+        "stop cheating", "stop hacking",
+        "fucking cheating", "fucking cheater", "fucking hacker",
+        "nice cheats", "ez cheats", "nice cheat", "ez cheat", "aimbot", "aimlock", "nice soft",
+        "nice hack", "ez hack", "ez hack",
+        "vac", "-acc", "enjoy ban", "nice ow", "ow ban", "bb acc",
+        "why cheat", "why hack",
+        "so obvious", "ur obvious", "you're obvious"
+    }) then
+        return
+    end
+
+    self:speak()
 end
 
 return Nyx.class("AiSentenceReplyCheater", AiSentenceReplyCheater, AiSentence)

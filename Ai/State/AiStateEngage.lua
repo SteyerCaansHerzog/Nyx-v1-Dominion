@@ -151,7 +151,7 @@ function AiStateEngage:initFields()
     self.hitboxOffsetTimer = Timer:new():startThenElapse()
     self.ignoreDormancyTime = 6.5
     self.ignoreDormancyTimer = Timer:new():startThenElapse()
-    self.ignorePlayerAfter = 25
+    self.ignorePlayerAfter = 20
     self.isIgnoringDormancy = false
     self.isSneaking = false
     self.jiggleDirection = "Left"
@@ -383,6 +383,18 @@ function AiStateEngage:assess()
     self.sprayTimer:isElapsedThenStop(self.sprayTime)
     self.watchTimer:isElapsedThenStop(self.watchTime)
 
+    local clientOrigin = AiUtility.client:getOrigin()
+
+    -- Do not try to engage people from inside of a smoke.
+    -- It looks really dumb.
+    for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
+        local smokeTick = smoke:m_nFireEffectTickBegin()
+
+        if smokeTick and smokeTick > 0 and clientOrigin:getDistance(smoke:m_vecOrigin()) < 140 then
+            return AiState.priority.IGNORE
+        end
+    end
+
     if Client.isFlashed() and self.bestTarget and AiUtility.visibleEnemies[self.bestTarget.eid] then
         return AiState.priority.ENGAGE_PANIC
     end
@@ -600,7 +612,7 @@ end
 function AiStateEngage:hasNoticedEnemies()
     local ignorePlayerAfter = self.ignorePlayerAfter
 
-    if Client.hasBomb() and not AiUtility.isLastAlive then
+    if Client.hasBomb() then
         ignorePlayerAfter = 3
     end
 
@@ -1307,14 +1319,9 @@ function AiStateEngage:canHoldAngle(ai)
 
     -- Don't hold if the enemy is defusing the bomb.
     if AiUtility.client:isTerrorist() and not AiUtility.isBombBeingDefusedByEnemy then
-        --- @type GameStateTimeData
-        local timeData = Table.fromPanorama(Panorama.GameStateAPI.GetTimeDataJSO())
-
-        Panorama.GameStateAPI.GetScoreDataJSO()
-
         if not AiUtility.plantedBomb then
             -- We don't have much time remaining in the round, so we ought not to stand around.
-            if timeData.roundtime_remaining < 30 then
+            if AiUtility.timeData.roundtime_remaining < 30 then
                 return false
             end
 
@@ -2559,25 +2566,27 @@ function AiStateEngage:setAimSkill(skill)
     self.skill = skill
 
     local skillMinimum = {
-        reactionTime = 0.35,
+        reactionTime = 0.4,
         anticipateTime = 0.1,
-        sprayTime = 0.6,
-        aimSpeed = 10,
+        sprayTime = 0.5,
+        aimSpeed = 5,
         slowAimSpeed = 3,
         recoilControl = 2.5,
         aimOffset = 48,
-        aimInaccurateOffset = 128
+        aimInaccurateOffset = 144,
+        blockTime = 0.3
     }
 
     local skillMaximum = {
         reactionTime = 0.01,
         anticipateTime = 0.01,
-        sprayTime = 0.4,
-        aimSpeed = 15,
-        slowAimSpeed = 4,
+        sprayTime = 0.33,
+        aimSpeed = 8,
+        slowAimSpeed = 5,
         recoilControl = 2,
         aimOffset = 0,
-        aimInaccurateOffset = 16
+        aimInaccurateOffset = 64,
+        blockTime = 0.04
     }
 
     local skillPct = skill / self.skillLevelMax

@@ -15,12 +15,12 @@ local AiStateSmoke = {
     name = "Smoke",
     priority = AiState.priority.SMOKE,
     cooldown = 4,
-    usableAfter = 0,
     defendNode = "objectiveSmokeDefend",
     executeNode = "objectiveSmokeExecute",
     holdNode = "objectiveSmokeHold",
     weapons = {Weapons.SMOKE},
     equipFunction = Client.equipSmoke,
+    rangeThreshold = 1600
 }
 
 --- @return AiStateSmoke

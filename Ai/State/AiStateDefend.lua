@@ -29,6 +29,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field isDefendingDefuser boolean
 --- @field isJiggling boolean
 --- @field isJigglingUponReachingSpot boolean
+--- @field isOnDefendSpot boolean
 --- @field jiggleDirection string
 --- @field jiggleTime number
 --- @field jiggleTimer Timer
@@ -112,7 +113,11 @@ function AiStateDefend:assess(nodegraph)
             end
         end
 
-        return AiState.priority.DEFEND
+        if self.isOnDefendSpot and self:isEnemyInFov() then
+            return AiState.priority.DEFEND_ACTIVE
+        end
+
+        return AiState.priority.DEFEND_GENERIC
     end
 
     if player:isTerrorist() then
@@ -122,20 +127,41 @@ function AiStateDefend:assess(nodegraph)
             return AiState.priority.DEFEND_EXPEDITE
         end
 
+        if self.isOnDefendSpot and self:isEnemyInFov() then
+            return AiState.priority.DEFEND_ACTIVE
+        end
+
         -- We should probably go to the site.
         if AiUtility.bombCarrier and not AiUtility.bombCarrier:is(AiUtility.client) then
             local bombCarrierOrigin = AiUtility.bombCarrier:getOrigin()
             local bombsite = nodegraph:getNearestSiteNode(bombCarrierOrigin)
 
             if bombCarrierOrigin:getDistance(bombsite.origin) < 750 then
-                return AiState.priority.DEFEND_ACTIVE
+                return AiState.priority.DEFEND_PASSIVE
             end
         end
 
-        return AiState.priority.DEFEND
+        return AiState.priority.DEFEND_GENERIC
     end
 
     return AiState.priority.IGNORE
+end
+
+--- @return boolean
+function AiStateDefend:isEnemyInFov()
+    local cameraAngles = Client.getCameraAngles()
+    local eyeOrigin = Client.getEyeOrigin()
+    local isEnemyInFoV = false
+
+    for _, enemy in pairs(AiUtility.enemies) do
+        if cameraAngles:getFov(eyeOrigin, enemy:getOrigin():offset(0, 0, 64)) < 40 then
+            isEnemyInFoV = true
+
+            break
+        end
+    end
+
+    return isEnemyInFoV
 end
 
 --- @param ai AiOptions
@@ -182,7 +208,9 @@ function AiStateDefend:activate(ai, site, swapPair, useClosestSite)
 end
 
 --- @return void
-function AiStateDefend:deactivate() end
+function AiStateDefend:deactivate()
+    self.isOnDefendSpot = false
+end
 
 --- @param ai AiOptions
 --- @return void
@@ -200,7 +228,9 @@ function AiStateDefend:think(ai)
     local player = AiUtility.client
     local distance = player:getOrigin():offset(0, 0, 18):getDistance(self.node.origin)
 
-    if distance < 256 then
+    self.isOnDefendSpot = distance < 150
+
+    if distance < 250 then
         ai.controller.canUseKnife = false
     else
         self.isJigglingUponReachingSpot = false

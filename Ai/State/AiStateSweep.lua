@@ -29,30 +29,9 @@ function AiStateSweep:assess()
 end
 
 --- @param ai AiOptions
---- @param site string
 --- @return void
-function AiStateSweep:activate(ai, site)
-    self.node = self:getObjective(ai, site)
-
-    local objective = self.node
-
-    if not objective then
-        return
-    end
-
-    local objectiveName = Node.typesName[objective.type]
-
-    ai.nodegraph:pathfind(objective.origin, {
-        objective = Node.types.GOAL,
-        retry = false,
-        ignore = Client.getEid(),
-        task = string.format("Sweeping %s site", objectiveName),
-        onComplete = function()
-            ai.nodegraph:log("Cleared %s", objectiveName)
-
-            self.node = self:getObjective(ai)
-        end
-    })
+function AiStateSweep:activate(ai)
+    self:move(ai)
 end
 
 --- @param ai AiOptions
@@ -62,27 +41,17 @@ function AiStateSweep:think(ai)
 end
 
 --- @param ai AiOptions
---- @param site string
---- @return Node
-function AiStateSweep:getObjective(ai, site)
-    --- @type Node[]
-    local objective
-
-    if site then
-        objective = site == "a" and ai.nodegraph.objectiveA or ai.nodegraph.objectiveB
-    else
-        local origin = AiUtility.client:getOrigin()
-        local distanceA = origin:getDistance(ai.nodegraph.objectiveA.origin)
-        local distanceB = origin:getDistance(ai.nodegraph.objectiveB.origin)
-
-        if distanceA > distanceB then
-            objective = ai.nodegraph.objectiveA
-        else
-            objective = ai.nodegraph.objectiveB
+--- @return void
+function AiStateSweep:move(ai)
+    ai.nodegraph:pathfind(ai.nodegraph:getRandomNodeWithin(AiUtility.client:getOrigin(), 8192).origin, {
+        objective = Node.types.GOAL,
+        retry = false,
+        ignore = Client.getEid(),
+        task = string.format("Sweeping the map"),
+        onComplete = function()
+            self:move(ai)
         end
-    end
-
-    return objective
+    })
 end
 
 return Nyx.class("AiStateSweep", AiStateSweep, AiState)

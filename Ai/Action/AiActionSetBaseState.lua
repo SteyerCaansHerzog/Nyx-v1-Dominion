@@ -79,12 +79,6 @@ function AiActionSetBaseState:setMisc()
 				materialsystem.find_material(mat):color_modulate(r, g, b)
 			end
 		end)
-
-		Client.fireAfter(5, function()
-			if Config.isJoiningServerOnStartup then
-				Client.execute("connect 108.61.237.59:27015; password 2940")
-			end
-		end)
 	else
 		if Config.isDebugging then
 			local Debug = require "gamesense/Nyx/v1/Api/Debug"

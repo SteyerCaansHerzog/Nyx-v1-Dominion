@@ -113,6 +113,17 @@ function AiStateEvade:assess(nodegraph, ai)
         return AiState.priority.EVADE
     end
 
+    -- Avoid grenades
+    if not AiUtility.isClientThreatened then
+        local eyeOrigin = Client.getEyeOrigin()
+
+        for _, grenade in Entity.find({"CBaseCSGrenadeProjectile", "CMolotovProjectile"}) do
+            if eyeOrigin:getDistance(grenade:m_vecOrigin()) < 128 then
+
+            end
+        end
+    end
+
     return AiState.priority.IGNORE
 end
 

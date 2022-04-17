@@ -45,20 +45,22 @@ function AiSentenceReplyRank:__init()
             return rank
         end
     }
+end
 
-    Callbacks.playerChat(function(e)
-        if not self:isValidReplyTarget(e) then
-            return
-        end
+--- @param e PlayerChatEvent
+--- @return void
+function AiSentenceReplyRank:replyToPlayerChat(e)
+    if not self:isValidReplyTarget(e) then
+        return
+    end
 
-        if not self.contains(e.text, {
-            "ranks", "rank", "what rank", "your ranks", "your rank", "ur ranks", "ur rank"
-        }) then
-            return
-        end
+    if not self.contains(e.text, {
+        "ranks", "rank", "what rank", "your ranks", "your rank", "ur ranks", "ur rank"
+    }) then
+        return
+    end
 
-        self:speak()
-    end)
+    self:speak()
 end
 
 return Nyx.class("AiSentenceReplyRank", AiSentenceReplyRank, AiSentence)

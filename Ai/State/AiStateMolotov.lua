@@ -14,12 +14,12 @@ local AiStateMolotov = {
     name = "Molotov",
     priority = AiState.priority.MOLOTOV,
     cooldown = 6,
-    usableAfter = 10,
     defendNode = "objectiveMolotovDefend",
     executeNode = "objectiveMolotovExecute",
     holdNode = "objectiveMolotovHold",
     weapons = {Weapons.MOLOTOV, Weapons.INCENDIARY},
-    equipFunction = Client.equipMolotov
+    equipFunction = Client.equipMolotov,
+    rangeThreshold = 1200
 }
 
 --- @return AiStateMolotov
