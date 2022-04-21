@@ -18,7 +18,7 @@ local Config = {
     isDebugging = false, -- Enables debugging features.
     isLiveClient = false, -- Enable this when running on the Dominion Service.
     isEmulatingRealUserInput = false, -- Enable this to emulate mouse-keyboard. Results in less accurate movement. Avoids potential bot detection.
-    openAiApiKey = nil -- Set this to provide an API key for use with the Open AI chatbot.
+    openAiApiKey = "" -- Set this to provide an API key for use with the Open AI chatbot.
 }
 
 --- @return void
