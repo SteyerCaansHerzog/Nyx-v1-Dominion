@@ -99,9 +99,15 @@ function AiStateDefuse:assess()
         return AiState.priority.IGNORE
     end
 
+    local defuseTime = AiUtility.client:m_bHasDefuser() == 1 and 5 or 10
+
+    -- We might as well stick the defuse if we have 1 second left.
+    if AiUtility.defuseTimer:isElapsed(defuseTime - 1) then
+        return AiState.priority.DEFUSE_STICK
+    end
+
     local clientOrigin = player:getOrigin()
     local isCovered = false
-    local nearestTeammateDistance = math.huge
     local bombOrigin = AiUtility.plantedBomb:m_vecOrigin()
 
     for _, teammate in pairs(AiUtility.teammates) do
@@ -110,21 +116,9 @@ function AiStateDefuse:assess()
         if clientOrigin:getDistance(teammateOrigin) < 512 then
             isCovered = true
         end
-
-        local teammateDistanceToBomb = teammateOrigin:getDistance(bombOrigin)
-
-        if teammateDistanceToBomb < nearestTeammateDistance then
-            nearestTeammateDistance = teammateDistanceToBomb
-        end
     end
 
-    local defuseTime = AiUtility.client:m_bHasDefuser() == 1 and 5 or 10
-
-    if AiUtility.defuseTimer:isElapsed(defuseTime - 1) then
-        return AiState.priority.DEFUSE_STICK
-    end
-
-    if player:m_bIsDefusing() == 1 and clientOrigin:getDistance(bomb:getOrigin()) < 64 and isCovered then
+    if player:m_bIsDefusing() == 1 and isCovered then
         return AiState.priority.DEFUSE_COVERED
     end
 
@@ -139,10 +133,10 @@ function AiStateDefuse:assess()
     end
 
     if not AiUtility.isClientThreatened and AiUtility.bombDetonationTime < 15 then
-        return AiState.priority.DEFUSE_EXPEDITE
+        return AiState.priority.DEFEND_ACTIVE
     end
 
-    return AiState.priority.DEFUSE
+    return AiState.priority.DEFUSE_PASSIVE
 end
 
 --- @param ai AiOptions

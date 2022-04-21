@@ -119,8 +119,8 @@ function AiStatePlant:assess(nodegraph)
         return AiState.priority.PLANT_EXPEDITE
     end
 
-    -- On site and covered.
-    if isOnSite and isCovered then
+    -- Near site and covered.
+    if isNearSite and isCovered then
         return AiState.priority.PLANT_ACTIVE
     end
 
@@ -205,12 +205,16 @@ function AiStatePlant:think(ai)
     local player = AiUtility.client
     local distance = player:getOrigin():getDistance(self.node.origin)
 
+    if distance < 20 then
+        ai.cmd.in_duck = 1
+    end
+
     if distance < 72 then
         ai.view:lookInDirection(self.node.direction, 5, ai.view.noiseType.IDLE, "Plant look at angle")
         ai.controller.isQuickStopping = true
     end
 
-    if distance < 80 then
+    if distance < 100 then
         self.activity = "Planting bomb"
 
         ai.controller.canUseGear = false

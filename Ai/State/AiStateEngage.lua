@@ -394,7 +394,7 @@ function AiStateEngage:assess()
     for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
         local smokeTick = smoke:m_nFireEffectTickBegin()
 
-        if smokeTick and smokeTick > 0 and clientOrigin:getDistance(smoke:m_vecOrigin()) < 140 then
+        if smokeTick and smokeTick > 0 and clientOrigin:getDistance(smoke:m_vecOrigin()) < 130 then
             return AiState.priority.IGNORE
         end
     end
@@ -413,18 +413,18 @@ function AiStateEngage:assess()
         end
     end
 
+    if AiUtility.isBombBeingDefusedByEnemy then
+        return AiState.priority.ENGAGE_ACTIVE
+    end
+
     if not AiUtility.plantedBomb then
         if self.reactionTimer:isStarted() then
-            return AiState.priority.ENGAGE_ACTIVE
+            return AiState.priority.ENGAGE_PASSIVE
         end
 
         if self.watchTimer:isStarted() then
-            return AiState.priority.ENGAGE_ACTIVE
+            return AiState.priority.ENGAGE_PASSIVE
         end
-    end
-
-    if AiUtility.isBombBeingDefusedByEnemy then
-        return AiState.priority.ENGAGE_ACTIVE
     end
 
     if self:hasNoticedEnemies() then

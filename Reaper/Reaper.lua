@@ -240,6 +240,7 @@ Nyx.class("ReaperManifest", ReaperManifest)
 --- @field savedCommunicationStates boolean[]
 local Reaper = {
 	gameConfig = "reaper",
+	clientConfig = "Nyx-v1-Dominion-Reaper",
 	infoPath = "lua/gamesense/Nyx/v1/Dominion/Resource/Data/ReaperClientInfo_%s.json",
 	sharedPath = "lua/gamesense/Nyx/v1/Dominion/Resource/Data/ReaperClientShared.json",
 }
@@ -288,7 +289,7 @@ end
 --- @return void
 function Reaper:initEvents()
 	if self.isEnabled then
-		self:setConfig("Nyx-v1-Dominion-Reaper")
+		self:setConfig(self.clientConfig)
 
 		Callbacks.frameGlobal(function()
 			self:think()

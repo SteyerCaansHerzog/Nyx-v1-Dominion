@@ -68,11 +68,6 @@ function AiStateEvade:assess(nodegraph, ai)
         return AiState.priority.IGNORE
     end
 
-    -- Round is over.
-    if AiUtility.isRoundOver then
-        return AiState.priority.IGNORE
-    end
-
     local player = AiUtility.client
 
     -- We can be peeked by an enemy.

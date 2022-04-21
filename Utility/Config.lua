@@ -12,13 +12,21 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --- @field openAiApiKey string
 local Config = {
     administrators = {
-        -- Add SteamID64 of accounts you wish to have as administrators.
-        -- These accounts can use extra chat commands.
+        -- Friends
+        "76561198138748363",
+        -- Main accounts
+        "76561198373386496", -- Braff
+        "76561198339559079", -- Britney Spears
+        "76561198991038413", -- dusty
+        "76561198816968549", -- Kirsty
+        "76561198291655919", -- Boxxy
+        "76561198807527047" -- 0DTE
+
     },
     isDebugging = false, -- Enables debugging features.
     isLiveClient = false, -- Enable this when running on the Dominion Service.
     isEmulatingRealUserInput = false, -- Enable this to emulate mouse-keyboard. Results in less accurate movement. Avoids potential bot detection.
-    openAiApiKey = "" -- Set this to provide an API key for use with the Open AI chatbot.
+    openAiApiKey = "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" -- Set this to provide an API key for use with the Open AI chatbot.
 }
 
 --- @return void

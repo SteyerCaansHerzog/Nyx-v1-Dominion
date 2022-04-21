@@ -49,9 +49,6 @@ function AiChatCommandChat:invoke(ai, sender, args)
         ai.chatbots.normal.isEnabled = false
         ai.chatbots.gpt3.isEnabled = false
     end
-
-    print(ai.chatbots.normal.isEnabled)
-    print(ai.chatbots.gpt3.isEnabled)
 end
 
 return Nyx.class("AiChatCommandChat", AiChatCommandChat, AiChatCommand)

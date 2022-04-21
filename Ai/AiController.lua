@@ -58,6 +58,7 @@ local AiChatCommandBacktrack = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Comman
 local AiChatCommandBomb = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBomb"
 local AiChatCommandBoost = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBoost"
 local AiChatCommandChat = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandChat"
+local AiChatCommandClantag = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandClantag"
 local AiChatCommandBuy = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandRush"
 local AiChatCommandDisconnect = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandDisconnect"
 local AiChatCommandDrop = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandDrop"
@@ -167,16 +168,16 @@ local AiController = {
 	},
 	commands = {
 		afk = AiChatCommandAfk,
+		ai = AiChatCommandEnabled,
 		assist = AiChatCommandAssist,
-		bt = AiChatCommandBacktrack,
 		bomb = AiChatCommandBomb,
 		boost = AiChatCommandBoost,
-		chat = AiChatCommandChat,
+		bt = AiChatCommandBacktrack,
 		buy = AiChatCommandBuy,
+		chat = AiChatCommandChat,
 		disconnect = AiChatCommandDisconnect,
 		drop = AiChatCommandDrop,
 		eco = AiChatCommandEco,
-		ai = AiChatCommandEnabled,
 		follow = AiChatCommandFollow,
 		force = AiChatCommandForce,
 		go = AiChatCommandGo,
@@ -192,6 +193,7 @@ local AiController = {
 		skill = AiChatCommandSkill,
 		skipmatch = AiChatCommandSkipMatch,
 		stop = AiChatCommandStop,
+		tag = AiChatCommandClantag,
 		vote = AiChatCommandVote,
 		wait = AiChatCommandWait,
 	},
@@ -1273,7 +1275,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiController:think(cmd)
-	if not DominionMenu.enableAi:get() then
+	if not DominionMenu.master:get() or not DominionMenu.enableAi:get() then
 		-- Fix issue with AI trying to equip the last gear forever.
 		if Client.isEquipping() then
 			Client.cancelEquip()
@@ -1306,12 +1308,6 @@ function AiController:think(cmd)
 
 	self:antiFly(cmd)
 	self:unblockNodes()
-
-	if not DominionMenu.master:get() or not DominionMenu.enableAi:get() then
-		Client.cancelEquip()
-
-		return
-	end
 
 	local player = AiUtility.client
 
@@ -1356,12 +1352,6 @@ function AiController:think(cmd)
 			self.nodegraph:clearPath(string.format("Switching AI state to %s", currentState.name))
 
 			if currentState.activate then
-				currentState:activate(ai)
-			end
-
-			if currentState.reactivate then
-				currentState.reactivate = nil
-
 				currentState:activate(ai)
 			end
 		end
