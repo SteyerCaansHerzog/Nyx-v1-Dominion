@@ -22,6 +22,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiView = require "gamesense/Nyx/v1/Dominion/Ai/AiView"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
@@ -44,6 +45,7 @@ local WeaponMode = {
 --- @field aimAdjustmentPitch number
 --- @field aimAdjustmentYaw number
 --- @field aimInaccurateOffset number
+--- @field aimNoise AiViewNoise
 --- @field aimOffset number
 --- @field aimSpeed number
 --- @field anticipateTime number
@@ -51,6 +53,7 @@ local WeaponMode = {
 --- @field blockTime number
 --- @field blockTimer Timer
 --- @field canRunAndShoot boolean
+--- @field canWallbang boolean
 --- @field currentReactionTime number
 --- @field enemySpottedCooldown Timer
 --- @field enemyVisibleTime number
@@ -110,14 +113,14 @@ local WeaponMode = {
 --- @field tapFireTimer Timer
 --- @field tellRotateTimer Timer
 --- @field visibleReactionTimer Timer
+--- @field visualizerCallbacks function[]
+--- @field visualizerExpiryTimers Timer[]
 --- @field walkCheckCount number
 --- @field walkCheckTimer Timer
 --- @field watchOrigin Vector3
 --- @field watchTime number
 --- @field watchTimer Timer
 --- @field weaponMode number
---- @field visualizerCallbacks function[]
---- @field visualizerExpiryTimers Timer[]
 local AiStateEngage = {
     name = "Engage",
     skillLevelMin = 0,
@@ -184,6 +187,7 @@ function AiStateEngage:initFields()
     self.visibleReactionTimer = Timer:new()
     self.visualizerCallbacks = {}
     self.visualizerExpiryTimers = {}
+    self.aimNoise = AiView.noiseType.MINOR
 
     for i = 1, 64 do
         self.noticedPlayerTimers[i] = Timer:new()
@@ -1204,166 +1208,6 @@ end
 
 --- @param ai AiOptions
 --- @return void
-function AiStateEngage:walk(ai)
-    local player = AiUtility.client
-    local canWalk
-
-    if self.bestTarget and AiUtility.closestEnemy then
-        local clientEyeOrigin = Client.getEyeOrigin()
-        local predictedEyeOrigin = clientEyeOrigin + player:m_vecVelocity() * 0.8
-        local enemyOrigin = AiUtility.closestEnemy:getOrigin()
-        local distance = clientEyeOrigin:getDistance(enemyOrigin)
-        local trace = Trace.getLineToPosition(predictedEyeOrigin, self.bestTarget:getOrigin():offset(0, 0, 48), AiUtility.traceOptionsAttacking)
-        local shootFov = self:getShootFov(self.bestTarget:getCameraAngles(), self.bestTarget:getEyeOrigin(), clientEyeOrigin)
-
-        if distance < 1200 then
-            canWalk = true
-        end
-
-        if player:isCounterTerrorist() and AiUtility.plantedBomb then
-            if AiUtility.bombDetonationTime < 15 then
-                canWalk = false
-            elseif distance > 350 then
-                canWalk = false
-            end
-        end
-
-        if not trace.isIntersectingGeometry and shootFov < 20 then
-            canWalk = false
-        end
-    end
-
-    if self.walkCheckTimer:isElapsedThenRestart(0.15) then
-        self.walkCheckCount = Math.getClamped(self.walkCheckCount - 1, 0, 20)
-    end
-
-    if self.walkCheckCount >= 10 then
-        canWalk = false
-    end
-
-    if AiUtility.isBombBeingDefusedByEnemy then
-        canWalk = false
-    end
-
-    if AiUtility.client:m_bIsScoped() == 1 then
-        canWalk = false
-    end
-
-    self.isSneaking = canWalk
-
-    if canWalk then
-        ai.controller.isWalking = true
-    end
-end
-
---- @param ai AiOptions
---- @return boolean
-function AiStateEngage:canHoldAngle(ai)
-    -- Activates if the enemy is near a corner, but not too close to it.
-    if not self.isPreAimViableForHoldingAngle then
-        return false
-    end
-
-    -- The enemy is visible.
-    if AiUtility.visibleEnemies[self.bestTarget.eid] then
-        return false
-    end
-
-    -- Check we're not going to hold an angle in a really dumb spot.
-    local clientEyeOrigin = Client.getEyeOrigin()
-    local traceOptions = Table.merge(AiUtility.traceOptionsAttacking, {
-        distance = 200
-    })
-
-    local losTrace = Trace.getLineAtAngle(clientEyeOrigin, Client.getCameraAngles(), traceOptions)
-
-    -- Line of sight is facing too close to a wall.
-    if losTrace.isIntersectingGeometry then
-        return false
-    end
-
-    local clientOrigin = AiUtility.client:getOrigin()
-    local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 32)
-    local hullTrace = Trace.getHullAtPosition(clientOrigin:clone():offset(0, 0, 16), bounds, AiUtility.traceOptionsAttacking)
-
-    -- Our proximity to a wall is too close.
-    if hullTrace.isIntersectingGeometry then
-        return false
-    end
-
-    -- Don't hold if the enemy is planting or has planted the bomb.
-    if AiUtility.client:isCounterTerrorist() and not AiUtility.plantedBomb and not AiUtility.isBombBeingPlantedByEnemy then
-        -- If we're the closest to enemy, maybe don't permanently hold the angle.
-        if self.bestTarget then
-            local isClosestToEnemy = true
-            local targetOrigin = self.bestTarget:getOrigin()
-            local clientDistance = clientOrigin:getDistance(targetOrigin)
-
-            for _, teammate in pairs(AiUtility.teammates) do
-                if teammate:getOrigin():getDistance(targetOrigin) < clientDistance then
-                    isClosestToEnemy = false
-
-                    break
-                end
-            end
-        end
-
-        return true
-    end
-
-    -- We have to have a cooldown, or you can immediately trigger the AI back into holding the angle.
-    -- We don't do this for CTs. They can play time most of the time.
-    if self.patienceCooldownTimer:isStarted() and not self.patienceCooldownTimer:isElapsed(8) then
-        return false
-    end
-
-    -- Don't hold if the enemy is defusing the bomb.
-    if AiUtility.client:isTerrorist() and not AiUtility.isBombBeingDefusedByEnemy then
-        if not AiUtility.plantedBomb then
-            -- We don't have much time remaining in the round, so we ought not to stand around.
-            if AiUtility.timeData.roundtime_remaining < 30 then
-                return false
-            end
-
-            -- Don't hold the angle forever.
-            if self.patienceTimer:isElapsed(6) then
-                self.patienceCooldownTimer:restart()
-
-                return false
-            end
-        end
-
-        local distanceToSite = ai.nodegraph:getNearestSiteNode(clientOrigin).origin:getDistance(clientOrigin)
-        local isNearPlantedBomb = AiUtility.plantedBomb and AiUtility.client:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 512
-
-        -- Please don't hold angles if we have to plant.
-        if AiUtility.bombCarrier and not AiUtility.bombCarrier:is(AiUtility.client) then
-            return true
-        end
-
-        -- Good enough situation to hold as a T.
-        -- We don't do it outside of sites because we should really be pushing the enemy at this stage.
-        if isNearPlantedBomb or distanceToSite < 700 then
-            return true
-        end
-    end
-
-    if self.bestTarget then
-        local trace = Trace.getLineToPosition(clientEyeOrigin, self.bestTarget:getEyeOrigin(), AiUtility.traceOptionsAttacking)
-
-        -- The enemy, from our point of view, is occluded by a smoke.
-        -- We shouldn't really push smokes, so we should prefer holding the smoke instead.
-        if clientEyeOrigin:isRayIntersectingSmoke(trace.endPosition) then
-            return true
-        end
-    end
-
-    -- It's best to just push the enemy.
-    return false
-end
-
---- @param ai AiOptions
---- @return void
 function AiStateEngage:moveOnBestTarget(ai)
     if not self.bestTarget then
         return
@@ -1609,46 +1453,62 @@ function AiStateEngage:attackBestTarget(ai)
         self:watchAngle(ai)
     end
 
+    -- Wide-peek enemies.
+    if not self.visibleReactionTimer:isElapsed(self.reactionTime * 1.1) then
+        self:strafePeek(ai)
+    end
+
     -- Wallbang and smokebang.
     if not AiUtility.visibleEnemies[enemy.eid] then
         local lastNoticedAgo = self.noticedPlayerTimers[enemy.eid]:get()
 
         if AiUtility.isBombBeingDefusedByEnemy or (lastNoticedAgo >= 0 and lastNoticedAgo < 1) then
             local bangOrigin = enemy:getOrigin():offset(0, 0, 46)
-            local eid, dmg = eyeOrigin:getTraceBullet(bangOrigin, Client.getEid())
-
-            local canBang = true
+            local traceEid, traceDamage = eyeOrigin:getTraceBullet(bangOrigin, Client.getEid())
+            local isBangable = true
 
             if player:hasSniper() then
                 if ammoRatio < 1 then
-                    canBang = false
-                elseif dmg < 60 then
-                    canBang = false
+                    -- Banging with AWP is often not a great idea.
+                    -- So we're only going to allow it if the AI has a full mag.
+                    isBangable = false
+                elseif traceDamage < 65 then
+                    -- We should only wallbang on high damage bangs.
+                    isBangable = false
                 end
             else
-                if ammoRatio < 0.25 then
-                    canBang = false
-                elseif ammoRatio < 0.5 and dmg < 33 then
-                    canBang = false
-                elseif dmg < 10 then
-                    canBang = false
+                if ammo < 0.25 then
+                    -- Low ammo.
+                    isBangable = false
+                elseif ammoRatio < 0.5 and traceDamage < 33 then
+                    -- Mid-ammo so spare our shots more.
+                    isBangable = false
+                elseif traceDamage < 10 then
+                    -- At least try to damage the enemy.
+                    isBangable = false
                 end
             end
 
+            local isShooting = false
             local isOccludedBySmoke = eyeOrigin:isRayIntersectingSmoke(bangOrigin)
-            local canShoot = false
+            local trace = Trace.getLineToPosition(eyeOrigin, bangOrigin, AiUtility.traceOptionsAttacking)
+            local isOccludedByWall = trace.isIntersectingGeometry
+            local isEnemyTargetable = traceEid == enemy.eid
 
-            if self.smokeWallBangHoldTimer:isStarted() and not self.smokeWallBangHoldTimer:isElapsed(1) then
-                canShoot = true
+            if isOccludedByWall then
+                -- Wallbang, but only if there isn't a smoke in the way.
+                if self.canWallbang and not isOccludedBySmoke and isBangable and isEnemyTargetable then
+                    isShooting = true
+                end
+            elseif isOccludedBySmoke and isBangable then
+                -- Smokebang.
+                isShooting = true
+            elseif self.smokeWallBangHoldTimer:isStarted() and not self.smokeWallBangHoldTimer:isElapsed(1) then
+                -- Hold our spray. Prevents dithering.
+                isShooting = true
             end
 
-            if canBang and isOccludedBySmoke then
-                canShoot = true
-            elseif canBang and eid == enemy.eid then
-                canShoot = true
-            end
-
-            if canShoot then
+            if isShooting then
                 self.smokeWallBangHoldTimer:ifPausedThenStart()
 
                 self:addVisualizer("bang", function()
@@ -1657,6 +1517,7 @@ function AiStateEngage:attackBestTarget(ai)
 
                 self:shoot(ai, self.shootAtOrigin)
 
+                -- Do we need to return?
                 return
             end
         end
@@ -1689,11 +1550,6 @@ function AiStateEngage:attackBestTarget(ai)
         self.enemyVisibleTimer:stop()
     end
 
-    -- Wide-peek enemies.
-    if not self.visibleReactionTimer:isElapsed(self.reactionTime * 1.1) then
-        self:strafePeek(ai)
-    end
-
     -- Make sure the default mouse movement isn't active while the enemy is visible but the reaction timer hasn't elapsed.
     if AiUtility.visibleEnemies[enemy.eid] and shootFov < 40 then
         ai.view:lookAtLocation(hitbox, 2.5, ai.view.noiseType.IDLE, "Engage prepare to react")
@@ -1720,6 +1576,166 @@ function AiStateEngage:attackBestTarget(ai)
         elseif shootFov >= 40 and self:hasNoticedEnemy(enemy) then
             ai.view:lookAtLocation(hitbox, self.slowAimSpeed, ai.view.noiseType.MINOR, "Engage find enemy over 40 FoV")
         end
+    end
+end
+
+--- @param ai AiOptions
+--- @return boolean
+function AiStateEngage:canHoldAngle(ai)
+    -- Activates if the enemy is near a corner, but not too close to it.
+    if not self.isPreAimViableForHoldingAngle then
+        return false
+    end
+
+    -- The enemy is visible.
+    if AiUtility.visibleEnemies[self.bestTarget.eid] then
+        return false
+    end
+
+    -- Check we're not going to hold an angle in a really dumb spot.
+    local clientEyeOrigin = Client.getEyeOrigin()
+    local traceOptions = Table.merge(AiUtility.traceOptionsAttacking, {
+        distance = 200
+    })
+
+    local losTrace = Trace.getLineAtAngle(clientEyeOrigin, Client.getCameraAngles(), traceOptions)
+
+    -- Line of sight is facing too close to a wall.
+    if losTrace.isIntersectingGeometry then
+        return false
+    end
+
+    local clientOrigin = AiUtility.client:getOrigin()
+    local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 32)
+    local hullTrace = Trace.getHullAtPosition(clientOrigin:clone():offset(0, 0, 16), bounds, AiUtility.traceOptionsAttacking)
+
+    -- Our proximity to a wall is too close.
+    if hullTrace.isIntersectingGeometry then
+        return false
+    end
+
+    -- Don't hold if the enemy is planting or has planted the bomb.
+    if AiUtility.client:isCounterTerrorist() and not AiUtility.plantedBomb and not AiUtility.isBombBeingPlantedByEnemy then
+        -- If we're the closest to enemy, maybe don't permanently hold the angle.
+        if self.bestTarget then
+            local isClosestToEnemy = true
+            local targetOrigin = self.bestTarget:getOrigin()
+            local clientDistance = clientOrigin:getDistance(targetOrigin)
+
+            for _, teammate in pairs(AiUtility.teammates) do
+                if teammate:getOrigin():getDistance(targetOrigin) < clientDistance then
+                    isClosestToEnemy = false
+
+                    break
+                end
+            end
+        end
+
+        return true
+    end
+
+    -- We have to have a cooldown, or you can immediately trigger the AI back into holding the angle.
+    -- We don't do this for CTs. They can play time most of the time.
+    if self.patienceCooldownTimer:isStarted() and not self.patienceCooldownTimer:isElapsed(8) then
+        return false
+    end
+
+    -- Don't hold if the enemy is defusing the bomb.
+    if AiUtility.client:isTerrorist() and not AiUtility.isBombBeingDefusedByEnemy then
+        if not AiUtility.plantedBomb then
+            -- We don't have much time remaining in the round, so we ought not to stand around.
+            if AiUtility.timeData.roundtime_remaining < 30 then
+                return false
+            end
+
+            -- Don't hold the angle forever.
+            if self.patienceTimer:isElapsed(6) then
+                self.patienceCooldownTimer:restart()
+
+                return false
+            end
+        end
+
+        local distanceToSite = ai.nodegraph:getNearestSiteNode(clientOrigin).origin:getDistance(clientOrigin)
+        local isNearPlantedBomb = AiUtility.plantedBomb and AiUtility.client:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 512
+
+        -- Please don't hold angles if we have to plant.
+        if AiUtility.bombCarrier and not AiUtility.bombCarrier:is(AiUtility.client) then
+            return true
+        end
+
+        -- Good enough situation to hold as a T.
+        -- We don't do it outside of sites because we should really be pushing the enemy at this stage.
+        if isNearPlantedBomb or distanceToSite < 700 then
+            return true
+        end
+    end
+
+    if self.bestTarget then
+        local trace = Trace.getLineToPosition(clientEyeOrigin, self.bestTarget:getEyeOrigin(), AiUtility.traceOptionsAttacking)
+
+        -- The enemy, from our point of view, is occluded by a smoke.
+        -- We shouldn't really push smokes, so we should prefer holding the smoke instead.
+        if clientEyeOrigin:isRayIntersectingSmoke(trace.endPosition) then
+            return true
+        end
+    end
+
+    -- It's best to just push the enemy.
+    return false
+end
+
+--- @param ai AiOptions
+--- @return void
+function AiStateEngage:walk(ai)
+    local player = AiUtility.client
+    local canWalk
+
+    if self.bestTarget and AiUtility.closestEnemy then
+        local clientEyeOrigin = Client.getEyeOrigin()
+        local predictedEyeOrigin = clientEyeOrigin + player:m_vecVelocity() * 0.8
+        local enemyOrigin = AiUtility.closestEnemy:getOrigin()
+        local distance = clientEyeOrigin:getDistance(enemyOrigin)
+        local trace = Trace.getLineToPosition(predictedEyeOrigin, self.bestTarget:getOrigin():offset(0, 0, 48), AiUtility.traceOptionsAttacking)
+        local shootFov = self:getShootFov(self.bestTarget:getCameraAngles(), self.bestTarget:getEyeOrigin(), clientEyeOrigin)
+
+        if distance < 1200 then
+            canWalk = true
+        end
+
+        if player:isCounterTerrorist() and AiUtility.plantedBomb then
+            if AiUtility.bombDetonationTime < 15 then
+                canWalk = false
+            elseif distance > 350 then
+                canWalk = false
+            end
+        end
+
+        if not trace.isIntersectingGeometry and shootFov < 20 then
+            canWalk = false
+        end
+    end
+
+    if self.walkCheckTimer:isElapsedThenRestart(0.15) then
+        self.walkCheckCount = Math.getClamped(self.walkCheckCount - 1, 0, 20)
+    end
+
+    if self.walkCheckCount >= 10 then
+        canWalk = false
+    end
+
+    if AiUtility.isBombBeingDefusedByEnemy then
+        canWalk = false
+    end
+
+    if AiUtility.client:m_bIsScoped() == 1 then
+        canWalk = false
+    end
+
+    self.isSneaking = canWalk
+
+    if canWalk then
+        ai.controller.isWalking = true
     end
 end
 
@@ -1911,7 +1927,7 @@ function AiStateEngage:shootPistol(ai, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-    ai.view:lookAtLocation(aimAtOrigin, aimSpeed, ai.view.noiseType.MINOR, "Engage look at target")
+    ai.view:lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
 
     if fov < 7
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
@@ -1934,7 +1950,7 @@ function AiStateEngage:shootLight(ai, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-    ai.view:lookAtLocation(aimAtOrigin, aimSpeed, ai.view.noiseType.MINOR, "Engage look at target")
+    ai.view:lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
 
     if not self.canRunAndShoot then
         self:actionCounterStrafe(ai)
@@ -1962,7 +1978,7 @@ function AiStateEngage:shootShotgun(ai, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-    ai.view:lookAtLocation(aimAtOrigin, aimSpeed, ai.view.noiseType.MINOR, "Engage look at target")
+    ai.view:lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
 
     if distance > 1000 then
         return
@@ -1985,7 +2001,7 @@ end
 --- @param weapon CsgoWeapon
 --- @return void
 function AiStateEngage:shootHeavy(ai, aimAtOrigin, fov, weapon)
-    ai.view:lookAtLocation(aimAtOrigin, self.aimSpeed, ai.view.noiseType.MINOR, "Engage look at target")
+    ai.view:lookAtLocation(aimAtOrigin, self.aimSpeed, self.aimNoise, "Engage look-at target")
 
     if self.isTargetEasilyShot then
         self:actionCounterStrafe(ai)
@@ -2025,7 +2041,7 @@ function AiStateEngage:shootSniper(ai, aimAtOrigin, fov, weapon)
 
     -- Create a "flick" effect when aiming.
     if self.scopedTimer:isElapsed(fireDelay * 0.4) then
-        ai.view:lookAtLocation(aimAtOrigin, self.aimSpeed * 3, ai.view.noiseType.MINOR, "Engage look at target")
+        ai.view:lookAtLocation(aimAtOrigin, self.aimSpeed * 3, self.aimNoise, "Engage look-at target")
     end
 
     if fov < 12 then
@@ -2045,6 +2061,68 @@ function AiStateEngage:shootSniper(ai, aimAtOrigin, fov, weapon)
     then
         ai.cmd.in_attack = 1
     end
+end
+
+--- @param enemy Player
+--- @return Vector3, number
+function AiStateEngage:getHitbox(enemy)
+    --- @type Vector3
+    local targetHitbox
+    local hitboxes = {
+        Player.hitbox.HEAD,
+        Player.hitbox.NECK,
+        Player.hitbox.SPINE_3,
+        Player.hitbox.SPINE_2,
+        Player.hitbox.SPINE_1,
+        Player.hitbox.SPINE_0,
+        Player.hitbox.PELVIS,
+        Player.hitbox.LEFT_UPPER_ARM,
+        Player.hitbox.LEFT_UPPER_LEG,
+        Player.hitbox.RIGHT_UPPER_ARM,
+        Player.hitbox.RIGHT_UPPER_LEG,
+    }
+
+    local hitboxesPriority = {
+        [Player.hitbox.HEAD] = 1,
+        [Player.hitbox.NECK] = 2,
+        [Player.hitbox.SPINE_3] = 3,
+        [Player.hitbox.SPINE_2] = 4,
+        [Player.hitbox.SPINE_1] = 5,
+        [Player.hitbox.SPINE_0] = 6,
+        [Player.hitbox.PELVIS] = 7,
+        [Player.hitbox.LEFT_UPPER_ARM] = 8,
+        [Player.hitbox.LEFT_UPPER_LEG] = 9,
+        [Player.hitbox.RIGHT_UPPER_ARM] = 10,
+        [Player.hitbox.RIGHT_UPPER_LEG] = 11,
+    }
+
+    local eyeOrigin = Client.getEyeOrigin()
+    local visibleHitboxCount = 0
+    local bestHitbox = math.huge
+    local isPriorityHitboxVisible = false
+
+    for hitboxId, hitbox in pairs(enemy:getHitboxPositions(hitboxes)) do
+        local hitboxPriority = hitboxesPriority[hitboxId]
+        local trace = Trace.getLineToPosition(eyeOrigin, hitbox, AiUtility.traceOptionsAttacking)
+
+        if not trace.isIntersectingGeometry then
+            visibleHitboxCount = visibleHitboxCount + 1
+        end
+
+        if not isPriorityHitboxVisible then
+            if hitboxId == self.priorityHitbox and not trace.isIntersectingGeometry then
+                targetHitbox = hitbox
+                isPriorityHitboxVisible = true
+            elseif not trace.isIntersectingGeometry and hitboxPriority < bestHitbox then
+                bestHitbox = hitboxPriority
+                targetHitbox = hitbox
+            end
+        end
+    end
+
+    self.isBestTargetVisible = visibleHitboxCount > 0
+
+    return targetHitbox, visibleHitboxCount
 end
 
 --- @param ai AiOptions
@@ -2130,68 +2208,6 @@ function AiStateEngage:actionStop(ai)
     ai.nodegraph.moveAngle = inverseVelocity:getAngleFromForward()
 end
 
---- @param enemy Player
---- @return Vector3, number
-function AiStateEngage:getHitbox(enemy)
-    --- @type Vector3
-    local targetHitbox
-    local hitboxes = {
-        Player.hitbox.HEAD,
-        Player.hitbox.NECK,
-        Player.hitbox.SPINE_3,
-        Player.hitbox.SPINE_2,
-        Player.hitbox.SPINE_1,
-        Player.hitbox.SPINE_0,
-        Player.hitbox.PELVIS,
-        Player.hitbox.LEFT_UPPER_ARM,
-        Player.hitbox.LEFT_UPPER_LEG,
-        Player.hitbox.RIGHT_UPPER_ARM,
-        Player.hitbox.RIGHT_UPPER_LEG,
-    }
-
-    local hitboxesPriority = {
-        [Player.hitbox.HEAD] = 1,
-        [Player.hitbox.NECK] = 2,
-        [Player.hitbox.SPINE_3] = 3,
-        [Player.hitbox.SPINE_2] = 4,
-        [Player.hitbox.SPINE_1] = 5,
-        [Player.hitbox.SPINE_0] = 6,
-        [Player.hitbox.PELVIS] = 7,
-        [Player.hitbox.LEFT_UPPER_ARM] = 8,
-        [Player.hitbox.LEFT_UPPER_LEG] = 9,
-        [Player.hitbox.RIGHT_UPPER_ARM] = 10,
-        [Player.hitbox.RIGHT_UPPER_LEG] = 11,
-    }
-
-    local eyeOrigin = Client.getEyeOrigin()
-    local visibleHitboxCount = 0
-    local bestHitbox = math.huge
-    local isPriorityHitboxVisible = false
-
-    for hitboxId, hitbox in pairs(enemy:getHitboxPositions(hitboxes)) do
-        local hitboxPriority = hitboxesPriority[hitboxId]
-        local trace = Trace.getLineToPosition(eyeOrigin, hitbox, AiUtility.traceOptionsAttacking)
-
-        if not trace.isIntersectingGeometry then
-            visibleHitboxCount = visibleHitboxCount + 1
-        end
-
-        if not isPriorityHitboxVisible then
-            if hitboxId == self.priorityHitbox and not trace.isIntersectingGeometry then
-                targetHitbox = hitbox
-                isPriorityHitboxVisible = true
-            elseif not trace.isIntersectingGeometry and hitboxPriority < bestHitbox then
-                bestHitbox = hitboxPriority
-                targetHitbox = hitbox
-            end
-        end
-    end
-
-    self.isBestTargetVisible = visibleHitboxCount > 0
-
-    return targetHitbox, visibleHitboxCount
-end
-
 --- @param ai AiOptions
 --- @return void
 function AiStateEngage:strafePeek(ai)
@@ -2274,7 +2290,11 @@ function AiStateEngage:strafePeek(ai)
         end
     end
 
+    self.canWallbang = true
+
     if moveAngle then
+        self.canWallbang = false
+
         if player:m_vecVelocity():getMagnitude() < 50 then
             self.strafePeekStuckTimer:ifPausedThenStart()
         else

@@ -68,13 +68,13 @@ local AiChatCommandForce = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/Ai
 local AiChatCommandGo = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandGo"
 local AiChatCommandKnow = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandKnow"
 local AiChatCommandLog = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandLog"
+local AiChatCommandNoise = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandNoise"
 local AiChatCommandOk = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandOk"
 local AiChatCommandAssist = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandAssist"
 local AiChatCommandReload = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandReload"
 local AiChatCommandRush = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandRush"
 local AiChatCommandSave = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSave"
 local AiChatCommandSkill = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkill"
-local AiChatCommandSkillRng = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkillRng"
 local AiChatCommandSkipMatch = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkipMatch"
 local AiChatCommandScramble = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandScramble"
 local AiChatCommandSilence = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSilence"
@@ -182,6 +182,7 @@ local AiController = {
 		go = AiChatCommandGo,
 		know = AiChatCommandKnow,
 		log = AiChatCommandLog,
+		noise = AiChatCommandNoise,
 		ok = AiChatCommandOk,
 		reload = AiChatCommandReload,
 		rush = AiChatCommandRush,
@@ -189,7 +190,6 @@ local AiController = {
 		scramble = AiChatCommandScramble,
 		silence = AiChatCommandSilence,
 		skill = AiChatCommandSkill,
-		skillrng = AiChatCommandSkillRng,
 		skipmatch = AiChatCommandSkipMatch,
 		stop = AiChatCommandStop,
 		vote = AiChatCommandVote,
@@ -986,6 +986,10 @@ function AiController:renderUi()
 	))
 
 	uiPos:offset(0, offset)
+
+	if DominionMenu.enableAi:get() and AiUtility.clientThreatenedFromOrigin then
+		Client.draw(Vector3.drawCircleOutline, AiUtility.clientThreatenedFromOrigin, 30, 3, Color:hsla(0, 1, 1, 75))
+	end
 end
 
 --- @param ai AiOptions

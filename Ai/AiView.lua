@@ -658,6 +658,11 @@ end
 --- @param targetViewAngles Angle
 --- @return void
 function AiView:setTargetNoise(targetViewAngles)
+    -- Noise is NONE or not worth calculating.
+    if self.noise.timeExponent == 0 then
+        return
+    end
+
     -- Randomise when and for how long the noise is applied to the mouse.
     if self.noise.isRandomlyToggled then
         -- Toggle interval handles how long to wait until we start applying noise.
@@ -683,11 +688,12 @@ function AiView:setTargetNoise(targetViewAngles)
     end
 
     -- Scale the noise based on velocity.
-    local velocity = AiUtility.client:m_vecVelocity():getMagnitude()
     local velocityMod = 1
 
     -- Change between "in movement" and "standing still" noise parameters.
     if self.noise.isBasedOnVelocity then
+        local velocity = AiUtility.client:m_vecVelocity():getMagnitude()
+
         velocityMod = Math.getClamped(Math.getFloat(5 + velocity, 450) * 1, 0, 450)
     end
 

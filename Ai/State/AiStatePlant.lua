@@ -93,14 +93,14 @@ function AiStatePlant:assess(nodegraph)
     local closestPlantNode = nodegraph:getClosestNodeOf(playerOrigin, Node.types.PLANT)
     local isCovered = false
     local distanceToSite = playerOrigin:getDistance(site.origin)
-    local isOnSite = distanceToSite < 600
-    local isNearSite = distanceToSite < 1200
-    local isOnPlant = playerOrigin:getDistance(closestPlantNode.origin) < 150
+    local isOnSite = distanceToSite < 750
+    local isNearSite = distanceToSite < 1400
+    local isOnPlant = playerOrigin:getDistance(closestPlantNode.origin) < 200
 
     for _, teammate in pairs(AiUtility.teammates) do
         local teammateOrigin = teammate:getOrigin()
 
-        local distance = 400
+        local distance = 500
 
         if playerOrigin:getDistance(teammateOrigin) < distance then
             isCovered = true
@@ -112,6 +112,11 @@ function AiStatePlant:assess(nodegraph)
     -- On plant-spot and covered.
     if isOnPlant and isCovered then
         return AiState.priority.PLANT_COVERED
+    end
+
+    -- Not much time left in the round.
+    if AiUtility.timeData.roundtime_remaining < 35 then
+        return AiState.priority.PLANT_EXPEDITE
     end
 
     -- On site and covered.
@@ -126,11 +131,6 @@ function AiStatePlant:assess(nodegraph)
 
     -- Covered and not threatened.
     if isCovered and not AiUtility.isClientThreatened then
-        return AiState.priority.PLANT_PASSIVE
-    end
-
-    -- Not much time left in the round.
-    if AiUtility.timeData.roundtime_remaining < 35 then
         return AiState.priority.PLANT_PASSIVE
     end
 

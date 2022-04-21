@@ -1,9 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local Color = require "gamesense/Nyx/v1/Api/Color"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
@@ -15,7 +13,6 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
 --{{{ AiStateFlashbangDynamic
@@ -153,7 +150,7 @@ function AiStateFlashbangDynamic:assess()
         local trace = Trace.getLineToPosition(jumpEyeOrigin, enemyTestOrigin, AiUtility.traceOptionsAttacking)
         local isVisibleWhenJumping = not trace.isIntersectingGeometry
 
-        self.canJumpThrow = not isVisibleWhenJumping and predictionAngles.p < -40
+        self.canJumpThrow = not isVisibleWhenJumping and predictionAngles.p < -40 and predictionAngles.p > -70
         self.throwFromOrigin = Client.getOrigin()
 
         Client.onNextTick(function()
@@ -229,7 +226,7 @@ function AiStateFlashbangDynamic:think(ai)
         Client.equipFlashbang()
     end
 
-    ai.view:lookInDirection(self.throwAngles, 4.5, ai.view.noiseType.IDLE, "FlashbangDynamic look at throw angle")
+    ai.view:lookInDirection(self.throwAngles, 4.5, ai.view.noiseType.NONE, "FlashbangDynamic look at throw angle")
 
     local maxDiff = self.throwAngles:getMaxDiff(Client.getCameraAngles())
 

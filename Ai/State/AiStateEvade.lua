@@ -134,15 +134,16 @@ function AiStateEvade:activate(ai)
     local playerOrigin = player:getOrigin()
     --- @type Node[]
     local possibleNodes = {}
+    local cameraAngles = Client.getCameraAngles():set(0)
 
     for _, node in pairs(ai.nodegraph.nodes) do
-        if playerOrigin:getDistance(node.origin) < 512 then
+        if playerOrigin:getDistance(node.origin) < 512 and cameraAngles:getFov(playerOrigin, node.origin) < 45 then
             table.insert(possibleNodes, node)
         end
     end
 
     for _, enemy in pairs(AiUtility.enemies) do
-        local enemyPos = enemy:getOrigin():offset(0, 0, 48)
+        local enemyPos = enemy:getOrigin():offset(0, 0, 64)
 
         for key, node in pairs(possibleNodes) do
             local _, fraction = enemyPos:getTraceLine(node.origin, enemy.eid)
@@ -154,6 +155,7 @@ function AiStateEvade:activate(ai)
     end
 
     if not next(possibleNodes) then
+        -- If we ever reach this, we've graphed the map badly, or the AI is literally surrounded.
         ai.nodegraph:log("No cover to move to for reload")
 
         return

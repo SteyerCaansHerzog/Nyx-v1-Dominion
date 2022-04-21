@@ -4,7 +4,7 @@ local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
-local Localization = require "gamesense/Localization"
+local Localization = require "gamesense/Nyx/v1/Api/Localization"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
@@ -30,24 +30,25 @@ local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 
 --{{{ ReaperClientInfo
 --- @class ReaperClientInfo
---- @field name string
---- @field isInGame boolean
---- @field isThreatened boolean
---- @field isAttacked boolean
---- @field isFlashed boolean
---- @field isAlive boolean
---- @field behavior string
 --- @field activity string
---- @field skill number
---- @field map string
+--- @field behavior string
 --- @field callout string
 --- @field health number
---- @field lastKeepAliveAt number
---- @field team number
---- @field lobbyMemberCount number
+--- @field isAlive boolean
+--- @field isAttacked boolean
+--- @field isFlashed boolean
+--- @field isInGame boolean
 --- @field isLobbyHost boolean
 --- @field isLobbyQueuing boolean
+--- @field isThreatened boolean
 --- @field isWarmup boolean
+--- @field lastKeepAliveAt number
+--- @field lobbyMemberCount number
+--- @field map string
+--- @field name string
+--- @field priority number
+--- @field skill number
+--- @field team number
 --}}}
 
 --{{{ ReaperClientShared
@@ -648,24 +649,25 @@ function Reaper:think()
 
 		--- @type ReaperClientInfo
 		local info = {
-			name = Panorama.MyPersonaAPI.GetName(),
-			isInGame = Server.isIngame(),
-			isFlashed = Client.isFlashed(),
-			isAttacked = AiUtility.isEnemyVisible,
-			isThreatened = AiUtility.isClientThreatened,
-			isAlive = isAlive,
-			behavior = behavior,
 			activity = activity,
-			skill = self.ai.states.engage.skill,
-			map = map,
+			behavior = behavior,
 			callout = callout,
 			health = health,
-			lastKeepAliveAt = Time.getUnixTimestamp(),
-			team = team,
-			lobbyMemberCount = lobbyMemberCount,
+			isAlive = isAlive,
+			isAttacked = AiUtility.isEnemyVisible,
+			isFlashed = Client.isFlashed(),
+			isInGame = Server.isIngame(),
 			isLobbyHost = isLobbyHost,
 			isLobbyQueuing = isLobbyQueuing,
-			isWarmup = isWarmup
+			isThreatened = AiUtility.isClientThreatened,
+			isWarmup = isWarmup,
+			lastKeepAliveAt = Time.getUnixTimestamp(),
+			lobbyMemberCount = lobbyMemberCount,
+			map = map,
+			name = Panorama.MyPersonaAPI.GetName(),
+			priority = self.ai.lastPriority,
+			skill = self.ai.states.engage.skill,
+			team = team,
 		}
 
 		if isAppFocused then

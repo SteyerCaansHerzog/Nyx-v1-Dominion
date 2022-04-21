@@ -51,7 +51,7 @@ local NodeType = {
     HE_GRENADE_HOLD = 43,
     BLOCK = 44,
     WATCH_RIFLE = 45,
-    WATCH_SNIPER = 46,
+    WATCH_SNIPER = 46
 }
 
 local NodeDirectional = {
@@ -81,7 +81,7 @@ local NodeDirectional = {
     [NodeType.HE_GRENADE_HOLD] = true,
     [NodeType.PLANT] = true,
     [NodeType.WATCH_RIFLE] = true,
-    [NodeType.WATCH_SNIPER] = true,
+    [NodeType.WATCH_SNIPER] = true
 }
 
 local NodePaired = {
@@ -136,7 +136,7 @@ local NodeTypeName = {
     [NodeType.HE_GRENADE_HOLD] = "HE Grenade (Hold)",
     [NodeType.BLOCK] = "Block",
     [NodeType.WATCH_RIFLE] = "Watch (Rifle)",
-    [NodeType.WATCH_SNIPER] = "Watch (Sniper)",
+    [NodeType.WATCH_SNIPER] = "Watch (Sniper)"
 }
 
 --- @type Color[]
@@ -186,7 +186,7 @@ local NodeTypeColor = {
     [NodeType.HE_GRENADE_HOLD] = Color:hsla(0, 0.66, 0.85),
     [NodeType.BLOCK] = Color:hsla(0, 0.9, 0.6),
     [NodeType.WATCH_RIFLE] = Color:hsla(25, 0.4, 0.45),
-    [NodeType.WATCH_SNIPER] = Color:hsla(25, 0.4, 0.45),
+    [NodeType.WATCH_SNIPER] = Color:hsla(25, 0.4, 0.45)
 }
 
 local NodeTypeCode = {
@@ -235,7 +235,7 @@ local NodeTypeCode = {
     [NodeType.HE_GRENADE_HOLD] = "GRENADE (HOLD)",
     [NodeType.BLOCK] = "BLOCK",
     [NodeType.WATCH_RIFLE] = "WATCH (R)",
-    [NodeType.WATCH_SNIPER] = "WATCH (S)",
+    [NodeType.WATCH_SNIPER] = "WATCH (S)"
 }
 --}}}
 
@@ -249,6 +249,7 @@ local NodeTypeCode = {
 --- @field direction Angle
 --- @field site string
 --- @field pair Node
+--- @field offset number
 ---
 --- @field types NodeType
 --- @field typesDirectional boolean[]

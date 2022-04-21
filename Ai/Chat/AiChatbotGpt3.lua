@@ -93,9 +93,11 @@ function AiChatbotGpt3:__init()
 	self.cooldownTimer = Timer:new():startThenElapse()
 	self.repeatBlacklist = {}
 
-	Callbacks.playerChat(function(e)
-		self:processChatMessage(e)
-	end)
+	if Config.openAiApiKey ~= "" then
+		Callbacks.playerChat(function(e)
+			self:processChatMessage(e)
+		end)
+	end
 end
 
 --- @param e PlayerChatEvent

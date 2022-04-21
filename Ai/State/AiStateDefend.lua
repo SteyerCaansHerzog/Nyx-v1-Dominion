@@ -3,6 +3,8 @@ local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Player = require "gamesense/Nyx/v1/Api/Player"
+local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 --}}}
@@ -57,11 +59,24 @@ function AiStateDefend:__init()
         self.defendingSite = Client.getRandomInt(1, 2) == 1 and "a" or "b"
     end)
 
-    Callbacks.roundPrestart(function()
+    Callbacks.roundStart(function()
         self.getToSiteTimer:stop()
 
-        local operand = Client.getEid() + Entity.getGameRules():m_totalRoundsPlayed()
+        local slot = 0
 
+        for _, teammate in Table.sortedPairs(Player.find(function(p)
+            return p:isTeammate()
+        end, true), function(a, b)
+            return a:getKdRatio() < b:getKdRatio()
+        end) do
+            slot = slot + 1
+
+            if teammate:isClient() then
+                break
+            end
+        end
+
+        local operand = slot + Entity.getGameRules():m_totalRoundsPlayed()
         local site = (operand % 2) == 0 and "a" or "b"
 
         self.defendingSite = site
@@ -252,7 +267,7 @@ function AiStateDefend:think(ai)
     end
 
     for _, teammate in pairs(AiUtility.teammates) do
-        if teammate:getOrigin():getDistance(self.node.origin) < 32 and ai.nodegraph:canPathfind() then
+        if teammate:getOrigin():getDistance(self.node.origin) < 150 and ai.nodegraph:canPathfind() then
             self:activate(ai, self.defendingSite)
 
             return

@@ -79,6 +79,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field pathfindOptions NodegraphPathfindOptions
 --- @field pathMap Node[]
 --- @field pathStart Node
+--- @field moveTargetOrigin Vector3
 --- @field stuckTimer Timer
 --- @field task string
 --- @field tSpawn Node
@@ -91,6 +92,9 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field unblockDuration number
 --- @field unblockLookAngles Angle
 --- @field isDebugging boolean
+--- @field isTraversingUpLadder boolean
+--- @field isTraversingDownLadder boolean
+--- @field isWantingToAttachLadder boolean
 local Nodegraph = {
     isDebugging = false
 }
@@ -236,7 +240,7 @@ function Nodegraph:setupNodegraph()
         return
     end
 
-    local map = {
+    local objectives = {
         [Node.types.OBJECTIVE_A] = "objectiveA",
         [Node.types.OBJECTIVE_B] = "objectiveB",
         [Node.types.MAP_MIDDLE] = "mapMiddle",
@@ -245,16 +249,74 @@ function Nodegraph:setupNodegraph()
     }
 
     -- Unset all objectives.
-    for _, v in pairs(map) do
+    for _, v in pairs(objectives) do
         self[v] = nil
     end
 
-    -- Set all objectives.
-    for _, node in pairs(self.nodes) do
-        if map[node.type] then
-            self[map[node.type]] = node
+    local traces = {
+        {
+            offset = 10,
+            validation = function(nodeTestOrigin)
+                local trace = Trace.getHullAtPosition(nodeTestOrigin, Vector3:newBounds(Vector3.align.BOTTOM, 15, 15, 9), AiUtility.traceOptionsPathfinding)
+
+                return not trace.isIntersectingGeometry
+            end
+        },
+        {
+            offset = 20,
+            validation = function(nodeTestOrigin)
+                local trace = Trace.getHullAtPosition(nodeTestOrigin, Vector3:newBounds(Vector3.align.BOTTOM, 30, 30, 9), AiUtility.traceOptionsPathfinding)
+
+                return not trace.isIntersectingGeometry
+            end
+        },
+        {
+            offset = 40,
+            validation = function(nodeTestOrigin)
+                local trace = Trace.getHullAtPosition(nodeTestOrigin, Vector3:newBounds(Vector3.align.BOTTOM, 60, 60, 9), AiUtility.traceOptionsPathfinding)
+
+                return not trace.isIntersectingGeometry
+            end
+        },
+        {
+            offset = 60,
+            validation = function(nodeTestOrigin)
+                local trace = Trace.getHullAtPosition(nodeTestOrigin, Vector3:newBounds(Vector3.align.BOTTOM, 90, 90, 9), AiUtility.traceOptionsPathfinding)
+
+                return not trace.isIntersectingGeometry
+            end
+        }
+    }
+
+    for _, node in pairs(self.nodes) do repeat
+        -- Set objectives.
+        if objectives[node.type] then
+            self[objectives[node.type]] = node
         end
-    end
+
+        -- Set max planar ideal offsets.
+        if node.type == Node.types.RUN then
+            local nodeTestOrigin = node.origin:clone():offset(0, 0, 18)
+            local offset = 5
+            local isValid = true
+
+            if not isValid then
+                break
+            end
+
+            for _, trace in pairs(traces) do
+                if trace.validation(nodeTestOrigin) then
+                    offset = trace.offset
+                else
+                    isValid = false
+
+                    break
+                end
+            end
+
+            node.offset = offset
+        end
+    until true end
 
     local objectives = {
         a = "objectiveA",
@@ -433,7 +495,7 @@ function Nodegraph:renderNodegraph()
             node.origin:drawScaledCircleOutline(radius, thickness, color)
 
             if self.pathMap and self.pathMap[node.id] then
-                node.origin:drawCircle(radius + 2, color:clone():setAlpha(math.min(150, alpha)))
+                node.origin:drawScaledCircle(radius + 16, color:clone():setAlpha(math.min(150, alpha)))
             end
 
             local site = ""
@@ -770,8 +832,6 @@ end
 
 --- @class NodegraphPathfindOptions
 --- @field objective number
---- @field ignore number
---- @field line boolean
 --- @field task string
 --- @field onComplete function
 --- @field onFail function
@@ -790,6 +850,10 @@ function Nodegraph:pathfind(origin, options)
     self.lastPathfindTimer:start()
 
     options = options or {}
+
+    Table.setMissing(options, {
+        canUseInactive = false
+    })
 
     local player = AiUtility.client
     local playerOrigin = player:getOrigin():offset(0, 0, 16)
@@ -820,10 +884,15 @@ function Nodegraph:pathfind(origin, options)
 
     self:setConnections(pathEnd, true)
 
+    local reachCheckNodes = {
+        [Node.types.JUMP] = true,
+        [Node.types.GAP] = true,
+    }
+
     local path = AStar.find(pathStart, pathEnd, self.nodes, true, function(node, neighbor)
         local canReach = true
 
-        if (neighbor.type == Node.types.JUMP or neighbor.type == Node.types.GAP) and (neighbor.origin.z - node.origin.z > 64) then
+        if reachCheckNodes[neighbor.type] and (neighbor.origin.z - node.origin.z > 64) then
             canReach = false
         end
 
@@ -856,6 +925,8 @@ function Nodegraph:pathfind(origin, options)
     for _, node in pairs(path) do
         self.pathMap[node.id] = node
     end
+
+    self:generateMoveTargetOrigin()
 
     self:log("Begin new path (%s)", self.task)
 end
@@ -898,6 +969,7 @@ function Nodegraph:setConnections(node, pathLine)
         end
     end
 end
+
 --- @param cmd SetupCommandEvent
 --- @return void
 function Nodegraph:processMovement(cmd)
@@ -955,7 +1027,7 @@ function Nodegraph:processMovement(cmd)
         self:rePathfind()
     end
 
-    local angleToNode = origin:getAngle(node.origin)
+    local angleToNode = origin:getAngle(self.moveTargetOrigin)
 
     self.cachedPathfindMoveAngle = angleToNode
 
@@ -978,12 +1050,12 @@ function Nodegraph:processMovement(cmd)
         end
     end
 
-    local distance = origin:getDistance2(node.origin)
+    local distance = origin:getDistance2(self.moveTargetOrigin)
 
     -- Crouch under cover
     local crouchNode = self:getClosestNodeOf(origin, {Node.types.CROUCH, Node.types.CROUCH_SHOOT})
 
-    if crouchNode and origin:getDistance(crouchNode.origin) < 48 then
+    if crouchNode and origin:getDistance(crouchNode.origin) < 32 then
         self.crouchTimer:start()
     end
 
@@ -993,13 +1065,10 @@ function Nodegraph:processMovement(cmd)
         cmd.in_duck = 1
     end
 
-    -- Can jump
+    -- Setup can-jump.
     local canJump = self.canJump
-    local jumpNode = node
-
     self.canJump = true
 
-    -- Jump over obstacles
     if node.type == Node.types.JUMP then
         if canJump and distance < 32 and node.origin.z - origin.z > 18 then
             if self.jumpCooldown:isElapsedThenRestart(0.6) then
@@ -1009,21 +1078,19 @@ function Nodegraph:processMovement(cmd)
             end
         elseif distance < 32 and node.origin.z - origin.z < 18 then
             if self.jumpCooldown:isElapsedThenRestart(0.6) then
-                self.pathCurrent = self.pathCurrent + 1
+                self:moveOntoNextNode()
             end
         end
-    end
+    elseif node.type == Node.types.GAP then
+        if distance < 16 then
+            cmd.in_jump = 1
 
-    -- Jump over gaps
-    if canJump and jumpNode.type == Node.types.GAP and distance < 16 then
-        cmd.in_jump = 1
-
-        self.pathCurrent = self.pathCurrent + 1
-    end
-
-    -- Move onto next node
-    if distance < 20 and node.type ~= Node.types.JUMP and node.type ~= Node.types.GAP then
-        self.pathCurrent = self.pathCurrent + 1
+            self:moveOntoNextNode()
+        end
+    else
+        if distance < 20 then
+            self:moveOntoNextNode()
+        end
     end
 
     -- Re-pathfind when stuck
@@ -1047,6 +1114,41 @@ function Nodegraph:processMovement(cmd)
             end
         end
     end
+end
+
+--- @return void
+function Nodegraph:moveOntoNextNode()
+    self.pathCurrent = self.pathCurrent + 1
+
+    self:generateMoveTargetOrigin()
+end
+
+--- @return void
+function Nodegraph:generateMoveTargetOrigin()
+    local node = self.path[self.pathCurrent]
+
+    if not node then
+        self.moveTargetOrigin = nil
+
+        return
+    end
+
+    if not node.offset then
+        self.moveTargetOrigin = node.origin
+
+        return
+    end
+
+    local idealOrigin = node.origin + Vector3:new(
+        Client.getRandomFloat(-node.offset, node.offset),
+        Client.getRandomFloat(-node.offset, node.offset),
+        0
+    )
+
+    local trace = Trace.getHullToPosition(node.origin, idealOrigin, Vector3:newBounds(Vector3.align.UP, 32, 32, 16), AiUtility.traceOptionsPathfinding)
+
+    -- Generate a random vector around the node's origin.
+    self.moveTargetOrigin = trace.endPosition
 end
 
 --- @param cmd SetupCommandEvent

@@ -11,6 +11,7 @@
 --- dependencies
 ---     gamesense/nyx
 ---     gamesense/csgo_weapons
+---     gamesense/localization
 
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"

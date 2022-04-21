@@ -40,7 +40,7 @@ function AiChatCommandWait:invoke(ai, sender, args)
     Client.fireAfter(Client.getRandomFloat(0.5, 1.5), function()
         if sender:isAlive() then
             ai.states.wait:reset()
-            ai.states.wait:wait(sender, origin)
+            ai.states.wait:wait(sender, origin, ai.nodegraph)
         end
     end)
 end

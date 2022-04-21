@@ -1,5 +1,7 @@
 --{{{ Dependencies
+local Client = require "gamesense/Nyx/v1/Api/Client"
 local Math = require "gamesense/Nyx/v1/Api/Math"
+local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -11,7 +13,7 @@ local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatC
 --- @class AiChatCommandSkill : AiChatCommand
 local AiChatCommandSkill = {
     cmd = "skill",
-    requiredArgs = 1,
+    requiredArgs = 0,
     isAdminOnly = true
 }
 
@@ -24,7 +26,23 @@ function AiChatCommandSkill:invoke(ai, sender, args)
         return
     end
 
-    local skill = Math.getClamped(tonumber(args[1]), ai.states.engage.skillLevelMin, ai.states.engage.skillLevelMax)
+    local min = args[1]
+    local max = args[2]
+
+    if not min then
+        Messenger.send(string.format("My skill is level %i", ai.states.engage.skill), true)
+
+        return
+    end
+
+    min = Math.getClamped(tonumber(min), ai.states.engage.skillLevelMin, ai.states.engage.skillLevelMax)
+
+    local skill = min
+
+    if max then
+        max = Math.getClamped(tonumber(max), ai.states.engage.skillLevelMin, ai.states.engage.skillLevelMax)
+        skill = Client.getRandomInt(min, max)
+    end
 
     ai.states.engage:setAimSkill(skill)
 

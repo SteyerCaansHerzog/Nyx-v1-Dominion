@@ -38,7 +38,7 @@ end
 --- @param ai AiOptions
 --- @return void
 function AiStateDeveloper:activate(ai)
-    local node = ai.nodegraph.nodes[0]
+    local node = ai.nodegraph.nodes[56]
 
     ai.nodegraph:pathfind(node.origin)
 end

@@ -7,6 +7,7 @@ local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Player = require "gamesense/Nyx/v1/Api/Player"
+local Server = require "gamesense/Nyx/v1/Api/Server"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -151,6 +152,10 @@ function AiUtility:initFields()
     AiUtility.teammatesAlive = 0
     AiUtility.totalThreats = 0
     AiUtility.threatUpdateTimer = Timer:new():startThenElapse()
+
+    if Server.isIngame() then
+        AiUtility.timeData = Table.fromPanorama(Panorama.GameStateAPI.GetTimeDataJSO())
+    end
 
     local solidPathfindingEntities = {
         CDynamicProp = true,
@@ -497,10 +502,6 @@ end
 --- @return void
 function AiUtility.updateThreats()
     AiUtility.threats = {}
-
-    if  DominionMenu.enableAi:get() and AiUtility.clientThreatenedFromOrigin then
-        Client.draw(Vector3.drawCircleOutline, AiUtility.clientThreatenedFromOrigin, 30, 3, Color:hsla(0, 1, 1, 75))
-    end
 
     -- Update threats.
     local eyeOrigin = Client.getEyeOrigin() + AiUtility.client:m_vecVelocity():set(nil, nil, 0) * 0.33

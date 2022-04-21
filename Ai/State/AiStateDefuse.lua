@@ -124,10 +124,6 @@ function AiStateDefuse:assess()
         return AiState.priority.DEFUSE_STICK
     end
 
-    if not AiUtility.isClientThreatened and AiUtility.bombDetonationTime < 15 then
-        return AiState.priority.DEFUSE_COVERED
-    end
-
     if player:m_bIsDefusing() == 1 and clientOrigin:getDistance(bomb:getOrigin()) < 64 and isCovered then
         return AiState.priority.DEFUSE_COVERED
     end
@@ -142,7 +138,7 @@ function AiStateDefuse:assess()
         end
     end
 
-    if AiUtility.bombDetonationTime <= 15 then
+    if not AiUtility.isClientThreatened and AiUtility.bombDetonationTime < 15 then
         return AiState.priority.DEFUSE_EXPEDITE
     end
 
