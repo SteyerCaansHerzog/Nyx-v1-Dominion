@@ -13,6 +13,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
@@ -51,23 +52,23 @@ function AiStateDefuse:__init()
                 return
             end
 
-            local nearestSite = self.nodegraph:getNearestSiteName(bomb:m_vecOrigin())
+            local nearestSite = self.ai.nodegraph:getNearestSiteName(bomb:m_vecOrigin())
             --- @type Node[]
-            local chokes = self.nodegraph[string.format("objective%sChoke", nearestSite:upper())]
+            local chokes = self.ai.nodegraph[string.format("objective%sChoke", nearestSite:upper())]
 
             for _, choke in pairs(chokes) do repeat
                 if Client.getRandomInt(1, 3) ~= 1 or playerOrigin:getDistance(choke.origin) <= 512 then
                     break
                 end
 
-                for _, node in pairs(self.nodegraph.nodes) do
+                for _, node in pairs(self.ai.nodegraph.nodes) do
                     if choke.origin:getDistance(node.origin) < 128 then
                         node.active = false
                     end
                 end
             until true end
 
-            self.nodegraph:rePathfind()
+            self.ai.nodegraph:rePathfind()
         end)
     end)
 end
@@ -77,33 +78,33 @@ function AiStateDefuse:assess()
     local player = AiUtility.client
 
     if not player:isCounterTerrorist() then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     local bomb = AiUtility.plantedBomb
 
     if not bomb then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     -- The enemy likely cannot defuse now, and we need to leave the site.
     if not AiUtility.canDefuse then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     if bomb:m_bBombDefused() == 1 then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     if AiUtility.isBombBeingDefusedByTeammate then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     local defuseTime = AiUtility.client:m_bHasDefuser() == 1 and 5 or 10
 
     -- We might as well stick the defuse if we have 1 second left.
     if AiUtility.defuseTimer:isElapsed(defuseTime - 1) then
-        return AiState.priority.DEFUSE_STICK
+        return AiPriority.DEFUSE_STICK
     end
 
     local clientOrigin = player:getOrigin()
@@ -119,7 +120,7 @@ function AiStateDefuse:assess()
     end
 
     if player:m_bIsDefusing() == 1 and isCovered then
-        return AiState.priority.DEFUSE_COVERED
+        return AiPriority.DEFUSE_COVERED
     end
 
     local clientDistanceToBomb = clientOrigin:getDistance(bombOrigin)
@@ -127,21 +128,20 @@ function AiStateDefuse:assess()
     if clientDistanceToBomb < 80 then
         for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
             if clientOrigin:getDistance(smoke:m_vecOrigin()) < 100 then
-                return AiState.priority.DEFUSE_COVERED
+                return AiPriority.DEFUSE_COVERED
             end
         end
     end
 
     if not AiUtility.isClientThreatened and AiUtility.bombDetonationTime < 15 then
-        return AiState.priority.DEFEND_ACTIVE
+        return AiPriority.DEFEND_ACTIVE
     end
 
-    return AiState.priority.DEFUSE_PASSIVE
+    return AiPriority.DEFUSE_PASSIVE
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateDefuse:activate(ai)
+function AiStateDefuse:activate()
     local bomb = AiUtility.plantedBomb
 
     if not bomb then
@@ -152,33 +152,31 @@ function AiStateDefuse:activate(ai)
     local pathEnd
     local task
 
-    if ai.priority == AiState.priority.DEFEND_DEFUSER then
-        pathEnd = Table.getRandom(ai.nodegraph:getVisibleNodesFrom(bombOrigin:clone():offset(0, 0, 128), Client.getEid()), Node).origin
+    if self.ai.priority == AiPriority.DEFEND_DEFUSER then
+        pathEnd = Table.getRandom(self.ai.nodegraph:getVisibleNodesFrom(bombOrigin:clone():offset(0, 0, 128)), Node).origin
         task = "Defending the defuser"
     else
         pathEnd = bombOrigin
-        task = string.format("Retaking %s site", ai.nodegraph:getNearestSiteName(bombOrigin):upper())
+        task = string.format("Retaking %s site", self.ai.nodegraph:getNearestSiteName(bombOrigin):upper())
     end
 
-    ai.nodegraph:pathfind(pathEnd, {
+   self.ai.nodegraph:pathfind(pathEnd, {
         objective = Node.types.BOMB,
-        ignore = Client.getEid(),
         task = task,
         onComplete = function()
-            ai.nodegraph:log("Defusing the bomb")
+           self.ai.nodegraph:log("Defusing the bomb")
         end
     })
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateDefuse:deactivate(ai)
-    ai.nodegraph:reactivateAllNodes()
+function AiStateDefuse:deactivate()
+   self.ai.nodegraph:reactivateAllNodes()
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStateDefuse:think(ai)
+function AiStateDefuse:think(cmd)
     local bomb = AiUtility.plantedBomb
 
     if not bomb then
@@ -191,7 +189,7 @@ function AiStateDefuse:think(ai)
     local distance = AiUtility.client:getOrigin():getDistance(bombOrigin)
 
     if distance < 64 then
-        ai.view.isCrosshairUsingVelocity = false
+       self.ai.view.isCrosshairUsingVelocity = false
 
         self.isDefusing = true
     else
@@ -199,30 +197,30 @@ function AiStateDefuse:think(ai)
     end
 
     if AiUtility.client:m_bIsDefusing() == 1 then
-        ai.view:lookInDirection(Client.getCameraAngles(), 4, ai.view.noiseType.NONE, "Defuse keep current angles")
+        self.ai.view:lookInDirection(Client.getCameraAngles(), 4, self.ai.view.noiseType.NONE, "Defuse keep current angles")
     elseif distance < 256 then
-        ai.view:lookAtLocation(bombOrigin:clone():offset(5, -3, 14), 4.5, ai.view.noiseType.MOVING, "Defuse look at bomb")
+       self.ai.view:lookAtLocation(bombOrigin:clone():offset(5, -3, 14), 4.5, self.ai.view.noiseType.MOVING, "Defuse look at bomb")
     end
 
     if self.isDefusing then
         self.activity = "Defusing the bomb"
 
-        ai.controller.canReload = false
-        ai.cmd.in_use = 1
-        ai.cmd.in_duck = 1
+        self.ai.canReload = false
+        cmd.in_use = 1
+        cmd.in_duck = 1
 
         if AiUtility.client:hasWeapon(Weapons.SMOKE)
             and Table.isEmpty(AiUtility.visibleEnemies)
             and (not AiUtility.closestEnemy or (AiUtility.closestEnemy and AiUtility.client:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) > 400))
         then
-            ai.controller.canUseGear = false
-            ai.controller.states.evade.isBlocked = true
+            self.ai.canUseGear = false
+            self.ai.states.evade.isBlocked = true
 
             if not AiUtility.client:isHoldingWeapon(Weapons.SMOKE) then
                 Client.equipSmoke()
             end
 
-            ai.view:lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 4.5, ai.view.noiseType.NONE, "Defuse look to drop smoke")
+           self.ai.view:lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 4.5, self.ai.view.noiseType.NONE, "Defuse look to drop smoke")
 
             if AiUtility.client:isAbleToAttack() then
                 if Client.getCameraAngles().p > 22 then
@@ -230,7 +228,7 @@ function AiStateDefuse:think(ai)
                 end
 
                 if self.inThrowTimer:isElapsedThenStop(0.1) then
-                    ai.cmd.in_attack2 = 1
+                    cmd.in_attack2 = 1
                 end
             end
         end

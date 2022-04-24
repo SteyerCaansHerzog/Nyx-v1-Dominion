@@ -1,12 +1,11 @@
 --{{{ Dependencies
-local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
 --}}}
 
 --{{{ Modules
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
@@ -33,26 +32,27 @@ function AiStateAvoidInfernos:__init() end
 function AiStateAvoidInfernos:assess()
     local clientOrigin = AiUtility.client:getOrigin()
 
+    -- Find an inferno that we're probably inside of.
     for _, inferno in Entity.find("CInferno") do
         local distance = clientOrigin:getDistance(inferno:m_vecOrigin())
 
+        -- We're doing a cheap way of detecting if we're inside a molotov.
+        -- May require tweaking.
         if distance < 220 then
             self.inferno = inferno
 
-            return AiState.priority.AVOID_INFERNO
+            return AiPriority.AVOID_INFERNO
         end
     end
 
-    return AiState.priority.IGNORE
+    return AiPriority.IGNORE
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateAvoidInfernos:activate(ai) end
+function AiStateAvoidInfernos:activate() end
 
---- @param ai AiOptions
 --- @return void
-function AiStateAvoidInfernos:deactivate(ai)
+function AiStateAvoidInfernos:deactivate()
     self:reset()
 end
 
@@ -61,9 +61,9 @@ function AiStateAvoidInfernos:reset()
     self.inferno = nil
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStateAvoidInfernos:think(ai)
+function AiStateAvoidInfernos:think(cmd)
     self.activity = "Getting out of a fire"
 
     local clientOrigin = AiUtility.client:getOrigin()
@@ -76,7 +76,7 @@ function AiStateAvoidInfernos:think(ai)
     --- @type Node
     local backupNode
 
-    for _, node in pairs(ai.nodegraph.nodes) do
+    for _, node in pairs(self.ai.nodegraph.nodes) do
         if node.active and infernoOrigin:getDistance(node.origin) > 300 and clientOrigin:getDistance(node.origin) < 1024 then
             backupNode = node
 
@@ -94,10 +94,9 @@ function AiStateAvoidInfernos:think(ai)
         targetNode = backupNode
     end
 
-    if ai.nodegraph:canPathfind() and not ai.nodegraph.path then
-        ai.nodegraph:pathfind(targetNode.origin, {
+    if self.ai.nodegraph:isIdle() then
+        self.ai.nodegraph:pathfind(targetNode.origin, {
             objective = Node.types.GOAL,
-            ignore = Client.getEid(),
             task = "Avoiding inferno",
             canUseInactive = true
         })

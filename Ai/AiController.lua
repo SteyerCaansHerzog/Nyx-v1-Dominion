@@ -59,6 +59,7 @@ local AiChatCommandBomb = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiC
 local AiChatCommandBoost = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBoost"
 local AiChatCommandChat = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandChat"
 local AiChatCommandClantag = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandClantag"
+local AiChatCommandCmd = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandCmd"
 local AiChatCommandBuy = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandRush"
 local AiChatCommandDisconnect = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandDisconnect"
 local AiChatCommandDrop = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandDrop"
@@ -78,14 +79,12 @@ local AiChatCommandSave = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiC
 local AiChatCommandSkill = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkill"
 local AiChatCommandSkipMatch = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkipMatch"
 local AiChatCommandScramble = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandScramble"
-local AiChatCommandSilence = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSilence"
 local AiChatCommandStop = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandStop"
 local AiChatCommandVote = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandVote"
 local AiChatCommandWait = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandWait"
 
 local AiChatbotNormal = require "gamesense/Nyx/v1/Dominion/Ai/Chat/AiChatbotNormal"
 local AiChatbotGpt3 = require "gamesense/Nyx/v1/Dominion/Ai/Chat/AiChatbotGpt3"
-local AiRadio = require "gamesense/Nyx/v1/Dominion/Ai/AiRadio"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiView = require "gamesense/Nyx/v1/Dominion/Ai/AiView"
@@ -121,13 +120,12 @@ local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 --- @field dynamicSkillRoundKills number
 --- @field flashbang Entity
 --- @field flashbangs number[]
---- @field isAntiAfkEnabled boolean
 --- @field isAutoBuyArmourBlocked boolean
 --- @field isQuickStopping boolean
 --- @field isWalking boolean
 --- @field lastPriority number
 --- @field nodegraph Nodegraph
---- @field radio AiRadio
+--- @field priority number
 --- @field states AiState[]
 --- @field unblockDirection string
 --- @field unblockNodesTimer Timer
@@ -175,6 +173,7 @@ local AiController = {
 		bt = AiChatCommandBacktrack,
 		buy = AiChatCommandBuy,
 		chat = AiChatCommandChat,
+		cmd = AiChatCommandCmd,
 		disconnect = AiChatCommandDisconnect,
 		drop = AiChatCommandDrop,
 		eco = AiChatCommandEco,
@@ -189,7 +188,6 @@ local AiController = {
 		rush = AiChatCommandRush,
 		save = AiChatCommandSave,
 		scramble = AiChatCommandScramble,
-		silence = AiChatCommandSilence,
 		skill = AiChatCommandSkill,
 		skipmatch = AiChatCommandSkipMatch,
 		stop = AiChatCommandStop,
@@ -261,17 +259,14 @@ function AiController:initFields()
 	DominionMenu.enableView = DominionMenu.group:checkbox("    > Enable View"):setParent(DominionMenu.enableAi)
 	DominionMenu.enableAutoBuy = DominionMenu.group:checkbox("    > Enable Auto-Buy"):setParent(DominionMenu.enableAi)
 
-	self.radio = AiRadio:new()
 	self.voice = AiVoice:new()
 
 	local states = {}
 
 	for id, state in pairs(self.states) do
-		local initialisedState = state:new()
-
-		initialisedState.nodegraph = self.nodegraph
-
-		states[id] = initialisedState
+		states[id] = state:new({
+			ai = self
+		})
 	end
 
 	self.states = states
@@ -994,9 +989,9 @@ function AiController:renderUi()
 	end
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiController:activities(ai)
+function AiController:activities(cmd)
 	local isQuickStopping = self.isQuickStopping
 
 	self.isQuickStopping = false
@@ -1018,7 +1013,7 @@ function AiController:activities(ai)
 	end
 
 	if isWalking then
-		ai.cmd.in_speed = 1
+		cmd.in_speed = 1
 	end
 
 	local canUseGear = self.canUseGear
@@ -1055,7 +1050,7 @@ function AiController:activities(ai)
 		end
 
 		if ammo / maxAmmo < reloadRatio then
-			ai.cmd.in_reload = 1
+			cmd.in_reload = 1
 		end
 	end
 
@@ -1078,7 +1073,7 @@ function AiController:activities(ai)
 		canUseKnife = false
 	end
 
-	local closestCautionNode = ai.nodegraph:getClosestNodeOf(origin, Node.types.CAUTION)
+	local closestCautionNode = self.nodegraph:getClosestNodeOf(origin, Node.types.CAUTION)
 
 	if closestCautionNode and origin:getDistance(closestCautionNode.origin) < 500 then
 		canUseKnife = false
@@ -1110,15 +1105,9 @@ function AiController:activities(ai)
 	end
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiController:antiAfk(ai)
-	ai.cmd.in_duck = 1
-end
-
---- @param ai AiOptions
---- @return void
-function AiController:antiFlash(ai)
+function AiController:antiFlash(cmd)
 	local eyeOrigin = Client.getEyeOrigin()
 	local cameraAngles = Client.getCameraAngles()
 
@@ -1171,7 +1160,7 @@ function AiController:antiFlash(ai)
 	if canLookAwayFromFlash then
 		Client.unscope()
 
-		ai.view:lookAtLocation(eyeOrigin:getAngle(self.flashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 4, "AiController avoid flashbang")
+		self.view:lookAtLocation(eyeOrigin:getAngle(self.flashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 4, "AiController avoid flashbang")
 	end
 end
 
@@ -1263,15 +1252,6 @@ function AiController:unscope()
 	end
 end
 
---- @class AiOptions
---- @field controller AiController
---- @field nodegraph Nodegraph
---- @field view AiView
---- @field radio AiRadio
---- @field voice AiVoice
---- @field cmd SetupCommandEvent
---- @field priority number
----
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiController:think(cmd)
@@ -1297,15 +1277,6 @@ function AiController:think(cmd)
 		return
 	end
 
-	if self.isAntiAfkEnabled then
-		self:antiAfk({
-			controller = self,
-			nodegraph = self.nodegraph,
-			view = self.view,
-			cmd = cmd
-		})
-	end
-
 	self:antiFly(cmd)
 	self:unblockNodes()
 
@@ -1320,7 +1291,7 @@ function AiController:think(cmd)
 	local highestPriority = -1
 
 	for _, state in pairs(self.states) do
-		local priority = state:assess(self.nodegraph, self)
+		local priority = state:assess()
 
 		if priority > highestPriority then
 			currentState = state
@@ -1328,22 +1299,13 @@ function AiController:think(cmd)
 		end
 	end
 
-	--- @type AiOptions
-	local ai = {
-		controller = self,
-		nodegraph = self.nodegraph,
-		view = self.view,
-		radio = self.radio,
-		voice = self.voice,
-		cmd = cmd,
-		priority = highestPriority
-	}
-
 	if DominionMenu.enableView:get() then
 		self.view:think(cmd)
 	end
 
 	if currentState then
+		self.priority = highestPriority
+
 		if self.lastPriority ~= highestPriority then
 			self.lastPriority = highestPriority
 
@@ -1352,20 +1314,20 @@ function AiController:think(cmd)
 			self.nodegraph:clearPath(string.format("Switching AI state to %s", currentState.name))
 
 			if currentState.activate then
-				currentState:activate(ai)
+				currentState:activate()
 			end
 		end
 
 		self.currentState = currentState
 
-		currentState:think(ai)
+		currentState:think(cmd)
 	end
 
-	self:activities(ai)
+	self:activities(cmd)
 
 	self.nodegraph:processMovement(cmd)
 
-	self:antiFlash(ai)
+	self:antiFlash(cmd)
 	self:unscope()
 end
 

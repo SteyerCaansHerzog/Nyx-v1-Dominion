@@ -48,10 +48,6 @@ function AiChatCommandGo:invoke(ai, sender, args)
 
     local player = AiUtility.client
 
-    if AiUtility.roundTimer:isStarted() and AiUtility.roundTimer:isElapsed(15) then
-        AiStateGrenadeBase.globalCooldownTimer:start()
-    end
-
     ai.voice.pack:speakAgreement()
 
     Client.fireAfter(Client.getRandomFloat(1, 2), function()
@@ -61,32 +57,32 @@ function AiChatCommandGo:invoke(ai, sender, args)
 
         ai.states.check:reset()
         ai.states.patrol:reset()
-        ai.states.sweep:activate(ai, objective)
+        ai.states.sweep:activate(objective)
 
         if player:isTerrorist() then
             if objective == "ct" or objective == "t" then
-                ai.states.check:activate(ai, objective)
+                ai.states.check:activate(objective)
             else
                 ai.states.defend.defendingSite = objective
 
-                ai.states.defend:activate(ai, objective)
+                ai.states.defend:activate(objective)
 
                 ai.states.push.isDeactivated = false
                 ai.states.push.site = objective
 
-                ai.states.push:activate(ai, objective)
+                ai.states.push:activate(objective)
             end
 
             if Client.hasBomb() then
-                ai.states.plant:activate(ai, objective)
+                ai.states.plant:activate(objective)
             end
         elseif player:isCounterTerrorist() then
             if objective == "ct" or objective == "t" then
-                ai.states.check:activate(ai, objective)
+                ai.states.check:activate(objective)
             else
                 ai.states.defend.defendingSite = objective
 
-                ai.states.defend:activate(ai, objective)
+                ai.states.defend:activate(objective)
             end
         end
     end)

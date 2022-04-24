@@ -12,6 +12,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
@@ -23,6 +24,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field defendNode string
 --- @field executeNode string
 --- @field holdNode string
+--- @field retakeNode string
 --- @field weapons string[]
 --- @field equipFunction fun(): nil
 --- @field rangeThreshold number
@@ -39,7 +41,6 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 local AiStateGrenadeBase = {
     name = "GrenadeBase",
     globalCooldownTimer = Timer:new():startThenElapse(),
-    cooldownTimer = Timer:new():startThenElapse(),
     usedNodes = {},
     rangeThreshold = 2000
 }
@@ -54,167 +55,245 @@ end
 function AiStateGrenadeBase:__init()
     self.inBehaviorTimer = Timer:new()
     self.throwTimer = Timer:new()
-    self.throwTime = 0.2
+    self.throwTime = 0.1
     self.threatCooldownTimer = Timer:new():startThenElapse()
+    self.cooldownTimer = Timer:new():startThenElapse()
+
+    Callbacks.runCommand(function()
+    	self:watchForOccupiedNodes()
+    end)
 
     Callbacks.grenadeThrown(function(e)
         if e.player:isClient() then
             self.isInThrow = false
             self.node = nil
 
-            AiStateGrenadeBase.cooldownTimer:start()
+            self.cooldownTimer:start()
         end
     end)
 end
 
---- @param nodegraph Nodegraph
 --- @return void
-function AiStateGrenadeBase:assess(nodegraph)
-    if Entity.getGameRules():m_bFreezePeriod() == 1 then
-        return AiState.priority.IGNORE
+function AiStateGrenadeBase:assess()
+    -- No need to use grenades.
+    if AiUtility.isRoundOver or AiUtility.enemiesAlive == 0 then
+        return AiPriority.IGNORE
     end
 
+    -- Ignore before round starts. Otherwise we can trip the cooldown.
+    if Entity.getGameRules():m_bFreezePeriod() == 1 then
+        return AiPriority.IGNORE
+    end
+
+    -- We're on cooldown from using any line-ups.
+    if not AiStateGrenadeBase.globalCooldownTimer:isElapsed(10) then
+        return AiPriority.IGNORE
+    end
+
+    -- We're on a cooldown from using the current type of grenade.
+    if not self.cooldownTimer:isElapsed(self.cooldown) then
+        return AiPriority.IGNORE
+    end
+
+    -- We don't have the type of grenade in question.
+    if not AiUtility.client:hasWeapons(self.weapons) then
+        return AiPriority.IGNORE
+    end
+
+    -- We haven't thrown the grenade within this time.
+    -- We're probably stuck. Abort the throw.
+    if self.inBehaviorTimer:isElapsedThenStop(6) then
+        self.cooldownTimer:start()
+
+        self.node = nil
+
+        return AiPriority.IGNORE
+    end
+
+    -- We're threatened by an enemy.
     if AiUtility.isClientThreatened then
         self.threatCooldownTimer:restart()
 
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
+    -- Prevent dithering with enemy presence.
     if not self.threatCooldownTimer:isElapsed(3) then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
-    if AiUtility.isRoundOver or AiUtility.enemiesAlive == 0 then
-        return AiState.priority.IGNORE
+    -- Prevent dithering with plant behaviour.
+    if self.inBehaviorTimer:isStarted() then
+        return AiPriority.GOING_TO_THROW_GRENADE
     end
 
+    -- We already have a line-up.
+    -- Only exit here if we're in throw, because we need to ensure teammates don't occupy our line-up
+    -- after we've picked it.
+    if self.node then
+        -- A teammate just walked onto our line-up.
+        -- We need to pick a new one.
+        if not AiStateGrenadeBase.usedNodes[self.node.id]:isElapsed(15) then
+            self.node = nil
+
+            return AiPriority.IGNORE
+        end
+
+        -- We're about to throw a grenade.
+        if self.isInThrow then
+            return AiPriority.THROWING_GRENADE
+        end
+    end
+
+    -- Find all possible line-ups.
+    local nodes = self:getNodes()
+
+    -- No nodes on the map.
+    if not nodes then
+        return AiPriority.IGNORE
+    end
+
+    -- Find the best line-up for the type of grenade we want to use.
+    local node = self:getBestLineup(nodes)
+
+    -- Something went wrong when finding a line-up. Possibly all nodes are unavailable.
+    if not node then
+        return AiPriority.IGNORE
+    end
+
+    self.node = node
+
+    -- We've got a line-up to use.
+    return self.priority
+end
+
+--- @param nodes Node[]
+--- @return Node
+function AiStateGrenadeBase:getBestLineup(nodes)
+    -- Should we check if enemies could be affected by the line-up?
     local isCheckingEnemies = true
 
     if AiUtility.client:isTerrorist() and not AiUtility.roundTimer:isElapsed(20) then
         isCheckingEnemies = false
     end
 
-    local grenadeNodes = self:getNodes(nodegraph)
-
-    if not grenadeNodes then
-        return AiState.priority.IGNORE
-    end
-
     local player = AiUtility.client
-    local playerOrigin = player:getOrigin()
-    local playerCenter = playerOrigin:offset(0, 0, 48)
+    local clientOrigin = player:getOrigin()
+    local clientCenter = clientOrigin:offset(0, 0, 48)
 
     --- @type Node
     local closestNode
     local closestDistance = math.huge
 
-    for _, grenadeNode in pairs(grenadeNodes) do repeat
-        local usedNodeTimer = AiStateGrenadeBase.usedNodes[grenadeNode.id]
+    -- Find a suitable grenade line-up to use.
+    for _, node in pairs(nodes) do repeat
+        local distance = clientOrigin:getDistance(node.origin)
 
-        if usedNodeTimer then
-            if usedNodeTimer:isElapsed(10) then
-                AiStateGrenadeBase.usedNodes[grenadeNode.id] = nil
-            else
-                break
-            end
+        if distance > 600 or distance >= closestDistance then
+            break
+        end
+
+        local usedNodeTimer = AiStateGrenadeBase.usedNodes[node.id]
+
+        -- A teammate has already used this node.
+        if usedNodeTimer and not usedNodeTimer:isElapsed(15) then
+            break
+        end
+
+        local bounds = node.origin:getBounds(Vector3.align.BOTTOM, 500, 500, 64)
+
+        if not clientCenter:isInBounds(bounds) then
+            break
+        end
+
+        local isValidGrenadeNode = true
+
+        -- We care if enemies could be affected by this line-up.
+        if isCheckingEnemies then
+            isValidGrenadeNode = self:isEnemyThreatenedByNode(node)
+        end
+
+        -- This line-up is no use to us.
+        if not isValidGrenadeNode then
+            break
+        end
+
+        closestDistance = distance
+        closestNode = node
+    until true end
+
+    return closestNode
+end
+
+--- @param node Node
+--- @return boolean
+function AiStateGrenadeBase:isEnemyThreatenedByNode(node)
+    for _, enemy in pairs(AiUtility.enemies) do repeat
+        local enemyOrigin = enemy:getOrigin()
+        local enemyDistance = node.origin:getDistance(enemyOrigin)
+
+        -- Enemy is too far away.
+        if enemyDistance > self.rangeThreshold then
+            break
+        end
+
+        local fov = node.direction:clone():set(0, nil):getFov(node.origin, enemyOrigin)
+
+        -- Enemy is not within an acceptable field of view.
+        if fov > 65 then
+            break
+        end
+
+        return true
+    until true end
+
+    return false
+end
+
+--- @return void
+function AiStateGrenadeBase:watchForOccupiedNodes()
+    -- Find all possible line-ups.
+    local nodes = self:getNodes()
+
+    if not nodes then
+        return
+    end
+
+    local clientOrigin = AiUtility.client:getOrigin()
+
+    for _, node in pairs(nodes) do repeat
+        local distance = clientOrigin:getDistance(node.origin)
+
+        if distance > 1500 then
+            break
+        end
+
+        local usedNodeTimer = AiStateGrenadeBase.usedNodes[node.id]
+
+        if not usedNodeTimer then
+            usedNodeTimer = Timer:new():startThenElapse()
+
+            AiStateGrenadeBase.usedNodes[node.id] = usedNodeTimer
         end
 
         local isOccupied = false
 
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance(grenadeNode.origin) < 32 then
+            if teammate:getOrigin():getDistance(node.origin) < 25 then
                 isOccupied = true
 
                 break
             end
         end
 
-        if isOccupied and playerOrigin:getDistance(grenadeNode.origin) > 32 then
-            AiStateGrenadeBase.usedNodes[grenadeNode.id] = Timer:new():start()
-
-            break
-        end
-
-        local distance = playerOrigin:getDistance(grenadeNode.origin)
-
-        if distance < 600 and distance < closestDistance then
-            local bounds = grenadeNode.origin:getBounds(Vector3.align.BOTTOM, 500, 500, 64)
-            local isValidGrenadeNode = false
-
-            if playerCenter:isInBounds(bounds) then
-                if isCheckingEnemies then
-                    for _, enemy in pairs(AiUtility.enemies) do
-                        local enemyOrigin = enemy:getOrigin()
-                        local enemyDistance = grenadeNode.origin:getDistance(enemyOrigin)
-
-                        if enemyDistance < self.rangeThreshold then
-                            local fov = grenadeNode.direction:clone():set(0, nil):getFov(grenadeNode.origin, enemyOrigin)
-
-                            if fov < 40 then
-                                isValidGrenadeNode = true
-
-                                break
-                            end
-                        end
-                    end
-                else
-                    isValidGrenadeNode = true
-                end
-
-                if not isValidGrenadeNode then
-                    break
-                end
-
-                closestDistance = distance
-                closestNode = grenadeNode
-            end
+        if isOccupied then
+            usedNodeTimer:restart()
         end
     until true end
-
-    if self.inBehaviorTimer:isElapsedThenStop(5) then
-        AiStateGrenadeBase.cooldownTimer:start()
-
-        self.node = nil
-
-        return AiState.priority.IGNORE
-    end
-
-    if self.node and self.isInThrow then
-        return AiState.priority.THROWING_GRENADE
-    end
-
-    if AiUtility.isRoundOver then
-        return AiState.priority.IGNORE
-    end
-
-    if self.node then
-        return self.priority
-    end
-
-    if AiStateGrenadeBase.globalCooldownTimer:isStarted() and not AiStateGrenadeBase.globalCooldownTimer:isElapsedThenStop(10) then
-        return AiState.priority.IGNORE
-    end
-
-    if AiStateGrenadeBase.cooldownTimer:isStarted() and not AiStateGrenadeBase.cooldownTimer:isElapsedThenStop(self.cooldown or 0) then
-        return AiState.priority.IGNORE
-    end
-
-    if not player:hasWeapons(self.weapons) then
-        return AiState.priority.IGNORE
-    end
-
-    if closestNode then
-        self.node = closestNode
-
-        return self.priority
-    end
-
-    return AiState.priority.IGNORE
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateGrenadeBase:activate(ai)
+function AiStateGrenadeBase:activate()
     if not self.node then
         return
     end
@@ -223,12 +302,11 @@ function AiStateGrenadeBase:activate(ai)
 
     self.reachedDestination = false
 
-    ai.nodegraph:pathfind(self.node.origin, {
+   self.ai.nodegraph:pathfind(self.node.origin, {
         objective = Node.types.GOAL,
-        ignore = Client.getEid(),
         task = string.format("Throw %s", self.name:lower()),
         onComplete = function()
-            ai.nodegraph:log(string.format("Throwing %s", self.name:lower()))
+           self.ai.nodegraph:log(string.format("Throwing %s", self.name:lower()))
 
             self.reachedDestination = true
         end
@@ -237,6 +315,9 @@ end
 
 --- @return void
 function AiStateGrenadeBase:deactivate()
+    self.node = nil
+    self.inBehaviorTimer:stop()
+
     if AiUtility.client:hasPrimary() then
         Client.equipPrimary()
     else
@@ -244,32 +325,33 @@ function AiStateGrenadeBase:deactivate()
     end
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStateGrenadeBase:think(ai)
-    self.activity = string.format("Going to throw %s", self.name)
-
-    if self.node and AiStateGrenadeBase.usedNodes[self.node.id] then
-        self.node = nil
+function AiStateGrenadeBase:think(cmd)
+    -- Don't know why we are running with a nil node.
+    if not self.node then
+        self:deactivate()
 
         return
     end
 
-    ai.controller.states.evade.isBlocked = true
+    self.activity = string.format("Going to throw %s", self.name)
+
+    self.ai.states.evade.isBlocked = true
 
     local player = AiUtility.client
     local playerOrigin = player:getOrigin()
 
     self.isInThrow = false
 
-    if not self.reachedDestination and not ai.nodegraph.path and ai.nodegraph:canPathfind() then
-        self:activate(ai)
+    if not self.reachedDestination and self.ai.nodegraph:isIdle() then
+        self:activate()
     end
 
     local distance = playerOrigin:getDistance(self.node.origin)
 
     if distance < 20 then
-        ai.nodegraph.isAllowedToMove = false
+       self.ai.nodegraph.isAllowedToMove = false
     end
 
     if distance < 46 then
@@ -279,20 +361,20 @@ function AiStateGrenadeBase:think(ai)
     if distance < 250 then
         self.activity = string.format("Throwing %s", self.name)
 
-        ai.controller.canUseGear = false
-        ai.controller.canLookAwayFromFlash = false
-        ai.controller.isQuickStopping = true
+        self.ai.canUseGear = false
+        self.ai.canLookAwayFromFlash = false
+        self.ai.isQuickStopping = true
 
         self.equipFunction()
     end
 
     if distance < 150 then
-        ai.nodegraph.moveAngle = playerOrigin:getAngle(self.node.origin)
-        ai.nodegraph.isAllowedToAvoidTeammates = false
-        ai.view.isCrosshairUsingVelocity = false
-        ai.view.isCrosshairSmoothed = true
+       self.ai.nodegraph.moveAngle = playerOrigin:getAngle(self.node.origin)
+       self.ai.nodegraph.isAllowedToAvoidTeammates = false
+       self.ai.view.isCrosshairUsingVelocity = false
+       self.ai.view.isCrosshairSmoothed = true
 
-        ai.view:lookInDirection(self.node.direction, 5, ai.view.noiseType.NONE, "GrenadeBase look at line-up")
+       self.ai.view:lookInDirection(self.node.direction, 5, self.ai.view.noiseType.NONE, "GrenadeBase look at line-up")
 
         local deltaAngles = self.node.direction:getAbsDiff(Client.getCameraAngles())
 
@@ -300,27 +382,33 @@ function AiStateGrenadeBase:think(ai)
             self.isInThrow = true
         end
 
+        local speed = AiUtility.client:m_vecVelocity():getMagnitude()
+
         if deltaAngles.p < 1.5
             and deltaAngles.y < 1.5
             and distance < 32
             and self.throwTimer:isElapsedThenRestart(self.throwTime)
             and player:isHoldingWeapons(self.weapons)
             and player:isAbleToAttack()
+            and speed < 10
         then
-            ai.cmd.in_attack = 1
+            cmd.in_attack = 1
         end
     else
         self.throwTimer:stop()
     end
 end
 
---- @param nodegraph Nodegraph
 --- @return Node[]
-function AiStateGrenadeBase:getNodes(nodegraph)
+function AiStateGrenadeBase:getNodes()
     local player = AiUtility.client
 
     if player:isCounterTerrorist() then
-        return nodegraph[self.defendNode]
+        if AiUtility.plantedBomb then
+            return self.ai.nodegraph[self.retakeNode]
+        end
+
+        return self.ai.nodegraph[self.defendNode]
     elseif player:isTerrorist() then
         local isSiteTaken = false
 
@@ -330,15 +418,15 @@ function AiStateGrenadeBase:getNodes(nodegraph)
             local bombCarrierOrigin = AiUtility.bombCarrier:m_vecOrigin()
 
             if bombCarrierOrigin then
-                if bombCarrierOrigin:getDistance(nodegraph:getSiteNode("a").origin) < 750 then
+                if bombCarrierOrigin:getDistance(self.ai.nodegraph:getSiteNode("a").origin) < 750 then
                     isSiteTaken = true
-                elseif bombCarrierOrigin:getDistance(nodegraph:getSiteNode("b").origin) < 750 then
+                elseif bombCarrierOrigin:getDistance(self.ai.nodegraph:getSiteNode("b").origin) < 750 then
                     isSiteTaken = true
                 end
             end
         end
 
-        return isSiteTaken and nodegraph[self.holdNode] or nodegraph[self.executeNode]
+        return isSiteTaken and self.ai.nodegraph[self.holdNode] or self.ai.nodegraph[self.executeNode]
     end
 end
 

@@ -5,7 +5,7 @@ local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 --}}}
 
 --{{{ Modules
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGrenadeBase"
 --}}}
 
@@ -13,19 +13,21 @@ local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGr
 --- @class AiStateFlashbang : AiStateGrenadeBase
 local AiStateFlashbang = {
     name = "Flashbang",
-    priority = AiState.priority.FLASHBANG,
+    priority = AiPriority.FLASHBANG,
     cooldown = 4,
     defendNode = "objectiveFlashbangDefend",
     executeNode = "objectiveFlashbangExecute",
     holdNode = "objectiveFlashbangHold",
+    retakeNode = "objectiveFlashbangRetake",
     weapons = {Weapons.FLASHBANG},
     equipFunction = Client.equipFlashbang,
     rangeThreshold = 1500
 }
 
+--- @param fields AiStateFlashbang
 --- @return AiStateFlashbang
-function AiStateFlashbang:new()
-    return Nyx.new(self)
+function AiStateFlashbang:new(fields)
+    return Nyx.new(self, fields)
 end
 
 return Nyx.class("AiStateFlashbang", AiStateFlashbang, AiStateGrenadeBase)

@@ -5,6 +5,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
@@ -37,34 +38,28 @@ end
 
 --- @return void
 function AiStateCheck:assess()
-    return self.isChecking and AiState.priority.CHECK_SPAWN or AiStateCheck.priority.IGNORE
+    return self.isChecking and AiPriority.CHECK_SPAWN or AiPriority.IGNORE
 end
 
---- @param ai AiOptions
 --- @param spawn string
 --- @return void
-function AiStateCheck:activate(ai, spawn)
-    self.node = self:getSpawn(ai, spawn)
+function AiStateCheck:activate(spawn)
+    self.node = self:getSpawn(spawn)
 
-    local spawn = self.node
-
-    if not spawn then
+    if not self.node then
         return
     end
 
-    self.isChecking = true
-
-    local objectiveName = Node.typesName[spawn.type]
+    local objectiveName = Node.typesName[self.node.type]
 
     self.objectiveName = objectiveName
+    self.isChecking = true
 
-    ai.nodegraph:pathfind(spawn.origin, {
+    self.ai.nodegraph:pathfind(self.node.origin, {
         objective = Node.types.GOAL,
-        retry = false,
-        ignore = Client.getEid(),
         task = string.format("Checking %s", objectiveName),
         onComplete = function()
-            ai.nodegraph:log("Checked %s", objectiveName)
+            self.ai.nodegraph:log("Checked %s", objectiveName)
 
             self.isChecking = false
         end
@@ -76,9 +71,9 @@ function AiStateCheck:reset()
     self.isChecking = false
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStateCheck:think(ai)
+function AiStateCheck:think(cmd)
     self.activity = string.format("Going to check %s", self.objectiveName)
 
     local distance = AiUtility.client:getOrigin():getDistance(self.node.origin)
@@ -92,18 +87,17 @@ function AiStateCheck:think(ai)
     end
 end
 
---- @param ai AiOptions
 --- @param spawn string
 --- @return Node
-function AiStateCheck:getSpawn(ai, spawn)
+function AiStateCheck:getSpawn(spawn)
     if not spawn then
         return self.node
     end
 
     if spawn == "ct" then
-        return ai.nodegraph.ctSpawn
+        return self.ai.nodegraph.ctSpawn
     elseif spawn == "t" then
-        return ai.nodegraph.tSpawn
+        return self.ai.nodegraph.tSpawn
     end
 end
 

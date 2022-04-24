@@ -3,13 +3,12 @@ local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
 
 --{{{ Modules
-local AiRadio = require "gamesense/Nyx/v1/Dominion/Ai/AiRadio"
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
@@ -68,7 +67,7 @@ end
 --- @return void
 function AiStatePatrol:assess()
     if AiUtility.isRoundOver then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     local bomb = AiUtility.bomb
@@ -81,18 +80,15 @@ function AiStatePatrol:assess()
         if eid == bomb.eid then
             self:beginPatrol(bombOrigin, AiUtility.client)
 
-            return AiState.priority.PATROL_BOMB
+            return AiPriority.PATROL_BOMB
         end
     end
 
-    return (self.isBeginningPatrol or self.isOnPatrol) and AiState.priority.PATROL or AiState.priority.IGNORE
+    return (self.isBeginningPatrol or self.isOnPatrol) and AiPriority.PATROL or AiPriority.IGNORE
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStatePatrol:activate(ai)
-    ai.radio:speak(ai.radio.message.AGREE, 1, 1, 2, "I'm %sassisting%s you.", ai.radio.color.YELLOW, ai.radio.color.DEFAULT)
-end
+function AiStatePatrol:activate() end
 
 --- @return void
 function AiStatePatrol:reset()
@@ -103,19 +99,19 @@ function AiStatePatrol:reset()
     self.hasFoundBomb = false
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStatePatrol:think(ai)
+function AiStatePatrol:think(cmd)
     self.activity = "Going to patrol bomb"
 
-    if ai.priority == AiState.priority.PATROL_BOMB then
+    if self.ai.priority == AiPriority.PATROL_BOMB then
         if not self.hasNotifiedTeamOfBomb then
             local bomb = AiUtility.bomb
 
             if bomb then
                 local bombOrigin = bomb:m_vecOrigin()
 
-                ai.view:lookAtLocation(bombOrigin, 4, ai.view.noiseType.MINOR, "Patrol look at bomb")
+               self.ai.view:lookAtLocation(bombOrigin, 4, self.ai.view.noiseType.MINOR, "Patrol look at bomb")
 
                 local deltaAngles = Client.getEyeOrigin():getAngle(bombOrigin):getAbsDiff(Client.getCameraAngles())
 
@@ -123,21 +119,20 @@ function AiStatePatrol:think(ai)
                     self.hasNotifiedTeamOfBomb = true
 
                     if not AiUtility.isLastAlive and self.cooldownTimer:isElapsedThenRestart(25) then
+                        self.ai.commands.assist:bark()
 
-                        Messenger.send(" assist", true)
-
-                        ai.voice.pack:speakNotifyTeamOfBomb()
+                       self.ai.voice.pack:speakNotifyTeamOfBomb()
                     end
                 end
             end
         end
     end
 
-    if self.isBeginningPatrol or not ai.nodegraph.path then
+    if self.isBeginningPatrol or not self.ai.nodegraph.path then
         self.isBeginningPatrol = false
         self.isOnPatrol = true
 
-        self.patrolNode = self:getPatrolNode(ai)
+        self.patrolNode = self:getPatrolNode()
 
         if not self.patrolNode then
             self.isOnPatrol = false
@@ -145,9 +140,8 @@ function AiStatePatrol:think(ai)
             return
         end
 
-        ai.nodegraph:pathfind(self.patrolNode.origin, {
+       self.ai.nodegraph:pathfind(self.patrolNode.origin, {
             objective = Node.types.GOAL,
-            ignore = Client.getEid(),
             task = string.format("Patrolling"),
             onComplete = function()
                 self.isBeginningPatrol = true
@@ -162,22 +156,21 @@ function AiStatePatrol:think(ai)
         if origin:getDistance(self.patrolOrigin) < 1024 then
             self.activity = "Patrolling bomb"
 
-            ai.controller.isWalking = true
-            ai.controller.canUseKnife = false
+            self.ai.isWalking = true
+            self.ai.canUseKnife = false
         end
     end
 end
 
---- @param ai AiOptions
 --- @return Node
-function AiStatePatrol:getPatrolNode(ai)
+function AiStatePatrol:getPatrolNode()
     local player = AiUtility.client
     local origin = player:getOrigin()
     local filterOrigin = self.patrolOrigin
 
     local filterNodes = {}
 
-    for _, node in pairs(ai.nodegraph.nodes) do
+    for _, node in pairs(self.ai.nodegraph.nodes) do
         if origin:getDistance(node.origin) > 256 and filterOrigin:getDistance(node.origin) < 512 then
             table.insert(filterNodes, node)
         end

@@ -1,18 +1,10 @@
 --{{{ Dependencies
-local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
-local Timer = require "gamesense/Nyx/v1/Api/Timer"
-local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
-
-local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
 
 --{{{ Modules
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
-local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
 --{{{ AiStateDeveloper
@@ -32,23 +24,22 @@ function AiStateDeveloper:__init() end
 
 --- @return void
 function AiStateDeveloper:assess()
-    return AiState.priority.IGNORE
+    return AiPriority.DEVELOPER
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateDeveloper:activate(ai)
-    local node = ai.nodegraph.nodes[56]
+function AiStateDeveloper:activate()
+    local node =self.ai.nodegraph.nodes[382]
 
-    ai.nodegraph:pathfind(node.origin)
+   self.ai.nodegraph:pathfind(node.origin)
 end
 
 --- @return void
 function AiStateDeveloper:reset() end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStateDeveloper:think(ai)
+function AiStateDeveloper:think(cmd)
     self.activity = "Testing"
 end
 

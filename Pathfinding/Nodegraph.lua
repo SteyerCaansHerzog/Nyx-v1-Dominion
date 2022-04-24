@@ -349,6 +349,9 @@ function Nodegraph:setupNodegraph()
         [Node.types.BLOCK] = "Block",
         [Node.types.WATCH_RIFLE] = "WatchRifle",
         [Node.types.WATCH_SNIPER] = "WatchSniper",
+        [Node.types.SMOKE_RETAKE] = "SmokeRetake",
+        [Node.types.MOLOTOV_RETAKE] = "MolotovRetake",
+        [Node.types.HE_GRENADE_RETAKE] = "HeGrenadeRetake",
     }
 
     local linkToObjective = {
@@ -359,16 +362,6 @@ function Nodegraph:setupNodegraph()
         [Node.types.HOLD] = true,
         [Node.types.PUSH] = true,
         [Node.types.CHOKE] = true,
-    }
-
-    local isTraversalNode = {
-        [Node.types.RUN] = true,
-        [Node.types.CROUCH] = true,
-        [Node.types.JUMP] = true,
-        [Node.types.SHOOT] = true,
-        [Node.types.CROUCH_SHOOT] = true,
-        [Node.types.DOOR] = true,
-        [Node.types.GAP] = true
     }
 
     --- @type Node[]
@@ -794,15 +787,14 @@ function Nodegraph:getRandomNodeWithin(origin, distance)
 end
 
 --- @param origin Vector3
---- @param ignoreEid number
 --- @return Node[]
-function Nodegraph:getVisibleNodesFrom(origin, ignoreEid)
+function Nodegraph:getVisibleNodesFrom(origin)
     local nodes = {}
 
     for _, node in pairs(self.nodes) do
-        local _, fraction = origin:getTraceLine(node.origin, ignoreEid)
+        local trace = Trace.getLineToPosition(origin, node.origin)
 
-        if fraction == 1 then
+        if not trace.isIntersectingGeometry then
             table.insert(nodes, node)
         end
     end
@@ -836,6 +828,7 @@ end
 --- @field onComplete function
 --- @field onFail function
 --- @field canUseInactive boolean
+--- @field canUseJump boolean
 ---
 --- @param origin Vector3
 --- @param options NodegraphPathfindOptions
@@ -852,7 +845,8 @@ function Nodegraph:pathfind(origin, options)
     options = options or {}
 
     Table.setMissing(options, {
-        canUseInactive = false
+        canUseInactive = false,
+        canUseJump = true
     })
 
     local player = AiUtility.client
@@ -884,15 +878,21 @@ function Nodegraph:pathfind(origin, options)
 
     self:setConnections(pathEnd, true)
 
-    local reachCheckNodes = {
+    local jumpNodes = {
         [Node.types.JUMP] = true,
         [Node.types.GAP] = true,
     }
 
+    local canUseJump = options.canUseJump
+
     local path = AStar.find(pathStart, pathEnd, self.nodes, true, function(node, neighbor)
+        if not canUseJump and jumpNodes[neighbor.type] then
+            return false
+        end
+
         local canReach = true
 
-        if reachCheckNodes[neighbor.type] and (neighbor.origin.z - node.origin.z > 64) then
+        if jumpNodes[neighbor.type] and (neighbor.origin.z - node.origin.z > 64) then
             canReach = false
         end
 
@@ -934,6 +934,11 @@ end
 --- @return boolean
 function Nodegraph:canPathfind()
     return not self.lastPathfindTimer:isStarted() or self.lastPathfindTimer:isElapsed(0.2)
+end
+
+--- @return boolean
+function Nodegraph:isIdle()
+    return self:canPathfind() and not self.path
 end
 
 --- @param node Node
@@ -1074,7 +1079,7 @@ function Nodegraph:processMovement(cmd)
             if self.jumpCooldown:isElapsedThenRestart(0.6) then
                 cmd.in_jump = 1
 
-                self.pathCurrent = self.pathCurrent + 1
+                self:moveOntoNextNode() -- todo maybe not?
             end
         elseif distance < 32 and node.origin.z - origin.z < 18 then
             if self.jumpCooldown:isElapsedThenRestart(0.6) then
@@ -1172,8 +1177,8 @@ function Nodegraph:avoidTeammates(cmd)
 
     local isBlocked = false
     local origin = player:getOrigin()
-    local collisionOrigin = origin:clone():offset(0, 0, 36) + (self.cachedPathfindMoveAngle:clone():set(0):getForward() * 60)
-    local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 32, 32, 40)
+    local collisionOrigin = origin:clone():offset(0, 0, 36) + (self.cachedPathfindMoveAngle:clone():set(0):getForward() * 40)
+    local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 20, 20, 40)
     --- @type Player
     local blockingTeammate
 
@@ -1215,6 +1220,11 @@ end
 --- @param cmd SetupCommandEvent
 --- @return boolean
 function Nodegraph:avoidClipping(cmd)
+    -- Jump off of ladders.
+    if AiUtility.client:isMoveType(Player.moveType.LADDER) then
+        cmd.in_jump = 1
+    end
+
     if not self.cachedPathfindMoveAngle then
         return false
     end

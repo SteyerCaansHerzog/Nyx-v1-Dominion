@@ -10,6 +10,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
@@ -45,13 +46,13 @@ end
 function AiStateBoost:assess()
     if self.boostPlayer then
         if AiUtility.client:getOrigin():getDistance2(self.boostPlayer:getOrigin()) < 256 then
-            return AiState.priority.BOOST_ACTIVE
+            return AiPriority.BOOST_ACTIVE
         end
 
-        return AiState.priority.BOOST
+        return AiPriority.BOOST
     end
 
-    return AiState.priority.IGNORE
+    return AiPriority.IGNORE
 end
 
 --- @param player Player
@@ -62,21 +63,18 @@ function AiStateBoost:boost(player, origin)
     self.boostOrigin = origin
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateBoost:activate(ai)
-    ai.nodegraph:pathfind(self.boostOrigin, {
+function AiStateBoost:activate()
+    self.ai.nodegraph:pathfind(self.boostOrigin, {
     objective = Node.types.GOAL,
-    ignore = Client.getEid(),
         task = string.format("Boost %s", self.boostPlayer:getName())
     })
 
-    ai.controller.commands.boost.isTaken = false
+    self.ai.commands.boost.isTaken = false
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateBoost:deactivate(ai)
+function AiStateBoost:deactivate()
     self:reset()
 end
 
@@ -87,12 +85,12 @@ function AiStateBoost:reset()
     self.isBoosting = false
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStateBoost:think(ai)
+function AiStateBoost:think(cmd)
     self.activity = "Going to boost teammate"
 
-    if ai.nodegraph.pathfindFails > 0 then
+    if self.ai.nodegraph.pathfindFails > 0 then
         self:reset()
 
         return
@@ -126,20 +124,20 @@ function AiStateBoost:think(ai)
     end
 
     if senderDistance < 500 and originDistance < 200 then
-        ai.nodegraph.isAllowedToAvoidTeammates = false
-        ai.controller.canLookAwayFromFlash = false
-        ai.controller.states.evade.isBlocked = true
+        self.ai.nodegraph.isAllowedToAvoidTeammates = false
+        self.ai.canLookAwayFromFlash = false
+        self.ai.states.evade.isBlocked = true
 
         local bounds = playerOrigin:clone():offset(0, 0, 32):getBounds(Vector3.align.BOTTOM, 25, 25, 128)
 
         if originDistance < 64 and not self.boostPlayer:getOrigin():offset(0, 0, 48):isInBounds(bounds) then
             if senderDistance < 128 then
-                ai.cmd.in_duck = 1
+                cmd.in_duck = 1
             end
 
-            ai.view:lookAtLocation(self.boostPlayer:getHitboxPosition(Player.hitbox.NECK), 2, ai.view.noiseType.IDLE, "Boost look at booster")
+            self.ai.view:lookAtLocation(self.boostPlayer:getHitboxPosition(Player.hitbox.NECK), 2, self.ai.view.noiseType.IDLE, "Boost look at booster")
         else
-            ai.view:lookInDirection(self.boostLookAngles, 2, ai.view.noiseType.IDLE, "Boost copy booster direction")
+            self.ai.view:lookInDirection(self.boostLookAngles, 2, self.ai.view.noiseType.IDLE, "Boost copy booster direction")
         end
     end
 

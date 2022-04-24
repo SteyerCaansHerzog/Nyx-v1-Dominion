@@ -5,6 +5,7 @@ local Player = require "gamesense/Nyx/v1/Api/Player"
 --}}}
 
 --{{{ Modules
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
@@ -25,31 +26,27 @@ end
 
 --- @return void
 function AiStateSweep:assess()
-    return AiState.priority.SWEEP
+    return AiPriority.SWEEP
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateSweep:activate(ai)
-    self:move(ai)
+function AiStateSweep:activate()
+    self:move()
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStateSweep:think(ai)
+function AiStateSweep:think(cmd)
     self.activity = "Sweeping the map"
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateSweep:move(ai)
-    ai.nodegraph:pathfind(ai.nodegraph:getRandomNodeWithin(AiUtility.client:getOrigin(), 8192).origin, {
+function AiStateSweep:move()
+   self.ai.nodegraph:pathfind(self.ai.nodegraph:getRandomNodeWithin(AiUtility.client:getOrigin(), 8192).origin, {
         objective = Node.types.GOAL,
-        retry = false,
-        ignore = Client.getEid(),
         task = string.format("Sweeping the map"),
         onComplete = function()
-            self:move(ai)
+            self:move()
         end
     })
 end

@@ -1,12 +1,12 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
 
 --{{{ Modules
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
@@ -58,17 +58,17 @@ end
 --- @return void
 function AiStatePickupBomb:assess()
     if self.ignorePickup then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     if not AiUtility.client:isTerrorist() then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     local bomb = Entity.findOne({"CC4"})
 
     if not bomb then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     local owner = bomb:m_hOwnerEntity()
@@ -77,16 +77,15 @@ function AiStatePickupBomb:assess()
         self.pickupBombTimer:ifPausedThenStart()
 
         if self.pickupBombTimer:isElapsed(2) then
-            return AiState.priority.PICKUP_BOMB
+            return AiPriority.PICKUP_BOMB
         end
     end
 
-    return AiState.priority.IGNORE
+    return AiPriority.IGNORE
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStatePickupBomb:activate(ai)
+function AiStatePickupBomb:activate()
     local bomb = Entity.findOne({"CC4"})
 
     if not bomb then
@@ -100,34 +99,31 @@ function AiStatePickupBomb:activate(ai)
     end
 
     if not self.ignorePickup and self.pickupBombTimer:isElapsed(2) then
-        ai.nodegraph:pathfind(origin, {
+       self.ai.nodegraph:pathfind(origin, {
             objective = Node.types.GOAL,
-            ignore = Client.getEid(),
             task = "Pick up bomb",
-            line = true,
             onComplete = function()
-                ai.nodegraph:log("Picking up the bomb")
+               self.ai.nodegraph:log("Picking up the bomb")
             end,
             onFail = function()
                 self.pickupBombFails = self.pickupBombFails + 1
 
-                ai.nodegraph:log("Bomb is unreachable (ignoring it)")
+               self.ai.nodegraph:log("Bomb is unreachable (ignoring it)")
             end
         })
     end
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStatePickupBomb:think(ai)
+function AiStatePickupBomb:think()
     self.activity = "Going to pick up bomb"
 
     if self.pickupBombFails > 3 then
         self.ignorePickup = true
     end
 
-    if not ai.nodegraph.path and ai.nodegraph.lastPathfindTimer:isElapsed(1) then
-        self:activate(ai)
+    if self.ai.nodegraph:isIdle() and self.ai.nodegraph.lastPathfindTimer:isElapsed(1) then
+        self:activate()
     end
 end
 

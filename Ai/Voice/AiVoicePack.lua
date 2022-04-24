@@ -85,17 +85,17 @@ end
 
 --- @return void
 function AiVoicePack:lock()
-    writefile("gamesense/Nyx/v1/Dominion/Resource/Data/AiRadioLock", "1")
+    writefile("gamesense/Nyx/v1/Dominion/Resource/Data/AiVoiceLock", "1")
 end
 
 --- @return void
 function AiVoicePack:unlock()
-    writefile("gamesense/Nyx/v1/Dominion/Resource/Data/AiRadioLock", "0")
+    writefile("gamesense/Nyx/v1/Dominion/Resource/Data/AiVoiceLock", "0")
 end
 
 --- @return void
 function AiVoicePack:isLocked()
-    return readfile("gamesense/Nyx/v1/Dominion/Resource/Data/AiRadioLock") == "1"
+    return readfile("gamesense/Nyx/v1/Dominion/Resource/Data/AiVoiceLock") == "1"
 end
 
 --- @param lines string[]

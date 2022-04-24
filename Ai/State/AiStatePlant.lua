@@ -1,16 +1,14 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local Entity = require "gamesense/Nyx/v1/Api/Entity"
-local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
+local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
-local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 --}}}
 
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
@@ -79,21 +77,19 @@ function AiStatePlant:setSite()
     self.plantAt = Client.getRandomInt(1, 2) == 1 and "a" or "b"
 end
 
---- @param nodegraph Nodegraph
 --- @return void
-function AiStatePlant:assess(nodegraph)
+function AiStatePlant:assess()
     if not Client.hasBomb() then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     local player = AiUtility.client
     local playerOrigin = player:getOrigin()
-    local siteName = nodegraph:getNearestSiteName(playerOrigin)
-    local site = nodegraph:getSiteNode(siteName)
-    local closestPlantNode = nodegraph:getClosestNodeOf(playerOrigin, Node.types.PLANT)
+    local siteName = self.ai.nodegraph:getNearestSiteName(playerOrigin)
+    local site = self.ai.nodegraph:getSiteNode(siteName)
+    local closestPlantNode = self.ai.nodegraph:getClosestNodeOf(playerOrigin, Node.types.PLANT)
     local isCovered = false
     local distanceToSite = playerOrigin:getDistance(site.origin)
-    local isOnSite = distanceToSite < 750
     local isNearSite = distanceToSite < 1400
     local isOnPlant = playerOrigin:getDistance(closestPlantNode.origin) < 200
 
@@ -111,37 +107,41 @@ function AiStatePlant:assess(nodegraph)
 
     -- On plant-spot and covered.
     if isOnPlant and isCovered then
-        return AiState.priority.PLANT_COVERED
+        return AiPriority.PLANT_COVERED
     end
 
     -- Not much time left in the round.
     if AiUtility.timeData.roundtime_remaining < 35 then
-        return AiState.priority.PLANT_EXPEDITE
+        return AiPriority.PLANT_EXPEDITE
+    end
+
+    -- We already begun planting.
+    if self.isPlanting then
+        return AiPriority.PLANT_EXPEDITE
     end
 
     -- Near site and covered.
     if isNearSite and isCovered then
-        return AiState.priority.PLANT_ACTIVE
+        return AiPriority.PLANT_ACTIVE
     end
 
     -- Near site and not threatened.
     if isNearSite and not AiUtility.isClientThreatened then
-        return AiState.priority.PLANT_ACTIVE
+        return AiPriority.PLANT_ACTIVE
     end
 
     -- Covered and not threatened.
     if isCovered and not AiUtility.isClientThreatened then
-        return AiState.priority.PLANT_PASSIVE
+        return AiPriority.PLANT_PASSIVE
     end
 
     -- We have the bomb.
-    return AiState.priority.PLANT_GENERIC
+    return AiPriority.PLANT_GENERIC
 end
 
---- @param ai AiOptions
 --- @param site string
 --- @return void
-function AiStatePlant:activate(ai, site)
+function AiStatePlant:activate(site)
     local player = AiUtility.client
     local origin = player:getOrigin()
 
@@ -149,13 +149,13 @@ function AiStatePlant:activate(ai, site)
         self.plantAt = site
     end
 
-    if origin:getDistance(ai.nodegraph.objectiveA.origin) < 1024 then
+    if origin:getDistance(self.ai.nodegraph.objectiveA.origin) < 1024 then
         site = "a"
-    elseif origin:getDistance(ai.nodegraph.objectiveB.origin) < 1024 then
+    elseif origin:getDistance(self.ai.nodegraph.objectiveB.origin) < 1024 then
         site = "b"
     end
 
-    local node = self:getPlantNode(ai.nodegraph, site)
+    local node = self:getPlantNode(site)
 
     if not node then
         return
@@ -164,82 +164,78 @@ function AiStatePlant:activate(ai, site)
     self.node = node
     self.mustPathfind = true
 
-    self.plantDelayTimer:stop()
-
-    ai.nodegraph:pathfind(node.origin, {
+   self.ai.nodegraph:pathfind(node.origin, {
         objective = Node.types.GOAL,
-        ignore = Client.getEid(),
         task = string.format("Plant on %s site [%i]", node.site:upper(), node.id),
         onComplete = function()
-            ai.nodegraph:log("Planting on %s site [%i]", node.site:upper(), node.id)
-            self.plantDelayTimer:ifPausedThenStart()
-
             self.mustPathfind = false
         end
     })
 
     if self.tellSiteTimer:isElapsedThenRestart(25) and Menu.useChatCommands:get() then
-        Messenger.send(string.format(" go %s", self.plantAt), true)
+        self.ai.commands.go:bark(self.plantAt)
 
-        local color = self.plantAt == "a" and ai.radio.color.BLUE or ai.radio.color.PURPLE
-
-        ai.radio:speak(ai.radio.message.FOLLOW_ME, 1, 0.5, 1, "I'm %staking%s the %sbomb%s to %sbombsite %s%s.", ai.radio.color.YELLOW, ai.radio.color.DEFAULT, ai.radio.color.GOLD, ai.radio.color.DEFAULT, color, self.plantAt:upper(), ai.radio.color.DEFAULT)
-
-        local distanceToSite = origin:getDistance(ai.nodegraph:getNearestSiteNode(origin).origin)
+        local distanceToSite = origin:getDistance(self.ai.nodegraph:getNearestSiteNode(origin).origin)
 
         if not AiUtility.isLastAlive and distanceToSite > 800 then
-            ai.voice.pack:speakRequestTeammatesToPush(self.plantAt)
+           self.ai.voice.pack:speakRequestTeammatesToPush(self.plantAt)
         end
     end
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStatePlant:think(ai)
+function AiStatePlant:deactivate()
+    self.plantDelayTimer:stop()
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function AiStatePlant:think(cmd)
     self.activity = "Going to plant bomb"
 
     if not self.node then
-        self:activate(ai)
+        self:activate()
     end
 
     local player = AiUtility.client
-    local distance = player:getOrigin():getDistance(self.node.origin)
+    local distance = player:getOrigin():getDistance2(self.node.origin)
 
-    if distance < 20 then
-        ai.cmd.in_duck = 1
-    end
-
-    if distance < 72 then
-        ai.view:lookInDirection(self.node.direction, 5, ai.view.noiseType.IDLE, "Plant look at angle")
-        ai.controller.isQuickStopping = true
-    end
-
-    if distance < 100 then
+    if distance < 250 then
         self.activity = "Planting bomb"
 
-        ai.controller.canUseGear = false
+        self.ai.canUseGear = false
 
         Client.equipBomb()
     end
 
-    if self.isPlanting then
-        ai.cmd.in_use = 1
-    elseif self.plantDelayTimer:isElapsed(self.plantDelayTime) then
-        ai.cmd.in_use = 1
+    if distance < 72 then
+        self.ai.view:lookInDirection(self.node.direction, 5, self.ai.view.noiseType.IDLE, "Plant look at angle")
+        self.ai.isQuickStopping = true
     end
 
-    if not ai.nodegraph.path and ai.nodegraph:canPathfind() and self.mustPathfind then
-        self:activate(ai)
+    if distance < 20 then
+        cmd.in_duck = 1
+
+        if player:isAbleToAttack() then
+            self.plantDelayTimer:ifPausedThenStart()
+
+            if self.plantDelayTimer:isElapsed(self.plantDelayTime) then
+                cmd.in_use = 1
+            end
+        end
+    end
+
+    if self.ai.nodegraph:isIdle() and self.mustPathfind then
+        self:activate()
     end
 end
 
---- @param nodegraph Nodegraph
 --- @param site string
 --- @return Node
-function AiStatePlant:getPlantNode(nodegraph, site)
+function AiStatePlant:getPlantNode(site)
     local sites = {
-        a = nodegraph.objectiveAPlant,
-        b = nodegraph.objectiveBPlant
+        a = self.ai.nodegraph.objectiveAPlant,
+        b = self.ai.nodegraph.objectiveBPlant
     }
 
     if site then

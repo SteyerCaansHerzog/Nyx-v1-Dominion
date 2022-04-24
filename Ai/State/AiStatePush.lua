@@ -2,11 +2,11 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
 --}}}
 
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
@@ -41,18 +41,17 @@ function AiStatePush:assess()
 
     if player:isTerrorist() and not self.isDeactivated and not AiUtility.isBombPlanted() then
         if AiUtility.roundTimer:isElapsed(20) then
-            return AiState.priority.PUSH
+            return AiPriority.PUSH
         end
     end
 
-    return AiState.priority.IGNORE
+    return AiPriority.IGNORE
 end
 
---- @param ai AiOptions
 --- @param site string
 --- @return void
-function AiStatePush:activate(ai, site)
-    local node = self:getActivityNode(ai, site)
+function AiStatePush:activate(site)
+    local node = self:getActivityNode(site)
 
     if not node then
         return
@@ -61,21 +60,20 @@ function AiStatePush:activate(ai, site)
     self.site = site
     self.node = node
 
-    ai.nodegraph:pathfind(node.origin, {
+   self.ai.nodegraph:pathfind(node.origin, {
         objective = Node.types.GOAL,
-        ignore = Client.getEid(),
         task = string.format("Push to %s site [%i]", node.site:upper(), node.id),
         onComplete = function()
-            ai.nodegraph:log("Pushed onto %s site [%i]", node.site, node.id)
+           self.ai.nodegraph:log("Pushed onto %s site [%i]", node.site, node.id)
 
             self.isDeactivated = true
         end
     })
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStatePush:think(ai)
+function AiStatePush:think(cmd)
     if not self.site then
         return
     end
@@ -84,18 +82,17 @@ function AiStatePush:think(ai)
         self.activity = string.format("Pushing %s", self.site:upper())
     end
 
-    if not ai.nodegraph.path and ai.nodegraph:canPathfind() then
-        self:activate(ai, self.site)
+    if self.ai.nodegraph:isIdle() then
+        self:activate(self.site)
     end
 end
 
---- @param ai AiOptions
 --- @param site string
 --- @return Node
-function AiStatePush:getActivityNode(ai, site)
+function AiStatePush:getActivityNode(site)
     local nodes = {
-        a = ai.nodegraph.objectiveAPush,
-        b = ai.nodegraph.objectiveBPush
+        a =self.ai.nodegraph.objectiveAPush,
+        b =self.ai.nodegraph.objectiveBPush
     }
 
     local site = site

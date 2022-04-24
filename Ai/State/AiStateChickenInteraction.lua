@@ -10,6 +10,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
@@ -53,27 +54,27 @@ end
 --- @return void
 function AiStateChickenInteraction:assess()
     if Entity.getGameRules():m_bFreezePeriod() == 1 then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     if not AiUtility.client:isHoldingKnife() then
         self.targetChicken = nil
 
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     if AiUtility.plantedBomb then
         self.targetChicken = nil
 
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     if not self.cooldownTimer:isElapsed(4) then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     if self.targetChicken then
-        return AiState.priority.INTERACT_WITH_CHICKEN
+        return AiPriority.INTERACT_WITH_CHICKEN
     end
 
     --- @type Entity
@@ -95,17 +96,16 @@ function AiStateChickenInteraction:assess()
     end
 
     if not closestChicken then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     self.targetChicken = closestChicken
 
-    return AiState.priority.INTERACT_WITH_CHICKEN
+    return AiPriority.INTERACT_WITH_CHICKEN
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateChickenInteraction:activate(ai) end
+function AiStateChickenInteraction:activate() end
 
 --- @return void
 function AiStateChickenInteraction:deactivate()
@@ -119,9 +119,9 @@ function AiStateChickenInteraction:reset()
     self.cooldownTimer:restart()
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStateChickenInteraction:think(ai)
+function AiStateChickenInteraction:think(cmd)
     if self.interaction == "kill" then
         self.activity = "Killing a chicken"
     elseif self.interaction == "collect" then
@@ -142,11 +142,9 @@ function AiStateChickenInteraction:think(ai)
         return
     end
 
-    if ai.nodegraph:canPathfind() and not ai.nodegraph.path then
-        ai.nodegraph:pathfind(self.targetChicken:m_vecOrigin(), {
+    if self.ai.nodegraph:isIdle() then
+        self.ai.nodegraph:pathfind(self.targetChicken:m_vecOrigin(), {
             objective = Node.types.ENEMY,
-            retry = false,
-            ignore = Client.getEid(),
             task = string.format("Go to chicken (%s)", self.interaction),
             onFail = function()
                 self.blacklist[self.targetChicken.eid] = true
@@ -166,20 +164,20 @@ function AiStateChickenInteraction:think(ai)
     end
 
     if distance < 200 then
-        ai.view:lookAtLocation(chickenOrigin, 5.5, ai.view.noiseType.MINOR, "ChickenInteraction look at chicken")
+        self.ai.view:lookAtLocation(chickenOrigin, 5.5, self.ai.view.noiseType.MINOR, "ChickenInteraction look at chicken")
     end
 
     local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), chickenOrigin)
 
     if distance < 64 and fov < 22 then
-        ai.controller.canLookAwayFromFlash = false
-        ai.controller.canUseGear = false
-        ai.controller.canReload = false
+        self.ai.canLookAwayFromFlash = false
+        self.ai.canUseGear = false
+        self.ai.canReload = false
 
         if self.interaction == "kill" then
-            ai.cmd.in_attack = 1
+            cmd.in_attack = 1
         elseif self.interaction == "collect" then
-            ai.cmd.in_use = 1
+            cmd.in_use = 1
         end
 
         self.blacklist[self.targetChicken.eid] = true

@@ -11,6 +11,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
@@ -53,34 +54,34 @@ end
 function AiStateFlashbangDynamic:assess()
     -- Cooldown. We really need it.
     if not self.throwCooldownTimer:isElapsed(12) then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     -- Don't let them spam when attempting this behaviour.
     if not self.throwAttemptCooldownTimer:isElapsed(1.5) then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     -- AI is threatened. Don't try to, or abort trying to, throw a flashbang.
     if AiUtility.isClientThreatened then
         self.threatCooldownTimer:start()
 
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     -- We were just threatened by an enemy, so we don't want to try again too soon.
     if not self.threatCooldownTimer:isElapsed(5) then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     -- We already found an angle to not-blind a totally-suspecting enemy player with.
     if self.throwAngles then
-        return AiState.priority.FLASHBANG_DYNAMIC
+        return AiPriority.FLASHBANG_DYNAMIC
     end
 
     -- Don't bother if we don't even have a flashbang on us.
     if not AiUtility.client:hasWeapon(Weapons.FLASHBANG) then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     local clientEyeOrigin = Client.getEyeOrigin()
@@ -99,10 +100,10 @@ function AiStateFlashbangDynamic:assess()
         distance = predictionDistance
     })
 
-    -- Throw away traces that end too close to us because they're useless and will just blind the AI.
+    -- Throw away traces that end too close to us because they're useless and will just blind theself.ai.
     -- Although, the AI would probably want to be blind if it pulled up its own hood and found this demented-ass logic.
     if clientEyeOrigin:getDistance(impactTrace.endPosition) < 400 then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     -- Oh boy, which of our opponents is gonna get to see the worst thrown flashbang of their lives?
@@ -159,23 +160,21 @@ function AiStateFlashbangDynamic:assess()
             end
         end)
 
-        return AiState.priority.FLASHBANG_DYNAMIC
+        return AiPriority.FLASHBANG_DYNAMIC
     until true end
 
-    return AiState.priority.IGNORE
+    return AiPriority.IGNORE
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateFlashbangDynamic:activate(ai)
-    ai.nodegraph:clearPath("throw a dynamic grenade")
+function AiStateFlashbangDynamic:activate()
+   self.ai.nodegraph:clearPath("throw a dynamic grenade")
 
     self.isActivated = true
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateFlashbangDynamic:deactivate(ai)
+function AiStateFlashbangDynamic:deactivate()
     Client.equipPrimary()
 
     self.throwAttemptCooldownTimer:restart()
@@ -195,9 +194,9 @@ function AiStateFlashbangDynamic:reset()
     self.throwTimer:stop()
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStateFlashbangDynamic:think(ai)
+function AiStateFlashbangDynamic:think(cmd)
     self.activity = "Throwing Flashbang"
 
     -- If we're not in a throw, and the round is over or our target has died, then do not throw.
@@ -214,19 +213,19 @@ function AiStateFlashbangDynamic:think(ai)
         return
     end
 
-    ai.controller.states.evade.isBlocked = true
-    ai.controller.canUseGear = false
-    ai.controller.canLookAwayFromFlash = false
-    ai.controller.isQuickStopping = true
-    ai.nodegraph.isAllowedToAvoidTeammates = false
-    ai.view.isCrosshairUsingVelocity = true
-    ai.view.isCrosshairSmoothed = false
+    self.ai.states.evade.isBlocked = true
+    self.ai.canUseGear = false
+    self.ai.canLookAwayFromFlash = false
+    self.ai.isQuickStopping = true
+    self.ai.nodegraph.isAllowedToAvoidTeammates = false
+    self.ai.view.isCrosshairUsingVelocity = true
+    self.ai.view.isCrosshairSmoothed = false
 
     if not AiUtility.client:isHoldingWeapon(Weapons.FLASHBANG) then
         Client.equipFlashbang()
     end
 
-    ai.view:lookInDirection(self.throwAngles, 4.5, ai.view.noiseType.NONE, "FlashbangDynamic look at throw angle")
+   self.ai.view:lookInDirection(self.throwAngles, 4.5, self.ai.view.noiseType.NONE, "FlashbangDynamic look at throw angle")
 
     local maxDiff = self.throwAngles:getMaxDiff(Client.getCameraAngles())
 
@@ -240,18 +239,18 @@ function AiStateFlashbangDynamic:think(ai)
     if self.isThrowing then
         self.throwTimer:ifPausedThenStart()
 
-        ai.cmd.in_attack = 1
+        cmd.in_attack = 1
 
         if not AiUtility.isLastAlive then
-            ai.voice.pack:speakClientThrowingFlashbang()
+            self.ai.voice.pack:speakClientThrowingFlashbang()
         end
     end
 
     if self.throwTimer:isElapsedThenRestart(0.1) then
-        ai.cmd.in_attack = 0
+        cmd.in_attack = 0
 
         if self.canJumpThrow then
-            ai.cmd.in_jump = 1
+            cmd.in_jump = 1
         end
 
         Client.fireAfter(0.15, function()

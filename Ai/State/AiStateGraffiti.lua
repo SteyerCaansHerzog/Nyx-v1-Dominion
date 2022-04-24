@@ -6,6 +6,7 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
 
 --{{{ Modules
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 --}}}
 
@@ -58,34 +59,33 @@ function AiStateGraffiti:assess()
     end
 
     if Client.getGraffitiCooldown() > 0 then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     -- Kill count is reset after lastKillTimer expires.
     -- Bots should spray when they get a 3K or better within the cutoff time.
     if self.killCount < 3 then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
     self.graffitiDelayTimer:ifPausedThenStart()
 
     if not self.graffitiDelayTimer:isElapsedThenStop(1) then
-        return AiState.priority.IGNORE
+        return AiPriority.IGNORE
     end
 
-    return AiState.priority.GRAFFITI
+    return AiPriority.GRAFFITI
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateGraffiti:think(ai)
+function AiStateGraffiti:think()
     self.activity = "Spraying graffiti"
 
     local newCameraAngles = Client.getCameraAngles()
 
     newCameraAngles.p = 80
 
-    ai.view:lookInDirection(newCameraAngles, 5, ai.view.noiseType.MINOR, "Graffiti look at floor")
+   self.ai.view:lookInDirection(newCameraAngles, 5, self.ai.view.noiseType.MINOR, "Graffiti look at floor")
 
     if Client.getCameraAngles().p > 75 then
         self.killCount = 0

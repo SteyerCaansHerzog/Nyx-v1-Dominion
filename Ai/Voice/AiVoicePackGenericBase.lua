@@ -606,7 +606,7 @@ end
 --- @return void
 function AiVoicePackGenericBase:speakGifting()
 	self:speak(self:getGroupDynamic("Gifting"), {
-		chance = 2,
+		chance = 1,
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,

@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
 
 --{{{ Enums
@@ -54,32 +55,27 @@ local AiPriority = {
 	DEFUSE_STICK = 46,
 	DEVELOPER = 47,
 }
-
-local priorityMap = {}
-
-for k, v in pairs(AiPriority) do
-    priorityMap[v] = k
-end
 --}}}
 
 --{{{ AiState
 --- @class AiState : Class
---- @field activate fun(self: AiState, ai: AiOptions): void
---- @field assess fun(self: AiState, nodegraph: Nodegraph, ai: AiController): number
+--- @field activate fun(self: AiState): void
+--- @field activity string
+--- @field ai AiController
+--- @field assess fun(self: AiState): number
 --- @field lastPriority number
 --- @field name string
---- @field activity string
---- @field nodegraph Nodegraph
 --- @field priority AiPriority
 --- @field priorityMap string[]
---- @field think fun(self: AiState, ai: AiOptions): void
+--- @field think fun(self: AiState, cmd: SetupCommandEvent): void
 local AiState = {
     priority = AiPriority,
-    priorityMap = priorityMap
+    priorityMap = Table.getInverted(AiPriority)
 }
 
+--- @param fields AiState
 --- @return AiState
-function AiState:new()
+function AiState:new(fields)
     return Nyx.new(self)
 end
 

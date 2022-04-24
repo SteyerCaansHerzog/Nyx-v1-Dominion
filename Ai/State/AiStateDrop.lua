@@ -8,6 +8,7 @@ local UserInput = require "gamesense/Nyx/v1/Api/UserInput"
 
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 --}}}
 
@@ -51,27 +52,26 @@ end
 
 --- @return number
 function AiStateDrop:assess()
-    return self.isDroppingGear and AiState.priority.DROP or AiState.priority.IGNORE
+    return self.isDroppingGear and AiPriority.DROP or AiPriority.IGNORE
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateDrop:activate(ai)
-    ai.voice.pack:speakGifting()
+function AiStateDrop:activate()
+   self.ai.voice.pack:speakGifting()
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStateDrop:think(ai)
+function AiStateDrop:think(cmd)
     self.activity = string.format("Dropping %s", self.requestedGear)
 
-    ai.controller.canLookAwayFromFlash = false
-    ai.controller.canUseGear = false
+    self.ai.canLookAwayFromFlash = false
+    self.ai.canUseGear = false
 
     local player = AiUtility.client
     local hitbox = self.requestingPlayer:getOrigin():offset(0, 0, 64)
 
-    ai.view:lookAtLocation(hitbox, 8, ai.view.noiseType.MINOR, "Drop look at requester")
+   self.ai.view:lookAtLocation(hitbox, 8, self.ai.view.noiseType.MINOR, "Drop look at requester")
 
     local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), hitbox)
 

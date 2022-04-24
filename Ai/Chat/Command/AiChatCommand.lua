@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
 
 --{{{ Modules
@@ -22,16 +23,16 @@ local AiChatCommand = {}
 --- @return void
 function AiChatCommand:invoke(ai, sender, args) end
 
---- @param args string[]
+--- @vararg string
 --- @return void
-function AiChatCommand:execute(args)
-    if not Menu.useAiChatCommands:get() then
+function AiChatCommand:bark(...)
+    if not Menu.useChatCommands:get() then
         return
     end
 
-    local argsFormatted = table.concat(args, " ")
+    local argsFormatted = table.concat({...}, " ")
 
-    Messenger.send(string.format("/%s %s", self.cmd, argsFormatted), true)
+    Messenger.send(string.format(" %s %s", self.cmd, argsFormatted), true)
 end
 
 --- @param ai AiController

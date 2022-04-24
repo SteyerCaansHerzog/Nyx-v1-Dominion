@@ -1,7 +1,6 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local Color = require "gamesense/Nyx/v1/Api/Color"
 local CsgoWeapons = require "gamesense/csgo_weapons"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -15,6 +14,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
@@ -59,9 +59,11 @@ function AiStatePickupItems:__init()
     end)
 
     Callbacks.itemPickup(function(e)
-        if e.player:isClient() then
-            self.item = nil
-        end
+        Client.onNextTick(function()
+            if e.player:isClient() then
+                self.item = nil
+            end
+        end)
     end)
 end
 
@@ -80,7 +82,7 @@ function AiStatePickupItems:assess()
         if self.item then
             self.lookAtItem = false
 
-            self.currentPriority = AiState.priority.PICKUP_DEFUSER
+            self.currentPriority = AiPriority.PICKUP_DEFUSER
 
             return self.currentPriority
         end
@@ -162,12 +164,12 @@ function AiStatePickupItems:assess()
         self.item = chosenWeapon
         self.lookAtItem = true
 
-        self.currentPriority = AiUtility.isRoundOver and AiState.priority.ROUND_OVER_PICKUP_ITEMS or AiState.priority.PICKUP_WEAPON
+        self.currentPriority = AiUtility.isRoundOver and AiPriority.ROUND_OVER_PICKUP_ITEMS or AiPriority.PICKUP_WEAPON
 
         return self.currentPriority
     end
 
-    return AiState.priority.IGNORE
+    return AiPriority.IGNORE
 end
 
 --- @param items number[]
@@ -205,13 +207,12 @@ function AiStatePickupItems:getNearbyItems(items)
     until true end
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStatePickupItems:activate(ai) end
+function AiStatePickupItems:activate() end
 
 --- @return void
 function AiStatePickupItems:deactivate()
-    if self.item and self.item:m_hOwner() == Client.getEid() then
+    if self.item and self.item:m_hOwnerEntity() == Client.getEid() then
         if AiUtility.client:hasPrimary() then
             Client.equipPrimary()
         else
@@ -220,9 +221,9 @@ function AiStatePickupItems:deactivate()
     end
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStatePickupItems:think(ai)
+function AiStatePickupItems:think(cmd)
     local weapon = CsgoWeapons[self.item:m_iItemDefinitionIndex()]
 
     if weapon then
@@ -242,7 +243,7 @@ function AiStatePickupItems:think(ai)
         self.item = nil
 
         if Entity.getGameRules():m_bFreezePeriod() == 1 and owner == AiUtility.client.eid then
-            ai.voice.pack:speakGratitude()
+            self.ai.voice.pack:speakGratitude()
         end
 
         return
@@ -255,7 +256,7 @@ function AiStatePickupItems:think(ai)
     local trace = Trace.getLineInDirection(weaponOrigin, Vector3:new(0, 0, -1), AiUtility.traceOptionsPathfinding)
     local weaponDistanceToFloor = weaponOrigin:getDistance(trace.endPosition)
 
-    if ai.nodegraph.pathfindFails > 2 and weaponDistanceToFloor < 10 then
+    if self.ai.nodegraph.pathfindFails > 2 and weaponDistanceToFloor < 10 then
         self.entityBlacklist[self.item.eid] = true
 
         self.item = nil
@@ -263,23 +264,22 @@ function AiStatePickupItems:think(ai)
         return
     end
 
-    if (ai.nodegraph:canPathfind() and ai.nodegraph.pathfindFails > 0) or (ai.nodegraph:canPathfind() and not ai.nodegraph.path) then
-        ai.nodegraph:pathfind(self.item:m_vecOrigin(), {
+    if self.ai.nodegraph:isIdle() then
+        self.ai.nodegraph:pathfind(self.item:m_vecOrigin(), {
             objective = Node.types.GOAL,
-            ignore = Client.getEid(),
             task = "Picking up dropped weapon",
             onComplete = function()
-                ai.nodegraph:log("At dropped weapon")
+               self.ai.nodegraph:log("At dropped weapon")
             end
         })
     end
 
     if self.lookAtItem and distance < 250 then
-        ai.view:lookAtLocation(weaponOrigin, 5, ai.view.noiseType.IDLE, "PickupItems look at item")
+       self.ai.view:lookAtLocation(weaponOrigin, 5, self.ai.view.noiseType.IDLE, "PickupItems look at item")
     end
 
     if distance < 128 and self.useCooldown:isElapsedThenRestart(0.1) then
-        ai.cmd.in_use = 1
+        cmd.in_use = 1
     end
 end
 

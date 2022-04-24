@@ -11,6 +11,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
@@ -64,16 +65,15 @@ end
 --- @return void
 function AiStateWait:assess()
     if self.isWaiting then
-        return AiState.priority.FOLLOW
+        return AiPriority.FOLLOW
     end
 
-    return AiState.priority.IGNORE
+    return AiPriority.IGNORE
 end
 
---- @param ai AiOptions
 --- @return void
-function AiStateWait:activate(ai)
-    self:move(ai.nodegraph)
+function AiStateWait:activate()
+    self:move()
 end
 
 --- @return void
@@ -82,34 +82,33 @@ function AiStateWait:reset()
     self.waitingOnPlayer = nil
 end
 
---- @param ai AiOptions
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStateWait:think(ai)
+function AiStateWait:think(cmd)
     self.activity = "Waiting on teammate"
 
     local clientOrigin = AiUtility.client:getOrigin()
     local distanceToPlayer = clientOrigin:getDistance(self.waitingOnPlayer:getOrigin())
     local distanceToNode = clientOrigin:getDistance(self.node.origin)
 
-    if distanceToNode < 128 and ai.nodegraph.path then
-        ai.nodegraph:clearPath("Wait stop")
+    if distanceToNode < 128 and self.ai.nodegraph.path then
+       self.ai.nodegraph:clearPath("Wait stop")
     end
 
-    if distanceToNode < 256 and distanceToPlayer < 1024 then
-        ai.view:lookAtLocation(self.waitingOnPlayer:getHitboxPosition(Player.hitbox.HEAD), 5, ai.view.noiseType.IDLE, "Wait look at player")
+    if distanceToNode < 250 and distanceToPlayer < 250 then
+       self.ai.view:lookAtLocation(self.waitingOnPlayer:getOrigin():offset(0, 0, 64), 5, self.ai.view.noiseType.IDLE, "Wait look at player")
     end
 end
 
---- @param nodegraph Nodegraph
 --- @return void
-function AiStateWait:move(nodegraph)
+function AiStateWait:move()
     --- @type Node[]
     local nodes = {}
     --- @type Node[]
     local closestNode
     local closestNodeDistance = math.huge
 
-    for _, node in pairs(nodegraph.nodes) do
+    for _, node in pairs(self.ai.nodegraph.nodes) do
         local distance = self.waitingOrigin:getDistance(node.origin)
 
         if distance < 256 then
@@ -126,9 +125,8 @@ function AiStateWait:move(nodegraph)
 
     self.node = node
 
-    nodegraph:pathfind(node.origin, {
-        objective = Node.types.GOAL,
-        ignore = Client.getEid()
+    self.ai.nodegraph:pathfind(node.origin, {
+        objective = Node.types.GOAL
     })
 end
 

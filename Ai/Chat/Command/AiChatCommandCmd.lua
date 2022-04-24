@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -7,11 +8,11 @@ local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatC
 local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 --}}}
 
---{{{ AiChatCommandAfk
---- @class AiChatCommandAfk : AiChatCommand
-local AiChatCommandAfk = {
-    cmd = "afk",
-    requiredArgs = 1,
+--{{{ AiChatCommandCmd
+--- @class AiChatCommandCmd : AiChatCommand
+local AiChatCommandCmd = {
+    cmd = "cmd",
+    requiredArgs = 0,
     isAdminOnly = true
 }
 
@@ -19,7 +20,7 @@ local AiChatCommandAfk = {
 --- @param sender Player
 --- @param args string[]
 --- @return void
-function AiChatCommandAfk:invoke(ai, sender, args)
+function AiChatCommandCmd:invoke(ai, sender, args)
     if not self:isValid(ai, sender, args) then
         return
     end
@@ -27,11 +28,11 @@ function AiChatCommandAfk:invoke(ai, sender, args)
     local toggle = args[1]
 
     if toggle == "on" then
-        Menu.enableAi:set(false)
+        Menu.useChatCommands:set(true)
     elseif toggle == "off" then
-        Menu.enableAi:set(true)
+        Menu.useChatCommands:set(false)
     end
 end
 
-return Nyx.class("AiChatCommandAfk", AiChatCommandAfk, AiChatCommand)
+return Nyx.class("AiChatCommandCmd", AiChatCommandCmd, AiChatCommand)
 --}}}
