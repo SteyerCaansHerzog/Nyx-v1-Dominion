@@ -1079,7 +1079,7 @@ function Nodegraph:processMovement(cmd)
             if self.jumpCooldown:isElapsedThenRestart(0.6) then
                 cmd.in_jump = 1
 
-                self:moveOntoNextNode() -- todo maybe not?
+                self:moveOntoNextNode()
             end
         elseif distance < 32 and node.origin.z - origin.z < 18 then
             if self.jumpCooldown:isElapsedThenRestart(0.6) then
