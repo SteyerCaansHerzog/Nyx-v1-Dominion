@@ -83,7 +83,6 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field stuckTimer Timer
 --- @field task string
 --- @field tSpawn Node
---- @field unstuckAngles Angle
 --- @field unstuckTimer Timer
 --- @field cachedPathfindMoveAngle Angle
 --- @field moveAngle Angle
@@ -117,7 +116,6 @@ function Nodegraph:initFields()
     self.task = "No task given"
     self.moveSpeed = 450
     self.pathfindFails = 0
-    self.unstuckAngles = Client.getCameraAngles()
     self.isAllowedToMove = true
     self.unblockTimer = Timer:new()
     self.unblockDirection = "Left"
@@ -462,8 +460,26 @@ function Nodegraph:renderNodegraph()
 
     local cameraOrigin = Client.getCameraOrigin()
 
+    local draw = {
+        [Node.types.RUN] = true,
+        [Node.types.JUMP] = true,
+        [Node.types.GAP] = true,
+        [Node.types.CROUCH] = true,
+        [Node.types.CROUCH_SHOOT] = true,
+        [Node.types.SHOOT] = true,
+        [Node.types.OBJECTIVE_A] = true,
+        [Node.types.OBJECTIVE_B] = true,
+        [Node.types.MAP_MIDDLE] = true,
+        [Node.types.CT_SPAWN] = true,
+        [Node.types.T_SPAWN] = true,
+    }
+
     for _, node in pairs(self.nodes) do
         local alpha = Math.getInversedFloat(cameraOrigin:getDistance(node.origin), 1000) * 255
+
+        if Table.isEmpty(node.connections) then
+            node.origin:drawScaledCircleOutline(50, 10, Color:hsla(20, 0.8, 0.6))
+        end
 
         if alpha > 0 then
             local color = Node.typesColor[node.type]:clone()
@@ -474,13 +490,15 @@ function Nodegraph:renderNodegraph()
             colorFont.a = Math.getInversedFloat(cameraOrigin:getDistance(node.origin), 256) * 255
 
             for _, connection in pairs(node.connections) do
-                local lineColor = Color:rgba(150, 150, 150, math.min(35, alpha))
+                local lineColor = Color:rgba(150, 150, 150, math.min(60, alpha))
 
                 if self.pathMap and self.pathMap[node.id] and self.pathMap[connection.id] then
                     lineColor = color
                 end
 
-                node.origin:drawLine(connection.origin, lineColor, 0.25)
+                if draw[node.type] and draw[connection.type] then
+                    node.origin:drawLine(connection.origin, lineColor, 0.25)
+                end
             end
 
             local radius, thickness = 33, (node.active and 15 or 6)
@@ -537,10 +555,6 @@ function Nodegraph:clearPath(reason)
     self.pathEnd = nil
     self.pathMap = nil
 
-    self.jumpCooldown = Timer:new():startThenElapse()
-    self.crouchTimer = Timer:new()
-    self.useCooldown = Timer:new():startThenElapse()
-    self.stuckTimer = Timer:new()
     self.lastPathfindTimer = Timer:new()
 
     self:log("Cleared path (%s)", reason)
@@ -845,6 +859,7 @@ function Nodegraph:pathfind(origin, options)
     options = options or {}
 
     Table.setMissing(options, {
+        objective = Node.types.GOAL,
         canUseInactive = false,
         canUseJump = true
     })
@@ -941,6 +956,11 @@ function Nodegraph:isIdle()
     return self:canPathfind() and not self.path
 end
 
+--- @return boolean
+function Nodegraph:isActive()
+    return self.path
+end
+
 --- @param node Node
 --- @param pathLine boolean
 --- @return void
@@ -995,12 +1015,7 @@ function Nodegraph:processMovement(cmd)
 
     -- Deal with moving.
     if self.pathfindFails > 0 then
-        self.unstuckTimer:ifPausedThenStart()
-
         self:executeMovementForward(cmd)
-    else
-        self.unstuckTimer:stop()
-        self.unstuckAngles = Client.getCameraAngles()
     end
 
     if self.moveAngle then
@@ -1098,25 +1113,17 @@ function Nodegraph:processMovement(cmd)
         end
     end
 
-    -- Re-pathfind when stuck
-    local gameRules = Entity.getGameRules()
+    if Entity.getGameRules():m_bFreezePeriod() ~= 1 then
+        local speed = AiUtility.client:m_vecVelocity():getMagnitude()
 
-    if gameRules:m_bFreezePeriod() ~= 1 and player:getFlag(Player.flags.FL_ONGROUND) then
-        local speed = player:m_vecVelocity():set(nil, nil, 0):getMagnitude()
-
-        if not self.stuckTimer:isStarted() and speed < 64 then
-            self.stuckTimer:start()
-        elseif self.stuckTimer:isStarted() and speed >= 64 then
+        if speed < 100 then
+            self.stuckTimer:ifPausedThenStart()
+        else
             self.stuckTimer:stop()
-        elseif self.stuckTimer:isElapsedThenRestart(1) then
+        end
+
+        if self.stuckTimer:isElapsedThenStop(0.5) then
             self:rePathfind()
-
-            local closestJumpNode = self:getClosestNodeOf(origin, Node.types.JUMP)
-
-            -- Jump over obstacles
-            if closestJumpNode and origin:getDistance(closestJumpNode.origin) < 64 and self.canJump then
-                cmd.in_jump = 1
-            end
         end
     end
 end
@@ -1150,7 +1157,12 @@ function Nodegraph:generateMoveTargetOrigin()
         0
     )
 
-    local trace = Trace.getHullToPosition(node.origin, idealOrigin, Vector3:newBounds(Vector3.align.UP, 32, 32, 16), AiUtility.traceOptionsPathfinding)
+    local trace = Trace.getHullToPosition(
+        node.origin,
+        idealOrigin,
+        Vector3:newBounds(Vector3.align.UP, 32, 32, 16),
+        AiUtility.traceOptionsPathfinding
+    )
 
     -- Generate a random vector around the node's origin.
     self.moveTargetOrigin = trace.endPosition

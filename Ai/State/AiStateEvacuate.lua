@@ -45,11 +45,6 @@ function AiStateEvacuate:assess()
         return AiPriority.SAVE_ROUND
     end
 
-    -- Fix to stop the AI saving in a 1v0 when bomb is down.
-    if AiUtility.enemiesAlive == 0 then
-        return AiPriority.IGNORE
-    end
-
     if AiUtility.client:isCounterTerrorist() then
         -- We're defusing, we shouldn't evacuate.
         -- We can only be defusing if we have time.
@@ -74,12 +69,12 @@ function AiStateEvacuate:assess()
 
         -- The enemy likely cannot defuse now, and we need to leave the site.
         if AiUtility.plantedBomb and not AiUtility.isBombBeingDefusedByEnemy and AiUtility.bombDetonationTime < 10 then
-            return AiPriority.EVACUATE
+            return AiPriority.ABANDON_BOMBSITE
         end
     end
 
     -- Round is effectively over.
-    if AiUtility.isRoundOver or AiUtility.enemiesAlive == 0 then
+    if AiUtility.isRoundOver and AiUtility.enemiesAlive == 0 then
         return AiPriority.ROUND_OVER
     end
 

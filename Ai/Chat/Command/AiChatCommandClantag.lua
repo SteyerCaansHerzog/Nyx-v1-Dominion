@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
 
 --{{{ Modules
@@ -32,7 +33,8 @@ function AiChatCommandClantag:invoke(ai, sender, args)
         return
     end
 
-    local clantag = args[1]
+    -- Commands are space-delimeted, so we need to get them and re-insert the spaces.
+    local clantag = Table.getImploded(args, " ")
 
     self:setClantag(clantag)
 

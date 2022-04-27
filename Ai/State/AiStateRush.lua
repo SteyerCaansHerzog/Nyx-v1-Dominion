@@ -40,6 +40,10 @@ function AiStateRush:assess()
         return AiPriority.IGNORE
     end
 
+    if AiUtility.plantedBomb then
+        return AiPriority.IGNORE
+    end
+
     return self.canRushThisRound and AiPriority.RUSH or AiPriority.IGNORE
 end
 

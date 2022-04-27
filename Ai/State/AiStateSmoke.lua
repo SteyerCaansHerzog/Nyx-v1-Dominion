@@ -13,7 +13,7 @@ local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGr
 --- @class AiStateSmoke : AiStateGrenadeBase
 local AiStateSmoke = {
     name = "Smoke",
-    priority = AiPriority.SMOKE,
+    priority = AiPriority.SMOKE_LINEUP,
     cooldown = 4,
     defendNode = "objectiveSmokeDefend",
     executeNode = "objectiveSmokeExecute",

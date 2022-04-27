@@ -20,7 +20,6 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field plantAt string
 --- @field plantDelayTimer Timer
 --- @field plantDelayTime number
---- @field mustPathfind boolean
 --- @field isPlanting boolean
 --- @field tellSiteTimer Timer
 --- @field pickRandomSiteTimer Timer
@@ -127,7 +126,7 @@ function AiStatePlant:assess()
 
     -- Near site and not threatened.
     if isNearSite and not AiUtility.isClientThreatened then
-        return AiPriority.PLANT_ACTIVE
+        return AiPriority.PLANT_PASSIVE
     end
 
     -- Covered and not threatened.
@@ -162,14 +161,10 @@ function AiStatePlant:activate(site)
     end
 
     self.node = node
-    self.mustPathfind = true
 
    self.ai.nodegraph:pathfind(node.origin, {
         objective = Node.types.GOAL,
-        task = string.format("Plant on %s site [%i]", node.site:upper(), node.id),
-        onComplete = function()
-            self.mustPathfind = false
-        end
+        task = string.format("Plant on %s site [%i]", node.site:upper(), node.id)
     })
 
     if self.tellSiteTimer:isElapsedThenRestart(25) and Menu.useChatCommands:get() then
@@ -193,14 +188,10 @@ end
 function AiStatePlant:think(cmd)
     self.activity = "Going to plant bomb"
 
-    if not self.node then
-        self:activate()
-    end
-
     local player = AiUtility.client
     local distance = player:getOrigin():getDistance2(self.node.origin)
 
-    if distance < 250 then
+    if distance < 150 then
         self.activity = "Planting bomb"
 
         self.ai.canUseGear = false
@@ -213,7 +204,7 @@ function AiStatePlant:think(cmd)
         self.ai.isQuickStopping = true
     end
 
-    if distance < 20 then
+    if distance < 25 then
         cmd.in_duck = 1
 
         if player:isAbleToAttack() then
@@ -225,8 +216,8 @@ function AiStatePlant:think(cmd)
         end
     end
 
-    if self.ai.nodegraph:isIdle() and self.mustPathfind then
-        self:activate()
+    if self.ai.nodegraph:isIdle() then
+        self.ai.nodegraph:rePathfind()
     end
 end
 

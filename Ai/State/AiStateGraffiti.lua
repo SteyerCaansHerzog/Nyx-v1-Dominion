@@ -8,6 +8,7 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 
 --{{{ AiStateGraffiti
@@ -30,7 +31,7 @@ end
 function AiStateGraffiti:__init()
     self.killCount = 0
     self.lastKillTimer = Timer:new()
-    self.lastKillCutoff = 6
+    self.lastKillCutoff = 8
     self.graffitiDelayTimer = Timer:new()
 
     Callbacks.playerDeath(function(e)
@@ -58,6 +59,10 @@ function AiStateGraffiti:assess()
         self.killCount = 0
     end
 
+    if AiUtility.isClientThreatened then
+        return AiPriority.IGNORE
+    end
+
     if Client.getGraffitiCooldown() > 0 then
         return AiPriority.IGNORE
     end
@@ -65,12 +70,6 @@ function AiStateGraffiti:assess()
     -- Kill count is reset after lastKillTimer expires.
     -- Bots should spray when they get a 3K or better within the cutoff time.
     if self.killCount < 3 then
-        return AiPriority.IGNORE
-    end
-
-    self.graffitiDelayTimer:ifPausedThenStart()
-
-    if not self.graffitiDelayTimer:isElapsedThenStop(1) then
         return AiPriority.IGNORE
     end
 

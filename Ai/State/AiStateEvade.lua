@@ -5,8 +5,6 @@ local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
-local Trace = require "gamesense/Nyx/v1/Api/Trace"
-local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 --}}}
 
 --{{{ Modules
@@ -99,14 +97,17 @@ function AiStateEvade:assess()
         return AiPriority.EVADE
     end
 
-    -- Avoid grenades
-    if not AiUtility.isClientThreatened then
-        local eyeOrigin = Client.getEyeOrigin()
+    local eyeOrigin = Client.getEyeOrigin()
+    local isCheckingSmokes = true
 
-        for _, grenade in Entity.find({"CBaseCSGrenadeProjectile", "CMolotovProjectile"}) do
-            if eyeOrigin:getDistance(grenade:m_vecOrigin()) < 128 then
+    if AiUtility.plantedBomb and AiUtility.bombDetonationTime < 15 then
+        isCheckingSmokes = false
+    end
 
-            end
+    -- Avoid grenades.
+    for _, grenade in Entity.find({"CBaseCSGrenadeProjectile", "CMolotovProjectile"}) do
+        if eyeOrigin:getDistance(grenade:m_vecOrigin()) < 128 then
+            return AiPriority.EVADE
         end
     end
 
@@ -141,61 +142,13 @@ end
 
 --- @return void
 function AiStateEvade:moveToCover()
-    local player = AiUtility.client
-    local playerOrigin = player:getOrigin()
-    --- @type Node[]
-    local possibleNodes = {}
-    local cameraAngles = -(Client.getCameraAngles():set(0))
+    local cover = self:getCoverNode(1000)
 
-    for _, node in pairs(self.ai.nodegraph.nodes) do
-        if playerOrigin:getDistance(node.origin) < 1000 and cameraAngles:getFov(playerOrigin, node.origin) < 90 then
-            local isVisibleToEnemy = false
-
-            for _, enemy in pairs(AiUtility.enemies) do
-                local enemyPos = enemy:getOrigin():offset(0, 0, 64)
-                local trace = Trace.getLineToPosition(enemyPos, node.origin, AiUtility.traceOptionsAttacking)
-
-                if not trace.isIntersectingGeometry then
-                    isVisibleToEnemy = true
-
-                    break
-                end
-            end
-
-            if not isVisibleToEnemy then
-                table.insert(possibleNodes, node)
-            end
-        end
-    end
-
-    if not next(possibleNodes) then
-        -- If we ever reach this, we've graphed the map badly, or the AI is literally surrounded.
-        self.ai.nodegraph:log("No cover to move to for reload")
-
+    if not cover then
         return
     end
 
-    --- @type Node
-    local farthestNode
-    local farthestDistance = -1
-    local closestOrigin
-
-    if AiUtility.closestEnemy then
-        closestOrigin = AiUtility.closestEnemy:getOrigin()
-    else
-        closestOrigin = playerOrigin
-    end
-
-    for _, node in pairs(possibleNodes) do
-        local distance = closestOrigin:getDistance(node.origin)
-
-        if distance > farthestDistance then
-            farthestDistance = distance
-            farthestNode = node
-        end
-    end
-
-    self.ai.nodegraph:pathfind(farthestNode.origin, {
+    self.ai.nodegraph:pathfind(cover.origin, {
         objective = Node.types.GOAL,
         task = "Moving to cover",
         canUseInactive = true,

@@ -57,7 +57,9 @@ end
 
 --- @return void
 function AiStateDrop:activate()
-   self.ai.voice.pack:speakGifting()
+    self.ai.nodegraph:pathfind(self.requestingPlayer:getOrigin(), {
+        task = "Drop teammate my item"
+    })
 end
 
 --- @param cmd SetupCommandEvent
@@ -69,35 +71,59 @@ function AiStateDrop:think(cmd)
     self.ai.canUseGear = false
 
     local player = AiUtility.client
+    local distance = player:getOrigin():getDistance(self.requestingPlayer:getOrigin())
     local hitbox = self.requestingPlayer:getOrigin():offset(0, 0, 64)
+    local isFreezeTime = Entity.getGameRules():m_bFreezePeriod() == 1
 
-   self.ai.view:lookAtLocation(hitbox, 8, self.ai.view.noiseType.MINOR, "Drop look at requester")
+    if isFreezeTime or distance < 300 then
+        self.ai.view:lookAtLocation(hitbox, 8, self.ai.view.noiseType.MINOR, "Drop look at requester")
+    end
 
-    local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), hitbox)
-
-    if fov < 20 then
-        self.droppingGearTimer:ifPausedThenStart()
-
-        if Entity.getGameRules():m_bFreezePeriod() == 1 and not AiUtility.client:hasWeapons(AiUtility.mainWeapons) and player:m_iAccount() > 3200 then
-            UserInput.execute("buy m4a4; buy ak47; buy m4a1_silencer")
+    if isFreezeTime or distance < 200 then
+        -- Stop approaching the player.
+        if self.ai.nodegraph:isActive() then
+            self.ai.nodegraph:clearPath("Drop reached destination")
         end
 
-        if self.droppingGearTimer:isElapsedThenStop(0.33) then
-            Client.dropGear()
+        local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), hitbox)
 
-            self.isDroppingGear = false
+        -- We're looking close enough to the player.
+        if fov < 20 then
+            self.droppingGearTimer:ifPausedThenStart()
 
-            Client.fireAfter(Client.getRandomFloat(0.75, 1.25), function()
-                if not player:hasWeapons(AiUtility.mainWeapons) then
-                    local balance = player:m_iAccount()
+            -- We need to buy something before we can drop.
+            if isFreezeTime and not player:hasWeapons(AiUtility.mainWeapons) and player:m_iAccount() > 3200 then
+                UserInput.execute("buy m4a4; buy ak47; buy m4a1_silencer")
+            end
 
-                    if not balance or (balance and balance >= 3200) then
-                        UserInput.execute("buy m4a4; buy ak47; buy m4a1_silencer")
-                    end
+            -- Drop gear.
+            if self.droppingGearTimer:isElapsedThenStop(0.33) then
+                self.ai.voice.pack:speakGifting()
+
+                Client.dropGear()
+
+                self.isDroppingGear = false
+
+                -- We need to rebuy.
+                if isFreezeTime or AiUtility.roundTimer:isNotElapsed(5) then
+                    self:buyGear()
                 end
-            end)
+            end
         end
     end
+end
+
+--- @return void
+function AiStateDrop:buyGear()
+    Client.fireAfter(Client.getRandomFloat(0.75, 1.25), function()
+        if not AiUtility.client:hasWeapons(AiUtility.mainWeapons) then
+            local balance = AiUtility.client:m_iAccount()
+
+            if not balance or (balance and balance >= 3200) then
+                UserInput.execute("buy m4a4; buy ak47; buy m4a1_silencer")
+            end
+        end
+    end)
 end
 
 return Nyx.class("AiStateDrop", AiStateDrop, AiState)

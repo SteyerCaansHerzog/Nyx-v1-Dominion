@@ -13,7 +13,7 @@ local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGr
 --- @class AiStateFlashbang : AiStateGrenadeBase
 local AiStateFlashbang = {
     name = "Flashbang",
-    priority = AiPriority.FLASHBANG,
+    priority = AiPriority.FLASHBANG_LINEUP,
     cooldown = 4,
     defendNode = "objectiveFlashbangDefend",
     executeNode = "objectiveFlashbangExecute",

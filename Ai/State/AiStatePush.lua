@@ -39,13 +39,19 @@ end
 function AiStatePush:assess()
     local player = AiUtility.client
 
-    if player:isTerrorist() and not self.isDeactivated and not AiUtility.isBombPlanted() then
-        if AiUtility.roundTimer:isElapsed(20) then
-            return AiPriority.PUSH
-        end
+    if not player:isTerrorist() then
+        return AiPriority.IGNORE
     end
 
-    return AiPriority.IGNORE
+    if self.isDeactivated or AiUtility.isBombPlanted() then
+        return AiPriority.IGNORE
+    end
+
+    if AiUtility.roundTimer:isElapsed(30) then
+        return AiPriority.IGNORE
+    end
+
+    return AiPriority.PUSH
 end
 
 --- @param site string

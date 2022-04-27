@@ -77,25 +77,29 @@ end
 function AiStateDefuse:assess()
     local player = AiUtility.client
 
+    -- Only CTs can defuse.
     if not player:isCounterTerrorist() then
         return AiPriority.IGNORE
     end
 
     local bomb = AiUtility.plantedBomb
 
+    -- No bomb to defuse.
     if not bomb then
         return AiPriority.IGNORE
     end
 
-    -- The enemy likely cannot defuse now, and we need to leave the site.
-    if not AiUtility.canDefuse then
+    -- Can't defuse if we're not already on the bomb.
+    if not AiUtility.canDefuse and not AiUtility.client:m_bIsDefusing() == 1 then
         return AiPriority.IGNORE
     end
 
+    -- Bomb's already defused.
     if bomb:m_bBombDefused() == 1 then
         return AiPriority.IGNORE
     end
 
+    -- A teammate is on the bomb.
     if AiUtility.isBombBeingDefusedByTeammate then
         return AiPriority.IGNORE
     end
@@ -119,12 +123,14 @@ function AiStateDefuse:assess()
         end
     end
 
+    -- We're covered by a teammate.
     if player:m_bIsDefusing() == 1 and isCovered then
         return AiPriority.DEFUSE_COVERED
     end
 
     local clientDistanceToBomb = clientOrigin:getDistance(bombOrigin)
 
+    -- We're in a smoke.
     if clientDistanceToBomb < 80 then
         for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
             if clientOrigin:getDistance(smoke:m_vecOrigin()) < 100 then
@@ -133,8 +139,14 @@ function AiStateDefuse:assess()
         end
     end
 
+    -- We're close to the bomb and covered.
+    if clientDistanceToBomb < 200 and isCovered then
+        return AiPriority.DEFUSE_ACTIVE
+    end
+
+    -- We're not threatened, but time is running out.
     if not AiUtility.isClientThreatened and AiUtility.bombDetonationTime < 15 then
-        return AiPriority.DEFEND_ACTIVE
+        return AiPriority.DEFUSE_ACTIVE
     end
 
     return AiPriority.DEFUSE_PASSIVE
@@ -142,6 +154,8 @@ end
 
 --- @return void
 function AiStateDefuse:activate()
+    self.ai.nodegraph:reactivateAllNodes()
+
     local bomb = AiUtility.plantedBomb
 
     if not bomb then
@@ -170,9 +184,7 @@ function AiStateDefuse:activate()
 end
 
 --- @return void
-function AiStateDefuse:deactivate()
-   self.ai.nodegraph:reactivateAllNodes()
-end
+function AiStateDefuse:deactivate() end
 
 --- @param cmd SetupCommandEvent
 --- @return void

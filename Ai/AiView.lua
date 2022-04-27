@@ -714,7 +714,7 @@ function AiView:setTargetNoise(targetViewAngles)
         self.noise.pitchSoftZ * timeExponent
     ) * 10 * velocityMod
 
-    -- High frequence, low amplitude.
+    -- High frequency, low amplitude.
     self.yawFine = getPerlinNoise(
         self.noise.yawFineX * timeExponent,
         self.noise.yawFineY * timeExponent,

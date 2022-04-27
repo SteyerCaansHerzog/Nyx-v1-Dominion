@@ -84,7 +84,6 @@ local AiWeaponNames = {
 --- @field bomb Entity
 --- @field bombCarrier Player
 --- @field bombDetonationTime number
---- @field bombPlantedAt string
 --- @field canDefuse boolean
 --- @field client Player
 --- @field clientThreatenedFromOrigin Vector3
@@ -387,8 +386,6 @@ function AiUtility.updateEnemies()
     for _, enemy in Player.find(function(p)
         return p:isEnemy() and p:isAlive()
     end) do
-        plist.set(enemy.eid, "Correction active", false)
-
         AiUtility.enemies[enemy.eid] = enemy
 
         if not enemy:isDormant() then

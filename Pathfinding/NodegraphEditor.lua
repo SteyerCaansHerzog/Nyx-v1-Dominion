@@ -144,12 +144,6 @@ function NodegraphEditor:selectNode()
 
     for _, node in pairs(self.nodegraph.nodes) do
         if cameraOrigin:getDistance(node.origin) < 350 then
-            local trace = Trace.getLineToPosition(cameraOrigin, node.origin, AiUtility.traceOptionsPathfinding)
-
-            if not trace.isIntersectingGeometry then
-                -- See below.
-            end
-
             local fov = cameraAngles:getFov(cameraOrigin, node.origin)
 
             if fov < closestFov and fov < 5 then
@@ -259,6 +253,7 @@ function NodegraphEditor:createNode(origin, isSpot)
 
     local connections = {}
     local iConnections = 0
+    local isNodeTraversal = node.type == Node.types.RUN
 
     for _, potentialConnection in Nyx.sortedPairs(self.nodegraph.nodes, function(a, b)
         return origin:getDistance(a.origin) < origin:getDistance(b.origin)
@@ -267,7 +262,9 @@ function NodegraphEditor:createNode(origin, isSpot)
             break
         end
 
-        if origin:getDistance(potentialConnection.origin) < self.nodeMaxDistance then
+        local isConnectionTraversal = potentialConnection.type == Node.types.RUN
+
+        if (isNodeTraversal or isConnectionTraversal) and origin:getDistance(potentialConnection.origin) < self.nodeMaxDistance then
             local _, fraction = origin:getTraceLine(potentialConnection.origin, Client.getEid())
 
             if fraction == 1 then

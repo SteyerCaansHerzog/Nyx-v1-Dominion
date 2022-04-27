@@ -134,6 +134,7 @@ local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 --- @field unscopeTimer Timer
 --- @field view AiView
 --- @field voice AiVoice
+--- @field lockStateTimer Timer
 local AiController = {
 	states = {
 		avoidInfernos = AiStateAvoidInfernos,
@@ -242,6 +243,7 @@ function AiController:initFields()
 	self.unscopeTime = 2
 	self.unscopeTimer = Timer:new()
 	self.flashbangs = {}
+	self.lockStateTimer = Timer:new():startThenElapse()
 
 	DominionMenu.enableAi = DominionMenu.group:checkbox("> Dominion Artifical Intelligence"):setParent(DominionMenu.master):addCallback(function(item)
 		local value = item:get()
@@ -316,6 +318,11 @@ function AiController:initEvents()
 			return
 		end
 
+		-- Disable AA correction because Gamesense has severe brain damage.
+		for _, enemy in pairs(AiUtility.enemies) do
+			plist.set(enemy.eid, "Correction active", false)
+		end
+
 		self:renderUi()
 	end)
 
@@ -366,7 +373,6 @@ function AiController:initEvents()
 			return
 		end
 
-		-- AI.
 		self.lastPriority = nil
 		self.currentState = nil
 
@@ -418,7 +424,29 @@ function AiController:initEvents()
 	end)
 
 	Callbacks.smokeGrenadeDetonate(function(e)
-		if AiUtility.isBombPlanted() then
+		-- Can't afford to block nodes during bomb retake.
+		if AiUtility.plantedBomb then
+			return
+		end
+
+		-- We're too far away to care.
+		if AiUtility.client:getOrigin():getDistance(e.origin) > 1500 then
+			return
+		end
+
+		local isEnemyNearby = false
+
+		-- Find out if enemies are near the smoke.
+		for _, enemy in pairs(AiUtility.enemies) do
+			if enemy:getOrigin():getDistance(e.origin) < 750 then
+				isEnemyNearby = true
+
+				break
+			end
+		end
+
+		-- We can't risk pushing enemies.
+		if not isEnemyNearby then
 			return
 		end
 
@@ -430,10 +458,6 @@ function AiController:initEvents()
 	end)
 
 	Callbacks.infernoStartBurn(function(e)
-		if AiUtility.isBombPlanted() and AiUtility.bombDetonationTime < 10 then
-			return
-		end
-
 		self:deactivateNodes(e.entityid, e.origin, 300)
 	end)
 
@@ -1027,7 +1051,7 @@ function AiController:activities(cmd)
 	local player = AiUtility.client
 	local origin = player:getOrigin()
 
-	if canReload and not AiUtility.isClientThreatened then
+	if canReload and not AiUtility.isClientThreatened and not AiUtility.isRoundOver then
 		local weapon = Entity:create(player:m_hActiveWeapon())
 		local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
 		local ammo = weapon:m_iClip1()
@@ -1303,7 +1327,7 @@ function AiController:think(cmd)
 		self.view:think(cmd)
 	end
 
-	if currentState then
+	if currentState and ((self.lastPriority and self.lastPriority > highestPriority) or self.lockStateTimer:isElapsed(0.5))then
 		self.priority = highestPriority
 
 		if self.lastPriority ~= highestPriority then
@@ -1318,9 +1342,15 @@ function AiController:think(cmd)
 			end
 		end
 
-		self.currentState = currentState
+		if currentState ~= self.currentState then
+			self.lockStateTimer:restart()
+		end
 
-		currentState:think(cmd)
+		self.currentState = currentState
+	end
+
+	if self.currentState then
+		self.currentState:think(cmd)
 	end
 
 	self:activities(cmd)

@@ -100,16 +100,6 @@ function AiStateGrenadeBase:assess()
         return AiPriority.IGNORE
     end
 
-    -- We haven't thrown the grenade within this time.
-    -- We're probably stuck. Abort the throw.
-    if self.inBehaviorTimer:isElapsedThenStop(6) then
-        self.cooldownTimer:start()
-
-        self.node = nil
-
-        return AiPriority.IGNORE
-    end
-
     -- We're threatened by an enemy.
     if AiUtility.isClientThreatened then
         self.threatCooldownTimer:restart()
@@ -131,14 +121,6 @@ function AiStateGrenadeBase:assess()
     -- Only exit here if we're in throw, because we need to ensure teammates don't occupy our line-up
     -- after we've picked it.
     if self.node then
-        -- A teammate just walked onto our line-up.
-        -- We need to pick a new one.
-        if not AiStateGrenadeBase.usedNodes[self.node.id]:isElapsed(15) then
-            self.node = nil
-
-            return AiPriority.IGNORE
-        end
-
         -- We're about to throw a grenade.
         if self.isInThrow then
             return AiPriority.THROWING_GRENADE
@@ -268,18 +250,14 @@ function AiStateGrenadeBase:watchForOccupiedNodes()
             break
         end
 
-        local usedNodeTimer = AiStateGrenadeBase.usedNodes[node.id]
-
-        if not usedNodeTimer then
-            usedNodeTimer = Timer:new():startThenElapse()
-
-            AiStateGrenadeBase.usedNodes[node.id] = usedNodeTimer
+        if not AiStateGrenadeBase.usedNodes[node.id] then
+            AiStateGrenadeBase.usedNodes[node.id] = Timer:new():startThenElapse()
         end
 
         local isOccupied = false
 
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance(node.origin) < 25 then
+            if teammate:getOrigin():getDistance2(node.origin) < 45 then
                 isOccupied = true
 
                 break
@@ -287,7 +265,7 @@ function AiStateGrenadeBase:watchForOccupiedNodes()
         end
 
         if isOccupied then
-            usedNodeTimer:restart()
+           AiStateGrenadeBase.usedNodes[node.id]:restart()
         end
     until true end
 end
@@ -330,6 +308,23 @@ end
 function AiStateGrenadeBase:think(cmd)
     -- Don't know why we are running with a nil node.
     if not self.node then
+        self:deactivate()
+
+        return
+    end
+
+
+    if AiStateGrenadeBase.usedNodes[self.node.id] and AiStateGrenadeBase.usedNodes[self.node.id]:isNotElapsed(15) then
+        self:deactivate()
+
+        return
+    end
+
+    -- We haven't thrown the grenade within this time.
+    -- We're probably stuck. Abort the throw.
+    if self.inBehaviorTimer:isElapsedThenStop(6) then
+        self.cooldownTimer:start()
+
         self:deactivate()
 
         return

@@ -1,60 +1,13 @@
 --{{{ Dependencies
+local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
+local Trace = require "gamesense/Nyx/v1/Api/Trace"
 --}}}
 
---{{{ Enums
---- @class AiPriority
-local AiPriority = {
-	IGNORE = -1,
-	SWEEP = 1,
-	DEFEND_GENERIC = 2,
-	PUSH = 3,
-	WATCH = 4,
-	PLANT_GENERIC = 5,
-	INTERACT_WITH_CHICKEN = 6,
-	PATROL_BOMB = 7,
-	DEFEND_PASSIVE = 8,
-	ROUND_OVER = 9,
-	PATROL = 10,
-	PICKUP_WEAPON = 11,
-	DEFUSE_PASSIVE = 12,
-	PICKUP_BOMB = 13,
-	CHECK_SPAWN = 14,
-	PICKUP_DEFUSER = 15,
-	BOOST = 16,
-	DEFEND_DEFUSER = 17,
-	ROUND_OVER_PICKUP_ITEMS = 18,
-	EVACUATE = 19,
-	ENGAGE_PASSIVE = 20,
-	PLANT_PASSIVE = 21,
-	DEFEND_ACTIVE = 22,
-	FLASHBANG = 23,
-	MOLOTOV = 24,
-	SMOKE = 25,
-	HE_GRENADE = 26,
-	PLANT_ACTIVE = 27,
-	RUSH = 28,
-	FOLLOW = 29,
-	WAIT = 30,
-	GRAFFITI = 31,
-	BOOST_ACTIVE = 32,
-	DEFEND_EXPEDITE = 33,
-	DEFUSE_ACTIVE = 34,
-	PLANT_EXPEDITE = 35,
-	SAVE_ROUND = 36,
-	ENGAGE_ACTIVE = 37,
-	THROWING_GRENADE = 38,
-	FLASHBANG_DYNAMIC = 39,
-	AVOID_INFERNO = 40,
-	ENGAGE_PANIC = 41,
-	DEFUSE_COVERED = 42,
-	PLANT_COVERED = 43,
-	DROP = 44,
-	EVADE = 45,
-	DEFUSE_STICK = 46,
-	DEVELOPER = 47,
-}
+--{{{ Modules
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 
 --{{{ AiState
@@ -69,14 +22,74 @@ local AiPriority = {
 --- @field priorityMap string[]
 --- @field think fun(self: AiState, cmd: SetupCommandEvent): void
 local AiState = {
-    priority = AiPriority,
     priorityMap = Table.getInverted(AiPriority)
 }
 
 --- @param fields AiState
 --- @return AiState
 function AiState:new(fields)
-    return Nyx.new(self)
+    return Nyx.new(self, fields)
+end
+
+--- @param range number
+--- @return Node
+function AiState:getCoverNode(range)
+    local player = AiUtility.client
+    local playerOrigin = player:getOrigin()
+    local cameraAngles = -(Client.getCameraAngles():set(0))
+
+    --- @type Node[]
+    local possibleNodes = {}
+
+    for _, node in pairs(self.ai.nodegraph.nodes) do
+        if playerOrigin:getDistance(node.origin) < range and cameraAngles:getFov(playerOrigin, node.origin) < 90 then
+            local isVisibleToEnemy = false
+
+            for _, enemy in pairs(AiUtility.enemies) do
+                local enemyPos = enemy:getOrigin():offset(0, 0, 64)
+                local trace = Trace.getLineToPosition(enemyPos, node.origin, AiUtility.traceOptionsAttacking)
+
+                if not trace.isIntersectingGeometry then
+                    isVisibleToEnemy = true
+
+                    break
+                end
+            end
+
+            if not isVisibleToEnemy then
+                table.insert(possibleNodes, node)
+            end
+        end
+    end
+
+    if not next(possibleNodes) then
+        -- If we ever reach this, we've graphed the map badly, or the AI is literally surrounded.
+        self.ai.nodegraph:log("No cover to move to")
+
+        return nil
+    end
+
+    --- @type Node
+    local farthestNode
+    local farthestDistance = -1
+    local closestOrigin
+
+    if AiUtility.closestEnemy then
+        closestOrigin = AiUtility.closestEnemy:getOrigin()
+    else
+        closestOrigin = playerOrigin
+    end
+
+    for _, node in pairs(possibleNodes) do
+        local distance = closestOrigin:getDistance(node.origin)
+
+        if distance > farthestDistance then
+            farthestDistance = distance
+            farthestNode = node
+        end
+    end
+
+    return farthestNode
 end
 
 return Nyx.class("AiState", AiState)

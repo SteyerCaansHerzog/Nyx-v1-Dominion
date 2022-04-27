@@ -6,9 +6,7 @@ local Color = require "gamesense/Nyx/v1/Api/Color"
 local CsgoWeapons = require "gamesense/csgo_weapons"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Math = require "gamesense/Nyx/v1/Api/Math"
-local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -83,6 +81,7 @@ local WeaponMode = {
 --- @field lastSoundTimer Timer
 --- @field noticedLoudPlayerTimers Timer[]
 --- @field noticedPlayerTimers Timer[]
+--- @field noticedPlayerLastKnownOrigin Vector3[]
 --- @field onGroundTime Timer
 --- @field onGroundTimer Timer
 --- @field patienceCooldownTimer Timer
@@ -155,7 +154,7 @@ function AiStateEngage:initFields()
     self.hitboxOffsetTimer = Timer:new():startThenElapse()
     self.ignoreDormancyTime = 6.5
     self.ignoreDormancyTimer = Timer:new():startThenElapse()
-    self.ignorePlayerAfter = 20
+    self.ignorePlayerAfter = 10
     self.isIgnoringDormancy = false
     self.isSneaking = false
     self.jiggleDirection = "Left"
@@ -163,6 +162,7 @@ function AiStateEngage:initFields()
     self.jiggleTimer = Timer:new():startThenElapse()
     self.lastSoundTimer = Timer:new():start()
     self.noticedPlayerTimers = {}
+    self.noticedPlayerLastKnownOrigin = {}
     self.onGroundTime = 0.1
     self.onGroundTimer = Timer:new()
     self.patienceCooldownTimer = Timer:new():startThenElapse()
@@ -590,6 +590,8 @@ function AiStateEngage:noticeEnemy(player, range, isLoud, reason)
     if isLoud then
         self.noticedLoudPlayerTimers[player.eid]:start()
     end
+
+    self.noticedPlayerLastKnownOrigin[player.eid] = enemyOrigin
 end
 
 --- @param player Player
@@ -1204,7 +1206,21 @@ function AiStateEngage:moveOnBestTarget(cmd)
         return
     end
 
-    self.activity = "Moving on enemy"
+    if AiUtility.totalThreats >= 2 and not AiUtility.plantedBomb then
+        self.activity = "Backing up from enemies"
+
+        local cover = self:getCoverNode(350)
+
+        if cover then
+            self.ai.nodegraph:pathfind(cover.origin, {
+                objective = Node.types.ENEMY,
+                task = string.format("Engage (backup) %s", self.bestTarget:getName()),
+                canUseJump = false
+            })
+        else
+            self:actionBackUp()
+        end
+    end
 
     local targetOrigin = self.bestTarget:getOrigin()
 
@@ -1239,6 +1255,36 @@ function AiStateEngage:moveOnBestTarget(cmd)
         end
 
         return
+    end
+
+    self.activity = "Moving on enemy"
+
+    local isAvoidingSmokes = true
+
+    if AiUtility.plantedBomb and AiUtility.bombDetonationTime < 15 then
+        isAvoidingSmokes = false
+    end
+
+    -- Avoid smokes when threatened.
+    if AiUtility.isClientThreatened and isAvoidingSmokes then
+        local clientOrigin = AiUtility.client:getOrigin()
+        local isNearSmoke = false
+
+        for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
+            if clientOrigin:getDistance(smoke:m_vecOrigin()) < 300 then
+                isNearSmoke = true
+
+                break
+            end
+        end
+
+        if isNearSmoke and not self.ai.nodegraph:isIdle() then
+            self.ai.nodegraph:clearPath("Inside smoke")
+
+            self:actionBackUp()
+
+            return
+        end
     end
 
     if self.ai.nodegraph:isIdle() then
@@ -1398,8 +1444,13 @@ function AiStateEngage:attackBestTarget(cmd)
     local eyeOrigin = Client.getEyeOrigin()
     local enemyOrigin = enemy:getOrigin()
     local lastSeenEnemyTimer = self.lastSeenTimers[enemy.eid]
+    local currentReactionTime = self.reactionTime
 
-    self.currentReactionTime = (lastSeenEnemyTimer:isStarted() and not lastSeenEnemyTimer:isElapsed(2)) and self.anticipateTime or self.reactionTime
+    if lastSeenEnemyTimer:isNotElapsed(2) then
+        currentReactionTime = self.anticipateTime
+    end
+
+    self.currentReactionTime = currentReactionTime
 
     local shootFov = self:getShootFov(Client.getCameraAngles(), eyeOrigin, enemyOrigin)
 
@@ -1596,6 +1647,16 @@ function AiStateEngage:canHoldAngle()
         return false
     end
 
+    if self.bestTarget then
+        local trace = Trace.getLineToPosition(clientEyeOrigin, self.bestTarget:getEyeOrigin(), AiUtility.traceOptionsAttacking)
+
+        -- The enemy, from our point of view, is occluded by a smoke.
+        -- We shouldn't really push smokes, so we should prefer holding the smoke instead.
+        if clientEyeOrigin:isRayIntersectingSmoke(trace.endPosition) then
+            return true
+        end
+    end
+
     local clientOrigin = AiUtility.client:getOrigin()
     local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 32)
     local hullTrace = Trace.getHullAtPosition(clientOrigin:clone():offset(0, 0, 16), bounds, AiUtility.traceOptionsAttacking)
@@ -1662,16 +1723,6 @@ function AiStateEngage:canHoldAngle()
         end
     end
 
-    if self.bestTarget then
-        local trace = Trace.getLineToPosition(clientEyeOrigin, self.bestTarget:getEyeOrigin(), AiUtility.traceOptionsAttacking)
-
-        -- The enemy, from our point of view, is occluded by a smoke.
-        -- We shouldn't really push smokes, so we should prefer holding the smoke instead.
-        if clientEyeOrigin:isRayIntersectingSmoke(trace.endPosition) then
-            return true
-        end
-    end
-
     -- It's best to just push the enemy.
     return false
 end
@@ -1715,6 +1766,8 @@ function AiStateEngage:walk()
     end
 
     if AiUtility.isBombBeingDefusedByEnemy then
+        canWalk = false
+    elseif AiUtility.isBombBeingPlantedByEnemy then
         canWalk = false
     end
 
