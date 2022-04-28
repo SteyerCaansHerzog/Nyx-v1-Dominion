@@ -10,6 +10,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --- @field isLiveClient boolean
 --- @field isEmulatingRealUserInput boolean
 --- @field openAiApiKey string
+--- @field clientFocusVolume number
 local Config = {
     administrators = {
         -- Insert SteamID64s here that should be administrative accounts.
@@ -17,7 +18,8 @@ local Config = {
     isDebugging = false, -- Enables debugging features.
     isLiveClient = false, -- Enable this when running on the Dominion Service.
     isEmulatingRealUserInput = false, -- Enable this to emulate mouse-keyboard. Results in less accurate movement. Avoids potential bot detection.
-    openAiApiKey = "" -- Set this to provide an API key for use with the Open AI chatbot.
+    openAiApiKey = "", -- Set this to provide an API key for use with the Open AI chatbot.
+    clientFocusVolume = 1.0 -- The volume of a Reaper client that is focused.
 }
 
 --- @return void
