@@ -92,12 +92,12 @@ local function getPath(start, goal, nodes, valid_node_func)
 
         for _, neighbor in pairs(neighbors) do
             if isNotIn(closedset, neighbor) then
-                local tentativeGScore = gScore[current] + current.origin:getDistance(neighbor.origin) + client.random_float(-64, 64)
+                local tentativeGScore = gScore[current] + current.origin:getDistance(neighbor.origin)
 
                 if isNotIn(openset, neighbor) or tentativeGScore < gScore[neighbor] then
                     cameFrom[neighbor] = current
                     gScore[neighbor] = tentativeGScore
-                    fScore[neighbor] = gScore[neighbor] + neighbor.origin:getDistance(goal.origin) + client.random_float(-64, 64)
+                    fScore[neighbor] = gScore[neighbor] + neighbor.origin:getDistance(goal.origin)
 
                     if isNotIn(openset, neighbor) then
                         table.insert(openset, neighbor)
