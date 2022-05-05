@@ -23,6 +23,9 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field changeAngleTime number
 --- @field evadeLookAtAngles Vector3
 --- @field isBlocked boolean
+--- @field isHurt boolean
+--- @field hurtTimer Timer
+--- @field isLookingAtPathfindingDirection boolean
 local AiStateEvade = {
     name = "Evade"
 }
@@ -40,16 +43,25 @@ function AiStateEvade:__init()
     self.evadeLookAtAngles = Client.getCameraAngles()
     self.changeAngleTimer = Timer:new():startThenElapse()
     self.changeAngleTime = 1
+    self.hurtTimer = Timer:new():startThenElapse()
 
     Callbacks.weaponFire(function(e)
         if e.player:isClient() and e.player:isHoldingSniper() then
             self.shotBoltActionRifleTimer:ifPausedThenStart()
         end
     end)
+
+    Callbacks.playerHurt(function(e)
+        if e.victim:isClient() and e.health < 20 then
+            self.hurtTimer:restart()
+        end
+    end)
 end
 
 --- @return void
 function AiStateEvade:assess()
+    self.isLookingAtPathfindingDirection = false
+
     if self.isBlocked then
         self.isBlocked = nil
 
@@ -59,6 +71,12 @@ function AiStateEvade:assess()
     -- No enemies to threaten us.
     if AiUtility.enemiesAlive == 0 then
         return AiPriority.IGNORE
+    end
+
+    if not Client.hasBomb() and not self.hurtTimer:isElapsed(10) and AiUtility.timeData.roundtime_remaining > 40 then
+        self.isLookingAtPathfindingDirection = true
+
+        return AiPriority.EVADE_PASSIVE
     end
 
     local player = AiUtility.client
@@ -71,30 +89,30 @@ function AiStateEvade:assess()
     -- We're flashed.
     if Client.isFlashed() then
         if not AiUtility.isClientPlanting and player:m_bIsDefusing() == 0 then
-            return AiPriority.EVADE
+            return AiPriority.EVADE_ACTIVE
         end
     end
 
     -- We fired an AWP or Scout.
     if self.shotBoltActionRifleTimer:isNotElapsed(1) then
-        return AiPriority.EVADE
+        return AiPriority.EVADE_ACTIVE
     end
 
     -- We're reloading.
     if player:isReloading() and player:getReloadProgress() < 0.66 then
-        return AiPriority.EVADE
+        return AiPriority.EVADE_ACTIVE
     end
 
     -- We're switching weapons.
     if (Time.getCurtime() - player:m_flNextAttack()) <= 0
         and player:getWeapon().classname ~= "CC4"
     then
-        return AiPriority.EVADE
+        return AiPriority.EVADE_ACTIVE
     end
 
     -- We're avoiding a flash.
     if self.ai.flashbang then
-        return AiPriority.EVADE
+        return AiPriority.EVADE_ACTIVE
     end
 
     local eyeOrigin = Client.getEyeOrigin()
@@ -107,7 +125,7 @@ function AiStateEvade:assess()
     -- Avoid grenades.
     for _, grenade in Entity.find({"CBaseCSGrenadeProjectile", "CMolotovProjectile"}) do
         if eyeOrigin:getDistance(grenade:m_vecOrigin()) < 128 then
-            return AiPriority.EVADE
+            return AiPriority.EVADE_ACTIVE
         end
     end
 
@@ -124,15 +142,12 @@ function AiStateEvade:think()
     self.activity = "Seeking cover"
     self.ai.canUseKnife = false
 
-    --- @type Angle
-    local cameraAngles
-
-    if next(AiUtility.visibleEnemies) and AiUtility.visibleEnemies[AiUtility.closestEnemy.eid] then
-        cameraAngles = Client.getEyeOrigin():getAngle(AiUtility.closestEnemy:getEyeOrigin())
-    end
-
-    if self.ai.view.lastLookAtLocationOrigin then
-       self.ai.view:lookAtLocation(self.ai.view.lastLookAtLocationOrigin, self.ai.view.noiseType.MINOR, "Evade look at last spot")
+    if not self.isLookingAtPathfindingDirection then
+        if AiUtility.clientThreatenedFromOrigin then
+            self.ai.view:lookAtLocation(AiUtility.clientThreatenedFromOrigin, self.ai.view.noiseType.MINOR, "Evade look at threat origin")
+        elseif self.ai.view.lastLookAtLocationOrigin then
+            self.ai.view:lookAtLocation(self.ai.view.lastLookAtLocationOrigin, self.ai.view.noiseType.MINOR, "Evade look at last spot")
+        end
     end
 
     if self.ai.nodegraph:isIdle() then
@@ -142,7 +157,7 @@ end
 
 --- @return void
 function AiStateEvade:moveToCover()
-    local cover = self:getCoverNode(1000)
+    local cover = self:getCoverNode(750, AiUtility.clientThreatenedBy)
 
     if not cover then
         return

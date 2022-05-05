@@ -2,7 +2,6 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
 
@@ -120,7 +119,7 @@ function AiStatePlant:assess()
     end
 
     -- Near site and covered.
-    if isNearSite and isCovered then
+    if isNearSite then
         return AiPriority.PLANT_ACTIVE
     end
 

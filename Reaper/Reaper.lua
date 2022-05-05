@@ -818,7 +818,7 @@ function Reaper:think()
 		Client.setTextMode(not isAppFocused)
 
 		if isAppFocused then
-			Client.execute("volume 0.5")
+			Client.execute("volume %.2f", Config.clientFocusVolume)
 
 			cvar.m_rawinput:set_int(1)
 

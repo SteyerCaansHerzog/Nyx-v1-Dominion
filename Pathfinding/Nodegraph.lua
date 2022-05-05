@@ -95,7 +95,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field isTraversingDownLadder boolean
 --- @field isWantingToAttachLadder boolean
 local Nodegraph = {
-    isDebugging = false
+    isDebugging = true
 }
 
 --- @return Nodegraph
@@ -255,7 +255,7 @@ function Nodegraph:setupNodegraph()
         {
             offset = 10,
             validation = function(nodeTestOrigin)
-                local trace = Trace.getHullAtPosition(nodeTestOrigin, Vector3:newBounds(Vector3.align.BOTTOM, 15, 15, 9), AiUtility.traceOptionsPathfinding)
+                local trace = Trace.getHullAtPosition(nodeTestOrigin, Vector3:newBounds(Vector3.align.BOTTOM, 15, 15, 9), AiUtility.traceOptionsPathfinding, "Nodegraph.setupNodegraph<FindNodeTraversableArea>")
 
                 return not trace.isIntersectingGeometry
             end
@@ -263,7 +263,7 @@ function Nodegraph:setupNodegraph()
         {
             offset = 20,
             validation = function(nodeTestOrigin)
-                local trace = Trace.getHullAtPosition(nodeTestOrigin, Vector3:newBounds(Vector3.align.BOTTOM, 30, 30, 9), AiUtility.traceOptionsPathfinding)
+                local trace = Trace.getHullAtPosition(nodeTestOrigin, Vector3:newBounds(Vector3.align.BOTTOM, 30, 30, 9), AiUtility.traceOptionsPathfinding, "Nodegraph.setupNodegraph<FindNodeTraversableArea>")
 
                 return not trace.isIntersectingGeometry
             end
@@ -271,7 +271,7 @@ function Nodegraph:setupNodegraph()
         {
             offset = 40,
             validation = function(nodeTestOrigin)
-                local trace = Trace.getHullAtPosition(nodeTestOrigin, Vector3:newBounds(Vector3.align.BOTTOM, 60, 60, 9), AiUtility.traceOptionsPathfinding)
+                local trace = Trace.getHullAtPosition(nodeTestOrigin, Vector3:newBounds(Vector3.align.BOTTOM, 60, 60, 9), AiUtility.traceOptionsPathfinding, "Nodegraph.setupNodegraph<FindNodeTraversableArea>")
 
                 return not trace.isIntersectingGeometry
             end
@@ -279,7 +279,7 @@ function Nodegraph:setupNodegraph()
         {
             offset = 60,
             validation = function(nodeTestOrigin)
-                local trace = Trace.getHullAtPosition(nodeTestOrigin, Vector3:newBounds(Vector3.align.BOTTOM, 90, 90, 9), AiUtility.traceOptionsPathfinding)
+                local trace = Trace.getHullAtPosition(nodeTestOrigin, Vector3:newBounds(Vector3.align.BOTTOM, 90, 90, 9), AiUtility.traceOptionsPathfinding, "Nodegraph.setupNodegraph<FindNodeTraversableArea>")
 
                 return not trace.isIntersectingGeometry
             end
@@ -464,6 +464,7 @@ function Nodegraph:renderNodegraph()
         [Node.types.RUN] = true,
         [Node.types.JUMP] = true,
         [Node.types.GAP] = true,
+        [Node.types.DOOR] = true,
         [Node.types.CROUCH] = true,
         [Node.types.CROUCH_SHOOT] = true,
         [Node.types.SHOOT] = true,
@@ -806,7 +807,7 @@ function Nodegraph:getVisibleNodesFrom(origin)
     local nodes = {}
 
     for _, node in pairs(self.nodes) do
-        local trace = Trace.getLineToPosition(origin, node.origin)
+        local trace = Trace.getLineToPosition(origin, node.origin, "Nodegraph.getVisibleNodesFrom<FindVisibleNodes>")
 
         if not trace.isIntersectingGeometry then
             table.insert(nodes, node)
@@ -976,13 +977,13 @@ function Nodegraph:setConnections(node, pathLine)
             isPathable = self:isJumpNodeValid(node.origin, searchNode)
 
             if pathLine then
-                local trace = Trace.getLineToPosition(node.origin, searchNode.origin, AiUtility.traceOptionsPathfinding)
+                local trace = Trace.getLineToPosition(node.origin, searchNode.origin, AiUtility.traceOptionsPathfinding, "Nodegraph.setConnections<FindConnectableNodes>")
 
                 if trace.isIntersectingGeometry then
                     isPathable = false
                 end
             else
-                local trace = Trace.getHullToPosition(node.origin, searchNode.origin, bounds, AiUtility.traceOptionsPathfinding)
+                local trace = Trace.getHullToPosition(node.origin, searchNode.origin, bounds, AiUtility.traceOptionsPathfinding, "Nodegraph.setConnections<FindConnectableNodes>")
 
                 isPathable = not trace.isIntersectingGeometry
             end
@@ -1113,7 +1114,7 @@ function Nodegraph:processMovement(cmd)
         end
     end
 
-    if Entity.getGameRules():m_bFreezePeriod() ~= 1 then
+    if AiUtility.gameRules:m_bFreezePeriod() ~= 1 then
         local speed = AiUtility.client:m_vecVelocity():getMagnitude()
 
         if speed < 100 then
@@ -1161,7 +1162,8 @@ function Nodegraph:generateMoveTargetOrigin()
         node.origin,
         idealOrigin,
         Vector3:newBounds(Vector3.align.UP, 32, 32, 16),
-        AiUtility.traceOptionsPathfinding
+        AiUtility.traceOptionsPathfinding,
+        "Nodegraph.generateMoveTargetOrigin<FindMoveTargetOrigin>"
     )
 
     -- Generate a random vector around the node's origin.
@@ -1181,7 +1183,7 @@ function Nodegraph:avoidTeammates(cmd)
         return
     end
 
-    if Entity.getGameRules():m_bFreezePeriod() == 1 then
+    if AiUtility.gameRules:m_bFreezePeriod() == 1 then
         return
     end
 
@@ -1262,7 +1264,7 @@ function Nodegraph:avoidClipping(cmd)
         --- @type Vector3
         local checkDirection = direction(moveAngle)
         local boundsTraceOffset = boundsOrigin + checkDirection * 20
-        local trace = Trace.getHullToPosition(boundsTraceOrigin, boundsTraceOffset, bounds, AiUtility.traceOptionsPathfinding)
+        local trace = Trace.getHullToPosition(boundsTraceOrigin, boundsTraceOffset, bounds, AiUtility.traceOptionsPathfinding, "Nodegraph.avoidClipping<FindWallClipSide>")
 
         if trace.isIntersectingGeometry then
             local avoidDirection = clientOrigin - checkDirection * 8

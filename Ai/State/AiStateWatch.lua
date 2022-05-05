@@ -143,6 +143,10 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateWatch:think(cmd)
+    if not self.node then
+        return
+    end
+
     self.activity = "Watching area"
 
     if AiUtility.plantedBomb then
@@ -188,7 +192,7 @@ function AiStateWatch:think(cmd)
 
     if distance < 200 then
         local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
-        local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding)
+        local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding, "AiStateWatch.think<FindSpotVisible>")
 
        self.ai.view:lookAtLocation(trace.endPosition, 3, self.ai.view.noiseType.NONE, "Watch look at angle")
 

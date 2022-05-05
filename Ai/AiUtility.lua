@@ -18,10 +18,6 @@ local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
 
---{{{ Modules
-local DominionMenu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
---}}}
-
 --{{{ Enums
 --- @class AiWeaponPriorityGeneral
 local AiWeaponPriorityGeneral = {
@@ -86,6 +82,7 @@ local AiWeaponNames = {
 --- @field bombDetonationTime number
 --- @field canDefuse boolean
 --- @field client Player
+--- @field clientThreatenedBy Player
 --- @field clientThreatenedFromOrigin Vector3
 --- @field closestEnemy Player
 --- @field defuseTimer Timer
@@ -95,6 +92,7 @@ local AiWeaponNames = {
 --- @field enemyDistances number[]
 --- @field enemyFovs number[]
 --- @field enemyHitboxes table<number, Vector3[]>
+--- @field gameRules GameRules
 --- @field hasBomb Player
 --- @field isBombBeingDefusedByEnemy boolean
 --- @field isBombBeingDefusedByTeammate boolean
@@ -151,6 +149,7 @@ function AiUtility:initFields()
     AiUtility.teammatesAlive = 0
     AiUtility.totalThreats = 0
     AiUtility.threatUpdateTimer = Timer:new():startThenElapse()
+    AiUtility.gameRules = Server.isIngame() and Entity.getGameRules()
 
     if Server.isIngame() then
         AiUtility.timeData = Table.fromPanorama(Panorama.GameStateAPI.GetTimeDataJSO())
@@ -364,7 +363,37 @@ function AiUtility.updateMisc()
         AiUtility.weaponPriority = AiWeaponPriorityGeneral
     end
 
+    AiUtility.gameRules = Entity.getGameRules()
     AiUtility.timeData = Table.fromPanorama(Panorama.GameStateAPI.GetTimeDataJSO())
+end
+
+--- @return void
+function AiUtility.updateAllPlayers()
+    AiUtility.teammates = {}
+    -- Very funny Valve.
+    AiUtility.teammatesAlive = -1
+
+    local playerResource = entity.get_player_resource()
+
+    for eid = 1, globals.maxplayers() do
+        local isEnemy = entity.is_enemy(eid)
+        local isAlive = entity.get_prop(playerResource, "m_bAlive", eid)
+
+        if isAlive == 1 then
+            if isEnemy then
+                AiUtility.enemiesAlive = AiUtility.enemiesAlive + 1
+            else
+                AiUtility.teammatesAlive = AiUtility.teammatesAlive + 1
+            end
+        end
+    end
+
+    for _, teammate in Player.find(function(p)
+        return p:isTeammate() and p:isAlive() and not p:isClient()
+    end) do
+        AiUtility.teammates[teammate.eid] = teammate
+        AiUtility.isLastAlive = false
+    end
 end
 
 --- @return void
@@ -410,11 +439,18 @@ function AiUtility.updateEnemies()
         local isVisible = false
 
         if not enemy:isDormant() then
-            for _, hitbox in pairs(enemy:getHitboxPositions()) do
-                local trace = Trace.getLineToPosition(clientEyeOrigin, hitbox, AiUtility.traceOptionsAttacking)
+            for _, hitbox in pairs(enemy:getHitboxPositions({
+                Player.hitbox.HEAD,
+                Player.hitbox.PELVIS,
+                Player.hitbox.LEFT_LOWER_LEG,
+                Player.hitbox.RIGHT_LOWER_ARM,
+                Player.hitbox.LEFT_LOWER_ARM,
+                Player.hitbox.RIGHT_LOWER_LEG,
+            })) do
+                if not clientEyeOrigin:isRayIntersectingSmoke(hitbox) then
+                    local trace = Trace.getLineToPosition(clientEyeOrigin, hitbox, AiUtility.traceOptionsAttacking, "AiUtility.updateEnemies<FindPointVisibleToClient>")
 
-                if not trace.isIntersectingGeometry then
-                    if not clientEyeOrigin:isRayIntersectingSmoke(hitbox) then
+                    if not trace.isIntersectingGeometry then
                         isVisible = true
 
                         break
@@ -468,41 +504,12 @@ function AiUtility.updateEnemies()
 end
 
 --- @return void
-function AiUtility.updateAllPlayers()
-    AiUtility.teammates = {}
-    -- Very funny Valve.
-    AiUtility.teammatesAlive = -1
-
-    local playerResource = entity.get_player_resource()
-
-    for eid = 1, globals.maxplayers() do
-        local isEnemy = entity.is_enemy(eid)
-        local isAlive = entity.get_prop(playerResource, "m_bAlive", eid)
-
-        if isAlive == 1 then
-            if isEnemy then
-                AiUtility.enemiesAlive = AiUtility.enemiesAlive + 1
-            else
-                AiUtility.teammatesAlive = AiUtility.teammatesAlive + 1
-            end
-        end
-    end
-
-    for _, teammate in Player.find(function(p)
-        return p:isTeammate() and p:isAlive() and not p:isClient()
-    end) do
-        AiUtility.teammates[teammate.eid] = teammate
-        AiUtility.isLastAlive = false
-    end
-end
-
---- @return void
 function AiUtility.updateThreats()
     AiUtility.threats = {}
 
     -- Update threats.
     local eyeOrigin = Client.getEyeOrigin() + AiUtility.client:m_vecVelocity():set(nil, nil, 0) * 0.33
-    local threatUpdateTime = AiUtility.clientThreatenedFromOrigin and 0.3 or 0.1
+    local threatUpdateTime = 0.15
     local threats = 0
 
     -- Don't update the threat origin too often, or it'll be obvious this is effectively wallhacking.
@@ -510,7 +517,15 @@ function AiUtility.updateThreats()
         AiUtility.clientThreatenedFromOrigin = nil
         AiUtility.isClientThreatened = false
 
-        local clientPlane = eyeOrigin:getPlane(Vector3.align.CENTER, 75)
+        local clientPlane = eyeOrigin:getPlane(Vector3.align.CENTER, 120)
+
+        -- Prevent our own plane from clipping thin walls.
+        -- It can look very wrong when pre-aiming through certain geometry.
+        for id, vertex in pairs(clientPlane) do
+            local trace = Trace.getLineToPosition(eyeOrigin, vertex, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindClientPlaneWallCollidePoint>")
+
+            clientPlane[id] = trace.endPosition
+        end
 
         for _, enemy in pairs(AiUtility.enemies) do
             local enemyOffset = enemy:getOrigin():offset(0, 0, 72)
@@ -523,31 +538,33 @@ function AiUtility.updateThreats()
             local closestPointDistance = math.huge
             local absPitch = math.abs(enemyAngle.p)
             local traceExtension = 1 - Math.getFloat(Math.getClamped(absPitch, 0, 75), 90)
-            local traceDistance = 250 * traceExtension
+            local traceDistance = 300 * traceExtension
             local lowestFov = math.huge
 
             for _ = 1, steps do
                 local testOrigin = enemyOffset + bandAngle:getForward() * traceDistance
-                local wallTrace = Trace.getLineToPosition(enemyOffset, testOrigin, AiUtility.traceOptionsAttacking)
+                local findWallCollideTrace = Trace.getLineToPosition(enemyOffset, testOrigin, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindWallCollidePoint>")
 
                 for _, vertex in pairs(clientPlane) do
                     -- Trace to see if we can see the previous trace.
-                    local testTrace = Trace.getLineToPosition(wallTrace.endPosition, vertex, AiUtility.traceOptionsAttacking)
-                    local fov = enemyAngle:getFov(eyeOrigin, wallTrace.endPosition)
+                    local findVisibleToEnemyTrace = Trace.getLineToPosition(findWallCollideTrace.endPosition, vertex, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindPointVisibleToEnemy>")
+                    local fov = enemyAngle:getFov(eyeOrigin, findWallCollideTrace.endPosition)
 
                     -- Set the closest point to the enemy as the best point to look at.
-                    if not testTrace.isIntersectingGeometry then
-                        local distance = enemyOffset:getDistance(testTrace.endPosition)
+                    if not findVisibleToEnemyTrace.isIntersectingGeometry then
+                        local distance = enemyOffset:getDistance(findVisibleToEnemyTrace.endPosition)
 
                         if distance < closestPointDistance then
                             closestPointDistance = distance
-                            closestPoint = wallTrace.endPosition
+                            closestPoint = findWallCollideTrace.endPosition
                         end
+
+                        AiUtility.clientThreatenedBy = enemy
 
                         if fov < lowestFov and fov < 20 then
                             lowestFov = fov
 
-                            AiUtility.clientThreatenedFromOrigin = wallTrace.endPosition
+                            AiUtility.clientThreatenedFromOrigin = findWallCollideTrace.endPosition
                         end
                     end
                 end

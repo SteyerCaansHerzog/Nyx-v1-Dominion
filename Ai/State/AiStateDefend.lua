@@ -307,12 +307,12 @@ function AiStateDefend:think(cmd)
         self.defendTimer:ifPausedThenStart()
 
         local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
-        local lookDirectionTrace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding)
-        local nodeVisibleTrace = Trace.getLineToPosition(Client.getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking)
+        local lookDirectionTrace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding, "AiStateDefend.think<FindLookAngle>")
+        local nodeVisibleTrace = Trace.getLineToPosition(Client.getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateDefend.think<FindSpotVisible>")
 
         -- Duck when holding this node.
         if self.canDuckAtNode and distance < 32 then
-            local duckTrace = Trace.getLineToPosition(self.node.origin:clone():offset(0, 0, 28), lookDirectionTrace.endPosition, AiUtility.traceOptionsAttacking)
+            local duckTrace = Trace.getLineToPosition(self.node.origin:clone():offset(0, 0, 28), lookDirectionTrace.endPosition, AiUtility.traceOptionsAttacking, "AiStateDefend.think<FindCanDuck>")
 
             if not duckTrace.isIntersectingGeometry then
                 cmd.in_duck = 1

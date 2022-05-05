@@ -1,5 +1,4 @@
 --{{{ Dependencies
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
@@ -38,7 +37,7 @@ function AiStateAvoidInfernos:assess()
 
         -- We're doing a cheap way of detecting if we're inside a molotov.
         -- May require tweaking.
-        if distance < 220 then
+        if distance < 240 then
             self.inferno = inferno
 
             return AiPriority.AVOID_INFERNO
@@ -66,36 +65,10 @@ end
 function AiStateAvoidInfernos:think(cmd)
     self.activity = "Getting out of a fire"
 
-    local clientOrigin = AiUtility.client:getOrigin()
-    local eyeOrigin = Client.getEyeOrigin()
-    local cameraAngles = Client.getCameraAngles()
-    local infernoOrigin = self.inferno:m_vecOrigin()
-
-    --- @type Node
-    local targetNode
-    --- @type Node
-    local backupNode
-
-    for _, node in pairs(self.ai.nodegraph.nodes) do
-        if node.active and infernoOrigin:getDistance(node.origin) > 300 and clientOrigin:getDistance(node.origin) < 1024 then
-            backupNode = node
-
-            local fov = cameraAngles:getFov(eyeOrigin, node.origin)
-
-            if fov > 55 then
-                targetNode = node
-
-                break
-            end
-        end
-    end
-
-    if not targetNode then
-        targetNode = backupNode
-    end
-
     if self.ai.nodegraph:isIdle() then
-        self.ai.nodegraph:pathfind(targetNode.origin, {
+        local cover = self:getCoverNode(600, AiUtility.closestEnemy)
+
+        self.ai.nodegraph:pathfind(cover.origin, {
             objective = Node.types.GOAL,
             task = "Avoiding inferno",
             canUseInactive = true

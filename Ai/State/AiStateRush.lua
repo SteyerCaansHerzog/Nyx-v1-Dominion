@@ -28,7 +28,7 @@ end
 --- @return void
 function AiStateRush:__init()
     Callbacks.roundStart(function()
-        self.canRushThisRound = Client.getRandomInt(1, 5) == 1
+        self.canRushThisRound = Client.getChance(8)
     end)
 end
 
@@ -49,7 +49,7 @@ end
 
 --- @return void
 function AiStateRush:activate()
-    local nodes = Table.new({self.ai.nodegraph.tSpawn}, self.ai.nodegraph.objectiveRush)
+    local nodes = Table.new(self.ai.nodegraph.objectiveRush)
     local node = Table.getRandom(nodes, Node)
 
     if not node then
@@ -76,7 +76,7 @@ end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function AiStateRush:think()
+function AiStateRush:think(cmd)
     self.activity = "Rushing"
 
     if self.ai.nodegraph:isIdle() then

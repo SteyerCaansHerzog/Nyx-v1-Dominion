@@ -197,7 +197,7 @@ function AiStatePickupItems:getNearbyItems(items)
             break
         end
 
-        local trace = Trace.getLineToPosition(Client.getEyeOrigin(), weaponOrigin, AiUtility.traceOptionsPathfinding)
+        local trace = Trace.getLineToPosition(Client.getEyeOrigin(), weaponOrigin, AiUtility.traceOptionsPathfinding, "AiStatePickupItems.getNearbyItems<FindVisibleItems>")
 
         if trace.isIntersectingGeometry then
             break
@@ -224,6 +224,11 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStatePickupItems:think(cmd)
+    -- Why are we here?
+    if not self.item then
+        return
+    end
+
     local weapon = CsgoWeapons[self.item:m_iItemDefinitionIndex()]
 
     if weapon then
@@ -242,7 +247,7 @@ function AiStatePickupItems:think(cmd)
     if self.item:m_vecOrigin() == nil or owner then
         self.item = nil
 
-        if Entity.getGameRules():m_bFreezePeriod() == 1 and owner == AiUtility.client.eid then
+        if AiUtility.gameRules:m_bFreezePeriod() == 1 and owner == AiUtility.client.eid then
             self.ai.voice.pack:speakGratitude()
         end
 
@@ -253,7 +258,7 @@ function AiStatePickupItems:think(cmd)
     local origin = player:getOrigin()
     local weaponOrigin = self.item:m_vecOrigin()
     local distance = origin:getDistance(weaponOrigin)
-    local trace = Trace.getLineInDirection(weaponOrigin, Vector3:new(0, 0, -1), AiUtility.traceOptionsPathfinding)
+    local trace = Trace.getLineInDirection(weaponOrigin, Vector3:new(0, 0, -1), AiUtility.traceOptionsPathfinding, "AiStatePickupItems.think<FindItemDistanceToGround>")
     local weaponDistanceToFloor = weaponOrigin:getDistance(trace.endPosition)
 
     if self.ai.nodegraph.pathfindFails > 2 and weaponDistanceToFloor < 10 then

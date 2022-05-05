@@ -18,7 +18,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field isBombPlanted boolean
 --- @field isForcedToSave boolean
 --- @field node Node
---- @field reachedDestination boolean
+--- @field isAtDestination boolean
 local AiStateEvacuate = {
     name = "Evacuate"
 }
@@ -63,7 +63,7 @@ function AiStateEvacuate:assess()
         end
     elseif AiUtility.client:isTerrorist() then
         -- We should save.
-        if self:isRoundWinProbabilityLow() then
+        if self:isRoundWinProbabilityLow()then
             return AiPriority.SAVE_ROUND
         end
 
@@ -83,6 +83,11 @@ end
 
 --- @return boolean
 function AiStateEvacuate:isRoundWinProbabilityLow()
+    -- Prevent sitting in a corner and being murdered.
+    if self.isAtDestination and AiUtility.isClientThreatened then
+        return false
+    end
+
     local roundsPlayed = Entity.getGameRules():m_totalRoundsPlayed()
     local maxRounds = cvar.mp_maxrounds:get_int()
     local halfTime = math.ceil(maxRounds / 2)
@@ -146,16 +151,7 @@ function AiStateEvacuate:activate()
 
     self.isBombPlanted = AiUtility.isBombPlanted()
     self.node = node
-
-   self.ai.nodegraph:pathfind(node.origin, {
-        objective = Node.types.GOAL,
-        task = string.format("Evacuating to hiding spot", node.id),
-        onComplete = function()
-            self.reachedDestination = true
-
-           self.ai.nodegraph:log("Hiding [%i]", node.id)
-        end
-    })
+    self.isAtDestination = false
 end
 
 --- @return void
@@ -166,8 +162,6 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEvacuate:think(cmd)
-    self.activity = "Going to hide"
-
     if not self.node then
         self:activate()
 
@@ -188,7 +182,19 @@ function AiStateEvacuate:think(cmd)
         end
     end
 
-    local trace = Trace.getLineToPosition(AiUtility.client:getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking)
+    self.activity = "Going to hide"
+
+    if not self.isAtDestination and self.ai.nodegraph:isIdle() then
+        self.ai.nodegraph:pathfind(self.node.origin, {
+            objective = Node.types.GOAL,
+            task = "Evacuating to hiding spot",
+            onComplete = function()
+                self.isAtDestination = true
+            end
+        })
+    end
+
+    local trace = Trace.getLineToPosition(AiUtility.client:getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateEvacuate.think<FindSpotVisible>")
     local distance = AiUtility.client:getOrigin():getDistance(self.node.origin)
 
     if distance < 32 then
@@ -201,7 +207,7 @@ function AiStateEvacuate:think(cmd)
         self.ai.canUseKnife = false
 
         local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
-        local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding)
+        local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding, "AiStateEvacuate.think<FindLookAngle>")
 
        self.ai.view:lookAtLocation(trace.endPosition, 4, self.ai.view.noiseType.NONE, "Evacuate look at angle")
     end

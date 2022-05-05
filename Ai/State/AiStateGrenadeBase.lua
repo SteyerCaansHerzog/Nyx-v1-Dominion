@@ -81,7 +81,7 @@ function AiStateGrenadeBase:assess()
     end
 
     -- Ignore before round starts. Otherwise we can trip the cooldown.
-    if Entity.getGameRules():m_bFreezePeriod() == 1 then
+    if AiUtility.gameRules:m_bFreezePeriod() == 1 then
         return AiPriority.IGNORE
     end
 
@@ -246,7 +246,7 @@ function AiStateGrenadeBase:watchForOccupiedNodes()
     for _, node in pairs(nodes) do repeat
         local distance = clientOrigin:getDistance(node.origin)
 
-        if distance > 1500 then
+        if distance > 2000 then
             break
         end
 
@@ -306,6 +306,12 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateGrenadeBase:think(cmd)
+    if AiUtility.gameRules:m_bFreezePeriod() == 1 then
+        self:deactivate()
+
+        return
+    end
+
     -- Don't know why we are running with a nil node.
     if not self.node then
         self:deactivate()
@@ -314,7 +320,7 @@ function AiStateGrenadeBase:think(cmd)
     end
 
 
-    if AiStateGrenadeBase.usedNodes[self.node.id] and AiStateGrenadeBase.usedNodes[self.node.id]:isNotElapsed(15) then
+    if AiStateGrenadeBase.usedNodes[self.node.id] and not AiStateGrenadeBase.usedNodes[self.node.id]:isElapsed(15) then
         self:deactivate()
 
         return
@@ -385,7 +391,7 @@ function AiStateGrenadeBase:think(cmd)
             and self.throwTimer:isElapsedThenRestart(self.throwTime)
             and player:isHoldingWeapons(self.weapons)
             and player:isAbleToAttack()
-            and speed < 10
+            and speed < 5
         then
             cmd.in_attack = 1
         end

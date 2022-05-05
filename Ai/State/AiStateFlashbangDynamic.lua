@@ -96,9 +96,9 @@ function AiStateFlashbangDynamic:assess()
     -- Oh Source, do tell us where this stray nade "prediction" went?
     local impactTrace = Trace.getHullAtAngle(clientEyeOrigin, predictionAngles, bounds, {
         skip = AiUtility.client.eid,
-        mask = Trace.mask.SHOT,
+        mask = Trace.mask.PLAYERSOLID,
         distance = predictionDistance
-    })
+    }, "AiStateFlashbangDynamic.assess<FindFlashbangDetonatePoint>")
 
     -- Throw away traces that end too close to us because they're useless and will just blind theself.ai.
     -- Although, the AI would probably want to be blind if it pulled up its own hood and found this demented-ass logic.
@@ -115,8 +115,8 @@ function AiStateFlashbangDynamic:assess()
         -- Not using getHitboxPosition because getOrigin works on dormancy. That and CSGO's hitbox positions are more demented than this code.
         local blindTrace = Trace.getHullToPosition(impactTrace.endPosition, enemyTestOrigin, bounds, {
             skip = enemy.eid,
-            mask = Trace.mask.SHOT
-        })
+            mask = Trace.mask.PLAYERSOLID
+        }, "AiStateFlashbangDynamic.assess<FindEnemyVisibleToFlashbang>")
 
         -- No line of sight. Lucky for him.
         if blindTrace.isIntersectingGeometry then
@@ -135,7 +135,7 @@ function AiStateFlashbangDynamic:assess()
             skip = AiUtility.client.eid,
             mask = Trace.mask.VISIBLE,
             distance = 200
-        })
+        }, "AiStateFlashbangDynamic.assess<FindWallTooClose>")
 
         -- We're gonna try these angles. Pray on God.
         self.throwAngles = clientEyeOrigin:getAngle(impactTrace.endPosition)
@@ -148,7 +148,7 @@ function AiStateFlashbangDynamic:assess()
         self.targetPlayer = enemy
 
         local jumpEyeOrigin = clientEyeOrigin:clone():offset(0, 0, 60)
-        local trace = Trace.getLineToPosition(jumpEyeOrigin, enemyTestOrigin, AiUtility.traceOptionsAttacking)
+        local trace = Trace.getLineToPosition(jumpEyeOrigin, enemyTestOrigin, AiUtility.traceOptionsAttacking, "AiStateFlashbangDynamic.assess<FindJumpVisibleToEnemy>")
         local isVisibleWhenJumping = not trace.isIntersectingGeometry
 
         self.canJumpThrow = not isVisibleWhenJumping and predictionAngles.p < -40 and predictionAngles.p > -70

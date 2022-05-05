@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Menu = require "gamesense/Nyx/v1/Api/Menu"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Process = require "gamesense/Nyx/v1/Api/Process"
@@ -14,6 +15,7 @@ local Steamworks = require "gamesense/steamworks"
 local AiAction = require "gamesense/Nyx/v1/Dominion/Ai/Action/AiAction"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Performance = require "gamesense/Nyx/v1/Dominion/Utility/Performance"
+local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 --}}}
 
 --{{{ AiActionSetBaseState
@@ -45,6 +47,7 @@ function AiActionSetBaseState:__init()
 			return
 		end
 
+		self:setMenuStates()
 		self:setAppFocusedFps()
 	end)
 end
@@ -94,6 +97,13 @@ end
 --- @return void
 function AiActionSetBaseState:setClientLoaderLock()
 	writefile("lua/gamesense/Nyx/v1/Dominion/Resource/Data/ClientLoaderLock", "1")
+end
+
+--- @return void
+function AiActionSetBaseState:setMenuStates()
+	-- Force dormancy to be disabled.
+	-- This feature is currently extremely broken and completely ruins the AI.
+	Menu.dormantRef:set(false)
 end
 
 --- @return void

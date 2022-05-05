@@ -28,7 +28,7 @@ end
 
 --- @return void
 function AiStatePush:__init()
-    Callbacks.roundStart(function()
+    Callbacks.roundPrestart(function()
         self.isDefendingBomb = false
         self.isDeactivated = false
         self.node = nil
@@ -57,6 +57,10 @@ end
 --- @param site string
 --- @return void
 function AiStatePush:activate(site)
+    if not site then
+        site = self.site
+    end
+
     local node = self:getActivityNode(site)
 
     if not node then
@@ -80,6 +84,10 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStatePush:think(cmd)
+    if not self.node then
+        return
+    end
+
     if not self.site then
         return
     end

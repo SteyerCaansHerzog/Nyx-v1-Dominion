@@ -32,22 +32,36 @@ function AiState:new(fields)
 end
 
 --- @param range number
+--- @param target Player
 --- @return Node
-function AiState:getCoverNode(range)
+function AiState:getCoverNode(range, target)
     local player = AiUtility.client
     local playerOrigin = player:getOrigin()
-    local cameraAngles = -(Client.getCameraAngles():set(0))
+    local coverAngle
+
+    if target then
+        coverAngle = -(playerOrigin:getAngle(target:getOrigin()))
+    else
+        coverAngle = -(Client.getCameraAngles())
+    end
 
     --- @type Node[]
     local possibleNodes = {}
+    local i = 0
 
     for _, node in pairs(self.ai.nodegraph.nodes) do
-        if playerOrigin:getDistance(node.origin) < range and cameraAngles:getFov(playerOrigin, node.origin) < 90 then
+        if playerOrigin:getDistance(node.origin) < range and coverAngle:getFov(playerOrigin, node.origin) < 90 then
+            i = i + 1
+
+            if i > 50 then
+                break
+            end
+
             local isVisibleToEnemy = false
 
             for _, enemy in pairs(AiUtility.enemies) do
                 local enemyPos = enemy:getOrigin():offset(0, 0, 64)
-                local trace = Trace.getLineToPosition(enemyPos, node.origin, AiUtility.traceOptionsAttacking)
+                local trace = Trace.getLineToPosition(enemyPos, node.origin, AiUtility.traceOptionsAttacking, "AiState.getCoverNode<FindNodeVisibleToEnemy>")
 
                 if not trace.isIntersectingGeometry then
                     isVisibleToEnemy = true

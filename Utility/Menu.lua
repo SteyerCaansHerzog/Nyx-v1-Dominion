@@ -39,6 +39,7 @@ local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 --- @field restoreReaperManifest MenuItem
 ---
 --- @field standaloneQuickStop MenuItem
+--- @field dormantRef MenuItem
 local DominionMenu = {}
 
 --- @return DominionMenu
@@ -48,6 +49,7 @@ end
 
 --- @return void
 function DominionMenu:__init()
+    self.dormantRef = Menu.reference("visuals", "player esp", "dormant")
     self.standaloneQuickStopRef = Menu.reference("misc", "movement", "standalone quick stop")
 
     local menu = Menu:new("config", "presets")

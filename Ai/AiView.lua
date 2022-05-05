@@ -599,9 +599,6 @@ function AiView:setViewAngles()
         self:setIdealLookAhead(idealViewAngles)
         -- Watch corners enemies are actually occluded by.
         self:setIdealWatchCorner(idealViewAngles)
-        -- Check corners enemies can be behind. This particular logic is also more realistic looking, albeit flawed
-        -- compared to watch corner.
-        self:setIdealCheckCorner(idealViewAngles)
 
         smoothingCutoffThreshold = 3
     end
@@ -830,55 +827,6 @@ end
 
 --- @param idealViewAngles Angle
 --- @return void
-function AiView:setIdealCheckCorner(idealViewAngles)
-    local player = AiUtility.client
-    local clientOrigin = player:getOrigin()
-    local closestCheckNode = self.nodegraph:getClosestNodeOf(clientOrigin, Node.types.CHECK)
-
-    -- The AI isn't near enough to a check node to use one.
-    if not closestCheckNode or clientOrigin:getDistance(closestCheckNode.origin) > 200 then
-        return
-    end
-
-    local isEnemyActivatingCheck = false
-    local clientEyeOrigin = Client.getEyeOrigin()
-    local checkOrigin = closestCheckNode.origin:clone():offset(0, 0, 46)
-    local checkDirection = closestCheckNode.direction
-    local trace = Trace.getLineAtAngle(checkOrigin, checkDirection, AiUtility.traceOptionsPathfinding)
-    local checkNearOrigin = trace.endPosition
-
-    -- Find an enemy matching the check node's criteria.
-    for _, enemy in pairs(AiUtility.enemies) do
-        if enemy:getOrigin():getDistance(checkNearOrigin) < 256 then
-            isEnemyActivatingCheck = true
-
-            break
-        end
-    end
-
-    -- We should use the check node.
-    if isEnemyActivatingCheck then
-        local cameraAngles = Client.getCameraAngles()
-        local diff = cameraAngles:getMaxDiff(closestCheckNode.direction)
-
-        -- Prevent the AI looking when its velocity is low, or the AI is facing well away from the check node.
-        if player:m_vecVelocity():getMagnitude() > 100 and diff < 135 then
-            -- Find the point that the check node is looking at.
-            local trace = Trace.getLineAtAngle(checkOrigin, closestCheckNode.direction, AiUtility.traceOptionsPathfinding)
-
-            -- Set look speed so we don't use the speed set by AI behaviour.
-            self.lookSpeed = 4
-            self.lookNote = "AiView check corner"
-
-            idealViewAngles:setFromAngle(clientEyeOrigin:getAngle(trace.endPosition))
-        end
-    end
-
-    self:setNoiseType(AiViewNoiseType.MOVING)
-end
-
---- @param idealViewAngles Angle
---- @return void
 function AiView:setIdealWatchCorner(idealViewAngles)
     if not self.isAllowedToWatchCorners then
         self.isAllowedToWatchCorners = true
@@ -1028,7 +976,7 @@ function AiView:isPlayerBlocked(node)
 
     local nodeOrigin = node.origin:clone():offset(0, 0, 40)
     local offset = nodeOrigin + node.direction:getForward() * 48
-    local trace = Trace.getLineToPosition(nodeOrigin, offset, AiUtility.traceOptionsPathfinding)
+    local trace = Trace.getHullToPosition(nodeOrigin, offset, Vector3:newBounds(Vector3.align.CENTER, 8), AiUtility.traceOptionsPathfinding, "AiView.isPlayerBlocked<FindObstruction>")
 
     return trace.isIntersectingGeometry
 end

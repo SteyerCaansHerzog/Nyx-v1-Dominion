@@ -38,6 +38,7 @@ local AiStateEvacuate = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEvacu
 local AiStateEvade = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEvade"
 local AiStateFlashbang = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFlashbang"
 local AiStateFollow = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFollow"
+local AiStateFreezetime = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFreezetime"
 local AiStateGraffiti = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGraffiti"
 local AiStateFlashbangDynamic = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFlashbangDynamic"
 local AiStateHeGrenade = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateHeGrenade"
@@ -54,6 +55,7 @@ local AiStateWait = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWait"
 local AiStateWatch = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWatch"
 
 local AiChatCommandAfk = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandAfk"
+local AiChatCommandAim = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandAim"
 local AiChatCommandBacktrack = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBacktrack"
 local AiChatCommandBomb = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBomb"
 local AiChatCommandBoost = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBoost"
@@ -149,6 +151,7 @@ local AiController = {
 		evade = AiStateEvade,
 		--flashbang = AiStateFlashbang,
 		follow = AiStateFollow,
+		freezetime = AiStateFreezetime,
 		graffiti = AiStateGraffiti,
 		flashbangDynamic = AiStateFlashbangDynamic,
 		heGrenade = AiStateHeGrenade,
@@ -168,6 +171,7 @@ local AiController = {
 	commands = {
 		afk = AiChatCommandAfk,
 		ai = AiChatCommandEnabled,
+		aim = AiChatCommandAim,
 		assist = AiChatCommandAssist,
 		bomb = AiChatCommandBomb,
 		boost = AiChatCommandBoost,
@@ -753,7 +757,7 @@ function AiController:deactivateNodes(eid, origin, radius, checkForEnemies)
 	local deactivatedNodes = {}
 
 	--- @type Node[]
-	local plantNodes = Table.merge(self.nodegraph.objectiveAPlant, self.nodegraph.objectiveBPlant)
+	local plantNodes = Table.getMerged(self.nodegraph.objectiveAPlant, self.nodegraph.objectiveBPlant)
 
 	for _, node in pairs(self.nodegraph.nodes) do repeat
 		if node.active and node.origin:getDistance(origin) <= radius then
@@ -903,14 +907,6 @@ function AiController:renderUi()
 
 	uiPos:offset(0, offset)
 
-	if not DominionMenu.enableAi:get() then
-		uiPos:drawSurfaceText(Font.MEDIUM_BOLD, Color:hsla(0, 0.8, 0.6, 255), "l", "AI DISABLED")
-
-		uiPos:offset(0, offset)
-
-		return
-	end
-
 	if Server.isConnected() then
 		local ping = Server.getLatency() * 1000
 		local loss = Server.getLoss() * 100
@@ -937,6 +933,14 @@ function AiController:renderUi()
 	))
 
 	uiPos:offset(0, offset)
+
+	if not DominionMenu.enableAi:get() then
+		uiPos:drawSurfaceText(Font.MEDIUM_BOLD, Color:hsla(0, 0.8, 0.6, 255), "l", "AI DISABLED")
+
+		uiPos:offset(0, offset)
+
+		return
+	end
 
 	if not player:isAlive() then
 		return
@@ -1053,28 +1057,32 @@ function AiController:activities(cmd)
 
 	if canReload and not AiUtility.isClientThreatened and not AiUtility.isRoundOver then
 		local weapon = Entity:create(player:m_hActiveWeapon())
-		local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
-		local ammo = weapon:m_iClip1()
-		local maxAmmo = csgoWeapon.primary_clip_size
 
-		local reloadRatio = 0.9
+		-- SetupCommandEvent but no weapon? Valve?
+		if weapon then
+			local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
+			local ammo = weapon:m_iClip1()
+			local maxAmmo = csgoWeapon.primary_clip_size
 
-		if AiUtility.closestEnemy then
-			local closestEnemyDistance = origin:getDistance(AiUtility.closestEnemy:getOrigin())
+			local reloadRatio = 0.9
 
-			if closestEnemyDistance > 1000 then
-				reloadRatio = 0.75
-			elseif closestEnemyDistance > 750 then
-				reloadRatio = 0.55
-			elseif closestEnemyDistance > 500 then
-				reloadRatio = 0.25
-			elseif closestEnemyDistance > 250 then
-				reloadRatio = 0
+			if AiUtility.closestEnemy then
+				local closestEnemyDistance = origin:getDistance(AiUtility.closestEnemy:getOrigin())
+
+				if closestEnemyDistance > 1500 then
+					reloadRatio = 0.75
+				elseif closestEnemyDistance > 1250 then
+					reloadRatio = 0.45
+				elseif closestEnemyDistance > 1000 then
+					reloadRatio = 0.25
+				elseif closestEnemyDistance > 500 then
+					reloadRatio = 0.1
+				end
 			end
-		end
 
-		if ammo / maxAmmo < reloadRatio then
-			cmd.in_reload = 1
+			if ammo / maxAmmo < reloadRatio then
+				cmd.in_reload = 1
+			end
 		end
 	end
 

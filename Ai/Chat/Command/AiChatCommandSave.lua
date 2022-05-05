@@ -25,7 +25,7 @@ function AiChatCommandSave:invoke(ai, sender, args)
         return
     end
 
-    if Entity.getGameRules():m_bFreezePeriod() == 1 then
+    if AiUtility.gameRules:m_bFreezePeriod() == 1 then
         return
     end
 

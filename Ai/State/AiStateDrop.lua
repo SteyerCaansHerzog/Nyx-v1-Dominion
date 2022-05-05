@@ -73,7 +73,7 @@ function AiStateDrop:think(cmd)
     local player = AiUtility.client
     local distance = player:getOrigin():getDistance(self.requestingPlayer:getOrigin())
     local hitbox = self.requestingPlayer:getOrigin():offset(0, 0, 64)
-    local isFreezeTime = Entity.getGameRules():m_bFreezePeriod() == 1
+    local isFreezeTime = AiUtility.gameRules:m_bFreezePeriod() == 1
 
     if isFreezeTime or distance < 300 then
         self.ai.view:lookAtLocation(hitbox, 8, self.ai.view.noiseType.MINOR, "Drop look at requester")

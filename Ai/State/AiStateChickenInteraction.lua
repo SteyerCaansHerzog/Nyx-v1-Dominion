@@ -53,7 +53,7 @@ end
 
 --- @return void
 function AiStateChickenInteraction:assess()
-    if Entity.getGameRules():m_bFreezePeriod() == 1 then
+    if AiUtility.gameRules:m_bFreezePeriod() == 1 then
         return AiPriority.IGNORE
     end
 

@@ -69,31 +69,36 @@ local function getPath(start, goal, nodes, valid_node_func)
     end
 
     local gScore, fScore = {}, {}
-    gScore[start] = 0
 
+    gScore[start] = 0
     fScore[start] = gScore[start] + start.origin:getDistance(goal.origin)
 
     while #openset > 0 do
         local current = getLowestFScore(openset, fScore)
+
         if current == goal then
             local path = unwindPath({}, cameFrom, goal)
+
             table.insert(path, goal)
+
             return path
         end
 
         removeNode(openset, current)
+
         table.insert(closedset, current)
 
         local neighbors = getNeighborNodes(current, nodes)
+
         for _, neighbor in pairs(neighbors) do
             if isNotIn(closedset, neighbor) then
-
-                local tentativeGScore = gScore[current] + current.origin:getDistance(neighbor.origin)
+                local tentativeGScore = gScore[current] + current.origin:getDistance(neighbor.origin) + client.random_float(-64, 64)
 
                 if isNotIn(openset, neighbor) or tentativeGScore < gScore[neighbor] then
                     cameFrom[neighbor] = current
                     gScore[neighbor] = tentativeGScore
-                    fScore[neighbor] = gScore[neighbor] + neighbor.origin:getDistance(goal.origin)
+                    fScore[neighbor] = gScore[neighbor] + neighbor.origin:getDistance(goal.origin) + client.random_float(-64, 64)
+
                     if isNotIn(openset, neighbor) then
                         table.insert(openset, neighbor)
                     end
@@ -101,6 +106,7 @@ local function getPath(start, goal, nodes, valid_node_func)
             end
         end
     end
+
     return nil
 end
 
