@@ -818,8 +818,8 @@ function Reaper:think()
 			cvar.fps_max:set_int(0)
 			cvar.fps_max_menu:set_int(0)
 		else
-			cvar.fps_max:set_int(65)
-			cvar.fps_max_menu:set_int(4)
+			cvar.fps_max:set_int(70)
+			cvar.fps_max_menu:set_int(15)
 		end
 
 		-- Toggle g_bTextMode. Text Mode disables rendering in the Source engine.
