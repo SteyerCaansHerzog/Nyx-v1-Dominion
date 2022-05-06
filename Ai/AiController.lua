@@ -1287,7 +1287,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiController:think(cmd)
-	if not DominionMenu.master:get() or not DominionMenu.enableAi:get() then
+	if not DominionMenu.master:get() or not DominionMenu.enableAi:get() or self.reaper.isActive then
 		-- Fix issue with AI trying to equip the last gear forever.
 		if Client.isEquipping() then
 			Client.cancelEquip()

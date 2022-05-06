@@ -29,7 +29,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --- @field throwTimer Timer
 --- @field threatCooldownTimer Timer
 local AiStateFlashbangDynamic = {
-    name = "Flashang Dynamic"
+    name = "Flashbang Dynamic"
 }
 
 --- @param fields AiStateFlashbangDynamic
@@ -100,7 +100,7 @@ function AiStateFlashbangDynamic:assess()
         distance = predictionDistance
     }, "AiStateFlashbangDynamic.assess<FindFlashbangDetonatePoint>")
 
-    -- Throw away traces that end too close to us because they're useless and will just blind theself.ai.
+    -- Throw away traces that end too close to us because they're useless and will just blind the AI.
     -- Although, the AI would probably want to be blind if it pulled up its own hood and found this demented-ass logic.
     if clientEyeOrigin:getDistance(impactTrace.endPosition) < 400 then
         return AiPriority.IGNORE
@@ -197,6 +197,12 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateFlashbangDynamic:think(cmd)
+    if not self.targetPlayer then
+        self:reset()
+
+        return
+    end
+
     self.activity = "Throwing Flashbang"
 
     -- If we're not in a throw, and the round is over or our target has died, then do not throw.

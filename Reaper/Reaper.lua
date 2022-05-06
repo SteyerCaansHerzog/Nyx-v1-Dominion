@@ -814,6 +814,14 @@ function Reaper:think()
 	if isAppFocused ~= self.lastFocusedState then
 		self.lastFocusedState = isAppFocused
 
+		if isAppFocused then
+			cvar.fps_max:set_int(0)
+			cvar.fps_max_menu:set_int(0)
+		else
+			cvar.fps_max:set_int(65)
+			cvar.fps_max_menu:set_int(4)
+		end
+
 		-- Toggle g_bTextMode. Text Mode disables rendering in the Source engine.
 		Client.setTextMode(not isAppFocused)
 

@@ -38,7 +38,7 @@ function AiChatCommandRush:invoke(ai, sender, args)
 
     UserInput.execute("buy p250")
 
-    ai.commands.go:invoke(ai, sender, "t")
+    ai.states.check:activate("t")
 end
 
 return Nyx.class("AiChatCommandRush", AiChatCommandRush, AiChatCommand)

@@ -221,7 +221,7 @@ function AiStateEngage:initEvents()
             return
         end
 
-        if AiUtility.client:getOrigin():getDistance(e.player:getOrigin()) > 512 then
+        if AiUtility.client:getOrigin():getDistance(e.player:getOrigin()) > 600 then
             return
         end
 
@@ -237,7 +237,7 @@ function AiStateEngage:initEvents()
             return
         end
 
-        if AiUtility.client:getOrigin():getDistance(e.player:getOrigin()) > 512 then
+        if AiUtility.client:getOrigin():getDistance(e.player:getOrigin()) > 600 then
             return
         end
 
@@ -268,7 +268,7 @@ function AiStateEngage:initEvents()
 
             for _, enemy in pairs(AiUtility.enemies) do
                 if bombOrigin:getDistance(enemy:getOrigin()) < 512 then
-                    self:noticeEnemy(enemy, 512, false, "Near Site")
+                    self:noticeEnemy(enemy, 500, false, "Near Site")
                 end
             end
         end
@@ -289,15 +289,15 @@ function AiStateEngage:initEvents()
     end)
 
     Callbacks.playerFootstep(function(e)
-        self:noticeEnemy(e.player, 900, false, "Stepped")
+        self:noticeEnemy(e.player, 1000, false, "Stepped")
     end)
 
     Callbacks.playerJump(function(e)
-        self:noticeEnemy(e.player, 512, false, "Jumped")
+        self:noticeEnemy(e.player, 650, false, "Jumped")
     end)
 
     Callbacks.weaponZoom(function(e)
-        self:noticeEnemy(e.player, 512, false, "Scoped")
+        self:noticeEnemy(e.player, 600, false, "Scoped")
     end)
 
     Callbacks.weaponReload(function(e)
@@ -306,12 +306,12 @@ function AiStateEngage:initEvents()
 
     Callbacks.weaponFire(function(e)
         if CsgoWeapons[e.weapon].is_melee_weapon then
-            self:noticeEnemy(e.player, 700, true, "Knifed")
+            self:noticeEnemy(e.player, 600, true, "Knifed")
 
             return
         end
 
-        local range = 1100
+        local range = 1600
 
         if AiUtility.visibleEnemies[e.player.eid] then
             range = Vector3.MAX_DISTANCE
@@ -329,23 +329,23 @@ function AiStateEngage:initEvents()
 
         local rayIntersection = eyeOrigin:getRayClosestPoint(e.shooter:getEyeOrigin(), e.origin)
 
-        if eyeOrigin:getDistance(rayIntersection) > 256 then
+        if eyeOrigin:getDistance(rayIntersection) > 300 then
             return
         end
 
-        self:noticeEnemy(e.shooter, 4096, true, "Shot at")
+        self:noticeEnemy(e.shooter, Vector3.MAX_DISTANCE, true, "Shot at")
     end)
 
     Callbacks.bombBeginDefuse(function(e)
-        self:noticeEnemy(e.player, 4096, true, "Began defusing")
+        self:noticeEnemy(e.player, Vector3.MAX_DISTANCE, true, "Began defusing")
     end)
 
     Callbacks.bombBeginPlant(function(e)
-        self:noticeEnemy(e.player, 2048, true, "Began planting")
+        self:noticeEnemy(e.player, Vector3.MAX_DISTANCE, true, "Began planting")
     end)
 
     Callbacks.grenadeThrown(function(e)
-        self:noticeEnemy(e.player, 512, false, "Threw grenade")
+        self:noticeEnemy(e.player, 500, false, "Threw grenade")
     end)
 
     Callbacks.playerDeath(function(e)
@@ -360,7 +360,7 @@ function AiStateEngage:initEvents()
         end
 
         if e.victim:isTeammate() and AiUtility.client:getOrigin():getDistance(e.victim:getOrigin()) < 1250 then
-            self:noticeEnemy(e.attacker, 1250, true, "Teammate killed")
+            self:noticeEnemy(e.attacker, 1600, true, "Teammate killed")
         end
 
         if e.victim:isEnemy() and self.noticedPlayerTimers[e.victim.eid] then

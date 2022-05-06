@@ -37,7 +37,7 @@ function AiStateAvoidInfernos:assess()
 
         -- We're doing a cheap way of detecting if we're inside a molotov.
         -- May require tweaking.
-        if distance < 240 then
+        if distance < 300 then
             self.inferno = inferno
 
             return AiPriority.AVOID_INFERNO
@@ -66,7 +66,7 @@ function AiStateAvoidInfernos:think(cmd)
     self.activity = "Getting out of a fire"
 
     if self.ai.nodegraph:isIdle() then
-        local cover = self:getCoverNode(600, AiUtility.closestEnemy)
+        local cover = self:getCoverNode(800, AiUtility.closestEnemy)
 
         self.ai.nodegraph:pathfind(cover.origin, {
             objective = Node.types.GOAL,

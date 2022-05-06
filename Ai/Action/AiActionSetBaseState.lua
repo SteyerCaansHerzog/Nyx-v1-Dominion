@@ -1,14 +1,12 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local Menu = require "gamesense/Nyx/v1/Api/Menu"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Process = require "gamesense/Nyx/v1/Api/Process"
 local Server = require "gamesense/Nyx/v1/Api/Server"
-local Table = require "gamesense/Nyx/v1/Api/Table"
-
 local Steamworks = require "gamesense/steamworks"
+local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
 
 --{{{ Modules

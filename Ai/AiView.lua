@@ -976,7 +976,7 @@ function AiView:isPlayerBlocked(node)
 
     local nodeOrigin = node.origin:clone():offset(0, 0, 40)
     local offset = nodeOrigin + node.direction:getForward() * 48
-    local trace = Trace.getHullToPosition(nodeOrigin, offset, Vector3:newBounds(Vector3.align.CENTER, 8), AiUtility.traceOptionsPathfinding, "AiView.isPlayerBlocked<FindObstruction>")
+    local trace = Trace.getLineToPosition(nodeOrigin, offset, AiUtility.traceOptionsPathfinding, "AiView.isPlayerBlocked<FindObstruction>")
 
     return trace.isIntersectingGeometry
 end

@@ -26,6 +26,10 @@ function AiChatCommandGo:invoke(ai, sender, args)
         return
     end
 
+    if ai.reaper.isActive then
+        return
+    end
+
     if AiUtility.plantedBomb then
         return
     end
