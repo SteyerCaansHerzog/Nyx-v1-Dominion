@@ -86,6 +86,8 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateFreezetime:think(cmd)
+    self.activity = "Idling in freezetime"
+
     if self.nextBehaviorTimer:isElapsedThenRestart(self.nextBehaviorTime) then
         self.nextBehaviorTime = Client.getRandomFloat(4, 10)
         self.target = Table.getRandomFromNonIndexed(AiUtility.teammates)

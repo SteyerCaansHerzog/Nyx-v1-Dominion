@@ -1,7 +1,6 @@
 --{{{ Dependencies
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
 
 --{{{ Modules
@@ -48,26 +47,20 @@ function AiChatCommand:isValid(ai, sender, args)
     local steamId64 = sender:getSteamId64()
     local isSenderAdmin = Config.isAdministrator(steamId64)
 
-    if ai.reaper.isEnabled then
-        if self.isAdminOnly and not isSenderAdmin then
-            if ai.reaper.manifest.steamId64Map[steamId64] then
-                return true
-            end
+    if ai.reaper.isEnabled and ai.reaper.manifest.steamId64Map[steamId64] then
+        return true
+    end
 
-            return false
-        elseif not sender:isTeammate() and not isSenderAdmin then
-            return false
-        end
-    else
-        if sender:is(AiUtility.client) then
-            return false
-        end
+    if sender:is(AiUtility.client) then
+        return false
+    end
 
-        if self.isAdminOnly and not isSenderAdmin then
-            return false
-        elseif not sender:isTeammate() and not isSenderAdmin then
-            return false
-        end
+    if self.isAdminOnly and not isSenderAdmin then
+        return false
+    end
+
+    if not sender:isTeammate() and not isSenderAdmin then
+        return false
     end
 
     return true

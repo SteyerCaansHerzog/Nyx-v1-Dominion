@@ -1456,30 +1456,28 @@ function AiStateEngage:attackBestTarget(cmd)
         return
     end
 
-    -- Weapon info.
+    -- Ensure player is holding weapon.
+    if not player:isHoldingGun() then
+        if AiUtility.client:hasPrimary() then
+            Client.equipPrimary()
+        else
+            Client.equipPistol()
+        end
+    end
+
     local weapon = Entity:create(player:m_hActiveWeapon())
     local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
     local ammo = weapon:m_iClip1()
     local maxAmmo = csgoWeapon.primary_clip_size
     local ammoRatio = ammo / maxAmmo
 
-    -- Swap guns when out of ammo.
-    if self.lastPriority == AiPriority.ENGAGE_ACTIVE then
-        local ammoLeftRatio = ammo / maxAmmo
-
-        if ammoLeftRatio == 0 then
-            if AiUtility.client:isHoldingPrimary() then
-                self.equipPistolTimer:start()
-
-                Client.equipPistol()
-            end
-        end
-    elseif self.lastPriority == AiPriority.ENGAGE_PASSIVE then
-        -- Ensure bot is holding a weapon.
-        if AiUtility.client:hasPrimary() then
-            Client.equipPrimary()
-        else
+    if AiUtility.client:isHoldingPrimary() then
+        if ammoRatio == 0 and AiUtility.isClientThreatened then
             Client.equipPistol()
+        end
+    else
+        if not AiUtility.isClientThreatened then
+            Client.equipPrimary()
         end
     end
 
@@ -1536,15 +1534,6 @@ function AiStateEngage:attackBestTarget(cmd)
         Animate.sine(0, horizontal * offsetModifier, 2),
         Animate.sine(0, vertical * offsetModifier, 2.5)
     )
-
-    -- Ensure player is holding weapon.
-    if not player:isHoldingGun() then
-        if AiUtility.client:hasPrimary() then
-            Client.equipPrimary()
-        else
-            Client.equipPistol()
-        end
-    end
 
     -- Shoot last position.
     if not next(AiUtility.visibleEnemies) then

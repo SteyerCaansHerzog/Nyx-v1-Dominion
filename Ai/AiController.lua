@@ -42,6 +42,7 @@ local AiStateFreezetime = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFre
 local AiStateGraffiti = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGraffiti"
 local AiStateFlashbangDynamic = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFlashbangDynamic"
 local AiStateHeGrenade = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateHeGrenade"
+local AiStateKnife = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateKnife"
 local AiStateMolotov = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateMolotov"
 local AiStatePatrol = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePatrol"
 local AiStatePickupBomb = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePickupBomb"
@@ -62,7 +63,7 @@ local AiChatCommandBoost = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/Ai
 local AiChatCommandChat = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandChat"
 local AiChatCommandClantag = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandClantag"
 local AiChatCommandCmd = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandCmd"
-local AiChatCommandBuy = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandRush"
+local AiChatCommandBuy = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBuy"
 local AiChatCommandDisconnect = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandDisconnect"
 local AiChatCommandDrop = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandDrop"
 local AiChatCommandEco = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandEco"
@@ -70,6 +71,7 @@ local AiChatCommandEnabled = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/
 local AiChatCommandFollow = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandFollow"
 local AiChatCommandForce = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandForce"
 local AiChatCommandGo = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandGo"
+local AiChatCommandKnife = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandKnife"
 local AiChatCommandKnow = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandKnow"
 local AiChatCommandLog = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandLog"
 local AiChatCommandNoise = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandNoise"
@@ -123,6 +125,7 @@ local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 --- @field flashbang Entity
 --- @field flashbangs number[]
 --- @field isAutoBuyArmourBlocked boolean
+--- @field isAutoBuyEnabled boolean
 --- @field isQuickStopping boolean
 --- @field isWalking boolean
 --- @field lastPriority number
@@ -155,6 +158,7 @@ local AiController = {
 		graffiti = AiStateGraffiti,
 		flashbangDynamic = AiStateFlashbangDynamic,
 		heGrenade = AiStateHeGrenade,
+		knife = AiStateKnife,
 		chickenInteraction = AiStateChickenInteraction,
 		molotov = AiStateMolotov,
 		patrol = AiStatePatrol,
@@ -185,6 +189,7 @@ local AiController = {
 		follow = AiChatCommandFollow,
 		force = AiChatCommandForce,
 		go = AiChatCommandGo,
+		knife = AiChatCommandKnife,
 		know = AiChatCommandKnow,
 		log = AiChatCommandLog,
 		noise = AiChatCommandNoise,
@@ -248,6 +253,7 @@ function AiController:initFields()
 	self.unscopeTimer = Timer:new()
 	self.flashbangs = {}
 	self.lockStateTimer = Timer:new():startThenElapse()
+	self.isAutoBuyEnabled = true
 
 	DominionMenu.enableAi = DominionMenu.group:checkbox("> Dominion Artifical Intelligence"):setParent(DominionMenu.master):addCallback(function(item)
 		local value = item:get()
@@ -525,6 +531,10 @@ end
 --- @return void
 function AiController:autoBuy(isImmediate)
 	if not DominionMenu.enableAutoBuy:get() or not self.canBuyThisRound then
+		return
+	end
+
+	if not self.isAutoBuyEnabled then
 		return
 	end
 

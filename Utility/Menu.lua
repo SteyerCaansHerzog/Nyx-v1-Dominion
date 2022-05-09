@@ -40,6 +40,7 @@ local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 ---
 --- @field standaloneQuickStop MenuItem
 --- @field dormantRef MenuItem
+--- @field autoKnifeRef MenuItem
 local DominionMenu = {}
 
 --- @return DominionMenu
@@ -51,6 +52,7 @@ end
 function DominionMenu:__init()
     self.dormantRef = Menu.reference("visuals", "player esp", "dormant")
     self.standaloneQuickStopRef = Menu.reference("misc", "movement", "standalone quick stop")
+    self.autoKnifeRef = Menu.reference("misc", "miscellaneous", "knifebot")
 
     local menu = Menu:new("config", "presets")
 

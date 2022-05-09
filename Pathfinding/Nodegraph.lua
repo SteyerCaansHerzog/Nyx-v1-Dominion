@@ -853,8 +853,6 @@ function Nodegraph:pathfind(origin, options)
         return
     end
 
-    self:clearPath("Begin new path")
-
     self.lastPathfindTimer:start()
 
     options = options or {}
@@ -930,6 +928,8 @@ function Nodegraph:pathfind(origin, options)
 
         return
     end
+
+    self:clearPath("Begin new path")
 
     self.pathfindOptions = options
     self.path = path

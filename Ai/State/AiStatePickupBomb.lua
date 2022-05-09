@@ -122,7 +122,7 @@ function AiStatePickupBomb:think()
         self.ignorePickup = true
     end
 
-    if self.ai.nodegraph:isIdle() and self.ai.nodegraph.lastPathfindTimer:isElapsed(1) then
+    if self.ai.nodegraph:isIdle() then
         self:activate()
     end
 end

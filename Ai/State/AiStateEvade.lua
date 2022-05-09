@@ -140,7 +140,7 @@ end
 --- @return void
 function AiStateEvade:think()
     self.activity = "Seeking cover"
-    self.ai.canUseKnife = false
+    self.ai.canUseGear = false
 
     if not self.isLookingAtPathfindingDirection then
         if AiUtility.clientThreatenedFromOrigin then

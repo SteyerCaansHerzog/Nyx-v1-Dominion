@@ -52,12 +52,13 @@ end
 
 --- @return void
 function AiStateFlashbangDynamic:assess()
-    -- Cooldown. We really need it.
+    -- Cooldown because the AI doesn't need to keep throwing flashbangs constantly.
     if not self.throwCooldownTimer:isElapsed(12) then
         return AiPriority.IGNORE
     end
 
-    -- Don't let them spam when attempting this behaviour.
+    -- Don't let the AI spam when attempting this behaviour.
+    -- Our anti-dithering is literally timers. Timers everywhere. Timers forever.
     if not self.throwAttemptCooldownTimer:isElapsed(1.5) then
         return AiPriority.IGNORE
     end
@@ -96,7 +97,7 @@ function AiStateFlashbangDynamic:assess()
     -- Oh Source, do tell us where this stray nade "prediction" went?
     local impactTrace = Trace.getHullAtAngle(clientEyeOrigin, predictionAngles, bounds, {
         skip = AiUtility.client.eid,
-        mask = Trace.mask.PLAYERSOLID,
+        mask = Trace.mask.SHOT_HULL,
         distance = predictionDistance
     }, "AiStateFlashbangDynamic.assess<FindFlashbangDetonatePoint>")
 
@@ -115,7 +116,7 @@ function AiStateFlashbangDynamic:assess()
         -- Not using getHitboxPosition because getOrigin works on dormancy. That and CSGO's hitbox positions are more demented than this code.
         local blindTrace = Trace.getHullToPosition(impactTrace.endPosition, enemyTestOrigin, bounds, {
             skip = enemy.eid,
-            mask = Trace.mask.PLAYERSOLID
+            mask = Trace.mask.VISIBLE
         }, "AiStateFlashbangDynamic.assess<FindEnemyVisibleToFlashbang>")
 
         -- No line of sight. Lucky for him.
@@ -151,9 +152,11 @@ function AiStateFlashbangDynamic:assess()
         local trace = Trace.getLineToPosition(jumpEyeOrigin, enemyTestOrigin, AiUtility.traceOptionsAttacking, "AiStateFlashbangDynamic.assess<FindJumpVisibleToEnemy>")
         local isVisibleWhenJumping = not trace.isIntersectingGeometry
 
+        -- Determine if we want to jump-throw the flashbang.
         self.canJumpThrow = not isVisibleWhenJumping and predictionAngles.p < -40 and predictionAngles.p > -70
         self.throwFromOrigin = Client.getOrigin()
 
+        -- Forgot why this needed to be on the next tick. Probably because of other bad code I have written.
         Client.onNextTick(function()
             if not self.isActivated then
                 self:reset()

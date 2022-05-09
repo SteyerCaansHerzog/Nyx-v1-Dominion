@@ -49,6 +49,7 @@ local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 --- @field priority number
 --- @field skill number
 --- @field team number
+--- @field phase number
 --}}}
 
 --{{{ ReaperClientShared
@@ -382,6 +383,7 @@ function Reaper:render()
 		local isClientStateOkayToShow = true
 		local isClient = client.steamId64 == self.manifest.client.steamId64
 		local isFocused = Process.isAppFocused()
+		local isMatchOver = client.info.phase == 3
 
 		if isConnectionLost then
 			bgColor = colors.IS_DISCONNECTED
@@ -398,6 +400,12 @@ function Reaper:render()
 		elseif isClient then
 			nameColor = colors.TEXT_MAIN
 			infoColor = colors.TEXT_MAIN
+
+			isClientStateOkayToShow = false
+		elseif isMatchOver then
+			bgColor = colors.IS_DISCONNECTED
+			nameColor = colors.TEXT_MUTED
+			infoColor = colors.TEXT_MUTED
 
 			isClientStateOkayToShow = false
 		elseif not isPlayerInServer then
@@ -467,6 +475,14 @@ function Reaper:render()
 
 		if isConnectionLost then
 			drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "No connection to client")
+
+			drawPosition:offset(0, clientBoxDimensions.y + clientBoxBottomMargin)
+
+			break
+		end
+
+		if isMatchOver then
+			drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "Match ended")
 
 			drawPosition:offset(0, clientBoxDimensions.y + clientBoxBottomMargin)
 
@@ -622,6 +638,7 @@ function Reaper:think()
 		local team
 		local isAlive = false
 		local isWarmup = false
+		local phase
 
 		if Server.isIngame() then
 			map = globals.mapname()
@@ -630,6 +647,7 @@ function Reaper:think()
 			isAlive = AiUtility.client:isAlive()
 			team = AiUtility.client:m_iTeamNum()
 			isWarmup = Entity.getGameRules():m_bWarmupPeriod() == 1
+			phase = AiUtility.timeData.gamephase
 		end
 
 		local lobbyMemberCount
@@ -669,6 +687,7 @@ function Reaper:think()
 			priority = self.ai.lastPriority,
 			skill = self.ai.states.engage.skill,
 			team = team,
+			phase = phase
 		}
 
 		if isAppFocused then
