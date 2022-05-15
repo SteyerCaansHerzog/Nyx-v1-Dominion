@@ -34,19 +34,12 @@ function AiChatCommandKnife:invoke(ai, sender, args)
     if emotion == "commit" then
         ai.states.knife.isActive = true
         ai.states.knife.isScared = false
-        ai.states.knife.isZombie = false
     elseif emotion == "scared" then
         ai.states.knife.isActive = true
         ai.states.knife.isScared = true
-        ai.states.knife.isZombie = false
-    elseif emotion == "zombie" then
-        ai.states.knife.isActive = true
-        ai.states.knife.isScared = false
-        ai.states.knife.isZombie = true
     elseif emotion == "off" then
         ai.states.knife.isActive = false
         ai.states.knife.isScared = false
-        ai.states.knife.isZombie = false
     end
 end
 

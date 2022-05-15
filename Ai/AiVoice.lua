@@ -75,7 +75,7 @@ function AiVoice:__init()
 
     DominionMenu.voicePack = DominionMenu.group:listbox("    > Voice Pack", packNames):addCallback(function(item)
     	self.pack = self.packs[item:get() + 1]
-    end):setParent(DominionMenu.enableAi)
+    end):setParent(DominionMenu.master)
 
     self.flashbangTimer = Timer:new():startThenElapse()
 

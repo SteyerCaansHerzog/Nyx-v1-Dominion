@@ -22,6 +22,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiView = require "gamesense/Nyx/v1/Dominion/Ai/AiView"
+local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
@@ -207,7 +208,7 @@ function AiStateEngage:initFields()
     Menu.enableAimbot = Menu.group:checkbox("    > Enable Aimbot"):setParent(Menu.enableAi)
     Menu.visualiseAimbot = Menu.group:checkbox("    > Visualise Aimbot"):setParent(Menu.enableAimbot)
 
-    self:setAimSkill(5)
+    self:setAimSkill(Config.defaultSkillLevel)
 end
 
 --- @return void

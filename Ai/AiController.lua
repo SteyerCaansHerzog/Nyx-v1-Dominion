@@ -54,6 +54,7 @@ local AiStateSmoke = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSmoke"
 local AiStateSweep = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSweep"
 local AiStateWait = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWait"
 local AiStateWatch = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWatch"
+local AiStateZombie = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateZombie"
 
 local AiChatCommandAfk = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandAfk"
 local AiChatCommandAim = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandAim"
@@ -86,6 +87,7 @@ local AiChatCommandScramble = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command
 local AiChatCommandStop = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandStop"
 local AiChatCommandVote = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandVote"
 local AiChatCommandWait = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandWait"
+local AiChatCommandZombie = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandZombie"
 
 local AiChatbotNormal = require "gamesense/Nyx/v1/Dominion/Ai/Chat/AiChatbotNormal"
 local AiChatbotGpt3 = require "gamesense/Nyx/v1/Dominion/Ai/Chat/AiChatbotGpt3"
@@ -171,6 +173,7 @@ local AiController = {
 		sweep = AiStateSweep,
 		wait = AiStateWait,
 		watch = AiStateWatch,
+		zombie = AiStateZombie,
 	},
 	commands = {
 		afk = AiChatCommandAfk,
@@ -204,6 +207,7 @@ local AiController = {
 		tag = AiChatCommandClantag,
 		vote = AiChatCommandVote,
 		wait = AiChatCommandWait,
+		zombie = AiChatCommandZombie,
 	},
 	actions = {
 		panorama = AiActionPanorama,
@@ -319,8 +323,6 @@ function AiController:initEvents()
 	Callbacks.init(function()
 		self.dynamicSkillRoundKills = 0
 		self.dynamicSkillHasDied = false
-
-		self.states.engage.skill = 2
 	end)
 
 	Callbacks.frame(function()

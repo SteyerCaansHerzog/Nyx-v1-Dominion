@@ -51,8 +51,9 @@ local AiPriority = {
 	EVADE_ACTIVE = 47,
 	DEFUSE_STICK = 48,
 	KNIFE = 49,
-	AVOID_INFERNO = 50,
-	DEVELOPER = 51,
+	ZOMBIE = 50,
+	AVOID_INFERNO = 51,
+	DEVELOPER = 52,
 }
 
 return AiPriority

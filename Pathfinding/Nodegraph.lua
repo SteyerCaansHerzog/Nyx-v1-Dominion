@@ -451,8 +451,7 @@ function Nodegraph:renderNodegraph()
                     playerOrigin:drawLine(searchNode.origin, Color:hsla(0, 0.8, 0.6, 100), 0.25)
                 end
 
-                searchNode.origin:drawScaledCircleOutline(searchNode.origin, 60, 10, color)
-
+                searchNode.origin:drawScaledCircleOutline(60, 10, color)
                 trace.endPosition:drawScaledCircle(14, color)
             end
         end

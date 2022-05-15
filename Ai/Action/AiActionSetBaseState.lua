@@ -12,7 +12,6 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --{{{ Modules
 local AiAction = require "gamesense/Nyx/v1/Dominion/Ai/Action/AiAction"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
-local Performance = require "gamesense/Nyx/v1/Dominion/Utility/Performance"
 local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 --}}}
 
@@ -59,8 +58,6 @@ function AiActionSetBaseState:setMisc()
 	-- Prevent loading configuration on master accounts.
 	if not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
 		config.load("Nyx-v1-Dominion")
-
-		Performance.enable()
 
 		local materials = {
 			"vgui_white",
@@ -127,6 +124,10 @@ end
 
 --- @return void
 function AiActionSetBaseState:purgeSteamFriendsList()
+	if not Config.isClearingSteamFriends then
+		return
+	end
+
 	local ISteamFriends = Steamworks.ISteamFriends
 	local EFriendFlags = Steamworks.EFriendFlags
 

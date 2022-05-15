@@ -1,7 +1,6 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"

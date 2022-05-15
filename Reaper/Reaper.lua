@@ -581,7 +581,7 @@ function Reaper:render()
 				if client.info.health < 20 then
 					healthPct = 0
 				else
-					healthPct = Math.getFloat(client.info.health, 100)
+					healthPct = Math.getClampedFloat(client.info.health, 100, 0, 180)
 				end
 
 				local healthColor = Color:hsla(100 * healthPct, 0.8, 0.6, 255 * alphaMod)
@@ -647,7 +647,10 @@ function Reaper:think()
 			isAlive = AiUtility.client:isAlive()
 			team = AiUtility.client:m_iTeamNum()
 			isWarmup = Entity.getGameRules():m_bWarmupPeriod() == 1
-			phase = AiUtility.timeData.gamephase
+
+			if AiUtility.timeData then
+				phase = AiUtility.timeData.gamephase
+			end
 		end
 
 		local lobbyMemberCount

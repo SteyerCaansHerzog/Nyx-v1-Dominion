@@ -1,5 +1,4 @@
 --{{{ Dependencies
-local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
@@ -15,74 +14,27 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 --}}}
 
---{{{ AiStateKnife
---- @class AiStateKnife : AiState
+--{{{ AiStateZombie
+--- @class AiStateZombie : AiState
 --- @field isActive boolean
---- @field isScared boolean
---- @field isCommitted boolean
 --- @field isPathfindingToTarget boolean
 --- @field lastTargetOrigin Vector3
-local AiStateKnife = {
-    name = "Knife"
+local AiStateZombie = {
+    name = "Zombie"
 }
 
---- @param fields AiStateKnife
---- @return AiStateKnife
-function AiStateKnife:new(fields)
+--- @param fields AiStateZombie
+--- @return AiStateZombie
+function AiStateZombie:new(fields)
     return Nyx.new(self, fields)
 end
 
 --- @return void
-function AiStateKnife:__init()
-    Callbacks.roundStart(function()
-    	self:reset()
-    end)
-
-    Callbacks.playerDeath(function(e)
-        if not self.isActive then
-            return
-        end
-
-        -- Enemy killed one of us with something other than a knife, so all bets are off.
-        if e.victim:isTeammate() and not e.attacker:isHoldingKnife() then
-            self:reset()
-        end
-    end)
-
-    Callbacks.bulletImpact(function(e)
-        if not self.isActive then
-            return
-        end
-
-        if not e.shooter:isEnemy() then
-            return
-        end
-
-        if e.shooter:isHoldingKnife() then
-            return
-        end
-
-        local eyeOrigin = Client.getEyeOrigin()
-        local rayIntersection = eyeOrigin:getRayClosestPoint(e.shooter:getEyeOrigin(), e.origin)
-
-        -- The enemy shot near us.
-        if eyeOrigin:getDistance(rayIntersection) < 200 then
-            self:reset()
-        end
-    end)
-end
+function AiStateZombie:__init() end
 
 --- @return void
-function AiStateKnife:assess()
-    if AiUtility.plantedBomb then
-        return AiPriority.IGNORE
-    end
-
-    if AiUtility.enemiesAlive == 0 then
-        return AiPriority.IGNORE
-    end
-
-    if AiUtility.isRoundOver then
+function AiStateZombie:assess()
+    if not AiUtility.client:isTerrorist() then
         return AiPriority.IGNORE
     end
 
@@ -90,50 +42,50 @@ function AiStateKnife:assess()
         return AiPriority.IGNORE
     end
 
-    return AiPriority.KNIFE
+    return AiPriority.ZOMBIE
 end
 
 --- @return void
-function AiStateKnife:activate()
+function AiStateZombie:activate()
     self.isPathfindingToTarget = false
 
     Menu.autoKnifeRef:set(true)
 end
 
 --- @return void
-function AiStateKnife:deactivate()
+function AiStateZombie:deactivate()
     Menu.autoKnifeRef:set(false)
 end
 
 --- @return void
-function AiStateKnife:reset()
+function AiStateZombie:reset()
     self.isActive = false
 end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function AiStateKnife:think(cmd)
+function AiStateZombie:think(cmd)
     Client.equipKnife()
 
     self.ai.canUseGear = false
 
     if not AiUtility.closestEnemy then
-        self.activity = "Hunting for enemies"
+        self.activity = "Hunting for prey"
 
         if self.ai.nodegraph:isIdle() then
-            self:pathfindToMiddle()
+            self:pathfindSweepMap()
         end
 
         return
     end
 
-    self.activity = "Going to knife enemy"
+    self.activity = "Attacking prey"
 
     local clientOrigin = Client.getOrigin()
     local targetOrigin = AiUtility.closestEnemy:getOrigin()
 
     if AiUtility.visibleEnemies[AiUtility.closestEnemy.eid] then
-        self.ai.view:lookAtLocation(targetOrigin:clone():offset(0, 0, 64), 4, self.ai.view.noiseType.MINOR, "Knife look at enemy")
+        self.ai.view:lookAtLocation(targetOrigin:clone():offset(0, 0, 64), 4, self.ai.view.noiseType.MINOR, "Zombie look at enemy")
     end
 
     if clientOrigin:getDistance2(targetOrigin) < 350 then
@@ -142,7 +94,7 @@ function AiStateKnife:think(cmd)
             AiUtility.closestEnemy:getEyeOrigin(),
             Vector3:newBounds(Vector3.align.CENTER, 8),
             AiUtility.traceOptionsPathfinding,
-            "AiStateKnife.think<FindPathableEnemy>"
+            "AiStateZombie.think<FindPathableEnemy>"
         )
 
         local traceJump = Trace.getHullToPosition(
@@ -150,7 +102,7 @@ function AiStateKnife:think(cmd)
             targetOrigin:offset(0, 0, 32),
             Vector3:newBounds(Vector3.align.CENTER, 16),
             AiUtility.traceOptionsPathfinding,
-            "AiStateKnife.think<FindPathableEnemy>"
+            "AiStateZombie.think<FindPathableEnemy>"
         )
 
         if not traceRun.isIntersectingGeometry then
@@ -187,51 +139,25 @@ function AiStateKnife:think(cmd)
 end
 
 --- @return void
-function AiStateKnife:pathfindToEnemy()
-    local origin
+function AiStateZombie:pathfindToEnemy()
+    local targetOrigin = AiUtility.closestEnemy:getOrigin():offset(0, 0, 18)
 
-    if self.isScared then
-        local node = self.ai.nodegraph:getRandomNodeWithin(AiUtility.closestEnemy:getOrigin(), 600)
-
-        if node then
-            origin = node.origin
-        end
-    end
-
-    if origin then
-        self.ai.nodegraph:pathfind(origin, {
-            task = "Knife enemy player"
-        })
-    else
-        local targetOrigin = AiUtility.closestEnemy:getOrigin():offset(0, 0, 18)
-
-        self.ai.nodegraph:pathfind(targetOrigin, {
-            task = "Knife enemy player",
-            onFail = function()
-            	self.ai.nodegraph:pathfind(self.ai.nodegraph:getClosestNode(targetOrigin).origin, {
-                    task = "Knife enemy player"
-                })
-            end
-        })
-    end
-end
-
---- @return void
-function AiStateKnife:pathfindToMiddle()
-    self.ai.nodegraph:pathfind(self.ai.nodegraph.mapMiddle.origin, {
-        task = "Moving to middle",
-        onComplete = function()
-        	self:pathfindSweepMap()
+    self.ai.nodegraph:pathfind(targetOrigin, {
+        task = "Knife enemy player",
+        onFail = function()
+            self.ai.nodegraph:pathfind(self.ai.nodegraph:getClosestNode(targetOrigin).origin, {
+                task = "Knife enemy player"
+            })
         end
     })
 end
 
 --- @return void
-function AiStateKnife:pathfindSweepMap()
+function AiStateZombie:pathfindSweepMap()
     self.ai.nodegraph:pathfind(self.ai.nodegraph:getRandomNodeWithin(Vector3:new(), Vector3.MAX_DISTANCE).origin, {
         task = "Find an enemy"
     })
 end
 
-return Nyx.class("AiStateKnife", AiStateKnife, AiState)
+return Nyx.class("AiStateZombie", AiStateZombie, AiState)
 --}}}
