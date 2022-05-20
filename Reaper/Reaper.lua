@@ -383,7 +383,7 @@ function Reaper:render()
 		local isClientStateOkayToShow = true
 		local isClient = client.steamId64 == self.manifest.client.steamId64
 		local isFocused = Process.isAppFocused()
-		local isMatchOver = client.info.phase == 3
+		local isMatchOver = false
 
 		if isConnectionLost then
 			bgColor = colors.IS_DISCONNECTED
@@ -884,6 +884,8 @@ function Reaper:think()
 
 		-- Set all the appropriate settings when activating or deactivating clients.
 		if self.isActive then
+			AiUtility.isPerformingCalculations = false
+
 			if self.isAiEnabled then
 				DominionMenu.enableAi:set(false)
 				DominionMenu.limitFps:set(false)
@@ -892,12 +894,12 @@ function Reaper:think()
 				DominionMenu.standaloneQuickStopRef:set(false)
 			end
 
-			-- Ensure input is turned on or off when tabbing, so we cannot accidentally press keys in spectator mode.
 			Client.setInput(true)
 
 			DominionMenu.visualisePathfinding:set(false)
+			DominionMenu.visualiseAimbot:set(false)
 		else
-			Client.setInput(false)
+			AiUtility.isPerformingCalculations = true
 
 			if self.isAiEnabled then
 				DominionMenu.enableAi:set(true)
@@ -909,6 +911,9 @@ function Reaper:think()
 
 			DominionMenu.visualisePathfinding:set(true)
 			DominionMenu.visualiseAimbot:set(true)
+
+			-- Ensure input is turned on or off when tabbing, so we cannot accidentally press keys in spectator mode.
+			Client.setInput(false)
 		end
 	end
 

@@ -150,6 +150,10 @@ end
 
 --- @return void
 function AiActionSetBaseState:setCrosshair()
+	if not Config.isRandomizingCrosshair then
+		return
+	end
+
 	local options = {
 		cl_crosshairstyle = {4},
 		cl_crosshair_drawoutline = {0, 1},

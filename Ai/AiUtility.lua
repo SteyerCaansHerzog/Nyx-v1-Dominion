@@ -102,7 +102,9 @@ local AiWeaponNames = {
 --- @field isClientThreatened boolean
 --- @field isEnemyVisible boolean
 --- @field isLastAlive boolean
+--- @field isPerformingCalculations boolean
 --- @field isRoundOver boolean
+--- @field lastPresenceTimers Timer[]
 --- @field lastVisibleEnemyTimer Timer
 --- @field mainWeapons number[]
 --- @field plantedBomb Entity
@@ -134,11 +136,19 @@ end
 
 --- @return void
 function AiUtility:initFields()
+    AiUtility.isPerformingCalculations = true
     AiUtility.client = Player.getClient()
     AiUtility.visibleEnemies = {}
     AiUtility.lastVisibleEnemyTimer = Timer:new()
     AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
     AiUtility.enemyFovs = Table.populateForMaxPlayers(math.huge)
+
+    AiUtility.lastPresenceTimers = {}
+
+    for i = 1, 64 do
+        AiUtility.lastPresenceTimers[i] = Timer:new():startThenElapse()
+    end
+
     AiUtility.roundTimer = Timer:new()
     AiUtility.defuseTimer = Timer:new()
     AiUtility.lastKnownOrigin = {}
@@ -274,6 +284,7 @@ function AiUtility:initEvents()
             AiUtility.isBombBeingPlantedByTeammate = true
         elseif e.player:isEnemy() then
             AiUtility.isBombBeingPlantedByEnemy = true
+            AiUtility.lastPresenceTimers[e.player.eid]:restart()
         end
     end)
 
@@ -287,11 +298,15 @@ function AiUtility:initEvents()
         end
     end)
 
-    Callbacks.bombPlanted(function()
+    Callbacks.bombPlanted(function(e)
     	AiUtility.bombCarrier = nil
         AiUtility.isClientPlanting = false
         AiUtility.isBombBeingPlantedByEnemy = false
         AiUtility.isBombBeingPlantedByTeammate = false
+
+        if e.player:isEnemy() then
+            AiUtility.lastPresenceTimers[e.player.eid]:restart()
+        end
     end)
 
     Callbacks.bombBeginDefuse(function(e)
@@ -303,6 +318,8 @@ function AiUtility:initEvents()
             AiUtility.isBombBeingDefusedByTeammate = true
         elseif e.player:isEnemy() then
             AiUtility.isBombBeingDefusedByEnemy = true
+
+            AiUtility.lastPresenceTimers[e.player.eid]:restart()
         end
     end)
 
@@ -327,6 +344,8 @@ function AiUtility:initEvents()
             AiUtility.isBombBeingDefusedByTeammate = false
         elseif e.player:isEnemy() then
             AiUtility.isBombBeingDefusedByEnemy = false
+
+            AiUtility.lastPresenceTimers[e.player.eid]:restart()
         end
     end)
 
@@ -341,9 +360,45 @@ function AiUtility:initEvents()
         elseif e.victim:isEnemy() then
             AiUtility.enemiesAlive = AiUtility.enemiesAlive - 1
         end
+
+        if e.attacker:isEnemy() then
+            AiUtility.lastPresenceTimers[e.attacker.eid]:restart()
+        end
+    end)
+
+    Callbacks.weaponFire(function(e)
+        AiUtility.lastPresenceTimers[e.player.eid]:restart()
+    end)
+
+    Callbacks.playerFootstep(function(e)
+        if AiUtility.client:getOrigin():getDistance(e.player:getOrigin()) > 3000 then
+            return
+        end
+
+        AiUtility.lastPresenceTimers[e.player.eid]:restart()
+    end)
+
+    Callbacks.weaponReload(function(e)
+        if AiUtility.client:getOrigin():getDistance(e.player:getOrigin()) > 3000 then
+            return
+        end
+
+        AiUtility.lastPresenceTimers[e.player.eid]:restart()
+    end)
+
+    Callbacks.weaponZoom(function(e)
+        if AiUtility.client:getOrigin():getDistance(e.player:getOrigin()) > 2000 then
+            return
+        end
+
+        AiUtility.lastPresenceTimers[e.player.eid]:restart()
     end)
 
     Callbacks.runCommand(function()
+        if not AiUtility.isPerformingCalculations then
+            return
+        end
+
         AiUtility.updateMisc()
         AiUtility.updateThreats()
         AiUtility.updateEnemies()
@@ -464,7 +519,10 @@ function AiUtility.updateEnemies()
 
             AiUtility.isEnemyVisible = true
             AiUtility.isClientThreatened = true
-            AiUtility.clientThreatenedFromOrigin = enemyOrigin:clone():offset(0, 0, 64)
+
+            if not AiUtility.lastPresenceTimers[enemy.eid]:isElapsed(15) then
+                AiUtility.clientThreatenedFromOrigin = enemyOrigin:clone():offset(0, 0, 64)
+            end
         elseif enemy:m_bIsDefusing() == 1 then
             AiUtility.visibleEnemies[enemy.eid] = enemy
         end
@@ -527,15 +585,17 @@ function AiUtility.updateThreats()
             clientPlane[id] = trace.endPosition
         end
 
-        for _, enemy in pairs(AiUtility.enemies) do
+        for _, enemy in pairs(AiUtility.enemies) do repeat
+            if AiUtility.lastPresenceTimers[enemy.eid]:isElapsed(15) then
+                break
+            end
+
             local enemyOffset = enemy:getOrigin():offset(0, 0, 72)
             local bandAngle = eyeOrigin:getAngle(enemyOffset):set(0):offset(0, 90)
             local enemyAngle = eyeOrigin:getAngle(enemyOffset)
-            local steps = 8
+            local steps = 6
             local stepDistance = 180 / steps
-            --- @type Vector3
-            local closestPoint
-            local closestPointDistance = math.huge
+            local isClientThreatened = false
             local absPitch = math.abs(enemyAngle.p)
             local traceExtension = 1 - Math.getFloat(Math.getClamped(absPitch, 0, 75), 90)
             local traceDistance = 300 * traceExtension
@@ -547,19 +607,18 @@ function AiUtility.updateThreats()
 
                 for _, vertex in pairs(clientPlane) do
                     -- Trace to see if we can see the previous trace.
-                    local findVisibleToEnemyTrace = Trace.getLineToPosition(findWallCollideTrace.endPosition, vertex, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindPointVisibleToEnemy>")
+                    local findCollidedPointVisibleToEnemyTrace = Trace.getLineToPosition(findWallCollideTrace.endPosition, vertex, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindCollidedPointVisibleToEnemy>")
+                    local findUncollidedPointVisibleToEnemyTrace = Trace.getLineToPosition(testOrigin, vertex, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindUncollidedPointVisibleToEnemy>")
                     local fov = enemyAngle:getFov(eyeOrigin, findWallCollideTrace.endPosition)
 
+                    -- Find if the enemy could potentially peek us.
+                    if not findUncollidedPointVisibleToEnemyTrace.isIntersectingGeometry then
+                        isClientThreatened = true
+                    end
+
                     -- Set the closest point to the enemy as the best point to look at.
-                    if not findVisibleToEnemyTrace.isIntersectingGeometry then
-                        local distance = enemyOffset:getDistance(findVisibleToEnemyTrace.endPosition)
-
-                        if distance < closestPointDistance then
-                            closestPointDistance = distance
-                            closestPoint = findWallCollideTrace.endPosition
-                        end
-
-                        AiUtility.clientThreatenedBy = enemy
+                    if not findCollidedPointVisibleToEnemyTrace.isIntersectingGeometry then
+                        isClientThreatened = true
 
                         if fov < lowestFov and fov < 20 then
                             lowestFov = fov
@@ -572,14 +631,14 @@ function AiUtility.updateThreats()
                 bandAngle:offset(0, stepDistance)
             end
 
-            if closestPoint then
+            if isClientThreatened then
                 AiUtility.isClientThreatened = true
+                AiUtility.clientThreatenedBy = enemy
+                AiUtility.threats[enemy.eid] = true
 
                 threats = threats + 1
-
-                AiUtility.threats[enemy.eid] = true
             end
-        end
+        until true end
 
         AiUtility.totalThreats = threats
     end

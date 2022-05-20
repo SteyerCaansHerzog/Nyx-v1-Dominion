@@ -5,7 +5,6 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ Modules
 local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
-local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGrenadeBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 

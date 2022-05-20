@@ -38,16 +38,17 @@ end
 --- @return void
 function AiStateSweep:think(cmd)
     self.activity = "Sweeping the map"
+
+    if self.ai.nodegraph:isIdle() then
+        self:move()
+    end
 end
 
 --- @return void
 function AiStateSweep:move()
    self.ai.nodegraph:pathfind(self.ai.nodegraph:getRandomNodeWithin(AiUtility.client:getOrigin(), 8192).origin, {
         objective = Node.types.GOAL,
-        task = string.format("Sweeping the map"),
-        onComplete = function()
-            self:move()
-        end
+        task = string.format("Sweeping the map")
     })
 end
 

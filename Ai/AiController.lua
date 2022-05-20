@@ -49,6 +49,7 @@ local AiStatePickupBomb = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePic
 local AiStatePickupItems = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePickupItems"
 local AiStatePlant = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePlant"
 local AiStatePush = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePush"
+local AiStateRotate = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateRotate"
 local AiStateRush = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateRush"
 local AiStateSmoke = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSmoke"
 local AiStateSweep = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSweep"
@@ -79,6 +80,7 @@ local AiChatCommandNoise = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/Ai
 local AiChatCommandOk = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandOk"
 local AiChatCommandAssist = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandAssist"
 local AiChatCommandReload = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandReload"
+local AiChatCommandRotate = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandRotate"
 local AiChatCommandRush = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandRush"
 local AiChatCommandSave = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSave"
 local AiChatCommandSkill = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkill"
@@ -103,9 +105,86 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 --}}}
 
+--{{{ Definitions
+--- @class AiControllerStates
+--- @field avoidInfernos AiStateAvoidInfernos
+--- @field boost AiStateBoost
+--- @field check AiStateCheck
+--- @field defend AiStateDefend
+--- @field defuse AiStateDefuse
+--- @field developer AiStateDeveloper
+--- @field drop AiStateDrop
+--- @field engage AiStateEngage
+--- @field evacuate AiStateEvacuate
+--- @field evade AiStateEvade
+--- @field follow AiStateFollow
+--- @field freezetime AiStateFreezetime
+--- @field graffiti AiStateGraffiti
+--- @field flashbangDynamic AiStateFlashbangDynamic
+--- @field heGrenade AiStateHeGrenade
+--- @field knife AiStateKnife
+--- @field chickenInteraction AiStateChickenInteraction
+--- @field molotov AiStateMolotov
+--- @field patrol AiStatePatrol
+--- @field pickupBomb AiStatePickupBomb
+--- @field pickupItems AiStatePickupItems
+--- @field plant AiStatePlant
+--- @field push AiStatePush
+--- @field rush AiStateRush
+--- @field rotate AiStateRotate
+--- @field smoke AiStateSmoke
+--- @field sweep AiStateSweep
+--- @field wait AiStateWait
+--- @field watch AiStateWatch
+--- @field zombie AiStateZombie
+
+--- @class AiControllerCommands
+--- @field afk AiChatCommandAfk
+--- @field ai AiChatCommandEnabled
+--- @field aim AiChatCommandAim
+--- @field assist AiChatCommandAssist
+--- @field bomb AiChatCommandBomb
+--- @field boost AiChatCommandBoost
+--- @field bt AiChatCommandBacktrack
+--- @field buy AiChatCommandBuy
+--- @field chat AiChatCommandChat
+--- @field cmd AiChatCommandCmd
+--- @field disconnect AiChatCommandDisconnect
+--- @field drop AiChatCommandDrop
+--- @field eco AiChatCommandEco
+--- @field follow AiChatCommandFollow
+--- @field force AiChatCommandForce
+--- @field go AiChatCommandGo
+--- @field knife AiChatCommandKnife
+--- @field know AiChatCommandKnow
+--- @field log AiChatCommandLog
+--- @field noise AiChatCommandNoise
+--- @field ok AiChatCommandOk
+--- @field reload AiChatCommandReload
+--- @field rot AiChatCommandRotate
+--- @field rush AiChatCommandRush
+--- @field save AiChatCommandSave
+--- @field scramble AiChatCommandScramble
+--- @field skill AiChatCommandSkill
+--- @field skipmatch AiChatCommandSkipMatch
+--- @field stop AiChatCommandStop
+--- @field tag AiChatCommandClantag
+--- @field vote AiChatCommandVote
+--- @field wait AiChatCommandWait
+--- @field zombie AiChatCommandZombie
+
+--- @class AiControllerActions
+--- @field panorama AiActionPanorama
+--- @field setBaseState AiActionSetBaseState
+
+--- @class AiControllerChatbots
+--- @field normal AiChatbotNormal
+--- @field gpt3 AiChatbotGpt3
+--}}}
+
 --{{{ AiController
 --- @class AiController : Class
---- @field actions AiAction[]
+--- @field actions AiControllerActions
 --- @field antiFlyTimer Timer
 --- @field antiFlyValues number
 --- @field canAvoidInfernos boolean
@@ -116,9 +195,9 @@ local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 --- @field canLookAwayFromFlash boolean
 --- @field canUnscope boolean
 --- @field canUseKnife boolean
---- @field chatbots AiChatbot[]
+--- @field chatbots AiControllerChatbots
 --- @field client DominionClient
---- @field commands AiChatCommand[]
+--- @field commands AiControllerCommands
 --- @field currentState AiState
 --- @field deactivatedNodes table<number, Node[]>
 --- @field deactivatedNodesByBlock table<number, Node[]>
@@ -133,7 +212,7 @@ local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 --- @field lastPriority number
 --- @field nodegraph Nodegraph
 --- @field priority number
---- @field states AiState[]
+--- @field states AiControllerStates
 --- @field unblockDirection string
 --- @field unblockNodesTimer Timer
 --- @field unblockTimer Timer
@@ -154,7 +233,6 @@ local AiController = {
 		engage = AiStateEngage,
 		evacuate = AiStateEvacuate,
 		evade = AiStateEvade,
-		--flashbang = AiStateFlashbang,
 		follow = AiStateFollow,
 		freezetime = AiStateFreezetime,
 		graffiti = AiStateGraffiti,
@@ -169,6 +247,7 @@ local AiController = {
 		plant = AiStatePlant,
 		push = AiStatePush,
 		rush = AiStateRush,
+		rotate = AiStateRotate,
 		smoke = AiStateSmoke,
 		sweep = AiStateSweep,
 		wait = AiStateWait,
@@ -198,6 +277,7 @@ local AiController = {
 		noise = AiChatCommandNoise,
 		ok = AiChatCommandOk,
 		reload = AiChatCommandReload,
+		rot = AiChatCommandRotate,
 		rush = AiChatCommandRush,
 		save = AiChatCommandSave,
 		scramble = AiChatCommandScramble,
@@ -215,7 +295,7 @@ local AiController = {
 	},
 	chatbots = {
 		normal = AiChatbotNormal,
-		gpt3 = AiChatbotGpt3
+		gpt3 = AiChatbotGpt3,
 	}
 }
 

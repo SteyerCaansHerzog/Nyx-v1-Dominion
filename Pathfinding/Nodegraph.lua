@@ -1124,6 +1124,12 @@ function Nodegraph:processMovement(cmd)
 
         if self.stuckTimer:isElapsedThenStop(0.5) then
             self:rePathfind()
+
+            local closestJumpNode = self:getClosestNodeOf(origin, Node.types.JUMP)
+
+            if origin:getDistance2(closestJumpNode.origin) < 40 then
+                cmd.in_jump = 1
+            end
         end
     end
 end

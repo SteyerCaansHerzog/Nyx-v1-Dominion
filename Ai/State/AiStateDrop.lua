@@ -1,6 +1,5 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local UserInput = require "gamesense/Nyx/v1/Api/UserInput"

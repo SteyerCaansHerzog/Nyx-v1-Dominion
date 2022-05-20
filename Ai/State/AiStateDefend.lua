@@ -84,10 +84,7 @@ function AiStateDefend:__init()
     end)
 
     Callbacks.roundEnd(function()
-        self.isDefending = false
-        self.isDefendingBomb = false
-        self.isDefendingDefuser = false
-        self.node = nil
+        self:reset()
     end)
 
     Callbacks.itemPickup(function(e)
@@ -163,6 +160,14 @@ function AiStateDefend:assess()
     end
 
     return AiPriority.IGNORE
+end
+
+--- @return void
+function AiStateDefend:reset()
+    self.isDefending = false
+    self.isDefendingBomb = false
+    self.isDefendingDefuser = false
+    self.node = nil
 end
 
 --- @return boolean
@@ -258,7 +263,7 @@ function AiStateDefend:think(cmd)
     local distance = AiUtility.client:getOrigin():offset(0, 0, 18):getDistance(self.node.origin)
 
     -- Restart defend procedure somewhere else.
-    if self.ai.priority ~= AiPriority.DEFEND_ACTIVE and self.defendTimer:isElapsedThenRestart(self.defendTime) then
+    if self.ai.priority ~= AiPriority.DEFEND_ACTIVE and self.defendTimer:isElapsedThenStop(self.defendTime) then
         self.defendTime = Client.getRandomFloat(8, 16)
         self.isJigglingUponReachingSpot = Client.getChance(2)
         self.isJiggling = false

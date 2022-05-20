@@ -8,7 +8,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 
 --{{{ AiVoicePackGenericBase
---- @class AiVoicePackGenericBase : AiVoicePackGenericBase
+--- @class AiVoicePackGenericBase : AiVoicePack
 --- @field groups table<string, number>
 local AiVoicePackGenericBase = {
 	name = "Generic",
@@ -610,8 +610,8 @@ function AiVoicePackGenericBase:speakGifting()
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 1,
-		maxDelay = 1.5,
+		minDelay = 0,
+		maxDelay = 1,
 		condition = function()
 			return AiUtility.client:isAlive()
 		end
@@ -625,8 +625,8 @@ function AiVoicePackGenericBase:speakGratitude()
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 0.33,
-		maxDelay = 1,
+		minDelay = 0,
+		maxDelay = 2,
 		condition = function()
 			return AiUtility.client:isAlive()
 		end
@@ -640,7 +640,7 @@ function AiVoicePackGenericBase:speakAgreement()
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 2,
+		minDelay = 2.5,
 		maxDelay = 4,
 		condition = function()
 			return AiUtility.client:isAlive()
@@ -658,8 +658,8 @@ function AiVoicePackGenericBase:speakNoProblem()
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 2,
-		maxDelay = 4,
+		minDelay = 0,
+		maxDelay = 3,
 		condition = function()
 			return AiUtility.client:isAlive()
 		end

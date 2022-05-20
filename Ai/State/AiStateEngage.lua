@@ -112,6 +112,7 @@ local WeaponMode = {
 --- @field strafePeekTimer Timer
 --- @field tapFireTime number
 --- @field tapFireTimer Timer
+--- @field tellGoTimer Timer
 --- @field tellRotateTimer Timer
 --- @field visibleReactionTimer Timer
 --- @field visualizerCallbacks function[]
@@ -175,6 +176,7 @@ function AiStateEngage:initFields()
     self.sprayTimer = Timer:new()
     self.tapFireTime = 0.2
     self.tapFireTimer = Timer:new():start()
+    self.tellGoTimer = Timer:new():startThenElapse()
     self.tellRotateTimer = Timer:new():startThenElapse()
     self.walkCheckCount = 0
     self.walkCheckTimer = Timer:new():start()
@@ -480,76 +482,84 @@ function AiStateEngage:think(cmd)
         return
     end
 
-    self:tellRotate()
+    self:requestRotations()
     self:walk()
     self:moveOnBestTarget(cmd)
     self:attackBestTarget(cmd)
 end
 
 --- @return void
-function AiStateEngage:tellRotate()
-    if not self.tellRotateTimer:isElapsed(15) then
+function AiStateEngage:requestRotations()
+    -- Only CTs should bark rotate commands.
+    if not AiUtility.client:isCounterTerrorist() then
         return
     end
 
-    local player = AiUtility.client
-
-    if not player:isCounterTerrorist() then
+    if AiUtility.plantedBomb then
         return
     end
 
-    local playerOrigin = player:getOrigin()
+    if self.tellRotateTimer:isElapsed(15) then
+        self:callRotateToSite()
+    end
 
-    local nearestBombSite =self.ai.nodegraph:getNearestSiteName(playerOrigin)
-    local siteOrigin =self.ai.nodegraph:getSiteNode(nearestBombSite).origin
+    if self.tellGoTimer:isElapsed(15) then
+        self:callGoToSite()
+    end
+end
 
-    if playerOrigin:getDistance(siteOrigin) > 2048 then
+--- @return void
+function AiStateEngage:callRotateToSite()
+    local clientOrigin = AiUtility.client:getOrigin()
+    local nearestSite = self.ai.nodegraph:getNearestSiteNode(clientOrigin)
+    local nearestSiteName = self.ai.nodegraph:getNearestSiteName(clientOrigin)
+
+    if clientOrigin:getDistance(nearestSite.origin) > 1800 then
         return
     end
 
-    local countEnemiesNearby = 0
-    --- @type Player
-    local tellEnemy
+    if not AiUtility.bombCarrier or AiUtility.bombCarrier:getOrigin():getDistance(nearestSite.origin) > 1200 then
+        return
+    end
+
+    self.ai.commands.rot:bark(nearestSiteName)
+    self.ai.voice.pack:speakRequestTeammatesToRotate(nearestSiteName)
+
+    self.tellRotateTimer:restart()
+end
+
+--- @return void
+function AiStateEngage:callGoToSite()
+    local clientOrigin = AiUtility.client:getOrigin()
+    local nearestSite = self.ai.nodegraph:getNearestSiteNode(clientOrigin)
+    local nearestSiteName = self.ai.nodegraph:getNearestSiteName(clientOrigin)
+
+    print("go to site")
+
+    if clientOrigin:getDistance(nearestSite.origin) > 1800 then
+        return
+    end
+
+    local enemiesNearSiteCount = 0
 
     for _, enemy in pairs(AiUtility.enemies) do
-        if self:hasNoticedEnemy(enemy) then
-            local enemyOrigin = enemy:getOrigin()
-
-            if enemyOrigin:getDistance(siteOrigin) < 2048 and playerOrigin:getDistance(enemyOrigin) < 2048 then
-                countEnemiesNearby = countEnemiesNearby + 1
-                tellEnemy = enemy
-            end
+        if enemy:getOrigin():getDistance(nearestSite.origin) < 1800 then
+            enemiesNearSiteCount = enemiesNearSiteCount + 1
         end
     end
 
-    for _, enemy in pairs(AiUtility.visibleEnemies) do
-        if AiUtility.bombCarrier and AiUtility.bombCarrier:is(enemy) then
-            countEnemiesNearby = 5
-            tellEnemy = enemy
+    local enemyRatio = enemiesNearSiteCount / AiUtility.enemiesAlive
 
-            break
-        end
-    end
+    print(enemyRatio)
 
-    if not tellEnemy then
+    if enemyRatio < 0.5 then
         return
     end
 
-    local isBombVisible = AiUtility.bomb and playerOrigin:isVisible(AiUtility.bomb:m_vecOrigin(), Client.getEid())
+    self.ai.commands.go:bark(nearestSiteName)
+    self.ai.voice.pack:speakRequestTeammatesToRotate(nearestSiteName)
 
-    if isBombVisible or countEnemiesNearby >= 2 then
-        self.tellRotateTimer:restart()
-
-        local nearestBombSite =self.ai.nodegraph:getNearestSiteName(tellEnemy:getOrigin())
-
-        if Menu.useChatCommands:get() then
-            self.ai.commands.go:bark(nearestBombSite)
-        end
-
-        if not AiUtility.isLastAlive then
-           self.ai.voice.pack:speakRequestTeammatesToRotate(nearestBombSite)
-        end
-    end
+    self.tellGoTimer:restart()
 end
 
 --- @param player Player
@@ -1404,7 +1414,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:attackBestTarget(cmd)
-    if not Menu.master:get() or not Menu.enableAi:get() or not Menu.enableAimbot:get() then
+    if not Menu.master:get() or not Menu.enableAi:get() then
         return
     end
 
@@ -2033,7 +2043,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:fireWeapon(cmd)
-    if not self.isAimEnabled then
+    if not self.isAimEnabled or not Menu.enableAimbot:get() then
         return
     end
 
