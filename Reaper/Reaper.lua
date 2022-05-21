@@ -837,10 +837,10 @@ function Reaper:think()
 		self.lastFocusedState = isAppFocused
 
 		if isAppFocused then
-			cvar.fps_max:set_int(0)
+			cvar.fps_max:set_int(64)
 			cvar.fps_max_menu:set_int(0)
 		else
-			cvar.fps_max:set_int(70)
+			cvar.fps_max:set_int(64)
 			cvar.fps_max_menu:set_int(15)
 		end
 
@@ -868,6 +868,8 @@ function Reaper:think()
 
 		-- Toggle communication states.
 		if self.isActive then
+			cvar.fps_max:set_int(0)
+
 			self.savedCommunicationStates = {
 				chatbotNormal = self.ai.chatbots.normal.isEnabled,
 				chatbotGpt3 = self.ai.chatbots.gpt3.isEnabled

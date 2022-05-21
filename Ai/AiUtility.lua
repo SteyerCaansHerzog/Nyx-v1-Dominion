@@ -1,7 +1,6 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local Color = require "gamesense/Nyx/v1/Api/Color"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -120,6 +119,7 @@ local AiWeaponNames = {
 --- @field visibleEnemies Player[]
 --- @field weaponNames string[]
 --- @field weaponPriority AiWeaponPriorityGeneral
+--- @field ignorePresenceAfter number
 local AiUtility = {
     mainWeapons = {
         Weapons.FAMAS, Weapons.GALIL, Weapons.M4A1, Weapons.AUG, Weapons.AK47, Weapons.AWP, Weapons.SG553, Weapons.SSG08
@@ -142,6 +142,7 @@ function AiUtility:initFields()
     AiUtility.lastVisibleEnemyTimer = Timer:new()
     AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
     AiUtility.enemyFovs = Table.populateForMaxPlayers(math.huge)
+    AiUtility.ignorePresenceAfter = Client.getRandomFloat(10, 15)
 
     AiUtility.lastPresenceTimers = {}
 
@@ -476,13 +477,11 @@ function AiUtility.updateEnemies()
             AiUtility.dormantAt[enemy.eid] = Time.getRealtime()
         end
 
+        local enemyOrigin = enemy:getOrigin()
+        local distance = clientOrigin:getDistance(enemyOrigin)
         local fov = cameraAngles:getFov(clientEyeOrigin, enemy:getHitboxPosition(Player.hitbox.SPINE_1))
 
         AiUtility.enemyFovs[enemy.eid] = fov
-
-        local enemyOrigin = enemy:getOrigin()
-
-        local distance = clientOrigin:getDistance(enemyOrigin)
 
         if distance < closestDistance then
             closestDistance = distance
@@ -516,11 +515,18 @@ function AiUtility.updateEnemies()
 
         if isVisible then
             AiUtility.visibleEnemies[enemy.eid] = enemy
-
             AiUtility.isEnemyVisible = true
             AiUtility.isClientThreatened = true
 
-            if not AiUtility.lastPresenceTimers[enemy.eid]:isElapsed(15) then
+            local canSetThreatenedFromOrigin = false
+
+            if not AiUtility.lastPresenceTimers[enemy.eid]:isElapsed(AiUtility.ignorePresenceAfter) then
+                canSetThreatenedFromOrigin = true
+            elseif clientOrigin:getDistance(enemyOrigin) > 700 then
+                canSetThreatenedFromOrigin = true
+            end
+
+            if canSetThreatenedFromOrigin then
                 AiUtility.clientThreatenedFromOrigin = enemyOrigin:clone():offset(0, 0, 64)
             end
         elseif enemy:m_bIsDefusing() == 1 then
@@ -567,6 +573,7 @@ function AiUtility.updateThreats()
 
     -- Update threats.
     local eyeOrigin = Client.getEyeOrigin() + AiUtility.client:m_vecVelocity():set(nil, nil, 0) * 0.33
+    local clientOrigin = AiUtility.client:getOrigin()
     local threatUpdateTime = 0.15
     local threats = 0
 
@@ -586,8 +593,13 @@ function AiUtility.updateThreats()
         end
 
         for _, enemy in pairs(AiUtility.enemies) do repeat
-            if AiUtility.lastPresenceTimers[enemy.eid]:isElapsed(15) then
-                break
+            local enemyOrigin = enemy:getOrigin()
+            local canSetThreatenedFromOrigin = false
+
+            if not AiUtility.lastPresenceTimers[enemy.eid]:isElapsed(AiUtility.ignorePresenceAfter) then
+                canSetThreatenedFromOrigin = true
+            elseif clientOrigin:getDistance(enemyOrigin) > 700 then
+                canSetThreatenedFromOrigin = true
             end
 
             local enemyOffset = enemy:getOrigin():offset(0, 0, 72)
@@ -620,7 +632,7 @@ function AiUtility.updateThreats()
                     if not findCollidedPointVisibleToEnemyTrace.isIntersectingGeometry then
                         isClientThreatened = true
 
-                        if fov < lowestFov and fov < 20 then
+                        if canSetThreatenedFromOrigin and fov < lowestFov and fov < 20 then
                             lowestFov = fov
 
                             AiUtility.clientThreatenedFromOrigin = findWallCollideTrace.endPosition

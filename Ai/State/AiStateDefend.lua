@@ -28,7 +28,6 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field getToSiteTimer Timer
 --- @field isAtDestination boolean
 --- @field isDefending boolean
---- @field isDefendingBomb boolean
 --- @field isDefendingDefuser boolean
 --- @field isJiggling boolean
 --- @field isJigglingUponReachingSpot boolean
@@ -165,9 +164,12 @@ end
 --- @return void
 function AiStateDefend:reset()
     self.isDefending = false
-    self.isDefendingBomb = false
     self.isDefendingDefuser = false
+    self.isAtDestination = false
+    self.isOnDefendSpot = false
     self.node = nil
+
+    self.defendTimer:stop()
 end
 
 --- @return boolean
@@ -215,10 +217,13 @@ function AiStateDefend:activate(site, swapPair)
     end
 
     self.node = node
-    self.isAtDestination = false
     self.isDefending = false
+    self.isDefendingDefuser = false
+    self.isAtDestination = false
+    self.isOnDefendSpot = false
     self.isJiggling = false
     self.canDuckAtNode = Client.getChance(2)
+
     self.defendTimer:stop()
     self.jiggleTimer:stop()
 
@@ -228,11 +233,6 @@ function AiStateDefend:activate(site, swapPair)
     })
 end
 
---- @return void
-function AiStateDefend:deactivate()
-    self.isOnDefendSpot = false
-end
-
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateDefend:think(cmd)
@@ -240,27 +240,23 @@ function AiStateDefend:think(cmd)
         return
     end
 
+    local distance = AiUtility.client:getOrigin():offset(0, 0, 18):getDistance(self.node.origin)
+
+    -- Set activity string.
+    if distance < 750 then
+        self.activity = string.format("Going %s", self.defendingSite:upper())
+    else
+        self.activity = string.format("Defending %s", self.defendingSite:upper())
+    end
+
     -- There's a teammate already near this defensive spot. We should hold someplace else.
     if self.ai.priority ~= AiPriority.DEFEND_ACTIVE then
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance(self.node.origin) < 100 then
+            if teammate:getOrigin():getDistance(self.node.origin) < 50 then
                 self:activate(self.defendingSite)
-
-                return
             end
         end
     end
-
-    -- Defend the bomb.
-    if AiUtility.plantedBomb and not self.isDefendingBomb then
-        self:activate(self.ai.nodegraph:getNearestSiteName(AiUtility.plantedBomb:m_vecOrigin()))
-
-        self.isDefendingBomb = true
-
-        return
-    end
-
-    local distance = AiUtility.client:getOrigin():offset(0, 0, 18):getDistance(self.node.origin)
 
     -- Restart defend procedure somewhere else.
     if self.ai.priority ~= AiPriority.DEFEND_ACTIVE and self.defendTimer:isElapsedThenStop(self.defendTime) then
@@ -274,8 +270,6 @@ function AiStateDefend:think(cmd)
         else
             self:activate(self.defendingSite, true)
         end
-
-        return
     end
 
     -- Jiggle hold the angle.
@@ -296,13 +290,6 @@ function AiStateDefend:think(cmd)
 
             self.ai.nodegraph.moveAngle = direction:getAngleFromForward()
         end
-    end
-
-    -- Set activity string.
-    if distance < 750 then
-        self.activity = string.format("Going %s", self.defendingSite:upper())
-    else
-        self.activity = string.format("Defending %s", self.defendingSite:upper())
     end
 
     if distance < 250 then

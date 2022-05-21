@@ -4,7 +4,7 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
 local Menu = require "gamesense/Nyx/v1/Api/Menu"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Render = require "gamesense/Nyx/v1/Api/Render"
+local Table = require "gamesense/Nyx/v1/Api/Table"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 local VKey = require "gamesense/Nyx/v1/Api/VKey"
@@ -255,7 +255,7 @@ function NodegraphEditor:createNode(origin, isSpot)
     local iConnections = 0
     local isNodeTraversal = node.type == Node.types.RUN
 
-    for _, potentialConnection in Nyx.sortedPairs(self.nodegraph.nodes, function(a, b)
+    for _, potentialConnection in Table.sortedPairs(self.nodegraph.nodes, function(a, b)
         return origin:getDistance(a.origin) < origin:getDistance(b.origin)
     end) do
         if iConnections == MenuGroup.maxNodeConnections:get() then
