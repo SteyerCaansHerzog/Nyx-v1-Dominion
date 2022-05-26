@@ -20,7 +20,8 @@ local AiStateMolotov = {
     holdNode = "objectiveMolotovHold",
     weapons = {Weapons.MOLOTOV, Weapons.INCENDIARY},
     equipFunction = Client.equipMolotov,
-    rangeThreshold = 1200
+    rangeThreshold = 1200,
+    isCheckingEnemiesRequired = true,
 }
 
 --- @param fields AiStateMolotov

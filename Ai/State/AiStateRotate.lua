@@ -56,6 +56,10 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateRotate:think(cmd)
+    if not self.node or not self.site then
+        return
+    end
+
     self.activity = string.format("Rotating to %s", self.site:upper())
 
     if self.ai.nodegraph:isIdle() then

@@ -35,10 +35,6 @@ function AiChatCommandDrop:invoke(ai, sender, args)
         return
     end
 
-    if player:m_iAccount() < 1500 and not player:hasWeapons(AiUtility.mainWeapons) then
-        --return
-    end
-
     if player:getOrigin():getDistance(sender:getOrigin()) > 800 then
         return
     end

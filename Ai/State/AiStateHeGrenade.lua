@@ -21,7 +21,8 @@ local AiStateHeGrenade = {
     retakeNode = "objectiveHeGrenadeRetake",
     weapons = {Weapons.HE_GRENADE},
     equipFunction = Client.equipHeGrenade,
-    rangeThreshold = 1500
+    rangeThreshold = 1500,
+    isCheckingEnemiesRequired = true,
 }
 
 --- @param fields AiStateHeGrenade

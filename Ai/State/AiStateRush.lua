@@ -34,10 +34,14 @@ end
 
 --- @return void
 function AiStateRush:assess()
-    local player = AiUtility.client
-
-    if not player:isCounterTerrorist() then
-        return AiPriority.IGNORE
+    if AiUtility.gamemode == "hostage" then
+        if not AiUtility.client:isTerrorist() then
+            return AiPriority.IGNORE
+        end
+    else
+        if not AiUtility.client:isCounterTerrorist() then
+            return AiPriority.IGNORE
+        end
     end
 
     if AiUtility.plantedBomb then

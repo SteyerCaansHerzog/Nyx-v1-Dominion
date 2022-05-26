@@ -21,7 +21,8 @@ local AiStateSmoke = {
     holdNode = "objectiveSmokeHold",
     weapons = {Weapons.SMOKE},
     equipFunction = Client.equipSmoke,
-    rangeThreshold = 2000
+    rangeThreshold = 2000,
+    isCheckingEnemiesRequired = false,
 }
 
 --- @param fields AiStateSmoke

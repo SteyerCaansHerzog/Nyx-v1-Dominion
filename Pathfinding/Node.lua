@@ -55,6 +55,9 @@ local NodeType = {
     SMOKE_RETAKE = 47,
     MOLOTOV_RETAKE = 48,
     HE_GRENADE_RETAKE = 49,
+    PUSH_HOSTAGE = 50,
+    HOSTAGE = 51,
+    DEFEND_HOSTAGE = 52,
 }
 
 local NodeDirectional = {
@@ -88,12 +91,14 @@ local NodeDirectional = {
     [NodeType.SMOKE_RETAKE] = true,
     [NodeType.MOLOTOV_RETAKE] = true,
     [NodeType.HE_GRENADE_RETAKE] = true,
+    [NodeType.DEFEND_HOSTAGE] = true,
 }
 
 local NodePaired = {
     [NodeType.DEFEND] = true,
     [NodeType.HOLD] = true,
     [NodeType.DEFEND_DEFUSER] = true,
+    [NodeType.DEFEND_HOSTAGE] = true
 }
 
 local NodeTypeName = {
@@ -146,6 +151,9 @@ local NodeTypeName = {
     [NodeType.SMOKE_RETAKE] = "Smoke (Retake)",
     [NodeType.MOLOTOV_RETAKE] = "Molotov (Retake)",
     [NodeType.HE_GRENADE_RETAKE] = "HE Grenade (Retake)",
+    [NodeType.PUSH_HOSTAGE] = "Push (Hostage)",
+    [NodeType.HOSTAGE] = "Hostage",
+    [NodeType.DEFEND_HOSTAGE] = "Defend (Hostage)",
 }
 
 --- @type Color[]
@@ -199,6 +207,9 @@ local NodeTypeColor = {
     [NodeType.SMOKE_RETAKE] = Color:hsla(0, 0.0, 0.9),
     [NodeType.MOLOTOV_RETAKE] = Color:hsla(30, 0.66, 0.85),
     [NodeType.HE_GRENADE_RETAKE] = Color:hsla(0, 0.66, 0.85),
+    [NodeType.PUSH_HOSTAGE] = Color:hsla(320, 0.8, 0.7),
+    [NodeType.HOSTAGE] = Color:hsla(340, 0.8, 0.6),
+    [NodeType.DEFEND_HOSTAGE] = Color:hsla(65, 0.8, 0.6),
 }
 
 local NodeTypeCode = {
@@ -251,6 +262,9 @@ local NodeTypeCode = {
     [NodeType.SMOKE_RETAKE] = "SMOKE (RETAKE)",
     [NodeType.MOLOTOV_RETAKE] = "MOLOTOV (RETAKE)",
     [NodeType.HE_GRENADE_RETAKE] = "GRENADE (RETAKE)",
+    [NodeType.PUSH_HOSTAGE] = "PUSH (HOSTAGE)",
+    [NodeType.HOSTAGE] = "HOSTAGE",
+    [NodeType.DEFEND_HOSTAGE] = "DEFEND (HOSTAGE)",
 }
 --}}}
 

@@ -11,23 +11,23 @@ local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
---{{{ AiStatePush
---- @class AiStatePush : AiState
+--{{{ AiStatePushDemolition
+--- @class AiStatePushDemolition : AiState
 --- @field isDeactivated boolean
 --- @field node Node
 --- @field site string
-local AiStatePush = {
+local AiStatePushDemolition = {
     name = "Push"
 }
 
---- @param fields AiStatePush
---- @return AiStatePush
-function AiStatePush:new(fields)
+--- @param fields AiStatePushDemolition
+--- @return AiStatePushDemolition
+function AiStatePushDemolition:new(fields)
     return Nyx.new(self, fields)
 end
 
 --- @return void
-function AiStatePush:__init()
+function AiStatePushDemolition:__init()
     Callbacks.roundPrestart(function()
         self.isDefendingBomb = false
         self.isDeactivated = false
@@ -36,10 +36,12 @@ function AiStatePush:__init()
 end
 
 --- @return void
-function AiStatePush:assess()
-    local player = AiUtility.client
+function AiStatePushDemolition:assess()
+    if AiUtility.gamemode == "hostage" then
+        return AiPriority.IGNORE
+    end
 
-    if not player:isTerrorist() then
+    if not AiUtility.client:isTerrorist() then
         return AiPriority.IGNORE
     end
 
@@ -56,7 +58,7 @@ end
 
 --- @param site string
 --- @return void
-function AiStatePush:activate(site)
+function AiStatePushDemolition:activate(site)
     if not site then
         site = self.site
     end
@@ -74,7 +76,7 @@ function AiStatePush:activate(site)
         objective = Node.types.GOAL,
         task = string.format("Push to %s site [%i]", node.site:upper(), node.id),
         onComplete = function()
-           self.ai.nodegraph:log("Pushed onto %s site [%i]", node.site, node.id)
+            self.ai.nodegraph:log("Pushed onto %s site [%i]", node.site, node.id)
 
             self.isDeactivated = true
         end
@@ -83,7 +85,7 @@ end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function AiStatePush:think(cmd)
+function AiStatePushDemolition:think(cmd)
     if not self.node then
         return
     end
@@ -97,28 +99,26 @@ function AiStatePush:think(cmd)
     end
 
     if self.ai.nodegraph:isIdle() then
-        self:activate(self.site)
+        self.ai.nodegraph:rePathfind()
     end
 end
 
 --- @param site string
 --- @return Node
-function AiStatePush:getActivityNode(site)
+function AiStatePushDemolition:getActivityNode(site)
     local nodes = {
-        a =self.ai.nodegraph.objectiveAPush,
-        b =self.ai.nodegraph.objectiveBPush
+        a = self.ai.nodegraph.objectiveAPush,
+        b = self.ai.nodegraph.objectiveBPush
     }
-
-    local site = site
 
     if not site then
         site = Client.getRandomInt(1, 2) == 1 and "a" or "b"
     end
 
-    local nodes = nodes[site]
+    nodes = nodes[site]
 
     return nodes[Client.getRandomInt(1, #nodes)]
 end
 
-return Nyx.class("AiStatePush", AiStatePush, AiState)
+return Nyx.class("AiStatePushDemolition", AiStatePushDemolition, AiState)
 --}}}

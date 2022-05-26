@@ -28,6 +28,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field weapons string[]
 --- @field equipFunction fun(): nil
 --- @field rangeThreshold number
+--- @field isCheckingEnemiesRequired boolean
 ---
 --- @field isInThrow boolean
 --- @field node Node
@@ -58,6 +59,10 @@ function AiStateGrenadeBase:__init()
     self.throwTime = 0.1
     self.threatCooldownTimer = Timer:new():startThenElapse()
     self.cooldownTimer = Timer:new():startThenElapse()
+
+    Callbacks.roundStart(function()
+        self:reset()
+    end)
 
     Callbacks.runCommand(function()
     	self:watchForOccupiedNodes()
@@ -155,7 +160,7 @@ function AiStateGrenadeBase:getBestLineup(nodes)
     -- Should we check if enemies could be affected by the line-up?
     local isCheckingEnemies = true
 
-    if AiUtility.client:isTerrorist() and not AiUtility.roundTimer:isElapsed(20) then
+    if AiUtility.client:isTerrorist() and not AiUtility.roundTimer:isElapsed(20) and not self.isCheckingEnemiesRequired then
         isCheckingEnemies = false
     end
 
@@ -292,6 +297,11 @@ function AiStateGrenadeBase:activate()
 end
 
 --- @return void
+function AiStateGrenadeBase:reset()
+    self.node = nil
+end
+
+--- @return void
 function AiStateGrenadeBase:deactivate()
     self.node = nil
     self.inBehaviorTimer:stop()
@@ -403,6 +413,14 @@ end
 --- @return Node[]
 function AiStateGrenadeBase:getNodes()
     local player = AiUtility.client
+
+    if AiUtility.gamemode == "hostage" then
+        if player:isCounterTerrorist() then
+            return self.ai.nodegraph[self.retakeNode]
+        elseif player:isTerrorist() then
+            return self.ai.nodegraph[self.holdNode]
+        end
+    end
 
     if player:isCounterTerrorist() then
         if AiUtility.plantedBomb then

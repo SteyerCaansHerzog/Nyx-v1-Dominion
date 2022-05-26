@@ -40,9 +40,9 @@ function AiState:getCoverNode(range, target)
     local coverAngle
 
     if target then
-        coverAngle = -(playerOrigin:getAngle(target:getOrigin()))
+        coverAngle = playerOrigin:getAngle(target:getOrigin())
     else
-        coverAngle = -(Client.getCameraAngles())
+        coverAngle = Client.getCameraAngles()
     end
 
     --- @type Node[]
@@ -50,7 +50,7 @@ function AiState:getCoverNode(range, target)
     local i = 0
 
     for _, node in pairs(self.ai.nodegraph.nodes) do
-        if playerOrigin:getDistance(node.origin) < range and coverAngle:getFov(playerOrigin, node.origin) < 90 then
+        if playerOrigin:getDistance(node.origin) < range and coverAngle:getFov(playerOrigin, node.origin) > 75 then
             i = i + 1
 
             if i > 50 then
@@ -76,7 +76,7 @@ function AiState:getCoverNode(range, target)
         end
     end
 
-    if not next(possibleNodes) then
+    if Table.isEmpty(possibleNodes) then
         -- If we ever reach this, we've graphed the map badly, or the AI is literally surrounded.
         self.ai.nodegraph:log("No cover to move to")
 

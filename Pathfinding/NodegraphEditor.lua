@@ -132,6 +132,14 @@ function NodegraphEditor:initEvents()
         self:createNodes()
         self:renderUi()
     end)
+
+    Callbacks.setupCommand(function(cmd)
+        if MenuGroup.enableEditor:get() then
+            cmd.in_attack = 0
+            cmd.in_attack2 = 0
+            cmd.in_attack3 = 0
+        end
+    end)
 end
 
 --- @return Node

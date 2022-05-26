@@ -3,13 +3,10 @@ local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Chat = require "gamesense/Nyx/v1/Api/Chat"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
-local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
-local Render = require "gamesense/Nyx/v1/Api/Render"
 local Table = require "gamesense/Nyx/v1/Api/Table"
-local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
@@ -23,53 +20,66 @@ local AStar = require "gamesense/Nyx/v1/Dominion/Pathfinding/AStar"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
+local MapInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/MapInfo"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
 --{{{ Nodegraph
 --- @class Nodegraph : Class
+--- @field cachedPathfindMoveAngle Angle
 --- @field canJump boolean
 --- @field closestNode Node
 --- @field crouchTimer Timer
---- @field ctSpawn Node
 --- @field currentNode number
+--- @field isAllowedToMove boolean
+--- @field isDebugging boolean
+--- @field isTraversingDownLadder boolean
+--- @field isTraversingUpLadder boolean
+--- @field isWantingToAttachLadder boolean
 --- @field jumpCooldown Timer
 --- @field lastPathfindTimer Timer
 --- @field mapMiddle Node
+--- @field moveAngle Angle
 --- @field moveSpeed number
+--- @field moveTargetOrigin Vector3
 --- @field moveYaw number
 --- @field nodes Node[]
 --- @field objectiveA Node
 --- @field objectiveAChoke Node[]
 --- @field objectiveADefend Node[]
 --- @field objectiveADefendDefuser Node[]
---- @field objectiveAHold Node[]
 --- @field objectiveAHide Node[]
+--- @field objectiveAHold Node[]
 --- @field objectiveAPlant Node[]
 --- @field objectiveAPush Node[]
 --- @field objectiveB Node
 --- @field objectiveBChoke Node[]
 --- @field objectiveBDefend Node[]
 --- @field objectiveBDefendDefuser Node[]
---- @field objectiveBHold Node[]
 --- @field objectiveBHide Node[]
+--- @field objectiveBHold Node[]
 --- @field objectiveBlock Node[]
 --- @field objectiveBPlant Node[]
 --- @field objectiveBPush Node[]
+--- @field objectiveCtSpawn Node
+--- @field objectiveDefendHostage Node[]
 --- @field objectiveFlashbangDefend Node[]
 --- @field objectiveFlashbangExecute Node[]
 --- @field objectiveFlashbangHold Node[]
 --- @field objectiveHeGrenadeDefend Node[]
 --- @field objectiveHeGrenadeExecute Node[]
 --- @field objectiveHeGrenadeHold Node[]
+--- @field objectiveHostage Node[]
 --- @field objectiveMolotovDefend Node[]
 --- @field objectiveMolotovExecute Node[]
 --- @field objectiveMolotovHold Node[]
+--- @field objectivePushHostage Node[]
 --- @field objectiveRush Node[]
 --- @field objectiveShoot Node[]
 --- @field objectiveSmokeDefend Node[]
 --- @field objectiveSmokeExecute Node[]
 --- @field objectiveSmokeHold Node[]
+--- @field objectiveTSpawn Node
 --- @field objectiveWatchRifle Node[]
 --- @field objectiveWatchSniper Node[]
 --- @field path Node[]
@@ -79,23 +89,58 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field pathfindOptions NodegraphPathfindOptions
 --- @field pathMap Node[]
 --- @field pathStart Node
---- @field moveTargetOrigin Vector3
 --- @field stuckTimer Timer
 --- @field task string
---- @field tSpawn Node
---- @field unstuckTimer Timer
---- @field cachedPathfindMoveAngle Angle
---- @field moveAngle Angle
---- @field isAllowedToMove boolean
---- @field unblockTimer Timer
 --- @field unblockDuration number
 --- @field unblockLookAngles Angle
---- @field isDebugging boolean
---- @field isTraversingUpLadder boolean
---- @field isTraversingDownLadder boolean
---- @field isWantingToAttachLadder boolean
+--- @field unblockTimer Timer
+--- @field unstuckTimer Timer
+--- @field nodeFieldMap string[]
+--- @field isNodeLinkedToBombsite boolean[]
 local Nodegraph = {
-    isDebugging = true
+    isDebugging = true,
+    nodeFieldMap = {
+        [Node.types.PLANT] = "Plant",
+        [Node.types.DEFEND] = "Defend",
+        [Node.types.DEFEND_DEFUSER] = "DefendDefuser",
+        [Node.types.HIDE] = "Hide",
+        [Node.types.HOLD] = "Hold",
+        [Node.types.PUSH] = "Push",
+        [Node.types.SMOKE_DEFEND] = "SmokeDefend",
+        [Node.types.SMOKE_EXECUTE] = "SmokeExecute",
+        [Node.types.SMOKE_HOLD] = "SmokeHold",
+        [Node.types.FLASHBANG_DEFEND] = "FlashbangDefend",
+        [Node.types.FLASHBANG_EXECUTE] = "FlashbangExecute",
+        [Node.types.FLASHBANG_HOLD] = "FlashbangHold",
+        [Node.types.MOLOTOV_DEFEND] = "MolotovDefend",
+        [Node.types.MOLOTOV_EXECUTE] = "MolotovExecute",
+        [Node.types.MOLOTOV_HOLD] = "MolotovHold",
+        [Node.types.HE_GRENADE_DEFEND] = "HeGrenadeDefend",
+        [Node.types.HE_GRENADE_EXECUTE] = "HeGrenadeExecute",
+        [Node.types.HE_GRENADE_HOLD] = "HeGrenadeHold",
+        [Node.types.RUSH] = "Rush",
+        [Node.types.CHOKE] = "Choke",
+        [Node.types.SHOOT] = "Shoot",
+        [Node.types.CROUCH_SHOOT] = "Shoot",
+        [Node.types.BLOCK] = "Block",
+        [Node.types.WATCH_RIFLE] = "WatchRifle",
+        [Node.types.WATCH_SNIPER] = "WatchSniper",
+        [Node.types.SMOKE_RETAKE] = "SmokeRetake",
+        [Node.types.MOLOTOV_RETAKE] = "MolotovRetake",
+        [Node.types.HE_GRENADE_RETAKE] = "HeGrenadeRetake",
+        [Node.types.PUSH_HOSTAGE] = "PushHostage",
+        [Node.types.HOSTAGE] = "Hostage",
+        [Node.types.DEFEND_HOSTAGE] = "DefendHostage",
+    },
+    isNodeLinkedToBombsite = {
+        [Node.types.PLANT] = true,
+        [Node.types.DEFEND] = true,
+        [Node.types.DEFEND_DEFUSER] = true,
+        [Node.types.HIDE] = true,
+        [Node.types.HOLD] = true,
+        [Node.types.PUSH] = true,
+        [Node.types.CHOKE] = true,
+    }
 }
 
 --- @return Nodegraph
@@ -242,8 +287,8 @@ function Nodegraph:setupNodegraph()
         [Node.types.OBJECTIVE_A] = "objectiveA",
         [Node.types.OBJECTIVE_B] = "objectiveB",
         [Node.types.MAP_MIDDLE] = "mapMiddle",
-        [Node.types.CT_SPAWN] = "ctSpawn",
-        [Node.types.T_SPAWN] = "tSpawn",
+        [Node.types.CT_SPAWN] = "objectiveCtSpawn",
+        [Node.types.T_SPAWN] = "objectiveTSpawn",
     }
 
     -- Unset all objectives.
@@ -316,102 +361,126 @@ function Nodegraph:setupNodegraph()
         end
     until true end
 
-    local objectives = {
-        a = "objectiveA",
-        b = "objectiveB",
-    }
-
-    local map = {
-        [Node.types.PLANT] = "Plant",
-        [Node.types.DEFEND] = "Defend",
-        [Node.types.DEFEND_DEFUSER] = "DefendDefuser",
-        [Node.types.HIDE] = "Hide",
-        [Node.types.HOLD] = "Hold",
-        [Node.types.PUSH] = "Push",
-        [Node.types.SMOKE_DEFEND] = "SmokeDefend",
-        [Node.types.SMOKE_EXECUTE] = "SmokeExecute",
-        [Node.types.SMOKE_HOLD] = "SmokeHold",
-        [Node.types.FLASHBANG_DEFEND] = "FlashbangDefend",
-        [Node.types.FLASHBANG_EXECUTE] = "FlashbangExecute",
-        [Node.types.FLASHBANG_HOLD] = "FlashbangHold",
-        [Node.types.MOLOTOV_DEFEND] = "MolotovDefend",
-        [Node.types.MOLOTOV_EXECUTE] = "MolotovExecute",
-        [Node.types.MOLOTOV_HOLD] = "MolotovHold",
-        [Node.types.HE_GRENADE_DEFEND] = "HeGrenadeDefend",
-        [Node.types.HE_GRENADE_EXECUTE] = "HeGrenadeExecute",
-        [Node.types.HE_GRENADE_HOLD] = "HeGrenadeHold",
-        [Node.types.RUSH] = "Rush",
-        [Node.types.CHOKE] = "Choke",
-        [Node.types.SHOOT] = "Shoot",
-        [Node.types.CROUCH_SHOOT] = "Shoot",
-        [Node.types.BLOCK] = "Block",
-        [Node.types.WATCH_RIFLE] = "WatchRifle",
-        [Node.types.WATCH_SNIPER] = "WatchSniper",
-        [Node.types.SMOKE_RETAKE] = "SmokeRetake",
-        [Node.types.MOLOTOV_RETAKE] = "MolotovRetake",
-        [Node.types.HE_GRENADE_RETAKE] = "HeGrenadeRetake",
-    }
-
-    local linkToObjective = {
-        [Node.types.PLANT] = true,
-        [Node.types.DEFEND] = true,
-        [Node.types.DEFEND_DEFUSER] = true,
-        [Node.types.HIDE] = true,
-        [Node.types.HOLD] = true,
-        [Node.types.PUSH] = true,
-        [Node.types.CHOKE] = true,
-    }
-
     --- @type Node[]
-    local siteNodes = {}
+    local bombsites = {}
 
     if self.objectiveA then
-        siteNodes.a = self.objectiveA
+        bombsites.a = self.objectiveA
+
+        self.objectiveA.site = "a"
     end
 
     if self.objectiveB then
-        siteNodes.b = self.objectiveB
+        bombsites.b = self.objectiveB
+
+        self.objectiveB.site = "b"
     end
 
     -- Set arrays.
-    for id, nodeType in pairs(map) do
-        for _, objective in pairs(objectives) do
-            if linkToObjective[id] then
-                self[string.format("%s%s", objective, nodeType)] = {}
+    for id, nodeType in pairs(self.nodeFieldMap) do
+        for _, objective in pairs(bombsites) do
+            if self.isNodeLinkedToBombsite[id] then
+                self[string.format("objective%s%s", objective.site:upper(), nodeType)] = {}
             else
                 self[string.format("objective%s", nodeType)] = {}
             end
         end
     end
 
-    local radius = 4000
+    --- @type Node
+    local onlyBombsite
 
-    -- Set activity nodes.
-    for _, node in pairs(self.nodes) do
-        if map[node.type] and not linkToObjective[node.type] then
-            table.insert(self[string.format("objective%s", map[node.type])], node)
-        elseif map[node.type] and linkToObjective[node.type] then
-            local closestSite
-            local closestDistance = math.huge
+    if not self.objectiveA then
+        onlyBombsite = self.objectiveB
+    elseif not self.objectiveB then
+        onlyBombsite = self.objectiveA
+    end
 
-            for site, siteNode in pairs(siteNodes) do
-                local distance = node.origin:getDistance(siteNode.origin)
+    if onlyBombsite then
+        for _, node in pairs(self.nodes) do
+            if self.isNodeLinkedToBombsite[node.type] then
+                local field = string.format("objective%s%s", onlyBombsite.site:upper(), self.nodeFieldMap[node.type])
 
-                if distance < closestDistance and distance < radius then
-                    closestDistance = distance
-                    closestSite = site
-                end
-            end
-
-            if closestSite then
-                local field = string.format("%s%s", objectives[closestSite], map[node.type])
-
-                node.site = closestSite
+                node.site = onlyBombsite.site
 
                 table.insert(self[field], node)
+            else
+                table.insert(self[string.format("objective%s", self.nodeFieldMap[node.type])], node)
             end
         end
+    else
+        local mapInfo = MapInfo[globals.mapname()]
+
+        if mapInfo.siteDeterminator == "distance" then
+            self:linkNodesByDistance()
+        elseif mapInfo.siteDeterminator == "height" then
+            self:linkNodesByHeight()
+        end
     end
+end
+
+--- @return void
+function Nodegraph:linkNodesByDistance()
+    for _, node in pairs(self.nodes) do repeat
+        if not self.nodeFieldMap[node.type] then
+            break
+        end
+
+        if not self.isNodeLinkedToBombsite[node.type] then
+            table.insert(self[string.format("objective%s", self.nodeFieldMap[node.type])], node)
+
+            break
+        end
+
+        if node.origin:getDistance(self.objectiveA.origin) < node.origin:getDistance(self.objectiveB.origin) then
+            node.site = self.objectiveA.site
+
+            table.insert(self[string.format("objective%s%s", node.site:upper(), self.nodeFieldMap[node.type])], node)
+        else
+            node.site = self.objectiveB.site
+            table.insert(self[string.format("objective%s%s", node.site:upper(), self.nodeFieldMap[node.type])], node)
+        end
+    until true end
+end
+
+--- @return void
+function Nodegraph:linkNodesByHeight()
+    --- @type Node
+    local lower
+    --- @type Node
+    local upper
+
+    if self.objectiveA.origin.z < self.objectiveB.origin.z then
+        lower = self.objectiveA
+        upper = self.objectiveB
+    else
+        lower = self.objectiveB
+        upper = self.objectiveA
+    end
+
+    local upperZ = upper.origin.z - 128
+
+    for _, node in pairs(self.nodes) do repeat
+        if not self.nodeFieldMap[node.type] then
+            break
+        end
+
+        if not self.isNodeLinkedToBombsite[node.type] then
+            table.insert(self[string.format("objective%s", self.nodeFieldMap[node.type])], node)
+
+            break
+        end
+
+        if node.origin.z < upperZ then
+            node.site = lower.site
+
+            table.insert(self[string.format("objective%s%s", node.site, self.nodeFieldMap[node.type])], node)
+        else
+            node.site = upper.site
+
+            table.insert(self[string.format("objective%s%s", node.site, self.nodeFieldMap[node.type])], node)
+        end
+    until true end
 end
 
 --- @return void
@@ -1367,7 +1436,7 @@ end
 --- @return void
 function Nodegraph:executeMovementForward(e)
     e.forwardmove = 450
-    e.in_forward = 1
+    e.in_forward = true
 end
 
 --- @return void

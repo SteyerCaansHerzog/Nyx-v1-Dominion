@@ -17,61 +17,8 @@ local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
 
---{{{ Enums
---- @class AiWeaponPriorityGeneral
-local AiWeaponPriorityGeneral = {
-    [Weapons.AK47] = 6,
-    [Weapons.AWP] = 6,
-    [Weapons.AUG] = 5,
-    [Weapons.M4A1] = 5,
-    [Weapons.FAMAS] = 4,
-    [Weapons.GALIL] = 4,
-    [Weapons.BIZON] = 3,
-    [Weapons.MP7] = 3,
-    [Weapons.MP9] = 3,
-    [Weapons.P90] = 3,
-    [Weapons.SSG08] = 3,
-    [Weapons.SG553] = 5,
-    [Weapons.UMP45] = 3,
-    [Weapons.MAC10] = 2,
-    [Weapons.NEGEV] = 1
-}
-
---- @class AiWeaponPriorityClutch
-local AiWeaponPriorityClutch = {
-    [Weapons.AK47] = 7,
-    [Weapons.AUG] = 6,
-    [Weapons.M4A1] = 6,
-    [Weapons.AWP] = 5,
-    [Weapons.FAMAS] = 4,
-    [Weapons.GALIL] = 4,
-    [Weapons.BIZON] = 3,
-    [Weapons.MP7] = 3,
-    [Weapons.MP9] = 3,
-    [Weapons.P90] = 3,
-    [Weapons.SSG08] = 3,
-    [Weapons.SG553] = 5,
-    [Weapons.UMP45] = 3,
-    [Weapons.MAC10] = 2,
-    [Weapons.NEGEV] = 1
-}
-
-local AiWeaponNames = {
-    "CAK47",
-    "CWeaponAug",
-    "CWeaponAWP",
-    "CWeaponBizon",
-    "CWeaponFamas",
-    "CWeaponGalilAR",
-    "CWeaponM4A1",
-    "CWeaponMAC10",
-    "CWeaponMP7",
-    "CWeaponMP9",
-    "CWeaponP90",
-    "CWeaponSSG08",
-    "CWeaponSG556",
-    "CWeaponUMP45",
-}
+--{{{ Modules
+local MapInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/MapInfo"
 --}}}
 
 --{{{ AiUtility
@@ -91,8 +38,11 @@ local AiWeaponNames = {
 --- @field enemyDistances number[]
 --- @field enemyFovs number[]
 --- @field enemyHitboxes table<number, Vector3[]>
+--- @field gamemode "demolition" | "wingman" | "hostage"
 --- @field gameRules GameRules
 --- @field hasBomb Player
+--- @field hostageCarriers Player[]
+--- @field ignorePresenceAfter number
 --- @field isBombBeingDefusedByEnemy boolean
 --- @field isBombBeingDefusedByTeammate boolean
 --- @field isBombBeingPlantedByEnemy boolean
@@ -100,12 +50,13 @@ local AiWeaponNames = {
 --- @field isClientPlanting boolean
 --- @field isClientThreatened boolean
 --- @field isEnemyVisible boolean
+--- @field isHostageCarriedByEnemy boolean
+--- @field isHostageCarriedByTeammate boolean
 --- @field isLastAlive boolean
 --- @field isPerformingCalculations boolean
 --- @field isRoundOver boolean
 --- @field lastPresenceTimers Timer[]
 --- @field lastVisibleEnemyTimer Timer
---- @field mainWeapons number[]
 --- @field plantedBomb Entity
 --- @field roundTimer Timer
 --- @field teammates Player[]
@@ -117,16 +68,7 @@ local AiWeaponNames = {
 --- @field traceOptionsAttacking TraceOptions
 --- @field traceOptionsPathfinding TraceOptions
 --- @field visibleEnemies Player[]
---- @field weaponNames string[]
---- @field weaponPriority AiWeaponPriorityGeneral
---- @field ignorePresenceAfter number
-local AiUtility = {
-    mainWeapons = {
-        Weapons.FAMAS, Weapons.GALIL, Weapons.M4A1, Weapons.AUG, Weapons.AK47, Weapons.AWP, Weapons.SG553, Weapons.SSG08
-    },
-    weaponPriority = AiWeaponPriorityGeneral,
-    weaponNames = AiWeaponNames
-}
+local AiUtility = {}
 
 --- @return void
 function AiUtility:__setup()
@@ -248,6 +190,10 @@ function AiUtility:initEvents()
     	AiUtility.bombCarrier = nil
         AiUtility.enemiesAlive = 5
         AiUtility.client = Player.getClient()
+
+        if globals.mapname() and MapInfo[globals.mapname()] then
+            AiUtility.gamemode = MapInfo[globals.mapname()].gamemode
+        end
     end)
 
     Callbacks.roundPrestart(function(e)
@@ -412,13 +358,6 @@ function AiUtility.updateMisc()
     AiUtility.client = Player.getClient()
     AiUtility.bomb = Entity.findOne("CC4")
     AiUtility.plantedBomb = Entity.findOne("CPlantedC4")
-
-    if AiUtility.plantedBomb and not AiUtility.isRoundOver then
-        AiUtility.weaponPriority = AiWeaponPriorityClutch
-    else
-        AiUtility.weaponPriority = AiWeaponPriorityGeneral
-    end
-
     AiUtility.gameRules = Entity.getGameRules()
     AiUtility.timeData = Table.fromPanorama(Panorama.GameStateAPI.GetTimeDataJSO())
 end
@@ -428,6 +367,9 @@ function AiUtility.updateAllPlayers()
     AiUtility.teammates = {}
     -- Very funny Valve.
     AiUtility.teammatesAlive = -1
+    AiUtility.isHostageCarriedByEnemy = false
+    AiUtility.isHostageCarriedByTeammate = false
+    AiUtility.hostageCarriers = {}
 
     local playerResource = entity.get_player_resource()
 
@@ -438,8 +380,18 @@ function AiUtility.updateAllPlayers()
         if isAlive == 1 then
             if isEnemy then
                 AiUtility.enemiesAlive = AiUtility.enemiesAlive + 1
+
+                if entity.get_prop(eid, "m_hCarriedHostage") ~= nil then
+                    AiUtility.isHostageCarriedByEnemy = true
+                    AiUtility.hostageCarriers[eid] = Player:new(eid)
+                end
             else
                 AiUtility.teammatesAlive = AiUtility.teammatesAlive + 1
+
+                if entity.get_prop(eid, "m_hCarriedHostage") ~= nil then
+                    AiUtility.isHostageCarriedByTeammate = true
+                    AiUtility.hostageCarriers[eid] = Player:new(eid)
+                end
             end
         end
     end

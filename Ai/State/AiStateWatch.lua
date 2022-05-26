@@ -46,8 +46,14 @@ end
 
 --- @return void
 function AiStateWatch:assess()
-    if not AiUtility.client:isTerrorist() then
-        return AiPriority.IGNORE
+    if AiUtility.gamemode == "hostage" then
+        if not AiUtility.client:isCounterTerrorist() then
+            return AiPriority.IGNORE
+        end
+    else
+        if not AiUtility.client:isTerrorist() then
+            return AiPriority.IGNORE
+        end
     end
 
     if self.watchTimer:isElapsedThenStop(self.watchTime) then

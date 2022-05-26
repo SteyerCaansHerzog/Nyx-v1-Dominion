@@ -9,6 +9,7 @@ local UserInput = require "gamesense/Nyx/v1/Api/UserInput"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --}}}
 
 --{{{ AiStateDrop
@@ -91,7 +92,7 @@ function AiStateDrop:think(cmd)
             self.droppingGearTimer:ifPausedThenStart()
 
             -- We need to buy something before we can drop.
-            if isFreezeTime and not player:hasWeapons(AiUtility.mainWeapons) and player:m_iAccount() > 3200 then
+            if isFreezeTime and not player:hasWeapons(WeaponInfo.primaries) and player:m_iAccount() > 3200 then
                 UserInput.execute("buy m4a4; buy ak47; buy m4a1_silencer")
             end
 
@@ -115,7 +116,7 @@ end
 --- @return void
 function AiStateDrop:buyGear()
     Client.fireAfter(Client.getRandomFloat(0.75, 1.25), function()
-        if not AiUtility.client:hasWeapons(AiUtility.mainWeapons) then
+        if not AiUtility.client:hasWeapons(WeaponInfo.primaries) then
             local balance = AiUtility.client:m_iAccount()
 
             if not balance or (balance and balance >= 3200) then

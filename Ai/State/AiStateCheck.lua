@@ -95,9 +95,9 @@ function AiStateCheck:getSpawn(spawn)
     end
 
     if spawn == "ct" then
-        return self.ai.nodegraph.ctSpawn
+        return self.ai.nodegraph.objectiveCtSpawn
     elseif spawn == "t" then
-        return self.ai.nodegraph.tSpawn
+        return self.ai.nodegraph.objectiveTSpawn
     end
 end
 

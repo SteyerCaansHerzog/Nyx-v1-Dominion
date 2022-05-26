@@ -4,6 +4,7 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local CsgoWeapons = require "gamesense/csgo_weapons"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
@@ -17,6 +18,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --}}}
 
 --{{{ AiStatePickupItems
@@ -93,7 +95,7 @@ function AiStatePickupItems:assess()
     local lowestPriority = math.huge
 
     for _, weapon in pairs(player:getWeapons()) do
-        local priority = AiUtility.weaponPriority[weapon.classname]
+        local priority = WeaponInfo.dispositions[weapon.classname]
 
         if priority and priority < lowestPriority then
             lowestPriority = priority
@@ -110,7 +112,7 @@ function AiStatePickupItems:assess()
     local highestPriority = -1
     local closestDistance = math.huge
 
-    for _, weapon in Entity.find(AiUtility.weaponNames) do repeat
+    for _, weapon in Entity.find(WeaponInfo.classnames) do repeat
         -- Item is blacklisted due to being out of reach.
         if self.entityBlacklist[weapon.eid] then
             break
@@ -126,7 +128,7 @@ function AiStatePickupItems:assess()
             break
         end
 
-        local priority = AiUtility.weaponPriority[weapon.classname]
+        local priority = WeaponInfo.dispositions[weapon.classname]
 
         -- Item is not in our list of items worth picking up.
         if not priority then

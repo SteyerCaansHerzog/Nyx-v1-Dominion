@@ -25,6 +25,10 @@ function AiChatCommandGo:invoke(ai, sender, args)
         return
     end
 
+    if AiUtility.gamemode == "hostage" then
+        return
+    end
+
     if ai.reaper.isActive then
         return
     end
@@ -70,10 +74,10 @@ function AiChatCommandGo:invoke(ai, sender, args)
 
                 ai.states.defend:activate(objective)
 
-                ai.states.push.isDeactivated = false
-                ai.states.push.site = objective
+                ai.states.pushDemolition.isDeactivated = false
+                ai.states.pushDemolition.site = objective
 
-                ai.states.push:activate(objective)
+                ai.states.pushDemolition:activate(objective)
             end
 
             if Client.hasBomb() then

@@ -3,6 +3,7 @@ local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -109,6 +110,17 @@ function AiStateDefend:assess()
         return AiPriority.IGNORE
     end
 
+    if AiUtility.gamemode == "demolition" or AiUtility.gamemode == "wingman" then
+        return self:assessDemolition()
+    elseif AiUtility.gamemode == "hostage" then
+        return self:assessHostage()
+    end
+
+    return AiPriority.IGNORE
+end
+
+--- @return number
+function AiStateDefend:assessDemolition()
     local player = AiUtility.client
     local bomb = AiUtility.plantedBomb
 
@@ -124,7 +136,7 @@ function AiStateDefend:assess()
             end
         end
 
-        -- We're on a spot and the enemy is within our field of view.
+        -- We can hold an approaching enemy.
         if self.isOnDefendSpot and self:isEnemyHoldable() then
             return AiPriority.DEFEND_ACTIVE
         end
@@ -140,6 +152,7 @@ function AiStateDefend:assess()
             return AiPriority.DEFEND_EXPEDITE
         end
 
+        -- We can hold an approaching enemy.
         if AiUtility.plantedBomb and not AiUtility.isBombBeingDefusedByEnemy and self.isOnDefendSpot and self:isEnemyHoldable() then
             return AiPriority.DEFEND_ACTIVE
         end
@@ -152,6 +165,28 @@ function AiStateDefend:assess()
             if bombCarrierOrigin:getDistance(bombsite.origin) < 750 then
                 return AiPriority.DEFEND_PASSIVE
             end
+        end
+
+        -- Basic defend behaviour.
+        return AiPriority.DEFEND_GENERIC
+    end
+
+    return AiPriority.IGNORE
+end
+
+--- @return number
+function AiStateDefend:assessHostage()
+    local player = AiUtility.client
+
+    if player:isTerrorist() then
+        -- The CTs have a hostage.
+        if AiUtility.isHostageCarriedByEnemy then
+            return AiPriority.IGNORE
+        end
+
+        -- We can hold an approaching enemy.
+        if self.isOnDefendSpot and self:isEnemyHoldable() then
+            return AiPriority.DEFEND_PASSIVE
         end
 
         -- Basic defend behaviour.
@@ -183,7 +218,7 @@ function AiStateDefend:isEnemyHoldable()
     local isEnemyInFoV = false
 
     for _, enemy in pairs(AiUtility.enemies) do
-        if cameraAngles:getFov(eyeOrigin, enemy:getOrigin():offset(0, 0, 64)) < 80 then
+        if cameraAngles:getFov(eyeOrigin, enemy:getOrigin():offset(0, 0, 64)) < 85 then
             isEnemyInFoV = true
 
             break
@@ -227,9 +262,17 @@ function AiStateDefend:activate(site, swapPair)
     self.defendTimer:stop()
     self.jiggleTimer:stop()
 
+    local task
+
+    if AiUtility.gamemode == "hostage" then
+        task = "Defending hostages"
+    else
+        task = string.format("Defending %s site", self.node.site:upper())
+    end
+
     self.ai.nodegraph:pathfind(self.node.origin, {
         objective = Node.types.GOAL,
-        task = string.format("Defending %s site", self.node.site:upper())
+        task = task
     })
 end
 
@@ -243,10 +286,14 @@ function AiStateDefend:think(cmd)
     local distance = AiUtility.client:getOrigin():offset(0, 0, 18):getDistance(self.node.origin)
 
     -- Set activity string.
-    if distance < 750 then
-        self.activity = string.format("Going %s", self.defendingSite:upper())
+    if AiUtility.gamemode == "hostage" then
+        self.activity = "Defending hostages"
     else
-        self.activity = string.format("Defending %s", self.defendingSite:upper())
+        if distance < 750 then
+            self.activity = string.format("Going %s", self.defendingSite:upper())
+        else
+            self.activity = string.format("Defending %s", self.defendingSite:upper())
+        end
     end
 
     -- There's a teammate already near this defensive spot. We should hold someplace else.
@@ -292,7 +339,7 @@ function AiStateDefend:think(cmd)
         end
     end
 
-    if distance < 250 then
+    if distance < 300 then
         self.isOnDefendSpot = true
         self.ai.canUseKnife = false
 
@@ -359,7 +406,11 @@ end
 --- @param site string|Node
 --- @return Node
 function AiStateDefend:getActivityNode(site)
-    local team = AiUtility.client:m_iTeam()
+    local team = AiUtility.client:m_iTeamNum()
+
+    if AiUtility.gamemode == "hostage" then
+        return Table.getRandom(self.ai.nodegraph.objectiveDefendHostage)
+    end
 
     if not site then
         site = self.defendingSite
@@ -393,7 +444,7 @@ function AiStateDefend:getActivityNode(site)
     local node = {}
 
     while node and not node.active do
-        node = nodes[Client.getRandomInt(1, #nodes)]
+        node = Table.getRandom(nodes)
     end
 
     return node

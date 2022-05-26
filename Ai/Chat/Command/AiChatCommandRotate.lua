@@ -24,6 +24,10 @@ function AiChatCommandRotate:invoke(ai, sender, args)
         return
     end
 
+    if AiUtility.gamemode == "hostage" then
+        return
+    end
+
     if ai.reaper.isActive then
         return
     end

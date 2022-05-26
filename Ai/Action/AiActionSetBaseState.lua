@@ -11,6 +11,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 
 --{{{ Modules
 local AiAction = require "gamesense/Nyx/v1/Dominion/Ai/Action/AiAction"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 --}}}
@@ -40,6 +41,11 @@ function AiActionSetBaseState:__init()
 	end
 
 	Callbacks.frameGlobal(function()
+		-- Disable AA correction because Gamesense has severe brain damage.
+		for _, enemy in pairs(AiUtility.enemies) do
+			plist.set(enemy.eid, "Correction active", false)
+		end
+
 		if not self.isEnabled then
 			return
 		end

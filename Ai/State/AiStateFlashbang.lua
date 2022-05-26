@@ -21,7 +21,8 @@ local AiStateFlashbang = {
     retakeNode = "objectiveFlashbangRetake",
     weapons = {Weapons.FLASHBANG},
     equipFunction = Client.equipFlashbang,
-    rangeThreshold = 1500
+    rangeThreshold = 1500,
+    isCheckingEnemiesRequired = true,
 }
 
 --- @param fields AiStateFlashbang

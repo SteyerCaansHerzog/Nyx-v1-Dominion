@@ -56,10 +56,12 @@ local WeaponMode = {
 --- @field enemyVisibleTime number
 --- @field enemyVisibleTimer Timer
 --- @field equipPistolTimer Timer
+--- @field hasBackupCover boolean
 --- @field hitboxOffset Vector3
 --- @field hitboxOffsetTimer Timer
 --- @field ignorePlayerAfter number
 --- @field isAimEnabled boolean
+--- @field isBackingUp boolean
 --- @field isBestTargetVisible boolean
 --- @field isHoldingAngle boolean
 --- @field isHoldingAngleDucked boolean
@@ -123,6 +125,7 @@ local WeaponMode = {
 --- @field watchTime number
 --- @field watchTimer Timer
 --- @field weaponMode number
+--- @field strafePeekDirection string
 local AiStateEngage = {
     name = "Engage",
     skillLevelMin = 0,
@@ -276,6 +279,12 @@ function AiStateEngage:initEvents()
             end
         end
 
+        if AiUtility.gamemode == "hostage" and AiUtility.isHostageCarriedByEnemy then
+            for _, enemy in pairs(AiUtility.hostageCarriers) do
+                self:noticeEnemy(enemy, 4096, true, "Carrying hostage")
+            end
+        end
+
         if player:m_bIsScoped() == 1 then
             self.scopedTimer:ifPausedThenStart()
         else
@@ -411,6 +420,10 @@ function AiStateEngage:assess()
         return AiPriority.ENGAGE_ACTIVE
     end
 
+    if AiUtility.isHostageCarriedByEnemy then
+        return AiPriority.ENGAGE_ACTIVE
+    end
+
     if not AiUtility.plantedBomb then
         if self.reactionTimer:isStarted() then
             return AiPriority.ENGAGE_PASSIVE
@@ -490,6 +503,10 @@ end
 
 --- @return void
 function AiStateEngage:requestRotations()
+    if AiUtility.gamemode == "hostage" then
+        return
+    end
+
     -- Only CTs should bark rotate commands.
     if not AiUtility.client:isCounterTerrorist() then
         return
@@ -534,8 +551,6 @@ function AiStateEngage:callGoToSite()
     local nearestSite = self.ai.nodegraph:getNearestSiteNode(clientOrigin)
     local nearestSiteName = self.ai.nodegraph:getNearestSiteName(clientOrigin)
 
-    print("go to site")
-
     if clientOrigin:getDistance(nearestSite.origin) > 1800 then
         return
     end
@@ -549,8 +564,6 @@ function AiStateEngage:callGoToSite()
     end
 
     local enemyRatio = enemiesNearSiteCount / AiUtility.enemiesAlive
-
-    print(enemyRatio)
 
     if enemyRatio < 0.5 then
         return
@@ -665,6 +678,12 @@ function AiStateEngage:setBestTarget()
             break
         end
 
+        if AiUtility.hostageCarriers[enemy.eid] then
+            selectedEnemy = enemy
+
+            break
+        end
+
         if self:hasNoticedEnemy(enemy) then
             local distance = origin:getDistance(enemy:getOrigin())
 
@@ -677,6 +696,12 @@ function AiStateEngage:setBestTarget()
 
     for _, enemy in pairs(AiUtility.visibleEnemies) do
         if enemy:m_bIsDefusing() == 1 then
+            selectedEnemy = enemy
+
+            break
+        end
+
+        if AiUtility.hostageCarriers[enemy.eid] then
             selectedEnemy = enemy
 
             break
@@ -1214,51 +1239,68 @@ function AiStateEngage:moveOnBestTarget(cmd)
         -- Avoid too many threats.
         local isBackingUp = true
 
-        if AiUtility.totalThreats < 2 then
-            isBackingUp = false
-        elseif self.isStrafePeeking then
-            isBackingUp = false
-        elseif AiUtility.timeData.roundtime_remaining < 40 then
-            isBackingUp = false
-        elseif AiUtility.client:isCounterTerrorist() then
-            if AiUtility.plantedBomb or AiUtility.isBombBeingPlantedByEnemy then
+        if AiUtility.gamemode == "hostage" then
+            if AiUtility.totalThreats < 2 then
+                isBackingUp = false
+            elseif self.isStrafePeeking then
+                isBackingUp = false
+            elseif AiUtility.client:isCounterTerrorist() then
+                isBackingUp = false
+            elseif AiUtility.isHostageCarriedByTeammate or AiUtility.isHostageCarriedByEnemy then
                 isBackingUp = false
             end
-
-            local bombsiteA = self.ai.nodegraph.objectiveA
-            local bombsiteB = self.ai.nodegraph.objectiveB
-
-            for _, enemy in pairs(AiUtility.enemies) do
-                local enemyOrigin = enemy:getOrigin()
-
-                if enemyOrigin:getDistance(bombsiteA.origin) < 800 or enemyOrigin:getDistance(bombsiteB.origin) < 800 then
+        else
+            if AiUtility.totalThreats < 2 then
+                isBackingUp = false
+            elseif self.isStrafePeeking then
+                isBackingUp = false
+            elseif AiUtility.client:isCounterTerrorist() then
+                if AiUtility.plantedBomb or AiUtility.isBombBeingPlantedByEnemy then
                     isBackingUp = false
+                end
 
-                    break
+                local bombsiteA = self.ai.nodegraph.objectiveA
+                local bombsiteB = self.ai.nodegraph.objectiveB
+
+                for _, enemy in pairs(AiUtility.enemies) do
+                    local enemyOrigin = enemy:getOrigin()
+
+                    if enemyOrigin:getDistance(bombsiteA.origin) < 800 or enemyOrigin:getDistance(bombsiteB.origin) < 800 then
+                        isBackingUp = false
+
+                        break
+                    end
+                end
+            elseif AiUtility.client:isTerrorist() then
+                if AiUtility.timeData.roundtime_remaining < 40  then
+                    isBackingUp = false
+                elseif not AiUtility.plantedBomb or AiUtility.isBombBeingDefusedByEnemy then
+                    isBackingUp = false
                 end
             end
-        elseif AiUtility.client:isTerrorist() then
-            if not AiUtility.plantedBomb or AiUtility.isBombBeingDefusedByEnemy then
-                isBackingUp = false
-            end
         end
+
+        self.isBackingUp = false
 
         if isBackingUp then
             self.activity = "Backing up from enemies"
             self.lookAtOccludedOrigin = Trace.getLineAlongCrosshair(AiUtility.traceOptionsAttacking).endPosition
+            self.isBackingUp = true
 
             self.seekCoverTimer:restart()
 
             local cover = self:getCoverNode(500, self.bestTarget)
 
             if cover then
+                self.hasBackupCover = true
+
                 self.ai.nodegraph:pathfind(cover.origin, {
                     objective = Node.types.ENEMY,
                     task = string.format("Back-up (threat) from %s", self.bestTarget:getName()),
                     canUseJump = false
                 })
             else
-                self:actionBackUp()
+                self.hasBackupCover = false
             end
         end
 
@@ -1270,6 +1312,8 @@ function AiStateEngage:moveOnBestTarget(cmd)
         elseif AiUtility.plantedBomb and AiUtility.bombDetonationTime < 25 then
             isAvoidingSmokes = false
         elseif AiUtility.isBombBeingDefusedByEnemy or AiUtility.isBombBeingPlantedByTeammate then
+            isAvoidingSmokes = false
+        elseif AiUtility.isHostageCarriedByTeammate or AiUtility.isHostageCarriedByEnemy then
             isAvoidingSmokes = false
         end
 
@@ -1289,25 +1333,34 @@ function AiStateEngage:moveOnBestTarget(cmd)
             if nearSmoke then
                 self.activity = "Backing up from smoke"
                 self.lookAtOccludedOrigin = Trace.getLineAlongCrosshair(AiUtility.traceOptionsAttacking).endPosition
+                self.isBackingUp = true
 
                 self.seekCoverTimer:restart()
 
                 local cover = self:getCoverNode(500, self.bestTarget)
 
                 if cover then
+                    self.hasBackupCover = true
+
                     self.ai.nodegraph:pathfind(cover.origin, {
                         objective = Node.types.ENEMY,
                         task = string.format("Back-up (smoke) from %s", self.bestTarget:getName()),
                         canUseJump = false
                     })
                 else
-                    self:actionBackUp()
+                    self.hasBackupCover = false
                 end
             else
                 nearSmoke = nil
             end
         end
-    else
+    end
+
+    if self.isBackingUp then
+        if not self.hasBackupCover then
+            self:actionBackUp()
+        end
+
         return
     end
 
@@ -1512,6 +1565,9 @@ function AiStateEngage:attackBestTarget(cmd)
         return
     end
 
+    -- Wide-peek enemies.
+    self:strafePeek()
+
     local eyeOrigin = Client.getEyeOrigin()
     local enemyOrigin = enemy:getOrigin()
     local lastSeenEnemyTimer = self.lastSeenTimers[enemy.eid]
@@ -1550,9 +1606,6 @@ function AiStateEngage:attackBestTarget(cmd)
     if not next(AiUtility.visibleEnemies) then
         self:watchAngle()
     end
-
-    -- Wide-peek enemies.
-    self:strafePeek()
 
     -- Wallbang and smokebang.
     if not AiUtility.visibleEnemies[enemy.eid] then
@@ -1742,7 +1795,7 @@ function AiStateEngage:canHoldAngle()
         return false
     end
 
-    if self.bestTarget then
+    if self.bestTarget and (not AiUtility.isBombBeingDefusedByEnemy and not AiUtility.isHostageCarriedByEnemy and not AiUtility.isHostageCarriedByTeammate) then
         local trace = Trace.getLineToPosition(clientEyeOrigin, self.bestTarget:getEyeOrigin(), AiUtility.traceOptionsAttacking)
 
         -- The enemy, from our point of view, is occluded by a smoke.
@@ -1762,7 +1815,7 @@ function AiStateEngage:canHoldAngle()
     end
 
     -- Don't hold if the enemy is planting or has planted the bomb.
-    if AiUtility.client:isCounterTerrorist() and not AiUtility.plantedBomb and not AiUtility.isBombBeingPlantedByEnemy then
+    if AiUtility.client:isCounterTerrorist() and AiUtility.gamemode ~= "hostage" and not AiUtility.plantedBomb and not AiUtility.isBombBeingPlantedByEnemy then
         -- If we're the closest to enemy, maybe don't permanently hold the angle.
         if self.bestTarget then
             local isClosestToEnemy = true
@@ -1789,6 +1842,11 @@ function AiStateEngage:canHoldAngle()
 
     -- Don't hold if the enemy is defusing the bomb.
     if AiUtility.client:isTerrorist() and not AiUtility.isBombBeingDefusedByEnemy then
+        -- Ts should prefer defense in hostage.
+        if AiUtility.gamemode == "hostage" and not AiUtility.isHostageCarriedByEnemy then
+            return true
+        end
+
         if not AiUtility.plantedBomb then
             -- We don't have much time remaining in the round, so we ought not to stand around.
             if AiUtility.timeData.roundtime_remaining < 30 then
@@ -1803,7 +1861,7 @@ function AiStateEngage:canHoldAngle()
             end
         end
 
-        local distanceToSite =self.ai.nodegraph:getNearestSiteNode(clientOrigin).origin:getDistance(clientOrigin)
+        local distanceToSite = self.ai.nodegraph:getNearestSiteNode(clientOrigin).origin:getDistance(clientOrigin)
         local isNearPlantedBomb = AiUtility.plantedBomb and AiUtility.client:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 512
 
         -- Please don't hold angles if we have to plant.
@@ -1867,6 +1925,10 @@ function AiStateEngage:walk()
     end
 
     if AiUtility.client:m_bIsScoped() == 1 then
+        canWalk = false
+    end
+
+    if AiUtility.isHostageCarriedByEnemy then
         canWalk = false
     end
 
@@ -2311,23 +2373,15 @@ function AiStateEngage:actionCounterStrafe(cmd)
     if self.isTargetEasilyShot then
         -- Duck for better accuracy.
         cmd.in_duck = 1
+    end
 
-        -- Move backwards because we don't feel like deliberately peeking the entire enemy team at once.
-        if AiUtility.totalThreats > 1 then
-            self:actionBackUp()
-        end
-    else
-        local velocity = AiUtility.client:m_vecVelocity()
+    if self.strafePeekDirection and self.bestTarget then
+        local angleToEnemy = AiUtility.client:getOrigin():getAngle(self.bestTarget:getOrigin())
 
-        -- Stop moving when our velocity has fallen below threshold.
-        if velocity:getMagnitude() < 70 then
-            return
-        end
+        --- @type Vector3
+        local moveAngle = Nyx.call(angleToEnemy, "get%s", self.strafePeekDirection)
 
-        local inverseVelocity = -velocity
-
-        -- Counter our current velocity.
-       self.ai.nodegraph.moveAngle = inverseVelocity:getAngleFromForward()
+        self.ai.nodegraph.moveAngle = moveAngle:getAngleFromForward()
     end
 end
 
@@ -2359,9 +2413,8 @@ function AiStateEngage:strafePeek()
     self.canWallbang = true
     self.isStrafePeeking = false
 
-    if not self.strafePeekTimer:isElapsed(0.6) then
+    if self.strafePeekTimer:isStarted() and not self.strafePeekTimer:isElapsedThenStop(0.5) then
         self.ai.nodegraph.moveAngle = self.strafePeekMoveAngle
-
         self.isStrafePeeking = true
         self.canWallbang = false
 
@@ -2385,9 +2438,9 @@ function AiStateEngage:strafePeek()
         Right = angleToEnemy:getRight()
     }
 
-    local isVisible = false
     --- @type Angle
     local moveAngle
+    local moveDirection
     local eyeOrigin = Client.getEyeOrigin()
     local bounds = Vector3:newBounds(Vector3.align.DOWN, 16, 16, 32)
     local distances = {
@@ -2402,17 +2455,16 @@ function AiStateEngage:strafePeek()
 
     self.strafePeekIndex = self.strafePeekIndex + 1
 
-    local traceOptions = Table.getMerged({
+    local traceOptions = Table.getMerged(AiUtility.traceOptionsAttacking, {
         distance = distance
-    }, AiUtility.traceOptionsAttacking)
+    })
 
-    for _, direction in pairs(directions) do
-        if isVisible then
-            break
-        end
+    local count = 0
 
-        local findOffsetTrace = Trace.getHullInDirection(eyeOrigin, eyeOrigin + direction * 32, bounds, traceOptions)
+    for name, direction in pairs(directions) do
+        local findOffsetTrace = Trace.getHullInDirection(eyeOrigin, direction, bounds, traceOptions)
         local offsetTraceOrigin = findOffsetTrace.endPosition
+        local isVisible = false
 
         for _, hitbox in pairs(enemy:getHitboxPositions({
             Player.hitbox.HEAD,
@@ -2426,16 +2478,25 @@ function AiStateEngage:strafePeek()
 
             if not findVisibleHitboxTrace.isIntersectingGeometry then
                 isVisible = true
-                moveAngle = direction:getAngleFromForward()
 
                 break
             end
         end
+
+        if isVisible then
+            moveAngle = direction:getAngleFromForward()
+            moveDirection = name
+            count = count + 1
+        end
     end
 
     if moveAngle then
-        self.strafePeekMoveAngle = moveAngle
-        self.strafePeekTimer:restart()
+        if count == 1 then
+            self.strafePeekMoveAngle = moveAngle
+            self.strafePeekTimer:ifPausedThenStart()
+
+            self.strafePeekDirection = moveDirection
+        end
     end
 end
 

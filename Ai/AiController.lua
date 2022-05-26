@@ -30,6 +30,7 @@ local AiStateBoost = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBoost"
 local AiStateCheck = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateCheck"
 local AiStateChickenInteraction = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateChickenInteraction"
 local AiStateDefend = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefend"
+local AiStateDefendHostageCarrier = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefendHostageCarrier"
 local AiStateDefuse = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefuse"
 local AiStateDeveloper = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDeveloper"
 local AiStateDrop = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDrop"
@@ -48,9 +49,12 @@ local AiStatePatrol = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePatrol"
 local AiStatePickupBomb = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePickupBomb"
 local AiStatePickupItems = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePickupItems"
 local AiStatePlant = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePlant"
-local AiStatePush = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePush"
+local AiStatePushDemolition = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePushDemolition"
+local AiStatePushHostage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePushHostage"
+local AiStateRescueHostage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateRescueHostage"
 local AiStateRotate = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateRotate"
 local AiStateRush = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateRush"
+local AiStateSeekHostage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSeekHostage"
 local AiStateSmoke = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSmoke"
 local AiStateSweep = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSweep"
 local AiStateWait = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWait"
@@ -103,6 +107,7 @@ local DominionMenu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
+local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --}}}
 
 --{{{ Definitions
@@ -111,6 +116,7 @@ local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 --- @field boost AiStateBoost
 --- @field check AiStateCheck
 --- @field defend AiStateDefend
+--- @field defendHostageCarrier AiStateDefendHostageCarrier
 --- @field defuse AiStateDefuse
 --- @field developer AiStateDeveloper
 --- @field drop AiStateDrop
@@ -129,9 +135,12 @@ local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 --- @field pickupBomb AiStatePickupBomb
 --- @field pickupItems AiStatePickupItems
 --- @field plant AiStatePlant
---- @field push AiStatePush
---- @field rush AiStateRush
+--- @field pushDemolition AiStatePushDemolition
+--- @field pushHostage AiStatePushHostage
+--- @field rescueHostage AiStateRescueHostage
 --- @field rotate AiStateRotate
+--- @field rush AiStateRush
+--- @field seekHostage AiStateSeekHostage
 --- @field smoke AiStateSmoke
 --- @field sweep AiStateSweep
 --- @field wait AiStateWait
@@ -227,6 +236,7 @@ local AiController = {
 		boost = AiStateBoost,
 		check = AiStateCheck,
 		defend = AiStateDefend,
+		defendHostageCarrier = AiStateDefendHostageCarrier,
 		defuse = AiStateDefuse,
 		developer = AiStateDeveloper,
 		drop = AiStateDrop,
@@ -245,9 +255,12 @@ local AiController = {
 		pickupBomb = AiStatePickupBomb,
 		pickupItems = AiStatePickupItems,
 		plant = AiStatePlant,
-		push = AiStatePush,
-		rush = AiStateRush,
+		pushDemolition = AiStatePushDemolition,
+		pushHostage = AiStatePushHostage,
+		rescueHostage = AiStateRescueHostage,
 		rotate = AiStateRotate,
+		rush = AiStateRush,
+		seekHostage = AiStateSeekHostage,
 		smoke = AiStateSmoke,
 		sweep = AiStateSweep,
 		wait = AiStateWait,
@@ -408,11 +421,6 @@ function AiController:initEvents()
 	Callbacks.frame(function()
 		if not DominionMenu.master:get() then
 			return
-		end
-
-		-- Disable AA correction because Gamesense has severe brain damage.
-		for _, enemy in pairs(AiUtility.enemies) do
-			plist.set(enemy.eid, "Correction active", false)
 		end
 
 		self:renderUi()
@@ -644,7 +652,7 @@ function AiController:autoBuy(isImmediate)
 		local player = AiUtility.client
 		local grenadeLimit = Client.getRandomInt(1, player:isCounterTerrorist() and 2 or 3)
 
-		for _, weapon in pairs(AiUtility.mainWeapons) do
+		for _, weapon in pairs(WeaponInfo.primaries) do
 			if player:hasWeapon(weapon) then
 				if player:m_iArmor() < 33 then
 					UserInput.execute("buy vest; buy vesthelm")
@@ -742,7 +750,7 @@ end
 function AiController:forceBuy()
 	local player = AiUtility.client
 
-	for _, weapon in pairs(AiUtility.mainWeapons) do
+	for _, weapon in pairs(WeaponInfo.primaries) do
 		if player:hasWeapon(weapon) then
 			if player:m_iArmor() < 33 then
 				UserInput.execute("buy vest; buy vesthelm")
@@ -1060,8 +1068,19 @@ function AiController:renderUi()
 
 	if self.nodegraph.task then
 		uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
-			"Task: %s",
+			"Path Task: %s",
 			self.nodegraph.task
+		))
+
+		uiPos:offset(0, offset)
+	end
+
+	if self.currentState then
+		local activity = self.currentState.activity and self.currentState.activity or "Unknown"
+
+		uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
+			"AI Activity: %s",
+			activity
 		))
 
 		uiPos:offset(0, offset)
@@ -1169,6 +1188,8 @@ function AiController:activities(cmd)
 					reloadRatio = 0.25
 				elseif closestEnemyDistance > 500 then
 					reloadRatio = 0.1
+				else
+					reloadRatio = 0.0
 				end
 			end
 
@@ -1416,6 +1437,10 @@ function AiController:think(cmd)
 
 	for _, state in pairs(self.states) do
 		local priority = state:assess()
+
+		if not priority then
+			error(string.format("The state '%s' does not return a priority.", state.name))
+		end
 
 		if priority > highestPriority then
 			currentState = state
