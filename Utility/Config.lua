@@ -16,31 +16,16 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --- @field openAiApiKey string
 local Config = {
     administrators = {
-        -- Friends
-        "76561198138748363", -- Adrian
-        -- Main accounts
-        "76561198816968549", -- Kirsty
-        --"76561198373386496", -- Braff v2
-        "76561198339559079", -- Britney Spears
-        --"76561198991038413", -- dusty
-        --"76561198291655919", -- Boxxy
-        --"76561198807527047", -- 0DTE
-        --"76561198105632069", -- Braff v1
-
-        --"76561199145578388", -- C Low
-        --"76561198935227008", -- C Low
-        --"76561198971897854", -- C Low
-        --"76561199087305425", -- C Low
-        --"76561198346253218", -- C Low
+        -- Insert SteamID64s here that should be administrative accounts.
     },
-    clientFocusVolume = 0.15, -- The volume of a Reaper client that is focused.
+    clientFocusVolume = 1.0, -- The volume of a Reaper client that is focused.
     defaultSkillLevel = 4, -- The skill level to set the AI to by default.
-    isClearingSteamFriends = true, -- Clear the AI's Steam friend list and any requests.
+    isClearingSteamFriends = false, -- Clear the AI's Steam friend list and any requests.
     isDebugging = false, -- Enables debugging features.
     isEmulatingRealUserInput = false, -- Enable this to emulate mouse-keyboard. Results in less accurate movement. Avoids potential bot detection.
     isLiveClient = false, -- Enable this when running on the Dominion Service.
     isRandomizingCrosshair = false, -- Create random crosshair every time Dominion is initialised.
-    openAiApiKey = "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", -- Set this to provide an API key for use with the Open AI chatbot.
+    openAiApiKey = "", -- Set this to provide an API key for use with the Open AI chatbot.
 }
 
 --- @return void
