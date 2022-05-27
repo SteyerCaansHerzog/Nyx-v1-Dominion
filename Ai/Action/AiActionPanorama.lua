@@ -81,7 +81,7 @@ function AiActionPanorama:autoAcceptAdminInvites()
 		for j = 0, 5 do
 			local xuid = Panorama.PartyBrowserAPI.GetPartyMemberXuid(lobbyId, j)
 
-			if Config.isAdministrator(xuid) or self.ai.reaper.manifest.steamId64Map[xuid] then
+			if Config.isAdministrator(xuid) or (self.ai.reaper.isEnabled and self.ai.reaper.manifest.steamId64Map[xuid]) then
 				Panorama.PartyBrowserAPI.ActionJoinParty(lobbyId)
 
 				found = true

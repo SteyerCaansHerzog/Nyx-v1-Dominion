@@ -845,7 +845,9 @@ function Reaper:think()
 		end
 
 		-- Toggle g_bTextMode. Text Mode disables rendering in the Source engine.
-		Client.setTextMode(not isAppFocused)
+		if Config.isTextModeAllowed then
+			Client.setTextMode(not isAppFocused)
+		end
 
 		if isAppFocused then
 			Client.execute("volume %.2f", Config.clientFocusVolume)

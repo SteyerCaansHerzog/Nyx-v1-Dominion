@@ -51,7 +51,7 @@ function AiActionSetBaseState:__init()
 		end
 
 		self:setMenuStates()
-		self:setAppFocusedFps()
+		self:setAppState()
 	end)
 end
 
@@ -108,12 +108,14 @@ function AiActionSetBaseState:setMenuStates()
 end
 
 --- @return void
-function AiActionSetBaseState:setAppFocusedFps()
+function AiActionSetBaseState:setAppState()
 	if self.ai.reaper.isEnabled then
 		return
 	end
 
-	Client.setTextMode(Server.isIngame())
+	if Config.isTextModeAllowed then
+		Client.setTextMode(Server.isIngame())
+	end
 
 	local isAppFocused = Process.isAppFocused()
 

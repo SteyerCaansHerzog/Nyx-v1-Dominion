@@ -307,12 +307,12 @@ function AiStateDefend:think(cmd)
 
     -- Restart defend procedure somewhere else.
     if self.ai.priority ~= AiPriority.DEFEND_ACTIVE and self.defendTimer:isElapsedThenStop(self.defendTime) then
-        self.defendTime = Client.getRandomFloat(8, 16)
+        self.defendTime = Client.getRandomFloat(3, 8)
         self.isJigglingUponReachingSpot = Client.getChance(2)
         self.isJiggling = false
 
         -- Move to another spot on the site.
-        if Client.getChance(10) then
+        if Client.getChance(16) then
             self:activate(self.defendingSite, false)
         else
             self:activate(self.defendingSite, true)
