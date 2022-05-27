@@ -13,6 +13,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --- @field isEmulatingRealUserInput boolean
 --- @field isLiveClient boolean
 --- @field isRandomizingCrosshair boolean
+--- @field isTextModeAllowed boolean
 --- @field openAiApiKey string
 local Config = {
     administrators = {
@@ -25,6 +26,7 @@ local Config = {
     isEmulatingRealUserInput = false, -- Enable this to emulate mouse-keyboard. Results in less accurate movement. Avoids potential bot detection.
     isLiveClient = false, -- Enable this when running on the Dominion Service.
     isRandomizingCrosshair = false, -- Create random crosshair every time Dominion is initialised.
+    isTextModeAllowed = true, -- Enable this to disable Source engine rendering when applicable.
     openAiApiKey = "", -- Set this to provide an API key for use with the Open AI chatbot.
 }
 
