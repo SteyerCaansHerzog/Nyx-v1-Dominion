@@ -3,11 +3,11 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandAim
---- @class AiChatCommandAim : AiChatCommand
+--- @class AiChatCommandAim : AiChatCommandBase
 local AiChatCommandAim = {
     cmd = "aim",
     requiredArgs = 1,
@@ -32,5 +32,5 @@ function AiChatCommandAim:invoke(ai, sender, args)
     end
 end
 
-return Nyx.class("AiChatCommandAim", AiChatCommandAim, AiChatCommand)
+return Nyx.class("AiChatCommandAim", AiChatCommandAim, AiChatCommandBase)
 --}}}

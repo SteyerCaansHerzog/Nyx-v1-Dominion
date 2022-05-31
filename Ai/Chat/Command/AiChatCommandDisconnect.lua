@@ -4,13 +4,13 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandDisconnect
---- @class AiChatCommandDisconnect : AiChatCommand
+--- @class AiChatCommandDisconnect : AiChatCommandBase
 local AiChatCommandDisconnect = {
-    cmd = "disconnect",
+    cmd = "dc",
     requiredArgs = 0,
     isAdminOnly = true
 }
@@ -27,5 +27,5 @@ function AiChatCommandDisconnect:invoke(ai, sender, args)
     Client.execute("disconnect")
 end
 
-return Nyx.class("AiChatCommandDisconnect", AiChatCommandDisconnect, AiChatCommand)
+return Nyx.class("AiChatCommandDisconnect", AiChatCommandDisconnect, AiChatCommandBase)
 --}}}

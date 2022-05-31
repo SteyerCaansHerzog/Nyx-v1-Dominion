@@ -13,7 +13,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 local AiAction = require "gamesense/Nyx/v1/Dominion/Ai/Action/AiAction"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
-local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --}}}
 
 --{{{ AiActionSetBaseState
@@ -104,7 +104,7 @@ end
 function AiActionSetBaseState:setMenuStates()
 	-- Force dormancy to be disabled.
 	-- This feature is currently extremely broken and completely ruins the AI.
-	Menu.dormantRef:set(false)
+	MenuGroup.dormantRef:set(false)
 end
 
 --- @return void
@@ -113,7 +113,9 @@ function AiActionSetBaseState:setAppFocusedFps()
 		return
 	end
 
-	Client.setTextMode(Server.isIngame())
+	if Config.isTextModeAllowed then
+		Client.setTextMode(Server.isIngame())
+	end
 
 	local isAppFocused = Process.isAppFocused()
 

@@ -16,13 +16,14 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --}}}
 
 --{{{ AiStatePickupItems
---- @class AiStatePickupItems : AiState
+--- @class AiStatePickupItems : AiStateBase
 --- @field currentPriority number
 --- @field entityBlacklist boolean[]
 --- @field item Entity
@@ -282,13 +283,13 @@ function AiStatePickupItems:think(cmd)
     end
 
     if self.lookAtItem and distance < 250 then
-       self.ai.view:lookAtLocation(weaponOrigin, 5, self.ai.view.noiseType.IDLE, "PickupItems look at item")
+       View.lookAtLocation(weaponOrigin, 5, View.noise.idle, "PickupItems look at item")
     end
 
     if distance < 128 and self.useCooldown:isElapsedThenRestart(0.1) then
-        cmd.in_use = 1
+        cmd.in_use = true
     end
 end
 
-return Nyx.class("AiStatePickupItems", AiStatePickupItems, AiState)
+return Nyx.class("AiStatePickupItems", AiStatePickupItems, AiStateBase)
 --}}}

@@ -22,166 +22,30 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
-local AiActionPanorama = require "gamesense/Nyx/v1/Dominion/Ai/Action/AiActionPanorama"
-local AiActionSetBaseState = require "gamesense/Nyx/v1/Dominion/Ai/Action/AiActionSetBaseState"
-
-local AiStateAvoidInfernos = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateAvoidInfernos"
-local AiStateBoost = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBoost"
-local AiStateCheck = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateCheck"
-local AiStateChickenInteraction = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateChickenInteraction"
-local AiStateDefend = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefend"
-local AiStateDefendHostageCarrier = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefendHostageCarrier"
-local AiStateDefuse = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefuse"
-local AiStateDeveloper = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDeveloper"
-local AiStateDrop = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDrop"
-local AiStateEngage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEngage"
-local AiStateEvacuate = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEvacuate"
-local AiStateEvade = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEvade"
-local AiStateFlashbang = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFlashbang"
-local AiStateFollow = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFollow"
-local AiStateFreezetime = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFreezetime"
-local AiStateGraffiti = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGraffiti"
-local AiStateFlashbangDynamic = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFlashbangDynamic"
-local AiStateHeGrenade = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateHeGrenade"
-local AiStateKnife = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateKnife"
-local AiStateMolotov = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateMolotov"
-local AiStatePatrol = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePatrol"
-local AiStatePickupBomb = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePickupBomb"
-local AiStatePickupItems = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePickupItems"
-local AiStatePlant = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePlant"
-local AiStatePushDemolition = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePushDemolition"
-local AiStatePushHostage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePushHostage"
-local AiStateRescueHostage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateRescueHostage"
-local AiStateRotate = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateRotate"
-local AiStateRush = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateRush"
-local AiStateSeekHostage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSeekHostage"
-local AiStateSmoke = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSmoke"
-local AiStateSweep = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSweep"
-local AiStateWait = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWait"
-local AiStateWatch = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWatch"
-local AiStateZombie = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateZombie"
-
-local AiChatCommandAfk = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandAfk"
-local AiChatCommandAim = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandAim"
-local AiChatCommandBacktrack = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBacktrack"
-local AiChatCommandBomb = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBomb"
-local AiChatCommandBoost = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBoost"
-local AiChatCommandChat = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandChat"
-local AiChatCommandClantag = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandClantag"
-local AiChatCommandCmd = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandCmd"
-local AiChatCommandBuy = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBuy"
-local AiChatCommandDisconnect = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandDisconnect"
-local AiChatCommandDrop = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandDrop"
-local AiChatCommandEco = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandEco"
-local AiChatCommandEnabled = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandEnabled"
-local AiChatCommandFollow = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandFollow"
-local AiChatCommandForce = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandForce"
-local AiChatCommandGo = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandGo"
-local AiChatCommandKnife = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandKnife"
-local AiChatCommandKnow = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandKnow"
-local AiChatCommandLog = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandLog"
-local AiChatCommandNoise = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandNoise"
-local AiChatCommandOk = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandOk"
-local AiChatCommandAssist = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandAssist"
-local AiChatCommandReload = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandReload"
-local AiChatCommandRotate = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandRotate"
-local AiChatCommandRush = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandRush"
-local AiChatCommandSave = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSave"
-local AiChatCommandSkill = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkill"
-local AiChatCommandSkipMatch = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandSkipMatch"
-local AiChatCommandScramble = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandScramble"
-local AiChatCommandStop = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandStop"
-local AiChatCommandVote = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandVote"
-local AiChatCommandWait = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandWait"
-local AiChatCommandZombie = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandZombie"
-
+-- Chatbot.
 local AiChatbotNormal = require "gamesense/Nyx/v1/Dominion/Ai/Chat/AiChatbotNormal"
 local AiChatbotGpt3 = require "gamesense/Nyx/v1/Dominion/Ai/Chat/AiChatbotGpt3"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
+
+-- Modules.
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local AiView = require "gamesense/Nyx/v1/Dominion/Ai/AiView"
+local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
 local AiVoice = require "gamesense/Nyx/v1/Dominion/Ai/AiVoice"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local DominionClient = require "gamesense/Nyx/v1/Dominion/Client/Client"
-local DominionMenu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --}}}
 
 --{{{ Definitions
---- @class AiControllerStates
---- @field avoidInfernos AiStateAvoidInfernos
---- @field boost AiStateBoost
---- @field check AiStateCheck
---- @field defend AiStateDefend
---- @field defendHostageCarrier AiStateDefendHostageCarrier
---- @field defuse AiStateDefuse
---- @field developer AiStateDeveloper
---- @field drop AiStateDrop
---- @field engage AiStateEngage
---- @field evacuate AiStateEvacuate
---- @field evade AiStateEvade
---- @field follow AiStateFollow
---- @field freezetime AiStateFreezetime
---- @field graffiti AiStateGraffiti
---- @field flashbangDynamic AiStateFlashbangDynamic
---- @field heGrenade AiStateHeGrenade
---- @field knife AiStateKnife
---- @field chickenInteraction AiStateChickenInteraction
---- @field molotov AiStateMolotov
---- @field patrol AiStatePatrol
---- @field pickupBomb AiStatePickupBomb
---- @field pickupItems AiStatePickupItems
---- @field plant AiStatePlant
---- @field pushDemolition AiStatePushDemolition
---- @field pushHostage AiStatePushHostage
---- @field rescueHostage AiStateRescueHostage
---- @field rotate AiStateRotate
---- @field rush AiStateRush
---- @field seekHostage AiStateSeekHostage
---- @field smoke AiStateSmoke
---- @field sweep AiStateSweep
---- @field wait AiStateWait
---- @field watch AiStateWatch
---- @field zombie AiStateZombie
-
---- @class AiControllerCommands
---- @field afk AiChatCommandAfk
---- @field ai AiChatCommandEnabled
---- @field aim AiChatCommandAim
---- @field assist AiChatCommandAssist
---- @field bomb AiChatCommandBomb
---- @field boost AiChatCommandBoost
---- @field bt AiChatCommandBacktrack
---- @field buy AiChatCommandBuy
---- @field chat AiChatCommandChat
---- @field cmd AiChatCommandCmd
---- @field disconnect AiChatCommandDisconnect
---- @field drop AiChatCommandDrop
---- @field eco AiChatCommandEco
---- @field follow AiChatCommandFollow
---- @field force AiChatCommandForce
---- @field go AiChatCommandGo
---- @field knife AiChatCommandKnife
---- @field know AiChatCommandKnow
---- @field log AiChatCommandLog
---- @field noise AiChatCommandNoise
---- @field ok AiChatCommandOk
---- @field reload AiChatCommandReload
---- @field rot AiChatCommandRotate
---- @field rush AiChatCommandRush
---- @field save AiChatCommandSave
---- @field scramble AiChatCommandScramble
---- @field skill AiChatCommandSkill
---- @field skipmatch AiChatCommandSkipMatch
---- @field stop AiChatCommandStop
---- @field tag AiChatCommandClantag
---- @field vote AiChatCommandVote
---- @field wait AiChatCommandWait
---- @field zombie AiChatCommandZombie
-
 --- @class AiControllerActions
 --- @field panorama AiActionPanorama
 --- @field setBaseState AiActionSetBaseState
@@ -206,8 +70,8 @@ local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --- @field canUseKnife boolean
 --- @field chatbots AiControllerChatbots
 --- @field client DominionClient
---- @field commands AiControllerCommands
---- @field currentState AiState
+--- @field commands AiChatCommand
+--- @field currentState AiStateBase
 --- @field deactivatedNodes table<number, Node[]>
 --- @field deactivatedNodesByBlock table<number, Node[]>
 --- @field dynamicSkillHasDied number
@@ -221,91 +85,18 @@ local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --- @field lastPriority number
 --- @field nodegraph Nodegraph
 --- @field priority number
---- @field states AiControllerStates
+--- @field states AiStateList
 --- @field unblockDirection string
 --- @field unblockNodesTimer Timer
 --- @field unblockTimer Timer
 --- @field unscopeTime number
 --- @field unscopeTimer Timer
---- @field view AiView
 --- @field voice AiVoice
 --- @field lockStateTimer Timer
 local AiController = {
-	states = {
-		avoidInfernos = AiStateAvoidInfernos,
-		boost = AiStateBoost,
-		check = AiStateCheck,
-		defend = AiStateDefend,
-		defendHostageCarrier = AiStateDefendHostageCarrier,
-		defuse = AiStateDefuse,
-		developer = AiStateDeveloper,
-		drop = AiStateDrop,
-		engage = AiStateEngage,
-		evacuate = AiStateEvacuate,
-		evade = AiStateEvade,
-		follow = AiStateFollow,
-		freezetime = AiStateFreezetime,
-		graffiti = AiStateGraffiti,
-		flashbangDynamic = AiStateFlashbangDynamic,
-		heGrenade = AiStateHeGrenade,
-		knife = AiStateKnife,
-		chickenInteraction = AiStateChickenInteraction,
-		molotov = AiStateMolotov,
-		patrol = AiStatePatrol,
-		pickupBomb = AiStatePickupBomb,
-		pickupItems = AiStatePickupItems,
-		plant = AiStatePlant,
-		pushDemolition = AiStatePushDemolition,
-		pushHostage = AiStatePushHostage,
-		rescueHostage = AiStateRescueHostage,
-		rotate = AiStateRotate,
-		rush = AiStateRush,
-		seekHostage = AiStateSeekHostage,
-		smoke = AiStateSmoke,
-		sweep = AiStateSweep,
-		wait = AiStateWait,
-		watch = AiStateWatch,
-		zombie = AiStateZombie,
-	},
-	commands = {
-		afk = AiChatCommandAfk,
-		ai = AiChatCommandEnabled,
-		aim = AiChatCommandAim,
-		assist = AiChatCommandAssist,
-		bomb = AiChatCommandBomb,
-		boost = AiChatCommandBoost,
-		bt = AiChatCommandBacktrack,
-		buy = AiChatCommandBuy,
-		chat = AiChatCommandChat,
-		cmd = AiChatCommandCmd,
-		disconnect = AiChatCommandDisconnect,
-		drop = AiChatCommandDrop,
-		eco = AiChatCommandEco,
-		follow = AiChatCommandFollow,
-		force = AiChatCommandForce,
-		go = AiChatCommandGo,
-		knife = AiChatCommandKnife,
-		know = AiChatCommandKnow,
-		log = AiChatCommandLog,
-		noise = AiChatCommandNoise,
-		ok = AiChatCommandOk,
-		reload = AiChatCommandReload,
-		rot = AiChatCommandRotate,
-		rush = AiChatCommandRush,
-		save = AiChatCommandSave,
-		scramble = AiChatCommandScramble,
-		skill = AiChatCommandSkill,
-		skipmatch = AiChatCommandSkipMatch,
-		stop = AiChatCommandStop,
-		tag = AiChatCommandClantag,
-		vote = AiChatCommandVote,
-		wait = AiChatCommandWait,
-		zombie = AiChatCommandZombie,
-	},
-	actions = {
-		panorama = AiActionPanorama,
-		setBaseState = AiActionSetBaseState,
-	},
+	states = AiState,
+	commands = AiChatCommand,
+	actions = {},
 	chatbots = {
 		normal = AiChatbotNormal,
 		gpt3 = AiChatbotGpt3,
@@ -326,14 +117,6 @@ end
 
 --- @return void
 function AiController:initFields()
-	self.reaper = Reaper:new({
-		ai = self
-	})
-
-	self.view = AiView:new({
-		nodegraph = self.nodegraph
-	})
-
 	self.isAntiAfkEnabled = false
 	self.antiFlyTimer = Timer:new():start()
 	self.antiFlyValues = {}
@@ -352,21 +135,19 @@ function AiController:initFields()
 	self.lockStateTimer = Timer:new():startThenElapse()
 	self.isAutoBuyEnabled = true
 
-	DominionMenu.enableAi = DominionMenu.group:checkbox("> Dominion Artifical Intelligence"):setParent(DominionMenu.master):addCallback(function(item)
-		local value = item:get()
+	MenuGroup.enableAi = MenuGroup.group:addCheckbox("> Enable AI"):setParent(MenuGroup.master):addCallback(function(item)
+		Pathfinder.isEnabled = item:get()
 
-		if not value then
-			self.nodegraph:clearPath("AI disabled")
-		end
-
-		self.view.isEnabled = value
 		self.lastPriority = nil
 		self.currentState = nil
 	end)
 
-	DominionMenu.visualisePathfinding = DominionMenu.group:checkbox("    > Visualise Pathfinding"):setParent(DominionMenu.enableAi)
-	DominionMenu.enableView = DominionMenu.group:checkbox("    > Enable View"):setParent(DominionMenu.enableAi)
-	DominionMenu.enableAutoBuy = DominionMenu.group:checkbox("    > Enable Auto-Buy"):setParent(DominionMenu.enableAi)
+	MenuGroup.visualisePathfinding = MenuGroup.group:addCheckbox("    > Visualise AI"):setParent(MenuGroup.enableAi)
+	MenuGroup.enableAutoBuy = MenuGroup.group:addCheckbox("    > Buy Weapons"):setParent(MenuGroup.enableAi)
+
+	self.reaper = Reaper:new({
+		ai = self
+	})
 
 	self.voice = AiVoice:new()
 
@@ -419,7 +200,7 @@ function AiController:initEvents()
 	end)
 
 	Callbacks.frame(function()
-		if not DominionMenu.master:get() then
+		if not MenuGroup.master:get() then
 			return
 		end
 
@@ -428,6 +209,7 @@ function AiController:initEvents()
 
 	Client.onNextTick(function()
 		Callbacks.setupCommand(function(cmd)
+			self:seedPrng()
 			self:think(cmd)
 		end)
 	end)
@@ -467,32 +249,14 @@ function AiController:initEvents()
 		self.dynamicSkillHasDied = false
 		self.dynamicSkillRoundKills = 0
 
-		self.nodegraph:reactivateAllNodes()
-
-		if not DominionMenu.master:get() or not DominionMenu.enableAi:get() then
+		if not MenuGroup.master:get() or not MenuGroup.enableAi:get() then
 			return
 		end
 
 		self.lastPriority = nil
 		self.currentState = nil
 
-		self.nodegraph:clearPath("Round restart")
-
 		self:autoBuy()
-
-		for _, block in pairs(self.nodegraph.objectiveBlock) do
-			self.deactivatedNodesByBlock[block.id] = {}
-
-			for _, node in pairs(self.nodegraph.nodes) do
-				if node.id ~= block.id and block.origin:getDistance(node.origin) < 256 then
-					node.active = false
-
-					table.insert(self.deactivatedNodesByBlock[block.id], node)
-				end
-			end
-		end
-
-		self.nodegraph:rePathfind()
 	end)
 
 	Callbacks.roundFreezeEnd(function()
@@ -502,7 +266,7 @@ function AiController:initEvents()
 	end)
 
 	Callbacks.itemEquip(function(e)
-		if not DominionMenu.master:get() or not DominionMenu.enableAi:get() or not DominionMenu.enableAutoBuy:get() then
+		if not MenuGroup.master:get() or not MenuGroup.enableAi:get() or not MenuGroup.enableAutoBuy:get() then
 			return
 		end
 
@@ -519,52 +283,6 @@ function AiController:initEvents()
 		end)
 	end)
 
-	Callbacks.bombPlanted(function()
-		self.nodegraph:reactivateAllNodes()
-	end)
-
-	Callbacks.smokeGrenadeDetonate(function(e)
-		-- Can't afford to block nodes during bomb retake.
-		if AiUtility.plantedBomb then
-			return
-		end
-
-		-- We're too far away to care.
-		if AiUtility.client:getOrigin():getDistance(e.origin) > 1500 then
-			return
-		end
-
-		local isEnemyNearby = false
-
-		-- Find out if enemies are near the smoke.
-		for _, enemy in pairs(AiUtility.enemies) do
-			if enemy:getOrigin():getDistance(e.origin) < 750 then
-				isEnemyNearby = true
-
-				break
-			end
-		end
-
-		-- We can't risk pushing enemies.
-		if not isEnemyNearby then
-			return
-		end
-
-		self:deactivateNodes(e.entityid, e.origin, 144, true)
-	end)
-
-	Callbacks.smokeGrenadeExpired(function(e)
-		self:reactivateNodes(e.entityid)
-	end)
-
-	Callbacks.infernoStartBurn(function(e)
-		self:deactivateNodes(e.entityid, e.origin, 300)
-	end)
-
-	Callbacks.infernoExpire(function(e)
-		self:reactivateNodes(e.entityid)
-	end)
-
 	Callbacks.flashbangDetonate(function(e)
 		self.flashbangs[e.entityid] = nil
 
@@ -574,7 +292,7 @@ function AiController:initEvents()
 	end)
 
 	Callbacks.playerChat(function(e)
-		if not DominionMenu.master:get() then
+		if not MenuGroup.master:get() then
 			return
 		end
 
@@ -582,7 +300,7 @@ function AiController:initEvents()
 	end)
 
 	Callbacks.weaponFire(function(e)
-		if not DominionMenu.master:get() or not DominionMenu.enableAi:get() then
+		if not MenuGroup.master:get() or not MenuGroup.enableAi:get() then
 			return
 		end
 
@@ -590,6 +308,18 @@ function AiController:initEvents()
 			Client.unscope(true)
 		end
 	end)
+end
+
+--- Must be called first, before any other AI events.
+--- @return void
+function AiController:seedPrng()
+	-- This must be executed as the very first setupCommand event that runs. Before everything else.
+	-- It is responsible for ensuring RNG between AI clients on the same server is properly randomised.
+	if entity.get_local_player() then
+		for _ = 0, entity.get_local_player() * 100 do
+			client.random_float(0, 1)
+		end
+	end
 end
 
 --- @param limit number
@@ -620,7 +350,7 @@ end
 --- @param isImmediate boolean
 --- @return void
 function AiController:autoBuy(isImmediate)
-	if not DominionMenu.enableAutoBuy:get() or not self.canBuyThisRound then
+	if not MenuGroup.enableAutoBuy:get() or not self.canBuyThisRound then
 		return
 	end
 
@@ -806,7 +536,7 @@ function AiController:forceBuy()
 end
 
 --- @generic T
---- @param state T|AiState
+--- @param state T|AiStateBase
 --- @return T
 function AiController:getState(state)
 	return self.states[state.name]
@@ -830,71 +560,9 @@ function AiController:chatCommands(e)
 	command:invoke(self, e.sender, input)
 end
 
---- @param origin Vector3
---- @param radius number
---- @param checkForEnemies boolean
---- @return void
-function AiController:deactivateNodes(eid, origin, radius, checkForEnemies)
-	if checkForEnemies then
-		local isEnemyNearby = false
-
-		for _, enemy in pairs(AiUtility.enemies) do
-			if origin:getDistance(enemy:getOrigin()) < 1250 then
-				isEnemyNearby = true
-
-				break
-			end
-		end
-
-		if not isEnemyNearby then
-			return
-		end
-	end
-
-	origin:offset(0, 0, 18)
-
-	--- @type Node[]
-	local deactivatedNodes = {}
-
-	--- @type Node[]
-	local plantNodes = Table.getMerged(self.nodegraph.objectiveAPlant, self.nodegraph.objectiveBPlant)
-
-	for _, node in pairs(self.nodegraph.nodes) do repeat
-		if node.active and node.origin:getDistance(origin) <= radius then
-			for _, plant in pairs(plantNodes) do
-				if node.origin:getDistance(plant.origin) <= radius then
-					break
-				end
-			end
-
-			table.insert(deactivatedNodes, node)
-
-			node.active = false
-		end
-	until true end
-
-	self.deactivatedNodes[eid] = deactivatedNodes
-
-	self.nodegraph:rePathfind()
-end
-
---- @param eid number
---- @return void
-function AiController:reactivateNodes(eid)
-	if not self.deactivatedNodes[eid] then
-		return
-	end
-
-	for _, node in pairs(self.deactivatedNodes[eid]) do
-		node.active = true
-	end
-
-	self.deactivatedNodes[eid] = nil
-end
-
 --- @return void
 function AiController:renderUi()
-	if not DominionMenu.visualisePathfinding:get() then
+	if not MenuGroup.visualisePathfinding:get() then
 		return
 	end
 
@@ -1034,7 +702,7 @@ function AiController:renderUi()
 
 	uiPos:offset(0, offset)
 
-	if not DominionMenu.enableAi:get() then
+	if not MenuGroup.enableAi:get() then
 		uiPos:drawSurfaceText(Font.MEDIUM_BOLD, Color:hsla(0, 0.8, 0.6, 255), "l", "AI DISABLED")
 
 		uiPos:offset(0, offset)
@@ -1059,17 +727,17 @@ function AiController:renderUi()
 
 		uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
 			"Priority: %s [%i]",
-			AiState.priorityMap[self.lastPriority],
+			AiStateBase.priorityMap[self.lastPriority],
 			self.lastPriority
 		))
 
 		uiPos:offset(0, offset)
 	end
 
-	if self.nodegraph.task then
+	if Pathfinder.path then
 		uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
 			"Path Task: %s",
-			self.nodegraph.task
+			Pathfinder.path.task
 		))
 
 		uiPos:offset(0, offset)
@@ -1089,8 +757,8 @@ function AiController:renderUi()
 	uiPos:clone():offset(-5, 5):drawSurfaceRectangle(spacerDimensions, spacerColor)
 	uiPos:offset(0, 10)
 
-	if self.nodegraph.path and self.nodegraph.pathCurrent then
-		local node = self.nodegraph.path[self.nodegraph.pathCurrent]
+	if Pathfinder.path then
+		local node = Pathfinder.path.node
 
 		if node then
 			uiPos:drawSurfaceText(Font.SMALL, Node.typesColor[node.type], "l", string.format(
@@ -1102,7 +770,7 @@ function AiController:renderUi()
 			uiPos:offset(0, offset)
 		end
 
-		local goalNode = self.nodegraph.pathEnd
+		local goalNode = Pathfinder.path.endGoal
 
 		if goalNode then
 			uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
@@ -1114,16 +782,7 @@ function AiController:renderUi()
 		end
 	end
 
-	local failsColor =  self.nodegraph.pathfindFails > 0 and Color:hsla(0, 0.8, 0.6) or fontColor
-
-	uiPos:drawSurfaceText(Font.SMALL, failsColor, "l", string.format(
-		"Pathfind fails: %i",
-		self.nodegraph.pathfindFails
-	))
-
-	uiPos:offset(0, offset)
-
-	if DominionMenu.enableAi:get() and AiUtility.clientThreatenedFromOrigin then
+	if MenuGroup.enableAi:get() and AiUtility.clientThreatenedFromOrigin then
 		Client.draw(Vector3.drawCircleOutline, AiUtility.clientThreatenedFromOrigin, 30, 3, Color:hsla(0, 1, 1, 75))
 	end
 end
@@ -1131,12 +790,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiController:activities(cmd)
-	local isQuickStopping = self.isQuickStopping
-
-	self.isQuickStopping = false
-
-	DominionMenu.standaloneQuickStopRef:set(isQuickStopping)
-
+	-- todo
 	local isWalking = self.isWalking
 
 	self.isWalking = nil
@@ -1152,7 +806,7 @@ function AiController:activities(cmd)
 	end
 
 	if isWalking then
-		cmd.in_speed = 1
+		cmd.in_speed = true
 	end
 
 	local canUseGear = self.canUseGear
@@ -1194,7 +848,7 @@ function AiController:activities(cmd)
 			end
 
 			if ammo / maxAmmo < reloadRatio then
-				cmd.in_reload = 1
+				cmd.in_reload = true
 			end
 		end
 	end
@@ -1215,12 +869,6 @@ function AiController:activities(cmd)
 	end
 
 	if AiUtility.isClientThreatened then
-		canUseKnife = false
-	end
-
-	local closestCautionNode = self.nodegraph:getClosestNodeOf(origin, Node.types.CAUTION)
-
-	if closestCautionNode and origin:getDistance(closestCautionNode.origin) < 500 then
 		canUseKnife = false
 	end
 
@@ -1304,8 +952,7 @@ function AiController:antiFlash(cmd)
 
 	if canLookAwayFromFlash then
 		Client.unscope()
-
-		self.view:lookAtLocation(eyeOrigin:getAngle(self.flashbang:m_vecOrigin()):getBackward() * Vector3.MAX_DISTANCE, 4, "AiController avoid flashbang")
+		View.lookInDirection(-(eyeOrigin:getAngle(self.flashbang:m_vecOrigin())), 4.5, View.noise.moving, "AiController avoid flashbang")
 	end
 end
 
@@ -1351,24 +998,7 @@ function AiController:antiFly(cmd)
 	local onGround = AiUtility.client:getFlag(Player.flags.FL_ONGROUND)
 
 	if not onGround and fails > 10 then
-		cmd.in_jump = 1
-	end
-end
-
---- @return void
-function AiController:unblockNodes()
-	if not self.unblockNodesTimer:isElapsedThenStop(12) then
-		return
-	end
-
-	for _, blockGroup in pairs(self.deactivatedNodesByBlock) do
-		for _, node in pairs(blockGroup) do
-			node.active = true
-		end
-	end
-
-	if self.nodegraph.path then
-		self.nodegraph:rePathfind()
+		cmd.in_jump = true
 	end
 end
 
@@ -1400,7 +1030,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiController:think(cmd)
-	if not DominionMenu.master:get() or not DominionMenu.enableAi:get() or self.reaper.isActive then
+	if not MenuGroup.master:get() or not MenuGroup.enableAi:get() or self.reaper.isActive then
 		-- Fix issue with AI trying to equip the last gear forever.
 		if Client.isEquipping() then
 			Client.cancelEquip()
@@ -1423,7 +1053,6 @@ function AiController:think(cmd)
 	end
 
 	self:antiFly(cmd)
-	self:unblockNodes()
 
 	local player = AiUtility.client
 
@@ -1431,11 +1060,17 @@ function AiController:think(cmd)
 		return
 	end
 
-	--- @type AiState
+	--- @type AiStateBase
 	local currentState
 	local highestPriority = -1
 
-	for _, state in pairs(self.states) do
+	for _, state in pairs(self.states) do repeat
+		if state.isBlocked then
+			state.isBlocked = false
+
+			break
+		end
+
 		local priority = state:assess()
 
 		if not priority then
@@ -1446,11 +1081,7 @@ function AiController:think(cmd)
 			currentState = state
 			highestPriority = priority
 		end
-	end
-
-	if DominionMenu.enableView:get() then
-		self.view:think(cmd)
-	end
+	until true end
 
 	if currentState and ((self.lastPriority and self.lastPriority > highestPriority) or self.lockStateTimer:isElapsed(0.5))then
 		self.priority = highestPriority
@@ -1460,10 +1091,20 @@ function AiController:think(cmd)
 
 			currentState.lastPriority = highestPriority
 
-			self.nodegraph:clearPath(string.format("Switching AI state to %s", currentState.name))
+			local isActivatable = true
 
-			if currentState.activate then
+			if not currentState.activate then
+				isActivatable = false
+			elseif self.currentState and Nyx.is(currentState, self.currentState) then
+				isActivatable = false
+			end
+
+			if isActivatable then
+				Pathfinder.clearActivePathAndLastRequest()
+
 				currentState:activate()
+
+				Logger.console(3, "Changed AI state to '%s'.", currentState.name)
 			end
 		end
 
@@ -1479,9 +1120,6 @@ function AiController:think(cmd)
 	end
 
 	self:activities(cmd)
-
-	self.nodegraph:processMovement(cmd)
-
 	self:antiFlash(cmd)
 	self:unscope()
 end

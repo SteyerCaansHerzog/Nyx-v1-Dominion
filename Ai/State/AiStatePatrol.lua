@@ -8,13 +8,14 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStatePatrol
---- @class AiStatePatrol : AiState
+--- @class AiStatePatrol : AiStateBase
 --- @field patrolOrigin Vector3
 --- @field isBeginningPatrol boolean
 --- @field isOnPatrol boolean
@@ -110,7 +111,7 @@ function AiStatePatrol:think(cmd)
             if bomb then
                 local bombOrigin = bomb:m_vecOrigin()
 
-               self.ai.view:lookAtLocation(bombOrigin, 4, self.ai.view.noiseType.MINOR, "Patrol look at bomb")
+               View.lookAtLocation(bombOrigin, 4, View.noise.minor, "Patrol look at bomb")
 
                 local deltaAngles = Client.getEyeOrigin():getAngle(bombOrigin):getAbsDiff(Client.getCameraAngles())
 
@@ -178,5 +179,5 @@ function AiStatePatrol:getPatrolNode()
     return Table.getRandom(filterNodes, Node)
 end
 
-return Nyx.class("AiStatePatrol", AiStatePatrol, AiState)
+return Nyx.class("AiStatePatrol", AiStatePatrol, AiStateBase)
 --}}}

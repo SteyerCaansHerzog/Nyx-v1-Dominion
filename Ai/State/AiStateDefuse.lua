@@ -14,12 +14,13 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateDefuse
---- @class AiStateDefuse : AiState
+--- @class AiStateDefuse : AiStateBase
 --- @field isDefusing boolean
 --- @field lookAtOffset Vector3
 --- @field inThrowTimer Timer
@@ -201,7 +202,7 @@ function AiStateDefuse:think(cmd)
     local distance = AiUtility.client:getOrigin():getDistance(bombOrigin)
 
     if distance < 64 then
-       self.ai.view.isCrosshairUsingVelocity = false
+        View.isCrosshairUsingVelocity = false
 
         self.isDefusing = true
     else
@@ -209,17 +210,17 @@ function AiStateDefuse:think(cmd)
     end
 
     if AiUtility.client:m_bIsDefusing() == 1 then
-        self.ai.view:lookInDirection(Client.getCameraAngles(), 4, self.ai.view.noiseType.NONE, "Defuse keep current angles")
+        View.lookInDirection(Client.getCameraAngles(), 4, View.noise.none, "Defuse keep current angles")
     elseif distance < 256 then
-       self.ai.view:lookAtLocation(bombOrigin:clone():offset(5, -3, 14), 4.5, self.ai.view.noiseType.MOVING, "Defuse look at bomb")
+       View.lookAtLocation(bombOrigin:clone():offset(5, -3, 14), 4.5, View.noise.moving, "Defuse look at bomb")
     end
 
     if self.isDefusing then
         self.activity = "Defusing the bomb"
 
         self.ai.canReload = false
-        cmd.in_use = 1
-        cmd.in_duck = 1
+        cmd.in_use = true
+        cmd.in_duck = true
 
         if AiUtility.client:hasWeapon(Weapons.SMOKE)
             and Table.isEmpty(AiUtility.visibleEnemies)
@@ -232,7 +233,7 @@ function AiStateDefuse:think(cmd)
                 Client.equipSmoke()
             end
 
-           self.ai.view:lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 4.5, self.ai.view.noiseType.NONE, "Defuse look to drop smoke")
+           View.lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 4.5, View.noise.none, "Defuse look to drop smoke")
 
             if AiUtility.client:isAbleToAttack() then
                 if Client.getCameraAngles().p > 22 then
@@ -240,12 +241,12 @@ function AiStateDefuse:think(cmd)
                 end
 
                 if self.inThrowTimer:isElapsedThenStop(0.1) then
-                    cmd.in_attack2 = 1
+                    cmd.in_attack2 = true
                 end
             end
         end
     end
 end
 
-return Nyx.class("AiStateDefuse", AiStateDefuse, AiState)
+return Nyx.class("AiStateDefuse", AiStateDefuse, AiStateBase)
 --}}}

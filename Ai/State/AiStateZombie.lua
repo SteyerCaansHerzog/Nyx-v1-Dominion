@@ -9,13 +9,17 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateZombie
---- @class AiStateZombie : AiState
+--- @class AiStateZombie : AiStateBase
 --- @field isActive boolean
 --- @field isPathfindingToTarget boolean
 --- @field lastTargetOrigin Vector3
@@ -49,12 +53,12 @@ end
 function AiStateZombie:activate()
     self.isPathfindingToTarget = false
 
-    Menu.autoKnifeRef:set(true)
+    MenuGroup.autoKnifeRef:set(true)
 end
 
 --- @return void
 function AiStateZombie:deactivate()
-    Menu.autoKnifeRef:set(false)
+    MenuGroup.autoKnifeRef:set(false)
 end
 
 --- @return void
@@ -65,6 +69,8 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateZombie:think(cmd)
+    Pathfinder.ifIdleThenRetryLastRequest()
+
     Client.equipKnife()
 
     self.ai.canUseGear = false
@@ -72,7 +78,7 @@ function AiStateZombie:think(cmd)
     if not AiUtility.closestEnemy then
         self.activity = "Hunting for prey"
 
-        if self.ai.nodegraph:isIdle() then
+        if not Pathfinder.isOk() then
             self:pathfindSweepMap()
         end
 
@@ -85,7 +91,7 @@ function AiStateZombie:think(cmd)
     local targetOrigin = AiUtility.closestEnemy:getOrigin()
 
     if AiUtility.visibleEnemies[AiUtility.closestEnemy.eid] then
-        self.ai.view:lookAtLocation(targetOrigin:clone():offset(0, 0, 64), 4, self.ai.view.noiseType.MINOR, "Zombie look at enemy")
+        View.lookAtLocation(targetOrigin:clone():offset(0, 0, 64), 4, View.noise.minor, "Zombie look at enemy")
     end
 
     if clientOrigin:getDistance2(targetOrigin) < 350 then
@@ -106,7 +112,7 @@ function AiStateZombie:think(cmd)
         )
 
         if not traceRun.isIntersectingGeometry then
-            self.ai.nodegraph.moveAngle = clientOrigin:getAngle(targetOrigin)
+            Pathfinder.moveAtAngle(clientOrigin:getAngle(targetOrigin))
         end
 
         if traceJump.isIntersectingGeometry then
@@ -114,7 +120,7 @@ function AiStateZombie:think(cmd)
                 local zDelta = clientOrigin.z - targetOrigin.z
 
                 if zDelta < -32 then
-                    cmd.in_jump = 1
+                    cmd.in_jump = true
                 end
             end
 
@@ -132,32 +138,25 @@ function AiStateZombie:think(cmd)
 
         self:pathfindToEnemy()
     end
-
-    if self.ai.nodegraph:isIdle() then
-        self.ai.nodegraph:rePathfind()
-    end
 end
 
 --- @return void
 function AiStateZombie:pathfindToEnemy()
-    local targetOrigin = AiUtility.closestEnemy:getOrigin():offset(0, 0, 18)
-
-    self.ai.nodegraph:pathfind(targetOrigin, {
-        task = "Knife enemy player",
-        onFail = function()
-            self.ai.nodegraph:pathfind(self.ai.nodegraph:getClosestNode(targetOrigin).origin, {
-                task = "Knife enemy player"
-            })
-        end
+    Pathfinder.moveToLocation(AiUtility.closestEnemy:getOrigin(), {
+        task = "Move to target",
+        isPathfindingToNearestNodeOnFailure = true,
+        isAllowedToTraverseInactives = true,
+        isAllowedToTraverseSmokes = true
     })
 end
 
 --- @return void
 function AiStateZombie:pathfindSweepMap()
-    self.ai.nodegraph:pathfind(self.ai.nodegraph:getRandomNodeWithin(Vector3:new(), Vector3.MAX_DISTANCE).origin, {
-        task = "Find an enemy"
+    Pathfinder.moveToNode(Nodegraph.getRandom(Node.traverseGeneric), {
+        task = "Find an enemy",
+        goalReachedRadius = 100
     })
 end
 
-return Nyx.class("AiStateZombie", AiStateZombie, AiState)
+return Nyx.class("AiStateZombie", AiStateZombie, AiStateBase)
 --}}}

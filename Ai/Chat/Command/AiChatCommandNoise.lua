@@ -3,16 +3,17 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
-local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiChatCommandNoise
---- @class AiChatCommandNoise : AiChatCommand
+--- @class AiChatCommandNoise : AiChatCommandBase
 local AiChatCommandNoise = {
     cmd = "noise",
     requiredArgs = 1,
-    isAdminOnly = true
+    isAdminOnly = true,
+    isValidIfSelfInvoked = true
 }
 
 --- @param ai AiController
@@ -32,11 +33,11 @@ function AiChatCommandNoise:invoke(ai, sender, args)
     local toggle = args[1]
 
     if toggle == "on" then
-        ai.states.engage.aimNoise = ai.view.noiseType.MINOR
+        ai.states.engage.aimNoise = View.noise.minor
     elseif toggle == "off" then
-        ai.states.engage.aimNoise = ai.view.noiseType.NONE
+        ai.states.engage.aimNoise = View.noise.none
     end
 end
 
-return Nyx.class("AiChatCommandNoise", AiChatCommandNoise, AiChatCommand)
+return Nyx.class("AiChatCommandNoise", AiChatCommandNoise, AiChatCommandBase)
 --}}}

@@ -9,12 +9,13 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateSeekHostage
---- @class AiStateSeekHostage : AiState
+--- @class AiStateSeekHostage : AiStateBase
 --- @field node Node
 --- @field activeHostage Entity
 --- @field hostageOrigin Vector3
@@ -157,7 +158,7 @@ function AiStateSeekHostage:think(cmd)
         local distance = clientOrigin:getDistance(self.hostageOrigin)
 
         if distance < 250 then
-            self.ai.view:lookAtLocation(lookAtOrigin, 5, self.ai.view.noiseType.NONE, "Seek hostage look at hostage")
+            View.lookAtLocation(lookAtOrigin, 5, View.noise.none, "Seek hostage look at hostage")
         end
 
         if distance < 40 then
@@ -166,7 +167,7 @@ function AiStateSeekHostage:think(cmd)
             local angles = Client.getEyeOrigin():getAngle(lookAtOrigin)
 
             if Client.getCameraAngles():getMaxDiff(angles) < 40 then
-                cmd.in_use = 1
+                cmd.in_use = true
             end
         else
             self.activity = "Going to hostage"
@@ -187,5 +188,5 @@ function AiStateSeekHostage:getActivityNode()
     return nodes[Client.getRandomInt(1, #nodes)]
 end
 
-return Nyx.class("AiStateSeekHostage", AiStateSeekHostage, AiState)
+return Nyx.class("AiStateSeekHostage", AiStateSeekHostage, AiStateBase)
 --}}}

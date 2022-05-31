@@ -6,11 +6,11 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandWait
---- @class AiChatCommandWait : AiChatCommand
+--- @class AiChatCommandWait : AiChatCommandBase
 --- @field isTaken boolean
 local AiChatCommandWait = {
     cmd = "wait",
@@ -45,5 +45,5 @@ function AiChatCommandWait:invoke(ai, sender, args)
     end)
 end
 
-return Nyx.class("AiChatCommandWait", AiChatCommandWait, AiChatCommand)
+return Nyx.class("AiChatCommandWait", AiChatCommandWait, AiChatCommandBase)
 --}}}

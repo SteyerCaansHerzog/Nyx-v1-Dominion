@@ -23,8 +23,9 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
-local DominionMenu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 --}}}
 
@@ -279,12 +280,8 @@ function Reaper:initFields()
 		chatbotGpt3 = self.ai.chatbots.gpt3.isEnabled
 	}
 
-	DominionMenu.disableHud:set(false)
-	DominionMenu.limitFps:set(false)
-
-	DominionMenu.group:button("Restore Reaper Manifest", function()
-		self.manifest:restore()
-	end)
+	MenuGroup.disableHud:set(false)
+	MenuGroup.limitFps:set(false)
 end
 
 --- @return void
@@ -340,31 +337,8 @@ function Reaper:render()
 		IS_THREATENED = Animate.sine(0.33, 0.2, 10)
 	}
 
-	local colors = {
-		COUNTER_TERRORIST = Color:rgba(71, 193, 234, 255),
-		TERRORIST = Color:rgba(234, 161, 71, 255),
-
-		IS_ATTACKED = Color:rgba(229, 113, 25, 255),
-		IS_CLIENT_BG = Color:rgba(140, 140, 140, 100),
-		IS_CLIENT_OUTLINE = Color:rgba(204, 204, 204, 255),
-		IS_DEAD = Color:rgba(191, 63, 63, 50),
-		IS_DISCONNECTED = Color:rgba(89, 89, 89, 100),
-		IS_FINE = Color:rgba(51, 51, 51, 100),
-		IS_FLASHED = Color:rgba(255, 255, 255, 255),
-		IS_IN_SERVER = Color:rgba(63, 138, 191, 75),
-		IS_THREATENED = Color:rgba(191, 148, 63, 100),
-
-		TEXT_ATTACKED = Color:rgba(248, 183, 133, 255),
-		TEXT_DEAD = Color:rgba(234, 71, 71, 255),
-		TEXT_ERROR = Color:rgba(234, 120, 71, 255),
-		TEXT_MAIN = Color:rgba(255, 255, 255, 255),
-		TEXT_MUTED = Color:rgba(168, 168, 168, 255),
-		TEXT_THREATENED = Color:rgba(249, 219, 158, 255),
-
-	}
-
 	if self.isForced then
-		drawPosition:clone():offset(0, -30):drawSurfaceText(Font.MEDIUM, colors.TEXT_MUTED, "l", "Tab-Lock Off")
+		drawPosition:clone():offset(0, -30):drawSurfaceText(Font.MEDIUM, ColorList.FONT_MUTED, "l", "Tab-Lock Off")
 	end
 
 	for _, client in pairs(self.manifest.clients) do repeat
@@ -373,9 +347,9 @@ function Reaper:render()
 		end
 
 		local player = Player.getBySteamid64(client.steamId64)
-		local nameColor = colors.TEXT_MAIN
-		local infoColor = colors.TEXT_MAIN
-		local bgColor = colors.IS_FINE
+		local nameColor = ColorList.FONT_NORMAL
+		local infoColor = ColorList.FONT_NORMAL
+		local bgColor = ColorList.IS_FINE
 		local bgAlphaMod = 1
 		local isPlayerAlive = client.info.isAlive
 		local isPlayerInServer = player ~= nil
@@ -386,52 +360,52 @@ function Reaper:render()
 		local isMatchOver = false
 
 		if isConnectionLost then
-			bgColor = colors.IS_DISCONNECTED
-			nameColor = colors.TEXT_ERROR
-			infoColor = colors.TEXT_ERROR
+			bgColor = ColorList.IS_DISCONNECTED
+			nameColor = ColorList.ERROR
+			infoColor = ColorList.ERROR
 
 			isClientStateOkayToShow = false
 		elseif not client.info.isInGame then
-			bgColor = colors.IS_DISCONNECTED
-			nameColor = colors.TEXT_MUTED
-			infoColor = colors.TEXT_MUTED
+			bgColor = ColorList.IS_DISCONNECTED
+			nameColor = ColorList.FONT_MUTED
+			infoColor = ColorList.FONT_MUTED
 
 			isClientStateOkayToShow = false
 		elseif isClient then
-			nameColor = colors.TEXT_MAIN
-			infoColor = colors.TEXT_MAIN
+			nameColor = ColorList.FONT_NORMAL
+			infoColor = ColorList.FONT_NORMAL
 
 			isClientStateOkayToShow = false
 		elseif isMatchOver then
-			bgColor = colors.IS_DISCONNECTED
-			nameColor = colors.TEXT_MUTED
-			infoColor = colors.TEXT_MUTED
+			bgColor = ColorList.IS_DISCONNECTED
+			nameColor = ColorList.FONT_MUTED
+			infoColor = ColorList.FONT_MUTED
 
 			isClientStateOkayToShow = false
 		elseif not isPlayerInServer then
-			nameColor = colors.TEXT_MUTED
-			infoColor = colors.TEXT_MUTED
+			nameColor = ColorList.FONT_MUTED
+			infoColor = ColorList.FONT_MUTED
 		end
 
 		if isClientStateOkayToShow then
 			if not isPlayerAlive then
-				bgColor = colors.IS_DEAD
-				nameColor = colors.TEXT_DEAD
-				infoColor = colors.TEXT_DEAD
+				bgColor = ColorList.IS_DEAD
+				nameColor = ColorList.TEXT_DEAD
+				infoColor = ColorList.TEXT_DEAD
 			elseif client.info.isFlashed then
-				bgColor = colors.IS_FLASHED
+				bgColor = ColorList.IS_FLASHED
 				bgAlphaMod = alphaMods.IS_FLASHED
-				nameColor = colors.TEXT_MAIN
-				infoColor = colors.TEXT_MAIN
+				nameColor = ColorList.FONT_NORMAL
+				infoColor = ColorList.FONT_NORMAL
 			elseif client.info.isAttacked then
-				bgColor = colors.IS_ATTACKED
+				bgColor = ColorList.IS_ATTACKED
 				bgAlphaMod = alphaMods.IS_ATTACKED
-				nameColor = colors.TEXT_ATTACKED
-				infoColor = colors.TEXT_ATTACKED
+				nameColor = ColorList.TEXT_ATTACKED
+				infoColor = ColorList.TEXT_ATTACKED
 			elseif client.info.isThreatened then
-				bgColor = colors.IS_THREATENED
-				nameColor = colors.TEXT_THREATENED
-				infoColor = colors.TEXT_THREATENED
+				bgColor = ColorList.IS_THREATENED
+				nameColor = ColorList.TEXT_THREATENED
+				infoColor = ColorList.TEXT_THREATENED
 				bgAlphaMod = alphaMods.IS_THREATENED
 			end
 		end
@@ -450,18 +424,18 @@ function Reaper:render()
 		end
 
 		if isClient then
-			bgColor = colors.IS_CLIENT_BG
+			bgColor = ColorList.IS_CLIENT_BG
 
 			drawPosition:offset(self.clientBoxFocusedOffset)
-			drawPosition:drawSurfaceRectangleOutline(2, 2, clientBoxDimensions, colors.IS_CLIENT_OUTLINE)
+			drawPosition:drawSurfaceRectangleOutline(2, 2, clientBoxDimensions, ColorList.IS_CLIENT_OUTLINE)
 		else
 			--- @type Color
 			local outlineColor
 
 			if isConnectionLost then
-				outlineColor = colors.TEXT_ERROR
+				outlineColor = ColorList.ERROR
 			elseif isPlayerInServer then
-				outlineColor = colors.IS_IN_SERVER
+				outlineColor = ColorList.IS_IN_SERVER
 			else
 				outlineColor = bgColor:clone():setAlpha(50 * alphaMod)
 			end
@@ -554,13 +528,13 @@ function Reaper:render()
 			local teamName
 
 			if client.info.team == 2 then
-				teamColor = colors.TERRORIST
+				teamColor = ColorList.TERRORIST
 				teamName = "T"
 			elseif client.info.team == 3 then
-				teamColor = colors.COUNTER_TERRORIST
+				teamColor = ColorList.COUNTER_TERRORIST
 				teamName = "CT"
 			else
-				teamColor = colors.TEXT_MUTED
+				teamColor = ColorList.FONT_MUTED
 				teamName = "-"
 			end
 
@@ -623,7 +597,7 @@ function Reaper:think()
 		local behavior = "Inactive"
 		local activity = "Inactive"
 
-		if DominionMenu.enableAi:get() and self.ai.currentState then
+		if MenuGroup.enableAi:get() and self.ai.currentState then
 			behavior = self.ai.currentState.name
 			activity = self.ai.currentState.activity or "Unknown"
 		end
@@ -751,9 +725,9 @@ function Reaper:think()
 
 		-- Prevent the AI camera from snapping between the human and the AI.
 		-- This will force the AI's camera angles to match the possessed angles.
-		self.ai.view.viewAngles = cameraAngles
-		self.ai.view.lookAtAngles = cameraAngles
-		self.ai.view.lastCameraAngles = cameraAngles
+		 View.viewAngles = cameraAngles
+		 View.lookAtAngles = cameraAngles
+		 View.lastCameraAngles = cameraAngles
 
 		-- Current client ID.
 		local originalIndex = self.manifest.client.index
@@ -845,7 +819,9 @@ function Reaper:think()
 		end
 
 		-- Toggle g_bTextMode. Text Mode disables rendering in the Source engine.
-		Client.setTextMode(not isAppFocused)
+		if Config.isTextModeAllowed then
+			Client.setTextMode(not isAppFocused)
+		end
 
 		if isAppFocused then
 			Client.execute("volume %.2f", Config.clientFocusVolume)
@@ -889,30 +865,30 @@ function Reaper:think()
 			AiUtility.isPerformingCalculations = false
 
 			if self.isAiEnabled then
-				DominionMenu.enableAi:set(false)
-				DominionMenu.limitFps:set(false)
-				DominionMenu.disableHud:set(false)
-				DominionMenu.enableAutoBuy:set(false)
-				DominionMenu.standaloneQuickStopRef:set(false)
+				MenuGroup.enableAi:set(false)
+				MenuGroup.limitFps:set(false)
+				MenuGroup.disableHud:set(false)
+				MenuGroup.enableAutoBuy:set(false)
+				MenuGroup.standaloneQuickStopRef:set(false)
 			end
 
 			Client.setInput(true)
 
-			DominionMenu.visualisePathfinding:set(false)
-			DominionMenu.visualiseAimbot:set(false)
+			MenuGroup.visualisePathfinding:set(false)
+			MenuGroup.visualiseAimbot:set(false)
 		else
 			AiUtility.isPerformingCalculations = true
 
 			if self.isAiEnabled then
-				DominionMenu.enableAi:set(true)
-				DominionMenu.limitFps:set(true)
-				DominionMenu.enableAutoBuy:set(true)
-				DominionMenu.enableView:set(true)
-				DominionMenu.enableAimbot:set(true)
+				MenuGroup.enableAi:set(true)
+				MenuGroup.limitFps:set(true)
+				MenuGroup.enableAutoBuy:set(true)
+				MenuGroup.enableView:set(true)
+				MenuGroup.enableAimbot:set(true)
 			end
 
-			DominionMenu.visualisePathfinding:set(true)
-			DominionMenu.visualiseAimbot:set(true)
+			MenuGroup.visualisePathfinding:set(true)
+			MenuGroup.visualiseAimbot:set(true)
 
 			-- Ensure input is turned on or off when tabbing, so we cannot accidentally press keys in spectator mode.
 			Client.setInput(false)

@@ -4,11 +4,11 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandFollow
---- @class AiChatCommandFollow : AiChatCommand
+--- @class AiChatCommandFollow : AiChatCommandBase
 --- @field isTaken boolean
 local AiChatCommandFollow = {
     cmd = "follow",
@@ -34,5 +34,5 @@ function AiChatCommandFollow:invoke(ai, sender, args)
     end)
 end
 
-return Nyx.class("AiChatCommandFollow", AiChatCommandFollow, AiChatCommand)
+return Nyx.class("AiChatCommandFollow", AiChatCommandFollow, AiChatCommandBase)
 --}}}

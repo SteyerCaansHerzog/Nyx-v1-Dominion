@@ -20,12 +20,12 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
-local AiView = require "gamesense/Nyx/v1/Dominion/Ai/AiView"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
-local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ Enums
@@ -39,10 +39,10 @@ local WeaponMode = {
 --}}}
 
 --{{{ AiStateEngage
---- @class AiStateEngage : AiState
+--- @class AiStateEngage : AiStateBase
 --- @field activeWeapon string
 --- @field aimInaccurateOffset number
---- @field aimNoise AiViewNoise
+--- @field aimNoise ViewNoise
 --- @field aimOffset number
 --- @field aimSpeed number
 --- @field anticipateTime number
@@ -109,6 +109,7 @@ local WeaponMode = {
 --- @field smokeWallBangHoldTimer Timer
 --- @field sprayTime number
 --- @field sprayTimer Timer
+--- @field strafePeekDirection string
 --- @field strafePeekIndex number
 --- @field strafePeekMoveAngle Angle
 --- @field strafePeekTimer Timer
@@ -125,7 +126,6 @@ local WeaponMode = {
 --- @field watchTime number
 --- @field watchTimer Timer
 --- @field weaponMode number
---- @field strafePeekDirection string
 local AiStateEngage = {
     name = "Engage",
     skillLevelMin = 0,
@@ -189,7 +189,7 @@ function AiStateEngage:initFields()
     self.visibleReactionTimer = Timer:new()
     self.visualizerCallbacks = {}
     self.visualizerExpiryTimers = {}
-    self.aimNoise = AiView.noiseType.MINOR
+    self.aimNoise = View.noise.minor
     self.seekCoverTimer = Timer:new():startThenElapse()
     self.strafePeekTimer = Timer:new():startThenElapse()
     self.strafePeekIndex = 1
@@ -210,8 +210,8 @@ function AiStateEngage:initFields()
         self.lastSeenTimers[i] = Timer:new()
     end
 
-    Menu.enableAimbot = Menu.group:checkbox("    > Enable Aimbot"):setParent(Menu.enableAi)
-    Menu.visualiseAimbot = Menu.group:checkbox("    > Visualise Aimbot"):setParent(Menu.enableAimbot)
+    MenuGroup.enableAimbot = MenuGroup.group:addCheckbox("    > Enable Aimbot"):setParent(MenuGroup.enableAi)
+    MenuGroup.visualiseAimbot = MenuGroup.group:addCheckbox("    > Visualise Aimbot"):setParent(MenuGroup.enableAimbot)
 
     self:setAimSkill(Config.defaultSkillLevel)
 end
@@ -491,7 +491,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:think(cmd)
-    if not Menu.master:get() or not Menu.enableAi:get() then
+    if not MenuGroup.master:get() or not MenuGroup.enableAi:get() then
         return
     end
 
@@ -694,6 +694,8 @@ function AiStateEngage:setBestTarget()
         end
     end
 
+    local isUrgent = false
+
     for _, enemy in pairs(AiUtility.visibleEnemies) do
         if enemy:m_bIsDefusing() == 1 then
             selectedEnemy = enemy
@@ -716,6 +718,7 @@ function AiStateEngage:setBestTarget()
         if self:hasNoticedEnemy(enemy) and fov < lowestFov then
             lowestFov = fov
             selectedEnemy = enemy
+            isUrgent = true
         end
     end
 
@@ -727,14 +730,15 @@ function AiStateEngage:setBestTarget()
         self.preAimAboutCornersUpdateTimer:elapse()
     end
 
-    self:setWeaponStats(selectedEnemy)
-
-    self.bestTarget = selectedEnemy
+    if self.setBestTargetTimer:isElapsedThenRestart(1) or isUrgent then
+        self.bestTarget = selectedEnemy
+    end
 
     if self.bestTarget and AiUtility.visibleEnemies[self.bestTarget.eid] then
         self.watchTimer:ifPausedThenStart()
     end
 
+    self:setWeaponStats(selectedEnemy)
     self:setIsVisibleToBestTarget()
 end
 
@@ -1077,7 +1081,7 @@ end
 
 --- @return void
 function AiStateEngage:render()
-    if not Menu.master:get() or not Menu.enableAi:get() or not Menu.enableAimbot:get() then
+    if not MenuGroup.master:get() or not MenuGroup.enableAi:get() or not MenuGroup.enableAimbot:get() then
         return
     end
 
@@ -1089,7 +1093,7 @@ function AiStateEngage:render()
         end
     end
 
-    if not Menu.visualiseAimbot:get() then
+    if not MenuGroup.visualiseAimbot:get() then
         return
     end
 
@@ -1391,7 +1395,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
         end
 
         if self.isHoldingAngleDucked then
-            cmd.in_duck = 1
+            cmd.in_duck = true
         else
             self:actionJiggle(self.jiggleTime)
         end
@@ -1467,7 +1471,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:attackBestTarget(cmd)
-    if not Menu.master:get() or not Menu.enableAi:get() then
+    if not MenuGroup.master:get() or not MenuGroup.enableAi:get() then
         return
     end
 
@@ -1484,7 +1488,7 @@ function AiStateEngage:attackBestTarget(cmd)
 
     -- Look at occluded origin.
     if self.lookAtOccludedOrigin and not AiUtility.clientThreatenedFromOrigin then
-        self.ai.view:lookAtLocation(self.lookAtOccludedOrigin, 4, self.ai.view.noiseType.MINOR, "Engage look-at occlusion")
+        View.lookAtLocation(self.lookAtOccludedOrigin, 4, View.noise.minor, "Engage look-at occlusion")
     end
 
     local player = AiUtility.client
@@ -1708,7 +1712,7 @@ function AiStateEngage:attackBestTarget(cmd)
 
     -- Make sure the default mouse movement isn't active while the enemy is visible but the reaction timer hasn't elapsed.
     if AiUtility.visibleEnemies[enemy.eid] and shootFov < 40 then
-       self.ai.view:lookAtLocation(hitbox, 2.5, self.ai.view.noiseType.IDLE, "Engage prepare to react")
+       View.lookAtLocation(hitbox, 2.5, View.noise.idle, "Engage prepare to react")
 
         self:addVisualizer("hold", function()
             hitbox:drawCircleOutline(12, 2, Color:hsla(50, 1, 0.5, 200))
@@ -1725,12 +1729,12 @@ function AiStateEngage:attackBestTarget(cmd)
             self:noticeEnemy(enemy, 4096, false, "In shoot FoV")
             self:shoot(cmd, hitbox, enemy)
         elseif shootFov < 40 then
-           self.ai.view:lookAtLocation(hitbox, self.aimSpeed * 0.8, self.ai.view.noiseType.MINOR, "Engage find enemy under 40 FoV")
+           View.lookAtLocation(hitbox, self.aimSpeed * 0.8, View.noise.minor, "Engage find enemy under 40 FoV")
 
             self.watchTimer:start()
             self.lastSeenTimers[enemy.eid]:start()
         elseif shootFov >= 40 and self:hasNoticedEnemy(enemy) then
-           self.ai.view:lookAtLocation(hitbox, self.slowAimSpeed, self.ai.view.noiseType.MINOR, "Engage find enemy over 40 FoV")
+           View.lookAtLocation(hitbox, self.slowAimSpeed, View.noise.minor, "Engage find enemy over 40 FoV")
         end
     end
 end
@@ -1753,7 +1757,7 @@ function AiStateEngage:setIsVisibleToBestTarget()
         Player.hitbox.LEFT_LOWER_ARM,
         Player.hitbox.RIGHT_LOWER_LEG,
     })) do
-        local trace = Trace.getLineToPosition(enemyEyeOrigin, hitbox, AiUtility.traceOptionsAttacking, "AiState.getCoverNode<FindClientVisibleToEnemy>")
+        local trace = Trace.getLineToPosition(enemyEyeOrigin, hitbox, AiUtility.traceOptionsAttacking, "AiStateBase.getCoverNode<FindClientVisibleToEnemy>")
 
         if not trace.isIntersectingGeometry then
             self.isVisibleToBestTarget = true
@@ -2074,11 +2078,11 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
 
     -- Set RCS parameters.
     -- RCS should be off for snipers and shotguns, and on for rifles, SMGs, and pistols.
-   self.ai.view.isRcsEnabled = self.isRcsEnabled
+    View.isRcsEnabled = self.isRcsEnabled
 
     -- Set mouse movement parameters.
-   self.ai.view.isCrosshairSmoothed = false
-   self.ai.view.isCrosshairUsingVelocity = true
+    View.isCrosshairSmoothed = false
+    View.isCrosshairUsingVelocity = true
 
     -- Select which method to use to perform shooting logic.
     local shootModes = {
@@ -2105,11 +2109,11 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:fireWeapon(cmd)
-    if not self.isAimEnabled or not Menu.enableAimbot:get() then
+    if not self.isAimEnabled or not MenuGroup.enableAimbot:get() then
         return
     end
 
-    cmd.in_attack = 1
+    cmd.in_attack = true
 end
 
 --- @param cmd SetupCommandEvent
@@ -2122,7 +2126,7 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
     local isVelocityOk = true
 
     if distance > 600 then
-        cmd.in_duck = 1
+        cmd.in_duck = true
     elseif not self.canRunAndShoot then
         self:actionJiggle(self.jiggleTime * 0.33)
 
@@ -2137,7 +2141,7 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-   self.ai.view:lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
+   View.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
 
     if fov < 7
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
@@ -2160,7 +2164,7 @@ function AiStateEngage:shootLight(cmd, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-   self.ai.view:lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
+   View.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
 
     if not self.canRunAndShoot then
         self:actionCounterStrafe(cmd)
@@ -2188,7 +2192,7 @@ function AiStateEngage:shootShotgun(cmd, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-   self.ai.view:lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
+   View.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
 
     if distance > 1000 then
         return
@@ -2211,7 +2215,7 @@ end
 --- @param weapon CsgoWeapon
 --- @return void
 function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
-   self.ai.view:lookAtLocation(aimAtOrigin, self.aimSpeed, self.aimNoise, "Engage look-at target")
+   View.lookAtLocation(aimAtOrigin, self.aimSpeed, self.aimNoise, "Engage look-at target")
 
     if self.isTargetEasilyShot then
         self:actionCounterStrafe(cmd)
@@ -2221,7 +2225,7 @@ function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
 
     local isVelocityOk = AiUtility.client:m_vecVelocity():getMagnitude() < 100
 
-    if fov < 8
+    if fov < 14
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
         and isVelocityOk
     then
@@ -2251,7 +2255,7 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
 
     -- Create a "flick" effect when aiming.
     if self.scopedTimer:isElapsed(fireDelay * 0.4) then
-       self.ai.view:lookAtLocation(aimAtOrigin, self.aimSpeed * 3, self.aimNoise, "Engage look-at target")
+       View.lookAtLocation(aimAtOrigin, self.aimSpeed * 3, self.aimNoise, "Engage look-at target")
     end
 
     if fov < 12 then
@@ -2372,7 +2376,13 @@ end
 function AiStateEngage:actionCounterStrafe(cmd)
     if self.isTargetEasilyShot then
         -- Duck for better accuracy.
-        cmd.in_duck = 1
+        cmd.in_duck = true
+    end
+
+    if AiUtility.client:m_flDuckSpeed() < 3  then
+        self.ai.nodegraph.isAllowedToMove = false
+
+        return
     end
 
     if self.strafePeekDirection and self.bestTarget then
@@ -2390,7 +2400,7 @@ end
 function AiStateEngage:actionStop(cmd)
     if self.isTargetEasilyShot then
         -- Duck for better accuracy.
-        cmd.in_duck = 1
+        cmd.in_duck = true
     end
 
     local velocity = AiUtility.client:m_vecVelocity()
@@ -2585,7 +2595,7 @@ function AiStateEngage:preAimThroughCorners()
 
     self.preAimTarget = self.bestTarget
 
-   self.ai.view:lookAtLocation(self.preAimThroughCornersOrigin, 6, self.ai.view.noiseType.NONE, "Engage look through corner")
+   View.lookAtLocation(self.preAimThroughCornersOrigin, 6, View.noise.none, "Engage look through corner")
 
     self:addVisualizer("pre through", function()
         self.preAimThroughCornersOrigin:drawCircleOutline(16, 2, Color:hsla(100, 1, 0.5, 150))
@@ -2611,7 +2621,7 @@ function AiStateEngage:preAimAboutCorners()
     if self.preAimAboutCornersAimOrigin then
         self.ai.canUnscope = false
 
-       self.ai.view:lookAtLocation(self.preAimAboutCornersAimOrigin, self.slowAimSpeed, self.ai.view.noiseType.NONE, "Engage look at corner")
+       View.lookAtLocation(self.preAimAboutCornersAimOrigin, self.slowAimSpeed, View.noise.none, "Engage look at corner")
 
         self:addVisualizer("pre about", function()
             if self.preAimAboutCornersAimOrigin then
@@ -2715,7 +2725,7 @@ function AiStateEngage:watchAngle()
         self.watchOrigin = nil
     end
 
-   self.ai.view:lookAtLocation(self.watchOrigin, self.aimSpeed, self.ai.view.noiseType.IDLE, "Engage watch last spot")
+   View.lookAtLocation(self.watchOrigin, self.aimSpeed, View.noise.idle, "Engage watch last spot")
 
     self:addVisualizer("watch", function()
         if self.watchOrigin then
@@ -2742,14 +2752,14 @@ function AiStateEngage:setAimSkill(skill)
     }
 
     local skillMaximum = {
-        reactionTime = 0.01,
+        reactionTime = 0.025,
         anticipateTime = 0.01,
         sprayTime = 0.33,
-        aimSpeed = 8,
+        aimSpeed = 10,
         slowAimSpeed = 5,
         recoilControl = 2,
         aimOffset = 0,
-        aimInaccurateOffset = 64,
+        aimInaccurateOffset = 80,
         blockTime = 0.04
     }
 
@@ -2765,5 +2775,5 @@ function AiStateEngage:setAimSkill(skill)
     end
 end
 
-return Nyx.class("AiStateEngage", AiStateEngage, AiState)
+return Nyx.class("AiStateEngage", AiStateEngage, AiStateBase)
 --}}}

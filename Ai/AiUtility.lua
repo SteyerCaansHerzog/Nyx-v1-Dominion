@@ -341,7 +341,7 @@ function AiUtility:initEvents()
         AiUtility.lastPresenceTimers[e.player.eid]:restart()
     end)
 
-    Callbacks.runCommand(function()
+    Callbacks.setupCommand(function()
         if not AiUtility.isPerformingCalculations then
             return
         end

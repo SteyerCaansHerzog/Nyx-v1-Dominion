@@ -5,12 +5,12 @@ local UserInput = require "gamesense/Nyx/v1/Api/UserInput"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 
 --{{{ AiChatCommandRush
---- @class AiChatCommandRush : AiChatCommand
+--- @class AiChatCommandRush : AiChatCommandBase
 local AiChatCommandRush = {
     cmd = "rush",
     requiredArgs = 0,
@@ -41,5 +41,5 @@ function AiChatCommandRush:invoke(ai, sender, args)
     ai.states.check:activate("t")
 end
 
-return Nyx.class("AiChatCommandRush", AiChatCommandRush, AiChatCommand)
+return Nyx.class("AiChatCommandRush", AiChatCommandRush, AiChatCommandBase)
 --}}}

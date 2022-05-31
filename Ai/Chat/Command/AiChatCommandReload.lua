@@ -4,11 +4,11 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandReload
---- @class AiChatCommandReload : AiChatCommand
+--- @class AiChatCommandReload : AiChatCommandBase
 local AiChatCommandReload = {
     cmd = "reload",
     requiredArgs = 0,
@@ -27,5 +27,5 @@ function AiChatCommandReload:invoke(ai, sender, args)
     Client.reloadApi()
 end
 
-return Nyx.class("AiChatCommandReload", AiChatCommandReload, AiChatCommand)
+return Nyx.class("AiChatCommandReload", AiChatCommandReload, AiChatCommandBase)
 --}}}

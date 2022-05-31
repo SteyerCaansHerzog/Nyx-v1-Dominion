@@ -3,11 +3,11 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandSkipMatch
---- @class AiChatCommandSkipMatch : AiChatCommand
+--- @class AiChatCommandSkipMatch : AiChatCommandBase
 local AiChatCommandSkipMatch = {
     cmd = "skipmatch",
     requiredArgs = 0,
@@ -28,5 +28,5 @@ function AiChatCommandSkipMatch:invoke(ai, sender, args)
     end
 end
 
-return Nyx.class("AiChatCommandSkipMatch", AiChatCommandSkipMatch, AiChatCommand)
+return Nyx.class("AiChatCommandSkipMatch", AiChatCommandSkipMatch, AiChatCommandBase)
 --}}}

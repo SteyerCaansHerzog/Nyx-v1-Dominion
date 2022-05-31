@@ -6,15 +6,16 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandSkill
---- @class AiChatCommandSkill : AiChatCommand
+--- @class AiChatCommandSkill : AiChatCommandBase
 local AiChatCommandSkill = {
     cmd = "skill",
     requiredArgs = 0,
-    isAdminOnly = true
+    isAdminOnly = true,
+    isValidIfSelfInvoked = true
 }
 
 --- @param ai AiController
@@ -49,5 +50,5 @@ function AiChatCommandSkill:invoke(ai, sender, args)
     ai.nodegraph:log("Updated skill level to %sx", skill)
 end
 
-return Nyx.class("AiChatCommandSkill", AiChatCommandSkill, AiChatCommand)
+return Nyx.class("AiChatCommandSkill", AiChatCommandSkill, AiChatCommandBase)
 --}}}

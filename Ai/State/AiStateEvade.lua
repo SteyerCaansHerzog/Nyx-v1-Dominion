@@ -10,19 +10,19 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateEvade
---- @class AiStateEvade : AiState
+--- @class AiStateEvade : AiStateBase
 --- @field node Node
 --- @field shotBoltActionRifleTimer Timer
 --- @field shotBoltActionRifleTime number
 --- @field changeAngleTimer Timer
 --- @field changeAngleTime number
 --- @field evadeLookAtAngles Vector3
---- @field isBlocked boolean
 --- @field isHurt boolean
 --- @field hurtTimer Timer
 --- @field isLookingAtPathfindingDirection boolean
@@ -61,12 +61,6 @@ end
 --- @return void
 function AiStateEvade:assess()
     self.isLookingAtPathfindingDirection = false
-
-    if self.isBlocked then
-        self.isBlocked = nil
-
-        return AiPriority.IGNORE
-    end
 
     -- No enemies to threaten us.
     if AiUtility.enemiesAlive == 0 then
@@ -144,13 +138,13 @@ function AiStateEvade:think()
 
     if not self.isLookingAtPathfindingDirection then
         if AiUtility.clientThreatenedFromOrigin then
-            self.ai.view:lookAtLocation(AiUtility.clientThreatenedFromOrigin, self.ai.view.noiseType.MINOR, "Evade look at threat origin")
-        elseif self.ai.view.lastLookAtLocationOrigin then
-            self.ai.view:lookAtLocation(self.ai.view.lastLookAtLocationOrigin, self.ai.view.noiseType.MINOR, "Evade look at last spot")
+            View.lookAtLocation(AiUtility.clientThreatenedFromOrigin, 2.5, View.noise.minor, "Evade look at threat origin")
+        elseif  View.lastLookAtLocationOrigin then
+            View.lookAtLocation( View.lastLookAtLocationOrigin, 2.5, View.noise.minor, "Evade look at last spot")
         end
     end
 
-    if self.ai.nodegraph:isIdle() then
+    if Pathfinder.isIdle() then
         self:moveToCover()
     end
 end
@@ -163,15 +157,11 @@ function AiStateEvade:moveToCover()
         return
     end
 
-    self.ai.nodegraph:pathfind(cover.origin, {
-        objective = Node.types.GOAL,
-        task = "Moving to cover",
-        canUseInactive = true,
-        onComplete = function()
-            self.ai.nodegraph:log("Found cover")
-        end
+    Pathfinder.moveToNode(cover, {
+        task = "Move to cover",
+        isAllowedToTraverseInactives = true
     })
 end
 
-return Nyx.class("AiStateEvade", AiStateEvade, AiState)
+return Nyx.class("AiStateEvade", AiStateEvade, AiStateBase)
 --}}}

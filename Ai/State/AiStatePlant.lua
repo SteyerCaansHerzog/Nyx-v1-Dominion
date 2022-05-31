@@ -8,13 +8,14 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
-local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStatePlant
---- @class AiStatePlant : AiState
+--- @class AiStatePlant : AiStateBase
 --- @field node Node
 --- @field plantAt string
 --- @field plantDelayTimer Timer
@@ -166,7 +167,7 @@ function AiStatePlant:activate(site)
         task = string.format("Plant on %s site [%i]", node.site:upper(), node.id)
     })
 
-    if self.tellSiteTimer:isElapsedThenRestart(25) and Menu.useChatCommands:get() then
+    if self.tellSiteTimer:isElapsedThenRestart(25) and MenuGroup.useChatCommands:get() then
         self.ai.commands.go:bark(self.plantAt)
 
         local distanceToSite = origin:getDistance(self.ai.nodegraph:getNearestSiteNode(origin).origin)
@@ -199,18 +200,18 @@ function AiStatePlant:think(cmd)
     end
 
     if distance < 72 then
-        self.ai.view:lookInDirection(self.node.direction, 5, self.ai.view.noiseType.IDLE, "Plant look at angle")
+        View.lookInDirection(self.node.direction, 5, View.noise.idle, "Plant look at angle")
         self.ai.isQuickStopping = true
     end
 
     if distance < 25 then
-        cmd.in_duck = 1
+        cmd.in_duck = true
 
         if player:isAbleToAttack() then
             self.plantDelayTimer:ifPausedThenStart()
 
             if self.plantDelayTimer:isElapsed(self.plantDelayTime) then
-                cmd.in_use = 1
+                cmd.in_use = true
             end
         end
     end
@@ -237,5 +238,5 @@ function AiStatePlant:getPlantNode(site)
     end
 end
 
-return Nyx.class("AiStatePlant", AiStatePlant, AiState)
+return Nyx.class("AiStatePlant", AiStatePlant, AiStateBase)
 --}}}

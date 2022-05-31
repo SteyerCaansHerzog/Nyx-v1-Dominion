@@ -9,12 +9,12 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
 --{{{ AiStateRotate
---- @class AiStateRotate : AiState
+--- @class AiStateRotate : AiStateBase
 --- @field isActive boolean
 --- @field site string
 --- @field node Node
@@ -88,5 +88,5 @@ function AiStateRotate:move()
     })
 end
 
-return Nyx.class("AiStateRotate", AiStateRotate, AiState)
+return Nyx.class("AiStateRotate", AiStateRotate, AiStateBase)
 --}}}

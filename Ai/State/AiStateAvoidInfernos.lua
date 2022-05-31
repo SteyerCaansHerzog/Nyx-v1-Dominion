@@ -5,13 +5,13 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --}}}
 
 --{{{ AiStateAvoidInfernos
---- @class AiStateAvoidInfernos : AiState
+--- @class AiStateAvoidInfernos : AiStateBase
 --- @field inferno Entity
 --- @field isInsideInferno boolean
 local AiStateAvoidInfernos = {
@@ -48,7 +48,9 @@ function AiStateAvoidInfernos:assess()
 end
 
 --- @return void
-function AiStateAvoidInfernos:activate() end
+function AiStateAvoidInfernos:activate()
+    self:move()
+end
 
 --- @return void
 function AiStateAvoidInfernos:deactivate()
@@ -63,18 +65,24 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateAvoidInfernos:think(cmd)
-    self.activity = "Getting out of a fire"
+    self.activity = "Avoiding inferno"
 
-    if self.ai.nodegraph:isIdle() then
-        local cover = self:getCoverNode(800, AiUtility.closestEnemy)
-
-        self.ai.nodegraph:pathfind(cover.origin, {
-            objective = Node.types.GOAL,
-            task = "Avoiding inferno",
-            canUseInactive = true
-        })
+    if Pathfinder.isIdle() then
+        self:move()
     end
 end
 
-return Nyx.class("AiStateAvoidInfernos", AiStateAvoidInfernos, AiState)
+--- @return void
+function AiStateAvoidInfernos:move()
+    Pathfinder.moveToNode(self:getCoverNode(800, AiUtility.closestEnemy), {
+        task = "Get out of inferno",
+        isAllowedToTraverseInfernos = true,
+        isAllowedToTraverseInactives = true,
+        isPathfindingFromNearestNodeIfNoConnections = true,
+        isPathfindingToNearestNodeIfNoConnections = true,
+        isPathfindingToNearestNodeOnFailure = true
+    })
+end
+
+return Nyx.class("AiStateAvoidInfernos", AiStateAvoidInfernos, AiStateBase)
 --}}}

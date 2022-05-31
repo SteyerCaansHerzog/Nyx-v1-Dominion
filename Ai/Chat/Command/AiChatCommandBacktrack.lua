@@ -3,12 +3,12 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
-local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --}}}
 
 --{{{ AiChatCommandBacktrack
---- @class AiChatCommandBacktrack : AiChatCommand
+--- @class AiChatCommandBacktrack : AiChatCommandBase
 --- @field tabs string[]
 --- @field refWeaponTab MenuItem
 --- @field refAccuracyBoost MenuItem
@@ -17,6 +17,7 @@ local AiChatCommandBacktrack = {
     cmd = "bt",
     requiredArgs = 1,
     isAdminOnly = false,
+    isValidIfSelfInvoked = true,
     tabs = {
         "PISTOL",
         "SMG",
@@ -25,9 +26,9 @@ local AiChatCommandBacktrack = {
         "MACHINE GUN",
         "SNIPER"
     },
-    refWeaponTab = Menu.group.reference("legit", "weapon type", "weapon type"),
-    refAccuracyBoost = Menu.group.reference("legit", "other", "accuracy boost"),
-    refAccuracyBoostRange = Menu.group.reference("legit", "other", "accuracy boost range")
+    refWeaponTab = MenuGroup.group.reference("legit", "weapon type", "weapon type"),
+    refAccuracyBoost = MenuGroup.group.reference("legit", "other", "accuracy boost"),
+    refAccuracyBoostRange = MenuGroup.group.reference("legit", "other", "accuracy boost range")
 }
 
 --- @param ai AiController
@@ -65,5 +66,5 @@ function AiChatCommandBacktrack:invoke(ai, sender, args)
     end
 end
 
-return Nyx.class("AiChatCommandBacktrack", AiChatCommandBacktrack, AiChatCommand)
+return Nyx.class("AiChatCommandBacktrack", AiChatCommandBacktrack, AiChatCommandBase)
 --}}}

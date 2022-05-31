@@ -15,82 +15,82 @@ local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 local WeaponManifest = {
 	{
 		classname = Weapons.SCAR20,
-		priority = 6,
+		disposition = 6,
 		isPrimary = true
 	},
 	{
 		classname = Weapons.G3SG1,
-		priority = 6,
+		disposition = 6,
 		isPrimary = true
 	},
 	{
 		classname = Weapons.AK47,
-		priority = 6,
+		disposition = 6,
 		isPrimary = true
 	},
 	{
 		classname = Weapons.AWP,
-		priority = 6,
+		disposition = 6,
 		isPrimary = true
 	},
 	{
 		classname = Weapons.AUG,
-		priority = 5,
+		disposition = 5,
 		isPrimary = true
 	},
 	{
 		classname = Weapons.M4A1,
-		priority = 5,
+		disposition = 5,
 		isPrimary = true
 	},
 	{
 		classname = Weapons.SG553,
-		priority = 4,
+		disposition = 4,
 		isPrimary = true
 	},
 	{
 		classname = Weapons.FAMAS,
-		priority = 4,
+		disposition = 4,
 		isPrimary = true
 	},
 	{
 		classname = Weapons.GALIL,
-		priority = 4,
+		disposition = 4,
 		isPrimary = true
 	},
 	{
 		classname = Weapons.BIZON,
-		priority = 3,
+		disposition = 3,
 		isPrimary = false
 	},
 	{
 		classname = Weapons.MP7,
-		priority = 3,
+		disposition = 3,
 		isPrimary = false
 	},
 	{
 		classname = Weapons.MP9,
-		priority = 3,
+		disposition = 3,
 		isPrimary = false
 	},
 	{
 		classname = Weapons.P90,
-		priority = 3,
+		disposition = 3,
 		isPrimary = false
 	},
 	{
 		classname = Weapons.UMP45,
-		priority = 3,
+		disposition = 3,
 		isPrimary = false
 	},
 	{
 		classname = Weapons.MAC10,
-		priority = 3,
+		disposition = 3,
 		isPrimary = false
 	},
 	{
 		classname = Weapons.NEGEV,
-		priority = 3,
+		disposition = 3,
 		isPrimary = false
 	},
 }
@@ -105,7 +105,7 @@ local WeaponManifest = {
 local AiWeaponInfo = {}
 
 --- @return void
-function AiWeaponInfo:__setup()
+function AiWeaponInfo.__setup()
 	local dispositions = {}
 	local classnames = {}
 	local primaries = {}
@@ -120,9 +120,9 @@ function AiWeaponInfo:__setup()
 		table.insert(classnames, item.classname)
 	end
 
-	self.dispositions = dispositions
-	self.classnames = classnames
-	self.primaries = primaries
+	AiWeaponInfo.dispositions = dispositions
+	AiWeaponInfo.classnames = classnames
+	AiWeaponInfo.primaries = primaries
 end
 
 return Nyx.class("WeaponInfo", AiWeaponInfo)

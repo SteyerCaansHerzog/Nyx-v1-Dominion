@@ -6,13 +6,15 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --}}}
 
 --{{{ AiStateCheck
---- @class AiStateCheck : AiState
+--- @class AiStateCheck : AiStateBase
 --- @field node Node
 --- @field isChecking boolean
 --- @field abortDistance number
@@ -55,13 +57,11 @@ function AiStateCheck:activate(spawn)
     self.objectiveName = objectiveName
     self.isChecking = true
 
-    self.ai.nodegraph:pathfind(self.node.origin, {
-        objective = Node.types.GOAL,
-        task = string.format("Checking %s", objectiveName),
-        onComplete = function()
-            self.ai.nodegraph:log("Checked %s", objectiveName)
-
-            self.isChecking = false
+    Pathfinder.moveToNode(self.node, {
+        task = string.format("Check %s spawn", spawn),
+        goalReachedRadius = 200,
+        onReachedGoal = function()
+        	self:reset()
         end
     })
 end
@@ -69,6 +69,11 @@ end
 --- @return void
 function AiStateCheck:reset()
     self.isChecking = false
+end
+
+--- @return void
+function AiStateCheck:deactivate()
+    self:reset()
 end
 
 --- @param cmd SetupCommandEvent
@@ -85,6 +90,8 @@ function AiStateCheck:think(cmd)
     if distance < self.abortDistance then
         self.isChecking = false
     end
+
+    Pathfinder.ifIdleThenRetryLastRequest()
 end
 
 --- @param spawn string
@@ -94,12 +101,12 @@ function AiStateCheck:getSpawn(spawn)
         return self.node
     end
 
-    if spawn == "ct" then
-        return self.ai.nodegraph.objectiveCtSpawn
-    elseif spawn == "t" then
-        return self.ai.nodegraph.objectiveTSpawn
+    if spawn == "CT" then
+        return Nodegraph.getOne(Node.objectiveCtSpawn)
+    elseif spawn == "T" then
+        return Nodegraph.getOne(Node.objectiveTSpawn)
     end
 end
 
-return Nyx.class("AiStateCheck", AiStateCheck, AiState)
+return Nyx.class("AiStateCheck", AiStateCheck, AiStateBase)
 --}}}

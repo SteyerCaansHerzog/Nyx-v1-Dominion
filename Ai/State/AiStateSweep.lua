@@ -1,18 +1,19 @@
 --{{{ Dependencies
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Player = require "gamesense/Nyx/v1/Api/Player"
 --}}}
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateSweep
---- @class AiStateSweep : AiState
+--- @class AiStateSweep : AiStateBase
 --- @field node Node
 local AiStateSweep = {
     name = "Sweep"
@@ -39,18 +40,18 @@ end
 function AiStateSweep:think(cmd)
     self.activity = "Sweeping the map"
 
-    if self.ai.nodegraph:isIdle() then
+    if Pathfinder.isIdle() then
         self:move()
     end
 end
 
 --- @return void
 function AiStateSweep:move()
-   self.ai.nodegraph:pathfind(self.ai.nodegraph:getRandomNodeWithin(AiUtility.client:getOrigin(), 8192).origin, {
-        objective = Node.types.GOAL,
-        task = string.format("Sweeping the map")
+    Pathfinder.moveToNode(Nodegraph.getRandom(Node.traverseGeneric), {
+        task = "Sweep the map",
+        goalReachedRadius = 100
     })
 end
 
-return Nyx.class("AiStateSweep", AiStateSweep, AiState)
+return Nyx.class("AiStateSweep", AiStateSweep, AiStateBase)
 --}}}

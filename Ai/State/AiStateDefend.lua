@@ -3,7 +3,6 @@ local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -13,19 +12,21 @@ local Trace = require "gamesense/Nyx/v1/Api/Trace"
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateDefend
---- @class AiStateDefend : AiState
---- @field bombCarrier Player
---- @field bombNearSite string
---- @field canDuckAtNode boolean
---- @field defendingSite string
+--- @class AiStateDefend : AiStateBase
+--- @field bombAtBombsiteName string
+--- @field isAllowedToDuckAtNode boolean
+--- @field bombsite string
 --- @field defendTime number
 --- @field defendTimer Timer
---- @field equippedGun boolean
+--- @field isWeaponEquipped boolean
 --- @field getToSiteTimer Timer
 --- @field isAtDestination boolean
 --- @field isDefending boolean
@@ -36,7 +37,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field jiggleDirection string
 --- @field jiggleTime number
 --- @field jiggleTimer Timer
---- @field node Node
+--- @field node NodeTypeDefend
 local AiStateDefend = {
     name = "Defend"
 }
@@ -57,7 +58,7 @@ function AiStateDefend:__init()
     self.getToSiteTimer = Timer:new()
 
     Callbacks.init(function()
-        self.defendingSite = Client.getRandomInt(1, 2) == 1 and "a" or "b"
+        self.bombsite = Client.getRandomInt(1, 2) == 1 and "A" or "B"
     end)
 
     Callbacks.roundStart(function()
@@ -78,21 +79,13 @@ function AiStateDefend:__init()
         end
 
         local operand = slot + Entity.getGameRules():m_totalRoundsPlayed()
-        local site = (operand % 2) == 0 and "a" or "b"
+        local site = (operand % 2) == 0 and "A" or "B"
 
-        self.defendingSite = site
+        self.bombsite = site
     end)
 
     Callbacks.roundEnd(function()
         self:reset()
-    end)
-
-    Callbacks.itemPickup(function(e)
-        if not e.item == "c4" then
-            return
-        end
-
-        self.bombCarrier = e.player
     end)
 
     Callbacks.bombPlanted(function()
@@ -126,7 +119,7 @@ function AiStateDefend:assessDemolition()
 
     if player:isCounterTerrorist() then
         if bomb then
-            self.defendingSite = self.ai.nodegraph:getNearestSiteName(bomb:m_vecOrigin())
+            self.bombsite = self.ai.nodegraph:getNearestSiteName(bomb:m_vecOrigin())
 
             -- Defend our teammate who is defusing.
             if AiUtility.isBombBeingDefusedByTeammate then
@@ -257,7 +250,7 @@ function AiStateDefend:activate(site, swapPair)
     self.isAtDestination = false
     self.isOnDefendSpot = false
     self.isJiggling = false
-    self.canDuckAtNode = Client.getChance(2)
+    self.isAllowedToDuckAtNode = Client.getChance(2)
 
     self.defendTimer:stop()
     self.jiggleTimer:stop()
@@ -290,9 +283,9 @@ function AiStateDefend:think(cmd)
         self.activity = "Defending hostages"
     else
         if distance < 750 then
-            self.activity = string.format("Going %s", self.defendingSite:upper())
+            self.activity = string.format("Going %s", self.bombsite:upper())
         else
-            self.activity = string.format("Defending %s", self.defendingSite:upper())
+            self.activity = string.format("Defending %s", self.bombsite:upper())
         end
     end
 
@@ -300,22 +293,22 @@ function AiStateDefend:think(cmd)
     if self.ai.priority ~= AiPriority.DEFEND_ACTIVE then
         for _, teammate in pairs(AiUtility.teammates) do
             if teammate:getOrigin():getDistance(self.node.origin) < 50 then
-                self:activate(self.defendingSite)
+                self:activate(self.bombsite)
             end
         end
     end
 
     -- Restart defend procedure somewhere else.
     if self.ai.priority ~= AiPriority.DEFEND_ACTIVE and self.defendTimer:isElapsedThenStop(self.defendTime) then
-        self.defendTime = Client.getRandomFloat(8, 16)
+        self.defendTime = Client.getRandomFloat(3, 8)
         self.isJigglingUponReachingSpot = Client.getChance(2)
         self.isJiggling = false
 
         -- Move to another spot on the site.
-        if Client.getChance(10) then
-            self:activate(self.defendingSite, false)
+        if Client.getChance(15) then
+            self:activate(self.bombsite, false)
         else
-            self:activate(self.defendingSite, true)
+            self:activate(self.bombsite, true)
         end
     end
 
@@ -350,17 +343,17 @@ function AiStateDefend:think(cmd)
         local nodeVisibleTrace = Trace.getLineToPosition(Client.getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateDefend.think<FindSpotVisible>")
 
         -- Duck when holding this node.
-        if self.canDuckAtNode and distance < 32 then
+        if self.isAllowedToDuckAtNode and distance < 32 then
             local duckTrace = Trace.getLineToPosition(self.node.origin:clone():offset(0, 0, 28), lookDirectionTrace.endPosition, AiUtility.traceOptionsAttacking, "AiStateDefend.think<FindCanDuck>")
 
             if not duckTrace.isIntersectingGeometry then
-                cmd.in_duck = 1
+                cmd.in_duck = true
             end
         end
 
         -- Look at the angle we intend to hold.
         if not nodeVisibleTrace.isIntersectingGeometry then
-            self.ai.view:lookAtLocation(lookDirectionTrace.endPosition, 4, self.ai.view.noiseType.MOVING, "Defend look at angle")
+            View.lookAtLocation(lookDirectionTrace.endPosition, 4, View.noise.moving, "Defend look at angle")
 
             self.ai.isWalking = true
         end
@@ -409,31 +402,31 @@ function AiStateDefend:getActivityNode(site)
     local team = AiUtility.client:m_iTeamNum()
 
     if AiUtility.gamemode == "hostage" then
-        return Table.getRandom(self.ai.nodegraph.objectiveDefendHostage)
+        return Nodegraph.getRandom(Node.defendHostageT)
     end
 
     if not site then
-        site = self.defendingSite
+        site = self.bombsite
     end
 
     local nodes
 
     if self.isDefendingDefuser then
         local defendNodes = {
-            a = self.ai.nodegraph.objectiveADefendDefuser,
-            b = self.ai.nodegraph.objectiveBDefendDefuser
+            A = Nodegraph.getForBombsite(Node.defendBombCt, "A"),
+            B = Nodegraph.getForBombsite(Node.defendBombCt, "B"),
         }
 
         nodes = defendNodes[site]
     else
         local defendNodes = {
             [2] = {
-                a = self.ai.nodegraph.objectiveAHold,
-                b = self.ai.nodegraph.objectiveBHold,
+                A = Nodegraph.getForBombsite(Node.defendSiteT, "A"),
+                B = Nodegraph.getForBombsite(Node.defendSiteT, "B"),
             },
             [3] = {
-                a = self.ai.nodegraph.objectiveADefend,
-                b = self.ai.nodegraph.objectiveBDefend
+                A = Nodegraph.getForBombsite(Node.defendSiteCt, "A"),
+                B = Nodegraph.getForBombsite(Node.defendSiteCt, "B"),
             }
         }
 
@@ -450,5 +443,5 @@ function AiStateDefend:getActivityNode(site)
     return node
 end
 
-return Nyx.class("AiStateDefend", AiStateDefend, AiState)
+return Nyx.class("AiStateDefend", AiStateDefend, AiStateBase)
 --}}}

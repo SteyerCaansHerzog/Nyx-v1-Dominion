@@ -3,12 +3,12 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
-local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --}}}
 
 --{{{ AiChatCommandEnabled
---- @class AiChatCommandEnabled : AiChatCommand
+--- @class AiChatCommandEnabled : AiChatCommandBase
 local AiChatCommandEnabled = {
     cmd = "ai",
     requiredArgs = 1,
@@ -32,17 +32,17 @@ function AiChatCommandEnabled:invoke(ai, sender, args)
             return
         end
 
-        Menu.enableAi:set(true)
+        MenuGroup.enableAi:set(true)
 
         ai.reaper.isAiEnabled = true
         ai.antiAfkEnabled = false
     elseif toggle == "off" then
-        Menu.enableAi:set(false)
+        MenuGroup.enableAi:set(false)
 
         ai.reaper.isAiEnabled = false
         ai.antiAfkEnabled = false
     end
 end
 
-return Nyx.class("AiChatCommandEnabled", AiChatCommandEnabled, AiChatCommand)
+return Nyx.class("AiChatCommandEnabled", AiChatCommandEnabled, AiChatCommandBase)
 --}}}

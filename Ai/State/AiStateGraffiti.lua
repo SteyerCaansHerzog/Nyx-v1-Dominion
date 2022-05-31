@@ -7,16 +7,18 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateGraffiti
---- @class AiStateGraffiti : AiState
---- @field killCount number
---- @field lastKillTimer Timer
---- @field lastKillCutoff number
+--- @class AiStateGraffiti : AiStateBase
 --- @field graffitiDelayTimer Timer
+--- @field isEnabled boolean
+--- @field killCount number
+--- @field lastKillCutoff number
+--- @field lastKillTimer Timer
 local AiStateGraffiti = {
     name = "Graffiti"
 }
@@ -29,6 +31,7 @@ end
 
 --- @return void
 function AiStateGraffiti:__init()
+    self.isEnabled = true
     self.killCount = 0
     self.lastKillTimer = Timer:new()
     self.lastKillCutoff = 8
@@ -50,11 +53,16 @@ function AiStateGraffiti:__init()
 
     Callbacks.roundStart(function()
         self.killCount = 0
+        self.isEnabled = true
     end)
 end
 
 --- @return void
 function AiStateGraffiti:assess()
+    if not self.isEnabled then
+        return AiPriority.IGNORE
+    end
+
     if self.lastKillTimer:isElapsedThenStop(self.lastKillCutoff) then
         self.killCount = 0
     end
@@ -80,18 +88,16 @@ end
 function AiStateGraffiti:think()
     self.activity = "Spraying graffiti"
 
-    local newCameraAngles = Client.getCameraAngles()
+    local newCameraAngles = Client.getCameraAngles():set(80)
 
-    newCameraAngles.p = 80
-
-   self.ai.view:lookInDirection(newCameraAngles, 5, self.ai.view.noiseType.MINOR, "Graffiti look at floor")
+    View.lookInDirection(newCameraAngles, 6, View.noise.minor, "Graffiti look at floor")
 
     if Client.getCameraAngles().p > 75 then
-        self.killCount = 0
+        self.isEnabled = false
 
         Client.sprayGraffiti()
     end
 end
 
-return Nyx.class("AiStateGraffiti", AiStateGraffiti, AiState)
+return Nyx.class("AiStateGraffiti", AiStateGraffiti, AiStateBase)
 --}}}

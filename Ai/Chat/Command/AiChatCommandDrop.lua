@@ -5,11 +5,11 @@ local Player = require "gamesense/Nyx/v1/Api/Player"
 
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandDrop
---- @class AiChatCommandDrop : AiChatCommand
+--- @class AiChatCommandDrop : AiChatCommandBase
 local AiChatCommandDrop = {
     cmd = "drop",
     requiredArgs = 0,
@@ -63,5 +63,5 @@ function AiChatCommandDrop:invoke(ai, sender, args)
     ai.states.drop:dropGear(sender, "weapon")
 end
 
-return Nyx.class("AiChatCommandDrop", AiChatCommandDrop, AiChatCommand)
+return Nyx.class("AiChatCommandDrop", AiChatCommandDrop, AiChatCommandBase)
 --}}}

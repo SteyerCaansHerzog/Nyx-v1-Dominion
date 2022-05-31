@@ -9,7 +9,7 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
 
 --{{{ Modules
-local DominionMenu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiVoicePackAdrian = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackAdrian"
 local AiVoicePackBenji = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackBenji"
@@ -73,9 +73,10 @@ function AiVoice:__init()
     self.packs = packs
     self.packsListboxMap = packNames
 
-    DominionMenu.voicePack = DominionMenu.group:listbox("    > Voice Pack", packNames):addCallback(function(item)
+    MenuGroup.group:addLabel("---- Voice Pack ----"):setParent(MenuGroup.master)
+    MenuGroup.voicePack = MenuGroup.group:addList("    > Voice Pack", packNames):addCallback(function(item)
     	self.pack = self.packs[item:get() + 1]
-    end):setParent(DominionMenu.master)
+    end):setParent(MenuGroup.master)
 
     self.flashbangTimer = Timer:new():startThenElapse()
 

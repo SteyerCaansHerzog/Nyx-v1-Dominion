@@ -3,12 +3,12 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 
 --{{{ AiChatCommandRotate
---- @class AiChatCommandRotate : AiChatCommand
+--- @class AiChatCommandRotate : AiChatCommandBase
 local AiChatCommandRotate = {
     cmd = "rot",
     requiredArgs = 1,
@@ -53,5 +53,5 @@ function AiChatCommandRotate:invoke(ai, sender, args)
     ai.states.defend.defendingSite = site
 end
 
-return Nyx.class("AiChatCommandRotate", AiChatCommandRotate, AiChatCommand)
+return Nyx.class("AiChatCommandRotate", AiChatCommandRotate, AiChatCommandBase)
 --}}}

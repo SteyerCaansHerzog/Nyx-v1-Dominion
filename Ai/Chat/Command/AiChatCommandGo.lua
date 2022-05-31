@@ -4,12 +4,12 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 
 --{{{ AiChatCommandGo
---- @class AiChatCommandGo : AiChatCommand
+--- @class AiChatCommandGo : AiChatCommandBase
 local AiChatCommandGo = {
     cmd = "go",
     requiredArgs = 1,
@@ -42,11 +42,18 @@ function AiChatCommandGo:invoke(ai, sender, args)
     end
 
     local objective = args[1]
+
+    if not objective then
+        return
+    end
+
+    objective = objective:upper()
+
     local validObjectives = {
-        a = true,
-        b = true,
-        ct = true,
-        t = true
+        A = true,
+        B = true,
+        CT = true,
+        T = true
     }
 
     if not validObjectives[objective] then
@@ -67,7 +74,7 @@ function AiChatCommandGo:invoke(ai, sender, args)
         ai.states.sweep:activate(objective)
 
         if player:isTerrorist() then
-            if objective == "ct" or objective == "t" then
+            if objective == "CT" or objective == "T" then
                 ai.states.check:activate(objective)
             else
                 ai.states.defend.defendingSite = objective
@@ -84,7 +91,7 @@ function AiChatCommandGo:invoke(ai, sender, args)
                 ai.states.plant:activate(objective)
             end
         elseif player:isCounterTerrorist() then
-            if objective == "ct" or objective == "t" then
+            if objective == "CT" or objective == "T" then
                 ai.states.check:activate(objective)
             else
                 ai.states.defend.defendingSite = objective
@@ -95,5 +102,5 @@ function AiChatCommandGo:invoke(ai, sender, args)
     end)
 end
 
-return Nyx.class("AiChatCommandGo", AiChatCommandGo, AiChatCommand)
+return Nyx.class("AiChatCommandGo", AiChatCommandGo, AiChatCommandBase)
 --}}}

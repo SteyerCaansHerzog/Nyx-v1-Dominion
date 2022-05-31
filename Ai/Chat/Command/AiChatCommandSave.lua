@@ -4,12 +4,12 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 
 --{{{ AiChatCommandSave
---- @class AiChatCommandSave : AiChatCommand
+--- @class AiChatCommandSave : AiChatCommandBase
 local AiChatCommandSave = {
     cmd = "save",
     requiredArgs = 0,
@@ -36,5 +36,5 @@ function AiChatCommandSave:invoke(ai, sender, args)
     ai.states.evacuate.isForcedToSave = true
 end
 
-return Nyx.class("AiChatCommandSave", AiChatCommandSave, AiChatCommand)
+return Nyx.class("AiChatCommandSave", AiChatCommandSave, AiChatCommandBase)
 --}}}

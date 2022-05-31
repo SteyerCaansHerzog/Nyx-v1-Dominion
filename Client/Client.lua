@@ -15,7 +15,7 @@ local WebSockets = require "gamesense/Nyx/v1/Api/WebSockets"
 --{{{ Modules
 local AiVoice = require "gamesense/Nyx/v1/Dominion/Ai/AiVoice"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
-local DominionMenu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 
 local Allocate = require "gamesense/Nyx/v1/Dominion/Client/Message/Allocate"
 local ApplyCooldown = require "gamesense/Nyx/v1/Dominion/Client/Message/ApplyCooldown"
@@ -430,7 +430,7 @@ function DominionClient:logon()
             end
 
             if idx then
-                DominionMenu.voicePack:set(self.allocation.voicePacks[idx])
+                MenuGroup.voicePack:set(self.allocation.voicePacks[idx])
             end
         end
 
@@ -440,7 +440,7 @@ function DominionClient:logon()
     self.server:onReceive(Deallocate, function()
         self.allocation = nil
 
-        DominionMenu.voicePack:set(0)
+        MenuGroup.voicePack:set(0)
     end)
 
     self.server:onReceive(ReloadClient, function()

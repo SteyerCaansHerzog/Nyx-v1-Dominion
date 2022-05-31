@@ -12,12 +12,13 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateFlashbangDynamic
---- @class AiStateFlashbangDynamic : AiState
+--- @class AiStateFlashbangDynamic : AiStateBase
 --- @field canJumpThrow boolean
 --- @field isActivated boolean
 --- @field isThrowing boolean
@@ -227,14 +228,14 @@ function AiStateFlashbangDynamic:think(cmd)
     self.ai.canLookAwayFromFlash = false
     self.ai.isQuickStopping = true
     self.ai.nodegraph.isAllowedToAvoidTeammates = false
-    self.ai.view.isCrosshairUsingVelocity = true
-    self.ai.view.isCrosshairSmoothed = false
+     View.isCrosshairUsingVelocity = true
+     View.isCrosshairSmoothed = false
 
     if not AiUtility.client:isHoldingWeapon(Weapons.FLASHBANG) then
         Client.equipFlashbang()
     end
 
-   self.ai.view:lookInDirection(self.throwAngles, 4.5, self.ai.view.noiseType.NONE, "FlashbangDynamic look at throw angle")
+   View.lookInDirection(self.throwAngles, 4.5, View.noise.none, "FlashbangDynamic look at throw angle")
 
     local maxDiff = self.throwAngles:getMaxDiff(Client.getCameraAngles())
 
@@ -248,7 +249,7 @@ function AiStateFlashbangDynamic:think(cmd)
     if self.isThrowing then
         self.throwTimer:ifPausedThenStart()
 
-        cmd.in_attack = 1
+        cmd.in_attack = true
 
         if not AiUtility.isLastAlive then
             self.ai.voice.pack:speakClientThrowingFlashbang()
@@ -256,10 +257,10 @@ function AiStateFlashbangDynamic:think(cmd)
     end
 
     if self.throwTimer:isElapsedThenRestart(0.1) then
-        cmd.in_attack = 0
+        cmd.in_attack = false
 
         if self.canJumpThrow then
-            cmd.in_jump = 1
+            cmd.in_jump = true
         end
 
         Client.fireAfter(0.15, function()
@@ -270,5 +271,5 @@ function AiStateFlashbangDynamic:think(cmd)
     end
 end
 
-return Nyx.class("AiStateFlashbangDynamic", AiStateFlashbangDynamic, AiState)
+return Nyx.class("AiStateFlashbangDynamic", AiStateFlashbangDynamic, AiStateBase)
 --}}}

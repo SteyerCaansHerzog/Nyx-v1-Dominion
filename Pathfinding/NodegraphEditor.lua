@@ -166,7 +166,7 @@ end
 
 --- @return void
 function NodegraphEditor:createNodes()
-    if Menu.isOpen() then
+    if MenuGroup.isOpen() then
         return
     end
 

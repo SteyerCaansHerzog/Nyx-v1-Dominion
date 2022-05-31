@@ -12,12 +12,13 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateFreezetime
---- @class AiStateFreezetime : AiState
+--- @class AiStateFreezetime : AiStateBase
 --- @field target Player
 --- @field nextBehaviorTimer Timer
 --- @field nextBehaviorTime Timer
@@ -92,7 +93,7 @@ function AiStateFreezetime:think(cmd)
         self.nextBehaviorTime = Client.getRandomFloat(4, 10)
         self.target = Table.getRandomFromNonIndexed(AiUtility.teammates)
 
-        if Client.getChance(16) then
+        if Client.getChance(9) then
             local behaviors = {
                 AiStateFreezetime.actionLookAtTeammate,
                 AiStateFreezetime.actionSpinAround,
@@ -122,13 +123,13 @@ function AiStateFreezetime:actionLookAtTeammate(cmd)
         self.crouchTimer:ifPausedThenStart()
 
         if self.crouchTimer:isElapsed(self.crouchTime) then
-            self.crouchCooldownTime = Client.getRandomFloat(1, 10)
+            self.crouchCooldownTime = Client.getRandomFloat(1, 4)
             self.crouchTime = Client.getRandomFloat(0.6, 1)
 
             self.crouchCooldownTimer:restart()
             self.crouchTimer:stop()
         else
-            cmd.in_duck = 1
+            cmd.in_duck = true
         end
     end
 
@@ -139,7 +140,7 @@ function AiStateFreezetime:actionLookAtTeammate(cmd)
         return
     end
 
-    self.ai.view:lookAtLocation(targetEyeOrigin, 4, self.ai.view.noiseType.IDLE, "Freezetime idling")
+    View.lookAtLocation(targetEyeOrigin, 4, View.noise.idle, "Freezetime idling")
 end
 
 --- @param cmd SetupCommandEvent
@@ -147,8 +148,8 @@ end
 function AiStateFreezetime:actionSpinAround(cmd)
     self.lookAngles:offset(0, 90 * Time.getDelta())
 
-    self.ai.view:lookInDirection(self.lookAngles, 6, self.ai.view.noiseType.IDLE, "Freezetime idling")
+    View.lookInDirection(self.lookAngles, 6, View.noise.idle, "Freezetime idling")
 end
 
-return Nyx.class("AiStateFreezetime", AiStateFreezetime, AiState)
+return Nyx.class("AiStateFreezetime", AiStateFreezetime, AiStateBase)
 --}}}

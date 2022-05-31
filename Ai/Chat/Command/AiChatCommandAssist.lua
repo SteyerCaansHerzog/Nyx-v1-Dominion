@@ -7,11 +7,11 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandAssist
---- @class AiChatCommandAssist : AiChatCommand
+--- @class AiChatCommandAssist : AiChatCommandBase
 local AiChatCommandAssist = {
     cmd = "assist",
     requiredArgs = 0,
@@ -44,5 +44,5 @@ function AiChatCommandAssist:invoke(ai, sender, args)
     end)
 end
 
-return Nyx.class("AiChatCommandAssist", AiChatCommandAssist, AiChatCommand)
+return Nyx.class("AiChatCommandAssist", AiChatCommandAssist, AiChatCommandBase)
 --}}}

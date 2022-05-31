@@ -3,11 +3,11 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandEco
---- @class AiChatCommandEco : AiChatCommand
+--- @class AiChatCommandEco : AiChatCommandBase
 local AiChatCommandEco = {
     cmd = "eco",
     requiredArgs = 0,
@@ -26,5 +26,5 @@ function AiChatCommandEco:invoke(ai, sender, args)
     ai.canBuyThisRound = false
 end
 
-return Nyx.class("AiChatCommandEco", AiChatCommandEco, AiChatCommand)
+return Nyx.class("AiChatCommandEco", AiChatCommandEco, AiChatCommandBase)
 --}}}

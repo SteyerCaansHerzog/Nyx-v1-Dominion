@@ -7,12 +7,13 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateDefendHostageCarrier
---- @class AiStateDefendHostageCarrier : AiState
+--- @class AiStateDefendHostageCarrier : AiStateBase
 --- @field hostageCarrier Player
 --- @field lastOrigin Vector3
 local AiStateDefendHostageCarrier = {
@@ -106,7 +107,7 @@ function AiStateDefendHostageCarrier:think(cmd)
     end
 
     if distance < 250 then
-       self.ai.view:lookAtLocation(self.hostageCarrier:getOrigin():offset(0, 0, 64), 4, self.ai.view.noiseType.IDLE, "Follow look at player")
+       View.lookAtLocation(self.hostageCarrier:getOrigin():offset(0, 0, 64), 4, View.noise.idle, "Follow look at player")
     end
 end
 
@@ -138,5 +139,5 @@ function AiStateDefendHostageCarrier:move()
     })
 end
 
-return Nyx.class("AiStateDefendHostageCarrier", AiStateDefendHostageCarrier, AiState)
+return Nyx.class("AiStateDefendHostageCarrier", AiStateDefendHostageCarrier, AiStateBase)
 --}}}

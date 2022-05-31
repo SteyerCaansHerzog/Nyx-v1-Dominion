@@ -8,12 +8,13 @@ local UserInput = require "gamesense/Nyx/v1/Api/UserInput"
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateDrop
---- @class AiStateDrop : AiState
+--- @class AiStateDrop : AiStateBase
 --- @field droppingGearTimer Timer
 --- @field isDroppingGear boolean
 --- @field requestingPlayer Player
@@ -76,7 +77,7 @@ function AiStateDrop:think(cmd)
     local isFreezeTime = AiUtility.gameRules:m_bFreezePeriod() == 1
 
     if isFreezeTime or distance < 300 then
-        self.ai.view:lookAtLocation(hitbox, 8, self.ai.view.noiseType.MINOR, "Drop look at requester")
+        View.lookAtLocation(hitbox, 8, View.noise.minor, "Drop look at requester")
     end
 
     if isFreezeTime or distance < 200 then
@@ -126,5 +127,5 @@ function AiStateDrop:buyGear()
     end)
 end
 
-return Nyx.class("AiStateDrop", AiStateDrop, AiState)
+return Nyx.class("AiStateDrop", AiStateDrop, AiStateBase)
 --}}}

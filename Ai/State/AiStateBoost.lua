@@ -11,13 +11,16 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateBoost
---- @class AiStateBoost : AiState
+--- @class AiStateBoost : AiStateBase
 --- @field boostOrigin Vector3
 --- @field boostPlayer Player
 --- @field isBoosting boolean
@@ -65,9 +68,12 @@ end
 
 --- @return void
 function AiStateBoost:activate()
-    self.ai.nodegraph:pathfind(self.boostOrigin, {
-    objective = Node.types.GOAL,
-        task = string.format("Boost %s", self.boostPlayer:getName())
+    Pathfinder.moveToLocation(self.boostOrigin, {
+        task = string.format("Boost %s", self.boostPlayer:getName()),
+        isCounterStrafingOnGoal = true,
+        onFailedToFindPath = function()
+        	self:reset()
+        end
     })
 
     self.ai.commands.boost.isTaken = false
@@ -90,12 +96,6 @@ end
 function AiStateBoost:think(cmd)
     self.activity = "Going to boost teammate"
 
-    if self.ai.nodegraph.pathfindFails > 0 then
-        self:reset()
-
-        return
-    end
-
     if not self.boostPlayer or not self.boostPlayer:isAlive() then
         self:reset()
 
@@ -103,7 +103,7 @@ function AiStateBoost:think(cmd)
     end
 
     local playerOrigin = AiUtility.client:getOrigin()
-    local originDistance = playerOrigin:getDistance(self.boostOrigin)
+    local originDistance = playerOrigin:getDistance2(self.boostOrigin)
     local senderDistance = playerOrigin:getDistance(self.boostPlayer:getOrigin())
 
     if self.isBoosting and senderDistance > 128 then
@@ -124,20 +124,19 @@ function AiStateBoost:think(cmd)
     end
 
     if senderDistance < 500 and originDistance < 200 then
-        self.ai.nodegraph.isAllowedToAvoidTeammates = false
-        self.ai.canLookAwayFromFlash = false
-        self.ai.states.evade.isBlocked = true
+        Pathfinder.blockTeammateAvoidance()
+
+        self.ai.canLookAwayFromFlash = false -- todo
+        self.ai.states.evade:block()
 
         local bounds = playerOrigin:clone():offset(0, 0, 32):getBounds(Vector3.align.BOTTOM, 25, 25, 128)
 
         if originDistance < 64 and not self.boostPlayer:getOrigin():offset(0, 0, 48):isInBounds(bounds) then
             if senderDistance < 128 then
-                cmd.in_duck = 1
+                cmd.in_duck = true
             end
 
-            self.ai.view:lookAtLocation(self.boostPlayer:getHitboxPosition(Player.hitbox.NECK), 2, self.ai.view.noiseType.IDLE, "Boost look at booster")
-        else
-            self.ai.view:lookInDirection(self.boostLookAngles, 2, self.ai.view.noiseType.IDLE, "Boost copy booster direction")
+            View.lookAtLocation(self.boostPlayer:getHitboxPosition(Player.hitbox.NECK), 2, View.noise.idle, "Boost look at booster")
         end
     end
 
@@ -145,7 +144,9 @@ function AiStateBoost:think(cmd)
         self.activity = "Boosting teammate"
         self.isBoosting = true
     end
+
+    Pathfinder.ifIdleThenRetryLastRequest()
 end
 
-return Nyx.class("AiStateBoost", AiStateBoost, AiState)
+return Nyx.class("AiStateBoost", AiStateBoost, AiStateBase)
 --}}}

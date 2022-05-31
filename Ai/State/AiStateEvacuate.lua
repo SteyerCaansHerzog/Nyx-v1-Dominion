@@ -8,13 +8,14 @@ local Trace = require "gamesense/Nyx/v1/Api/Trace"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateEvacuate
---- @class AiStateEvacuate : AiState
+--- @class AiStateEvacuate : AiStateBase
 --- @field isBombPlanted boolean
 --- @field isForcedToSave boolean
 --- @field node Node
@@ -198,7 +199,7 @@ function AiStateEvacuate:think(cmd)
     local distance = AiUtility.client:getOrigin():getDistance(self.node.origin)
 
     if distance < 32 then
-        cmd.in_duck = 1
+        cmd.in_duck = true
     end
 
     if not trace.isIntersectingGeometry and distance < 200 then
@@ -209,7 +210,7 @@ function AiStateEvacuate:think(cmd)
         local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
         local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding, "AiStateEvacuate.think<FindLookAngle>")
 
-       self.ai.view:lookAtLocation(trace.endPosition, 4, self.ai.view.noiseType.NONE, "Evacuate look at angle")
+       View.lookAtLocation(trace.endPosition, 4, View.noise.none, "Evacuate look at angle")
     end
 end
 
@@ -272,5 +273,5 @@ function AiStateEvacuate:getHideNode()
     end
 end
 
-return Nyx.class("AiStateEvacuate", AiStateEvacuate, AiState)
+return Nyx.class("AiStateEvacuate", AiStateEvacuate, AiStateBase)
 --}}}

@@ -7,12 +7,12 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
 --{{{ AiStatePushDemolition
---- @class AiStatePushDemolition : AiState
+--- @class AiStatePushDemolition : AiStateBase
 --- @field isDeactivated boolean
 --- @field node Node
 --- @field site string
@@ -120,5 +120,5 @@ function AiStatePushDemolition:getActivityNode(site)
     return nodes[Client.getRandomInt(1, #nodes)]
 end
 
-return Nyx.class("AiStatePushDemolition", AiStatePushDemolition, AiState)
+return Nyx.class("AiStatePushDemolition", AiStatePushDemolition, AiStateBase)
 --}}}

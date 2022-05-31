@@ -13,12 +13,13 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateGrenadeBase
---- @class AiStateGrenadeBase : AiState
+--- @class AiStateGrenadeBase : AiStateBase
 --- @field priority number
 --- @field cooldown number
 --- @field defendNode string
@@ -382,10 +383,10 @@ function AiStateGrenadeBase:think(cmd)
     if distance < 150 then
        self.ai.nodegraph.moveAngle = playerOrigin:getAngle(self.node.origin)
        self.ai.nodegraph.isAllowedToAvoidTeammates = false
-       self.ai.view.isCrosshairUsingVelocity = false
-       self.ai.view.isCrosshairSmoothed = true
+        View.isCrosshairUsingVelocity = false
+        View.isCrosshairSmoothed = true
 
-       self.ai.view:lookInDirection(self.node.direction, 5, self.ai.view.noiseType.NONE, "GrenadeBase look at line-up")
+       View.lookInDirection(self.node.direction, 5, View.noise.none, "GrenadeBase look at line-up")
 
         local deltaAngles = self.node.direction:getAbsDiff(Client.getCameraAngles())
 
@@ -403,7 +404,7 @@ function AiStateGrenadeBase:think(cmd)
             and player:isAbleToAttack()
             and speed < 5
         then
-            cmd.in_attack = 1
+            cmd.in_attack = true
         end
     else
         self.throwTimer:stop()
@@ -449,5 +450,5 @@ function AiStateGrenadeBase:getNodes()
     end
 end
 
-return Nyx.class("AiStateGrenadeBase", AiStateGrenadeBase, AiState)
+return Nyx.class("AiStateGrenadeBase", AiStateGrenadeBase, AiStateBase)
 --}}}

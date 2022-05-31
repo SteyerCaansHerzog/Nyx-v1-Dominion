@@ -10,13 +10,14 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateKnife
---- @class AiStateKnife : AiState
+--- @class AiStateKnife : AiStateBase
 --- @field isActive boolean
 --- @field isScared boolean
 --- @field isCommitted boolean
@@ -97,12 +98,12 @@ end
 function AiStateKnife:activate()
     self.isPathfindingToTarget = false
 
-    Menu.autoKnifeRef:set(true)
+    MenuGroup.autoKnifeRef:set(true)
 end
 
 --- @return void
 function AiStateKnife:deactivate()
-    Menu.autoKnifeRef:set(false)
+    MenuGroup.autoKnifeRef:set(false)
 end
 
 --- @return void
@@ -133,7 +134,7 @@ function AiStateKnife:think(cmd)
     local targetOrigin = AiUtility.closestEnemy:getOrigin()
 
     if AiUtility.visibleEnemies[AiUtility.closestEnemy.eid] then
-        self.ai.view:lookAtLocation(targetOrigin:clone():offset(0, 0, 64), 4, self.ai.view.noiseType.MINOR, "Knife look at enemy")
+        View.lookAtLocation(targetOrigin:clone():offset(0, 0, 64), 4, View.noise.minor, "Knife look at enemy")
     end
 
     if clientOrigin:getDistance2(targetOrigin) < 350 then
@@ -162,7 +163,7 @@ function AiStateKnife:think(cmd)
                 local zDelta = clientOrigin.z - targetOrigin.z
 
                 if zDelta < -32 then
-                    cmd.in_jump = 1
+                    cmd.in_jump = true
                 end
             end
 
@@ -233,5 +234,5 @@ function AiStateKnife:pathfindSweepMap()
     })
 end
 
-return Nyx.class("AiStateKnife", AiStateKnife, AiState)
+return Nyx.class("AiStateKnife", AiStateKnife, AiStateBase)
 --}}}

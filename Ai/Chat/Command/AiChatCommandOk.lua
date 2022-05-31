@@ -3,11 +3,11 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandOk
---- @class AiChatCommandOk : AiChatCommand
+--- @class AiChatCommandOk : AiChatCommandBase
 --- @field isTaken boolean
 local AiChatCommandOk = {
     cmd = "ok",
@@ -27,5 +27,5 @@ function AiChatCommandOk:invoke(ai, sender, args)
     ai.commands.boost.isTaken = true
 end
 
-return Nyx.class("AiChatCommandOk", AiChatCommandOk, AiChatCommand)
+return Nyx.class("AiChatCommandOk", AiChatCommandOk, AiChatCommandBase)
 --}}}

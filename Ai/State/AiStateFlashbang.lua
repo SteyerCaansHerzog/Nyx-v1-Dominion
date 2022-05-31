@@ -6,7 +6,7 @@ local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGrenadeBase"
+local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBaseGrenadeBase"
 --}}}
 
 --{{{ AiStateFlashbang

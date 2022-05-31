@@ -11,13 +11,16 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateChickenInteraction
---- @class AiStateChickenInteraction : AiState
+--- @class AiStateChickenInteraction : AiStateBase
 --- @field targetChicken Entity
 --- @field cooldownTimer Timer
 --- @field blacklist boolean[]
@@ -105,7 +108,23 @@ function AiStateChickenInteraction:assess()
 end
 
 --- @return void
-function AiStateChickenInteraction:activate() end
+function AiStateChickenInteraction:activate()
+    local task
+
+    if self.interaction == "kill" then
+        task = "Intercept hostile poultry"
+    elseif self.interaction == "collect" then
+        task = "Pick up birds"
+    end
+
+    Pathfinder.moveToLocation(self.targetChicken:m_vecOrigin(), {
+        task = task,
+        onFailedToFindPath = function()
+        	self.blacklist[self.targetChicken.eid] = true
+            self.targetChicken = nil
+        end
+    })
+end
 
 --- @return void
 function AiStateChickenInteraction:deactivate()
@@ -123,9 +142,9 @@ end
 --- @return void
 function AiStateChickenInteraction:think(cmd)
     if self.interaction == "kill" then
-        self.activity = "Killing a chicken"
+        self.activity = "Intercept hostile poultry"
     elseif self.interaction == "collect" then
-        self.activity = "Collecting a chicken"
+        self.activity = "Pick up birds"
     end
 
     if not AiUtility.client:isHoldingKnife() then
@@ -142,18 +161,6 @@ function AiStateChickenInteraction:think(cmd)
         return
     end
 
-    if self.ai.nodegraph:isIdle() then
-        self.ai.nodegraph:pathfind(self.targetChicken:m_vecOrigin(), {
-            objective = Node.types.ENEMY,
-            task = string.format("Go to chicken (%s)", self.interaction),
-            onFail = function()
-                self.blacklist[self.targetChicken.eid] = true
-
-                self.targetChicken = nil
-            end
-        })
-    end
-
     local playerOrigin = AiUtility.client:getOrigin()
     local distance = playerOrigin:getDistance(chickenOrigin)
 
@@ -164,7 +171,7 @@ function AiStateChickenInteraction:think(cmd)
     end
 
     if distance < 200 then
-        self.ai.view:lookAtLocation(chickenOrigin, 5.5, self.ai.view.noiseType.MINOR, "ChickenInteraction look at chicken")
+        View.lookAtLocation(chickenOrigin, 5.5, View.noise.minor, "ChickenInteraction look at chicken")
     end
 
     local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), chickenOrigin)
@@ -175,16 +182,18 @@ function AiStateChickenInteraction:think(cmd)
         self.ai.canReload = false
 
         if self.interaction == "kill" then
-            cmd.in_attack = 1
+            cmd.in_attack = true
         elseif self.interaction == "collect" then
-            cmd.in_use = 1
+            cmd.in_use = true
         end
 
         self.blacklist[self.targetChicken.eid] = true
 
         self:reset()
     end
+
+    Pathfinder.ifIdleThenRetryLastRequest()
 end
 
-return Nyx.class("AiStateChickenInteraction", AiStateChickenInteraction, AiState)
+return Nyx.class("AiStateChickenInteraction", AiStateChickenInteraction, AiStateBase)
 --}}}

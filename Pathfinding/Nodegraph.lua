@@ -19,7 +19,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AStar = require "gamesense/Nyx/v1/Dominion/Pathfinding/AStar"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
-local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local MapInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/MapInfo"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
@@ -40,7 +40,6 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field lastPathfindTimer Timer
 --- @field mapMiddle Node
 --- @field moveAngle Angle
---- @field moveSpeed number
 --- @field moveTargetOrigin Vector3
 --- @field moveYaw number
 --- @field nodes Node[]
@@ -159,7 +158,6 @@ function Nodegraph:initFields()
     self.nodes = {}
     self.currentNode = 0
     self.task = "No task given"
-    self.moveSpeed = 450
     self.pathfindFails = 0
     self.isAllowedToMove = true
     self.unblockTimer = Timer:new()
@@ -1141,7 +1139,7 @@ function Nodegraph:processMovement(cmd)
 
     local distance = origin:getDistance2(self.moveTargetOrigin)
 
-    -- Crouch under cover
+    -- Crouch under cover.
     local crouchNode = self:getClosestNodeOf(origin, {Node.types.CROUCH, Node.types.CROUCH_SHOOT})
 
     if crouchNode and origin:getDistance(crouchNode.origin) < 32 then

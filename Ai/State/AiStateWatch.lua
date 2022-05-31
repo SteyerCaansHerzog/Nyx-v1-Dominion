@@ -9,16 +9,19 @@ local Trace = require "gamesense/Nyx/v1/Api/Trace"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateWatch
---- @class AiStateWatch : AiState
+--- @class AiStateWatch : AiStateBase
 --- @field blacklist boolean[]
 --- @field isWatching boolean
---- @field node Node
+--- @field node NodeSpotWatch
 --- @field watchTime number
 --- @field watchTimer Timer
 local AiStateWatch = {
@@ -46,32 +49,39 @@ end
 
 --- @return void
 function AiStateWatch:assess()
+    -- Handle hostage gamemode.
     if AiUtility.gamemode == "hostage" then
+        -- Only CTs should watch.
         if not AiUtility.client:isCounterTerrorist() then
             return AiPriority.IGNORE
         end
     else
+        -- Only Ts should watch in demolition.
         if not AiUtility.client:isTerrorist() then
             return AiPriority.IGNORE
         end
     end
 
+    -- We've finished watching an angle.
     if self.watchTimer:isElapsedThenStop(self.watchTime) then
         self:reset()
 
         return AiPriority.IGNORE
     end
 
+    -- We have an active node.
     if self.node then
         return AiPriority.WATCH
     end
 
+    -- We don't want to watch angles at bad times.
     if AiUtility.plantedBomb or (AiUtility.bombCarrier and AiUtility.bombCarrier:is(AiUtility.client)) or AiUtility.roundTimer:isElapsed(25) then
         return AiPriority.IGNORE
     end
 
+    -- Other weapons.
     if not AiUtility.client:hasPrimary() or AiUtility.client:hasRifle() then
-        local node = self:getWatchNode(self.ai.nodegraph.objectiveWatchRifle, 3)
+        local node = self:getWatchNode(Node.spotWatch.weaponsOthers, 3)
 
         if node then
             self.node = node
@@ -80,8 +90,9 @@ function AiStateWatch:assess()
         end
     end
 
+    -- Snipers only.
     if AiUtility.client:hasSniper() then
-        local node = self:getWatchNode(self.ai.nodegraph.objectiveWatchSniper, 0.75)
+        local node = self:getWatchNode(Node.spotWatch.weaponsSnipers, 0.75)
 
         if node then
             self.node = node
@@ -93,18 +104,18 @@ function AiStateWatch:assess()
     return AiPriority.IGNORE
 end
 
---- @param nodes Node[]
+--- @param weapons string
 --- @param chance number
---- @return Node
-function AiStateWatch:getWatchNode(nodes, chance)
-    if Table.isEmpty(nodes) then
-        return
-    end
-
+--- @return NodeSpotWatch
+function AiStateWatch:getWatchNode(weapons, chance)
     local clientOrigin = AiUtility.client:getOrigin()
 
-    for _, node in pairs(nodes) do repeat
+    for _, node in pairs(Nodegraph.get(Node.spotWatch)) do repeat
         if self.blacklist[node.id] then
+            break
+        end
+
+        if node.weapons ~= weapons then
             break
         end
 
@@ -112,6 +123,7 @@ function AiStateWatch:getWatchNode(nodes, chance)
             break
         end
 
+        -- Blacklist the node for now.
         if not Client.getChance(chance) then
             self.blacklist[node.id] = true
 
@@ -119,7 +131,7 @@ function AiStateWatch:getWatchNode(nodes, chance)
         end
 
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance(node.origin) < 72 then
+            if teammate:getOrigin():getDistance(node.origin) < 60 then
                 break
             end
         end
@@ -130,9 +142,7 @@ end
 
 --- @return void
 function AiStateWatch:activate()
-   self.ai.nodegraph:pathfind(self.node.origin, {
-        objective = Node.types.GOAL,
-
+    Pathfinder.moveToNode(self.node, {
         task = "Watch angle"
     })
 end
@@ -178,12 +188,14 @@ function AiStateWatch:think(cmd)
         return
     end
 
+    Pathfinder.ifIdleThenRetryLastRequest()
+
     if distance < 32 then
         self.watchTimer:ifPausedThenStart()
 
         self.isWatching = true
 
-        cmd.in_duck = 1
+        cmd.in_duck = true
 
         if AiUtility.client:isHoldingSniper() then
             Client.scope()
@@ -193,14 +205,15 @@ function AiStateWatch:think(cmd)
     if distance < 100 then
         self.ai.isQuickStopping = true
         self.ai.canUnscope = false
-       self.ai.nodegraph.isAllowedToAvoidTeammates = false
+
+        Pathfinder.isAllowedToAvoidTeammates = false
     end
 
     if distance < 200 then
         local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
         local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding, "AiStateWatch.think<FindSpotVisible>")
 
-       self.ai.view:lookAtLocation(trace.endPosition, 3, self.ai.view.noiseType.NONE, "Watch look at angle")
+        View.lookAtLocation(trace.endPosition, 3, View.noise.none, "Watch look at angle")
 
         self.ai.canUseKnife = false
 
@@ -212,14 +225,7 @@ function AiStateWatch:think(cmd)
             end
         end
     end
-
-    if distance > 32 and self.ai.nodegraph:isIdle() then
-       self.ai.nodegraph:pathfind(self.node.origin, {
-            objective = Node.types.GOAL,
-            task = "Watch angle"
-        })
-    end
 end
 
-return Nyx.class("AiStateWatch", AiStateWatch, AiState)
+return Nyx.class("AiStateWatch", AiStateWatch, AiStateBase)
 --}}}

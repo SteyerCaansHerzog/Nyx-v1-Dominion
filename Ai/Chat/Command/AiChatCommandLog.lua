@@ -3,11 +3,11 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandLog
---- @class AiChatCommandLog : AiChatCommand
+--- @class AiChatCommandLog : AiChatCommandBase
 --- @field tabs string[]
 --- @field refWeaponTab MenuItem
 --- @field refAccuracyBoost MenuItem
@@ -34,5 +34,5 @@ function AiChatCommandLog:invoke(ai, sender, args)
     end
 end
 
-return Nyx.class("AiChatCommandLog", AiChatCommandLog, AiChatCommand)
+return Nyx.class("AiChatCommandLog", AiChatCommandLog, AiChatCommandBase)
 --}}}

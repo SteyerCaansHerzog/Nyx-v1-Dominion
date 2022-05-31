@@ -3,11 +3,11 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandStop
---- @class AiChatCommandStop : AiChatCommand
+--- @class AiChatCommandStop : AiChatCommandBase
 local AiChatCommandStop = {
     cmd = "stop",
     requiredArgs = 0,
@@ -36,5 +36,5 @@ function AiChatCommandStop:invoke(ai, sender, args)
     ai.states.knife:reset()
 end
 
-return Nyx.class("AiChatCommandStop", AiChatCommandStop, AiChatCommand)
+return Nyx.class("AiChatCommandStop", AiChatCommandStop, AiChatCommandBase)
 --}}}

@@ -12,13 +12,14 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateWait
---- @class AiStateWait : AiState
+--- @class AiStateWait : AiStateBase
 --- @field isWaiting boolean
 --- @field node Node
 --- @field waitingOnPlayer Player
@@ -96,7 +97,7 @@ function AiStateWait:think(cmd)
     end
 
     if distanceToNode < 250 and distanceToPlayer < 250 then
-       self.ai.view:lookAtLocation(self.waitingOnPlayer:getOrigin():offset(0, 0, 64), 5, self.ai.view.noiseType.IDLE, "Wait look at player")
+       View.lookAtLocation(self.waitingOnPlayer:getOrigin():offset(0, 0, 64), 5, View.noise.idle, "Wait look at player")
     end
 end
 
@@ -130,5 +131,5 @@ function AiStateWait:move()
     })
 end
 
-return Nyx.class("AiStateWait", AiStateWait, AiState)
+return Nyx.class("AiStateWait", AiStateWait, AiStateBase)
 --}}}

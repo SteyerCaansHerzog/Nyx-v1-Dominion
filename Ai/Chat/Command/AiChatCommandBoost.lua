@@ -10,12 +10,12 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 
 --{{{ AiChatCommandBoost
---- @class AiChatCommandBoost : AiChatCommand
+--- @class AiChatCommandBoost : AiChatCommandBase
 --- @field isTaken boolean
 local AiChatCommandBoost = {
     cmd = "boost",
@@ -46,14 +46,7 @@ function AiChatCommandBoost:invoke(ai, sender, args)
     end
 
     local senderCameraAngles = sender:getCameraAngles()
-    local senderCameraBackward = senderCameraAngles:getBackward()
-    local bounds = Vector3:newBounds(Vector3.align.CENTER, 8)
-    local traceAim = Trace.getLineAtAngle(sender:getEyeOrigin(), senderCameraAngles, AiUtility.traceOptionsPathfinding)
-
-    traceAim.endPosition = traceAim.endPosition + senderCameraBackward * 16
-
-    local traceFloor = Trace.getHullInDirection(traceAim.endPosition, Vector3:new(0, 0, -1), bounds, AiUtility.traceOptionsPathfinding)
-
+    local traceAim = Trace.getHullAtAngle(sender:getEyeOrigin(), senderCameraAngles, Vector3:newBounds(Vector3.align.CENTER, 16, 16, 18), AiUtility.traceOptionsPathfinding)
     local distances = {}
 
     for _, teammate in Player.find(function(p)
@@ -79,7 +72,7 @@ function AiChatCommandBoost:invoke(ai, sender, args)
 
     Client.fireAfter(orderInQueue, function()
         if not self.isTaken then
-            ai.states.boost:boost(sender, traceFloor.endPosition)
+            ai.states.boost:boost(sender, traceAim.endPosition)
 
             Messenger.send(" ok", true)
 
@@ -90,5 +83,5 @@ function AiChatCommandBoost:invoke(ai, sender, args)
     end)
 end
 
-return Nyx.class("AiChatCommandBoost", AiChatCommandBoost, AiChatCommand)
+return Nyx.class("AiChatCommandBoost", AiChatCommandBoost, AiChatCommandBase)
 --}}}

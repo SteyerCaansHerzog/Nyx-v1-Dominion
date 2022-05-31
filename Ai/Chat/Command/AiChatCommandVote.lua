@@ -5,11 +5,11 @@ local UserInput = require "gamesense/Nyx/v1/Api/UserInput"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandVote
---- @class AiChatCommandVote : AiChatCommand
+--- @class AiChatCommandVote : AiChatCommandBase
 local AiChatCommandVote = {
     cmd = "vote",
     requiredArgs = 1,
@@ -34,5 +34,5 @@ function AiChatCommandVote:invoke(ai, sender, args)
     end
 end
 
-return Nyx.class("AiChatCommandVote", AiChatCommandVote, AiChatCommand)
+return Nyx.class("AiChatCommandVote", AiChatCommandVote, AiChatCommandBase)
 --}}}

@@ -7,13 +7,14 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStatePickupBomb
---- @class AiStatePickupBomb : AiState
+--- @class AiStatePickupBomb : AiStateBase
 --- @field ignorePickup boolean
 --- @field pickupBombFails number
 --- @field pickupBombTimer Timer
@@ -127,5 +128,5 @@ function AiStatePickupBomb:think()
     end
 end
 
-return Nyx.class("AiStatePickupBomb", AiStatePickupBomb, AiState)
+return Nyx.class("AiStatePickupBomb", AiStatePickupBomb, AiStateBase)
 --}}}

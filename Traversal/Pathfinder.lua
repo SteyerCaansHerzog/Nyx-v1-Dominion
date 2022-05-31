@@ -1,0 +1,1198 @@
+--{{{ Dependencies
+local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
+local Client = require "gamesense/Nyx/v1/Api/Client"
+local Color = require "gamesense/Nyx/v1/Api/Color"
+local DrawDebug = require "gamesense/Nyx/v1/Api/DrawDebug"
+local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local Math = require "gamesense/Nyx/v1/Api/Math"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Player = require "gamesense/Nyx/v1/Api/Player"
+local Table = require "gamesense/Nyx/v1/Api/Table"
+local Timer = require "gamesense/Nyx/v1/Api/Timer"
+local Trace = require "gamesense/Nyx/v1/Api/Trace"
+local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
+
+local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
+--}}}
+
+--{{{ Modules
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local AStar = require "gamesense/Nyx/v1/Dominion/Traversal/AStar"
+local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
+local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
+local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
+local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
+--}}}
+
+--{{{ Definitions
+--- @class PathfinderOptions
+--- @field goalReachedRadius boolean
+--- @field isAllowedToTraverseInactives boolean
+--- @field isAllowedToTraverseInfernos boolean
+--- @field isAllowedToTraverseJumps boolean
+--- @field isAllowedToTraverseLadders boolean
+--- @field isAllowedToTraverseSmokes boolean
+--- @field isCachingRequest boolean
+--- @field isClearingActivePath boolean
+--- @field isCorrectingGoalZ boolean
+--- @field isCounterStrafingOnGoal boolean
+--- @field isPathfindingFromNearestNodeIfNoConnections boolean
+--- @field isPathfindingToNearestNodeIfNoConnections boolean
+--- @field isPathfindingToNearestNodeOnFailure boolean
+--- @field onFailedToFindPath fun(): void
+--- @field onFoundPath fun(): void
+--- @field onReachedGoal fun(): void
+--- @field task string
+
+--- @class PathfinderPath
+--- @field endGoal NodeTypeGoal
+--- @field errorMessage string
+--- @field idx number
+--- @field isDoorInPath boolean
+--- @field isDuckInPath boolean
+--- @field isJumpInPath boolean
+--- @field isLadderInPath boolean
+--- @field isObstacleInPath boolean
+--- @field isOk boolean
+--- @field node NodeTypeBase
+--- @field nodeCount number
+--- @field nodes NodeTypeBase[]
+--- @field startGoal NodeTypeBase
+--- @field task string
+
+--- @class PathfinderRequest
+--- @field endOrigin Vector3
+--- @field options PathfinderOptions
+--- @field startOrigin Vector3
+--}}}
+
+--{{{ Pathfinder
+--- @class Pathfinder : Class
+--- @field avoidTeammatesAngle Angle
+--- @field avoidTeammatesDirection string
+--- @field avoidTeammatesDuration number
+--- @field avoidTeammatesTimer Timer
+--- @field cachedLastRequest PathfinderRequest
+--- @field deactivatedNodesPool NodeTypeBase[]
+--- @field directMovementAngle Angle
+--- @field isAllowedToAvoidTeammates boolean
+--- @field isAllowedToJump boolean
+--- @field isAllowedToMove boolean
+--- @field isAvoidingTeammate boolean
+--- @field isEnabled boolean
+--- @field isObstructedByDoor boolean
+--- @field isObstructedByObstacle boolean
+--- @field isObstructedByTeammate boolean
+--- @field isWalking boolean
+--- @field lastMovementAngle Angle
+--- @field lastRequest PathfinderRequest
+--- @field moveDuckTimer Timer
+--- @field moveObstructedTimer Timer
+--- @field moveOnGroundTimer Timer
+--- @field nodeClassesInTentativePath NodeTypeBase[]
+--- @field path PathfinderPath
+--- @field pathfindInterval number
+--- @field pathfindIntervalTimer Timer
+local Pathfinder = {}
+
+--- @return void
+function Pathfinder.__setup()
+	Pathfinder.initFields()
+	Pathfinder.initEvents()
+	Pathfinder.initMenu()
+end
+
+--- @return void
+function Pathfinder.initFields()
+	Pathfinder.isEnabled = true
+	Pathfinder.pathfindInterval = 0.4
+	Pathfinder.avoidTeammatesTimer = Timer:new()
+	Pathfinder.moveDuckTimer = Timer:new()
+	Pathfinder.moveObstructedTimer = Timer:new()
+	Pathfinder.moveOnGroundTimer = Timer:new():startThenElapse()
+	Pathfinder.avoidTeammatesDirection = "Left"
+	Pathfinder.avoidTeammatesDuration = 0.6
+	Pathfinder.pathfindIntervalTimer = Timer:new():startThenElapse()
+end
+
+--- @return void
+function Pathfinder.initEvents()
+	Callbacks.setupCommand(function(cmd)
+		if not Pathfinder.isEnabled then
+			return
+		end
+
+		Pathfinder.handleLastRequest()
+		Pathfinder.traverseActivePath(cmd)
+	end)
+
+	Callbacks.frame(function()
+		Pathfinder.render()
+	end)
+
+	Callbacks.roundStart(function()
+		-- Prevent pathfinding from a previous round.
+		Pathfinder.clearActivePathAndLastRequest()
+
+		-- Reactivate any deactivated nodes.
+		for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do
+			node:activate()
+		end
+
+		-- Execute all block nodes.
+		for _, node in pairs(Nodegraph.get(Node.hintBlock)) do
+			node:block(Nodegraph)
+		end
+	end)
+
+	Callbacks.bombPlanted(function()
+		Client.onNextTick(function()
+			local site = Nodegraph.getClosestBombsiteName(AiUtility.plantedBomb:m_vecOrigin())
+
+			-- Execute all retake blocks for the planted-at bombsite.
+			for _, node in pairs(Nodegraph.get(Node.hintBlockRetake)) do repeat
+				if node.bombsite ~= site then
+					break
+				end
+
+				node:block(Nodegraph)
+			until true end
+		end)
+	end)
+
+	Callbacks.smokeGrenadeDetonate(function(e)
+		--- @type NodeTypeBase[]
+		local pool = {}
+
+		for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do repeat
+			if node.origin:getDistance(e.origin) > 300 then
+				break
+			end
+
+			node:deactivate()
+
+			node.isOccludedBySmoke = true
+
+			table.insert(pool, node)
+		until true end
+
+		Client.fireAfter(18, function()
+			for _, node in pairs(pool) do
+				node:activate()
+
+				node.isOccludedBySmoke = false
+			end
+		end)
+	end)
+
+	Callbacks.infernoStartBurn(function(e)
+		--- @type NodeTypeBase[]
+		local pool = {}
+
+		for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do repeat
+			if node.origin:getDistance(e.origin) > 150 then
+				break
+			end
+
+			node:deactivate()
+
+			node.isOccludedByInferno = true
+
+			table.insert(pool, node)
+		until true end
+
+		Client.fireAfter(6.5, function()
+			for _, node in pairs(pool) do
+				node:activate()
+
+				node.isOccludedByInferno = false
+			end
+		end)
+	end)
+end
+
+--- @return void
+function Pathfinder.initMenu()
+	MenuGroup.enablePathfinder = MenuGroup.group:addCheckbox(" > Enable Pathfinder"):setParent(MenuGroup.master)
+	MenuGroup.visualisePath = MenuGroup.group:addCheckbox("    > Visualise Path"):setParent(MenuGroup.enablePathfinder)
+	MenuGroup.enableMovement = MenuGroup.group:addCheckbox("    > Enable Movement"):setParent(MenuGroup.enablePathfinder)
+end
+
+--- @param nodes NodeTypeBase[]
+--- @return void
+function Pathfinder.activateMany(nodes)
+	for _, node in pairs(nodes) do
+		node:activate()
+	end
+end
+
+--- @param nodes NodeTypeBase[]
+--- @return void
+function Pathfinder.deactivateMany(nodes)
+	for _, node in pairs(nodes) do
+		node:deactivate()
+	end
+end
+
+--- @return void
+function Pathfinder.render()
+	if not MenuGroup.visualisePath:get() then
+		return
+	end
+
+	if not Pathfinder.path then
+		return
+	end
+
+	if not Pathfinder.path.isOk then
+		local drawPos = Client.getScreenDimensionsCenter():set(nil, 200)
+		local bgDims = Vector2:new(500, 50)
+
+		drawPos:drawBlur(bgDims, true)
+		drawPos:drawSurfaceRectangleOutline(4, 2, bgDims, ColorList.ERROR, true)
+		drawPos:drawSurfaceRectangle(bgDims, ColorList.BACKGROUND_1, true)
+		drawPos:clone():offset(0, -20):drawSurfaceText(Font.LARGE, ColorList.ERROR, "c", Pathfinder.path.errorMessage)
+
+		return
+	end
+
+	for i, node in pairs(Pathfinder.path.nodes) do
+		node:render(node, false)
+
+		local nextNode = Pathfinder.path.nodes[i + 1]
+
+		if nextNode then
+			if i == Pathfinder.path.idx - 1 then
+				node.origin:drawLine(nextNode.origin, ColorList.OK, 0.25)
+			elseif i >= Pathfinder.path.idx then
+				node.origin:drawLine(nextNode.origin, ColorList.INFO, 0.25)
+			else
+				node.origin:drawLine(nextNode.origin, Color:hsla(235, 0.16, 0.66, 100), 0.25)
+			end
+		end
+
+		if i == Pathfinder.path.idx then
+			node.origin:drawScaledCircleOutline(100, 20, ColorList.OK)
+		elseif i > Pathfinder.path.idx - 1 then
+			node.origin:drawScaledCircleOutline(60, 10, ColorList.INFO)
+		else
+			node.origin:drawScaledCircleOutline(60, 10, Color:hsla(235, 0.16, 0.66, 100))
+		end
+	end
+end
+
+--- @return void
+function Pathfinder.syncClientState()
+	Pathfinder.clientState.isOnGround = LocalPlayer:getFlag(Player.flags.FL_ONGROUND)
+	Pathfinder.clientState.origin = LocalPlayer:getOrigin()
+end
+
+--- @return void
+function Pathfinder.block()
+	Pathfinder.isAllowedToMove = false
+end
+
+--- @return void
+function Pathfinder.blockJumping()
+	Pathfinder.isAllowedToJump = false
+end
+
+--- @return void
+function Pathfinder.blockTeammateAvoidance()
+	Pathfinder.isAllowedToAvoidTeammates = false
+end
+
+--- @return void
+function Pathfinder.moveStop()
+	Pathfinder.isAllowedToMove = false
+end
+
+--- @param direction Vector3
+--- @param isClearingActivePath boolean
+--- @return void
+function Pathfinder.moveInDirection(direction, isClearingActivePath)
+	Pathfinder.directMovementAngle = direction:getAngleFromForward()
+
+	if isClearingActivePath then
+		Pathfinder.clearActivePathAndLastRequest()
+	end
+end
+
+--- @param angle Angle
+--- @param isClearingActivePath boolean
+--- @return void
+function Pathfinder.moveAtAngle(angle, isClearingActivePath)
+	Pathfinder.directMovementAngle = angle
+
+	if isClearingActivePath then
+		Pathfinder.clearActivePathAndLastRequest()
+	end
+end
+
+--- @param origin Vector3
+--- @param options PathfinderOptions
+--- @return PathfinderPath
+function Pathfinder.moveToLocation(origin, options)
+	Pathfinder.lastRequest = {
+		endOrigin = origin,
+		options = options
+	}
+end
+
+--- @param node NodeTypeBase
+--- @param options PathfinderOptions
+--- @return PathfinderPath
+function Pathfinder.moveToNode(node, options)
+	Pathfinder.lastRequest = {
+		endOrigin = node.origin,
+		options = options
+	}
+end
+
+--- @return void
+function Pathfinder.retryLastRequest()
+	Pathfinder.lastRequest = Pathfinder.cachedLastRequest
+	Pathfinder.lastRequest.startOrigin = LocalPlayer:getOrigin()
+end
+
+--- @return boolean
+function Pathfinder.isOk()
+	if not Pathfinder.path or not Pathfinder.path.isOk then
+		return false
+	end
+
+	return true
+end
+
+--- @return boolean
+function Pathfinder.isIdle()
+	if not Pathfinder.cachedLastRequest then
+		return false
+	end
+
+	if Pathfinder.path then
+		return false
+	end
+
+	if Pathfinder.lastRequest then
+		return false
+	end
+
+	return true
+end
+
+--- @return void
+function Pathfinder.ifIdleThenRetryLastRequest()
+	if not Pathfinder.isIdle() then
+		return
+	end
+
+	if LocalPlayer:getOrigin():getDistance2(Pathfinder.cachedLastRequest.endOrigin) < Pathfinder.cachedLastRequest.options.goalReachedRadius * 1.25 then
+		return
+	end
+
+	Pathfinder.retryLastRequest()
+end
+
+--- @return void
+function Pathfinder.clearActivePath()
+	Pathfinder.path = nil
+end
+
+--- @return void
+function Pathfinder.clearLastRequest()
+	Pathfinder.lastRequest = nil
+
+	Pathfinder.cleanupLastRequest()
+end
+
+--- @return void
+function Pathfinder.clearActivePathAndLastRequest()
+	Pathfinder.clearActivePath()
+	Pathfinder.clearLastRequest()
+end
+
+--- @return void
+function Pathfinder.cleanupLastRequest()
+	Nodegraph.clearType(NodeType.goal)
+end
+
+--- @return void
+function Pathfinder.handleLastRequest()
+	-- Pathfinding is not enabled.
+	if not MenuGroup.enablePathfinder:get() then
+		return
+	end
+
+	-- No request to handle.
+	if not Pathfinder.lastRequest then
+		return
+	end
+
+	-- Prevent spamming the A* algorithm.
+	if not Pathfinder.pathfindIntervalTimer:isElapsedThenRestart(Pathfinder.pathfindInterval) then
+		return
+	end
+
+	-- Get pathfind request options.
+	local pathfinderOptions = Pathfinder.lastRequest.options or {}
+
+	-- Set any missing options to default values.
+	Table.setMissing(pathfinderOptions, {
+		goalReachedRadius = 15,
+		isAllowedToTraverseInactives = false,
+		isAllowedToTraverseInfernos = false,
+		isAllowedToTraverseJumps = true,
+		isAllowedToTraverseLadders = true,
+		isAllowedToTraverseSmokes = true,
+		isCachingRequest = true,
+		isClearingActivePath = false,
+		isCorrectingGoalZ = true,
+		isCounterStrafingOnGoal = false,
+		isPathfindingFromNearestNodeIfNoConnections = true,
+		isPathfindingToNearestNodeIfNoConnections = false,
+		isPathfindingToNearestNodeOnFailure = false,
+		task = "Unnamed task",
+	})
+
+	Pathfinder.lastRequest.startOrigin = LocalPlayer:getOrigin()
+	Pathfinder.lastRequest.options = pathfinderOptions
+
+	-- Path start.
+	local startGoal = Node.goalStart:new({
+		origin = Pathfinder.lastRequest.startOrigin:clone():offset(0, 0, 18)
+	})
+
+	-- Path end.
+	local endGoal = Node.goalEnd:new({
+		origin = Pathfinder.lastRequest.endOrigin:clone():offset(0, 0,  18)
+	})
+
+	-- Ensure nodes comply with human collision hull.
+	Pathfinder.correctGoalOrigin(startGoal)
+	Pathfinder.correctGoalOrigin(endGoal)
+
+	-- Correct Z axis of nodes.
+	if pathfinderOptions.isCorrectingGoalZ then
+		Pathfinder.correctGoalZ(startGoal)
+		Pathfinder.correctGoalZ(endGoal)
+	end
+
+	-- We're already within range.
+	if LocalPlayer:getOrigin():getDistance(endGoal.origin) < pathfinderOptions.goalReachedRadius then
+		return
+	end
+
+	-- Clear any active path.
+	if pathfinderOptions.isClearingActivePath then
+		Pathfinder.clearActivePath()
+	end
+
+	-- Remove previous goals.
+	Pathfinder.cleanupLastRequest()
+
+	-- Add the start and end of the path.
+	Nodegraph.addMany({
+		startGoal,
+		endGoal
+	})
+
+	-- Setup node connections.
+	startGoal:setConnections(Nodegraph, {
+		isHumanCollisionHull = true,
+		isInversingConnections = true,
+		isRestrictingConnections = true,
+		isTestingForGaps = true,
+		maxConnections = 8,
+	})
+
+	endGoal:setConnections(Nodegraph, {
+		isHumanCollisionHull = false,
+		isInversingConnections = true,
+		isRestrictingConnections = true,
+		isTestingForGaps = true,
+		maxConnections = 8,
+	})
+
+	-- No connections for start node.
+	if startGoal:isConnectionless() then
+		if pathfinderOptions.isPathfindingFromNearestNodeIfNoConnections then
+			startGoal = Nodegraph.getClosestOfType(LocalPlayer:getOrigin(), NodeType.traverse)
+		else
+			Pathfinder.failPath(pathfinderOptions, "Start is out of bounds")
+
+			return
+		end
+	end
+
+	-- No connections to goal node.
+	if endGoal:isConnectionless() then
+		if pathfinderOptions.isPathfindingToNearestNodeIfNoConnections then
+			endGoal = Nodegraph.getClosestOfType(Pathfinder.lastRequest.endOrigin, NodeType.traverse)
+		else
+			Pathfinder.failPath(pathfinderOptions, "Goal is unreachable")
+			return
+		end
+	end
+
+	-- Find a path.
+	local tentativePath = Pathfinder.getPath(startGoal, endGoal, pathfinderOptions)
+
+	-- We didn't find a path.
+	if not tentativePath then
+		-- Try to find a path to the nearest node.
+		if pathfinderOptions.isPathfindingToNearestNodeOnFailure then
+			endGoal = Nodegraph.getClosestOfType(Pathfinder.lastRequest.endOrigin, NodeType.traverse)
+			tentativePath = Pathfinder.getPath(startGoal, endGoal, pathfinderOptions)
+		end
+
+		-- Still no path.
+		if not tentativePath then
+			Pathfinder.failPath(pathfinderOptions, "No path available")
+
+			return
+		end
+	end
+
+	local isDuckInPath = false
+	local isJumpInPath = false
+
+	-- Execute callbacks and set nodes in path.
+	for _, node in pairs(tentativePath) do
+		node:onIsInPath(Nodegraph)
+
+		if node.isDuck then
+			isDuckInPath = true
+		end
+
+		if node.isJump then
+			isJumpInPath = true
+		end
+	end
+
+	-- Setup data for current path.
+	if pathfinderOptions.isCachingRequest then
+		Pathfinder.cachedLastRequest = Pathfinder.lastRequest
+	end
+
+	Pathfinder.lastRequest = nil
+
+	Pathfinder.path = {
+		endGoal = endGoal,
+		idx = 1,
+		isDoorInPath = Pathfinder.nodeClassesInTentativePath[Node.traverseDoor.__classid],
+		isDuckInPath = isDuckInPath,
+		isJumpInPath = isJumpInPath,
+		isLadderInPath = Pathfinder.nodeClassesInTentativePath[Node.traverseLadderTop.__classid] or Pathfinder.nodeClassesInTentativePath[Node.traverseLadderTop.__classid],
+		isObstacleInPath = Pathfinder.nodeClassesInTentativePath[Node.traverseBreakObstacle.__classid],
+		isOk = true,
+		node = startGoal,
+		nodeCount = #tentativePath,
+		nodes = tentativePath,
+		path = tentativePath,
+		startGoal = startGoal,
+		task = pathfinderOptions.task,
+	}
+
+	if pathfinderOptions.onFoundPath then
+		pathfinderOptions.onFoundPath()
+	end
+
+	Pathfinder.clearLastRequest()
+
+	Logger.console(3, "Pathfind task '%s'", pathfinderOptions.task)
+end
+
+--- @param options PathfinderOptions
+--- @param error string
+--- @return void
+function Pathfinder.failPath(options, error)
+	Pathfinder.path = {
+		isOk = false,
+		errorMessage = error
+	}
+
+	if options.onFailedToFindPath then
+		options.onFailedToFindPath()
+	end
+
+	Pathfinder.cleanupLastRequest()
+
+	Logger.console(1, "Pathfind task '%s' failed with '%s'.", Pathfinder.lastRequest.options.task, error)
+end
+
+--- @param start NodeTypeGoal
+--- @param goal NodeTypeGoal
+--- @param options PathfinderOptions
+--- @return NodeTypeBase[]
+function Pathfinder.getPath(start, goal, options)
+	Pathfinder.nodeClassesInTentativePath = {}
+
+	return AStar.findPath(start, goal, Nodegraph.nodes, true, function(node, neighbor)
+		if not neighbor.isTraversal and not neighbor.isTransient then
+			return false
+		end
+
+		if not node.connections[neighbor.id] then
+			return false
+		end
+
+		if not neighbor.isActive then
+			return false
+		end
+
+		if not options.isAllowedToTraverseSmokes and neighbor.isOccludedBySmoke then
+			return false
+		end
+
+		if not options.isAllowedToTraverseInfernos and neighbor.isOccludedByInferno then
+			return false
+		end
+
+		if not options.isAllowedToTraverseLadders
+			and (neighbor:is(Node.traverseLadderBottom) or neighbor:is(Node.traverseLadderTop))
+		then
+			return false
+		end
+
+		if neighbor.isJump then
+			if not options.isAllowedToTraverseJumps then
+				return false
+			end
+
+			if neighbor.origin.z - node.origin.z > 64 then
+				return false
+			end
+		end
+
+		Pathfinder.nodeClassesInTentativePath[neighbor.__classid] = true
+
+		return true
+	end)
+end
+
+--- @param node NodeTypeBase
+--- @return void
+function Pathfinder.correctGoalZ(node)
+	local trace = Trace.getHullInDirection(
+		node.origin,
+		Vector3.align.DOWN,
+		Vector3:newBounds(Vector3.align.CENTER, 16, 16, 18),
+		AiUtility.traceOptionsPathfinding
+	)
+
+	node.origin:setFromVector(trace.endPosition)
+end
+
+--- @param node NodeTypeBase
+--- @return void
+function Pathfinder.correctGoalOrigin(node)
+	local trace = Trace.getHullInPlace(
+		node.origin,
+		Vector3:newBounds(Vector3.align.CENTER, 16, 16, 18),
+		AiUtility.traceOptionsPathfinding
+	)
+
+	node.origin:setFromVector(trace.endPosition)
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function Pathfinder.traverseActivePath(cmd)
+	if not MenuGroup.master:get() or not MenuGroup.enablePathfinder:get() then
+		return
+	end
+
+	Pathfinder.isObstructedByObstacle = false
+	Pathfinder.isObstructedByDoor = false
+	Pathfinder.isObstructedByTeammate = false
+
+	if not Pathfinder.isAllowedToMove then
+		Pathfinder.isAllowedToMove = true
+
+		return
+	end
+
+	if LocalPlayer:getFlag(Player.flags.FL_ONGROUND) then
+		Pathfinder.moveOnGroundTimer:ifPausedThenStart()
+	else
+		Pathfinder.moveObstructedTimer:stop()
+	end
+
+	Pathfinder.airDuck(cmd)
+
+	if Pathfinder.directMovementAngle then
+		Pathfinder.handleWalking(cmd)
+		Pathfinder.createMove(cmd, Pathfinder.directMovementAngle)
+
+		Pathfinder.directMovementAngle = nil
+
+		return
+	end
+
+	if not Pathfinder.isOk() then
+		return
+	end
+
+	if not Pathfinder.cachedLastRequest then
+		return
+	end
+
+	local pathfinderOptions = Pathfinder.cachedLastRequest.options
+	local currentNode = Pathfinder.path.node
+
+	if not pathfinderOptions.isAllowedToTraverseInactives and not currentNode.isActive then
+		Pathfinder.retryLastRequest()
+
+		return
+	end
+
+	if not pathfinderOptions.isAllowedToTraverseSmokes and currentNode.isOccludedBySmoke then
+		Pathfinder.retryLastRequest()
+
+		return
+	end
+
+	if not pathfinderOptions.isAllowedToTraverseInfernos and currentNode.isOccludedByInferno then
+		Pathfinder.retryLastRequest()
+
+		return
+	end
+
+	local clientOrigin = LocalPlayer:getOrigin()
+	local isClientOnGround = LocalPlayer:getFlag(Player.flags.FL_ONGROUND)
+	local clientSpeed = LocalPlayer:m_vecVelocity():getMagnitude()
+	local angleToNode = clientOrigin:getAngle(currentNode.pathOrigin)
+
+	Pathfinder.createMove(cmd, angleToNode)
+	Pathfinder.avoidGeometry(cmd)
+	Pathfinder.avoidTeammates(cmd)
+
+	local distance3d = clientOrigin:getDistance(currentNode.pathOrigin)
+	local distance2d = clientOrigin:getDistance2(currentNode.pathOrigin)
+	local isGoal = currentNode:is(Pathfinder.path.endGoal)
+
+	if currentNode.isDuck and distance3d < 45 then
+		Pathfinder.moveDuckTimer:restart()
+	end
+
+	if Pathfinder.moveDuckTimer:isNotElapsedThenStop(0.5) then
+		cmd.in_duck = true
+	end
+
+	if isGoal and pathfinderOptions.isCounterStrafingOnGoal and distance2d < pathfinderOptions.goalReachedRadius * 2 then
+		MenuGroup.standaloneQuickStopRef:set(true)
+	else
+		MenuGroup.standaloneQuickStopRef:set(false)
+	end
+
+	if currentNode.isJump and Pathfinder.moveOnGroundTimer:isElapsed(0.1) then
+		local jumpHandlers = {
+			[Node.traverseClimb.__classid] = function()
+				if distance2d > 50 then
+					return
+				end
+
+				if currentNode.origin.z - clientOrigin.z > 25 then
+					if Pathfinder.moveObstructedTimer:isElapsed(0.04) and clientSpeed < 75 then
+						cmd.in_jump = true
+
+						Pathfinder.incrementPath()
+					end
+				else
+					Pathfinder.incrementPath()
+				end
+			end,
+			[Node.traverseVault.__classid] = function()
+				if distance2d > 60 then
+					return
+				end
+
+				cmd.in_jump = true
+
+				Pathfinder.incrementPath()
+			end,
+			[Node.traverseGap.__classid] = function()
+				if distance2d < 40 then
+					Pathfinder.isWalking = false
+				end
+
+				local distance = 25
+
+				if not isClientOnGround then
+					distance = 50
+				end
+
+				if distance2d > distance then
+					return
+				end
+
+				cmd.in_jump = true
+
+				Pathfinder.incrementPath()
+
+				--- @type NodeTypeTraverse
+				local nextNode = Pathfinder.path[Pathfinder.path.idx + 1]
+
+				-- Skip a double-gap node.
+				if nextNode and nextNode:is(Node.traverseGap) then
+					Pathfinder.incrementPath()
+				end
+			end,
+			[Node.traverseDrop.__classid] = function()
+				if distance2d > 20 then
+					return
+				end
+
+				Pathfinder.incrementPath()
+			end
+		}
+
+		if Pathfinder.isAllowedToJump then
+			jumpHandlers[currentNode.__classid]()
+		end
+
+		Pathfinder.isAllowedToJump = true
+	elseif currentNode:is(Node.traverseBreakObstacle) then
+		Pathfinder.detectObstacles(currentNode)
+
+		if not Pathfinder.isObstructedByObstacle and distance2d < 20 then
+			Pathfinder.incrementPath()
+		end
+	elseif currentNode:is(Node.traverseDoor) then
+		Pathfinder.detectDoors(currentNode)
+
+		if not Pathfinder.isObstructedByDoor and distance2d < 20 then
+			Pathfinder.incrementPath()
+		end
+	else
+		local clearDistance
+
+		if currentNode:is(NodeType.goal) then
+			clearDistance = pathfinderOptions.goalReachedRadius
+		else
+			clearDistance = isClientOnGround and 15 or 40
+		end
+
+		if distance2d < clearDistance then
+			Pathfinder.incrementPath()
+		end
+	end
+
+	Pathfinder.handleWalking(cmd)
+
+	if AiUtility.gameRules:m_bFreezePeriod() ~= 1 then
+		if clientSpeed < 100 then
+			Pathfinder.moveObstructedTimer:ifPausedThenStart()
+		else
+			Pathfinder.moveObstructedTimer:stop()
+		end
+
+		if Pathfinder.moveObstructedTimer:isElapsedThenStop(0.66) then
+			Pathfinder.retryLastRequest()
+		end
+	end
+
+	-- We've reached the end of the path.
+	if not Pathfinder.path.node then
+		if pathfinderOptions.onReachedGoal then
+			pathfinderOptions.onReachedGoal()
+		end
+
+		Pathfinder.clearActivePath()
+	end
+end
+
+--- @return void
+function Pathfinder.incrementPath()
+	local lastNode = Pathfinder.path.node
+
+	if lastNode then
+		lastNode:onIsPassed(Nodegraph)
+	end
+
+	Pathfinder.path.idx = Pathfinder.path.idx + 1
+
+	local nextNode = Pathfinder.path.nodes[Pathfinder.path.idx]
+
+	Pathfinder.path.node = nextNode
+
+	if nextNode then
+		nextNode:onIsNext(Nodegraph, Pathfinder.path)
+	end
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function Pathfinder.handleWalking(cmd)
+	local clientOrigin = LocalPlayer:getOrigin()
+
+	for _, inferno in Entity.find("CInferno") do
+		if clientOrigin:getDistance(inferno:m_vecOrigin()) < 300 then
+			return
+		end
+	end
+
+	if Pathfinder.isWalking then
+		Pathfinder.isWalking = false
+
+		cmd.in_speed = true
+	end
+end
+
+--- @param node NodeTraverseBreakObstacle
+--- @return void
+function Pathfinder.detectObstacles(node)
+	-- Prevent team damage if possible.
+	if Pathfinder.isObstructedByTeammate then
+		return
+	end
+
+	local detectionOrigin = node.origin:clone():offset(0, 0, 40)
+	local detectionOffset = detectionOrigin + node.direction:getForward() * 50
+	local trace = Trace.getLineToPosition(detectionOrigin, detectionOffset, AiUtility.traceOptionsPathfinding)
+
+	if trace.isIntersectingGeometry then
+		Pathfinder.isObstructedByObstacle = true
+	end
+end
+
+--- @param node NodeTraverseDoor
+--- @return void
+function Pathfinder.detectDoors(node)
+	local detectionOrigin = node.origin:clone():offset(0, 0, 64)
+	local detectionOffset = detectionOrigin + node.direction:getForward() * 50
+	local trace = Trace.getLineToPosition(detectionOrigin, detectionOffset, AiUtility.traceOptionsPathfinding)
+
+	if trace.isIntersectingGeometry then
+		Pathfinder.isObstructedByDoor = true
+	end
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function Pathfinder.avoidTeammates(cmd)
+	if not Pathfinder.lastMovementAngle then
+		return
+	end
+
+	if AiUtility.gameRules:m_bFreezePeriod() == 1 then
+		return
+	end
+
+	local player = AiUtility.client
+
+	local isBlocked = false
+	local origin = player:getOrigin()
+	local collisionOrigin = origin:clone():offset(0, 0, 36) + (Pathfinder.lastMovementAngle:clone():set(0):getForward() * 40)
+	local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 20, 20, 40)
+	--- @type Player
+	local blockingTeammate
+
+	for _, teammate in pairs(AiUtility.teammates) do
+		if teammate:getOrigin():offset(0, 0, 32):isInBounds(collisionBounds) then
+			isBlocked = true
+
+			blockingTeammate = teammate
+
+			break
+		end
+	end
+
+	if not isBlocked then
+		Pathfinder.isAvoidingTeammate = false
+		Pathfinder.avoidTeammatesAngle = nil
+
+		return
+	end
+
+	Pathfinder.isObstructedByTeammate = true
+
+	if not Pathfinder.avoidTeammatesAngle then
+		Pathfinder.avoidTeammatesAngle = Client.getEyeOrigin():getAngle(blockingTeammate:getEyeOrigin())
+	end
+
+	Pathfinder.avoidTeammatesTimer:ifPausedThenStart()
+
+	if Pathfinder.avoidTeammatesTimer:isElapsedThenStop(Pathfinder.avoidTeammatesDuration) then
+		Pathfinder.avoidTeammatesDirection = Client.getChance(2) and "Left" or "Right"
+		Pathfinder.avoidTeammatesDuration = Client.getRandomFloat(0.66, 1)
+	end
+
+	local directionMethod = string.format("get%s", Pathfinder.avoidTeammatesDirection)
+	local eyeOrigin = Client.getEyeOrigin()
+	local movementAngles = Pathfinder.lastMovementAngle
+	local directionOffset = eyeOrigin + movementAngles[directionMethod](movementAngles) * 150
+
+	if not Pathfinder.isAllowedToAvoidTeammates then
+		Pathfinder.isAllowedToAvoidTeammates = true
+
+		return
+	end
+
+	Pathfinder.isAvoidingTeammate = true
+
+	Pathfinder.createMove(cmd, eyeOrigin:getAngle(directionOffset))
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function Pathfinder.avoidGeometry(cmd)
+	-- Jump off of ladders.
+	if LocalPlayer:isMoveType(Player.moveType.LADDER) then
+		cmd.in_jump = true
+	end
+
+	if not Pathfinder.lastMovementAngle then
+		return false
+	end
+
+	local isDucking = LocalPlayer:getFlag(Player.flags.FL_DUCKING)
+	local clientOrigin = LocalPlayer:getOrigin()
+	local origin = clientOrigin:offset(0, 0, 18)
+	local boundsTraceOrigin = clientOrigin:clone():offset(0, 0, 36)
+	local moveAngle = Pathfinder.lastMovementAngle
+	local moveAngleForward = moveAngle:getForward()
+	local boundsOrigin = origin + moveAngleForward * 20
+	local bounds = Vector3:newBounds(Vector3.align.UP, 6, 6, isDucking and 18 or 27)
+	local directions = {
+		Left = Angle.getLeft,
+		Right = Angle.getRight
+	}
+
+	--- @type Angle
+	local avoidAngle
+	local clipCount = 0
+
+	for _, direction in pairs(directions) do
+		--- @type Vector3
+		local checkDirection = direction(moveAngle)
+		local boundsTraceOffset = boundsOrigin + checkDirection * 20
+		local trace = Trace.getHullToPosition(boundsTraceOrigin, boundsTraceOffset, bounds, AiUtility.traceOptionsPathfinding)
+
+		if trace.isIntersectingGeometry then
+			local avoidDirection = clientOrigin - checkDirection * 8
+
+			avoidAngle = clientOrigin:getAngle(avoidDirection)
+			clipCount = clipCount + 1
+		end
+	end
+
+	if avoidAngle and clipCount ~= 2 then
+		Pathfinder.createMove(cmd, avoidAngle)
+
+		return true
+	end
+
+	return false
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function Pathfinder.airDuck(cmd)
+	if LocalPlayer:getFlag(Player.flags.FL_ONGROUND) then
+		return
+	end
+
+	if LocalPlayer:m_vecVelocity().z > 0 then
+		cmd.in_duck = true
+	end
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function Pathfinder.createMoveForward(cmd)
+	if not MenuGroup.enableMovement:get() then
+		return
+	end
+
+	cmd.forwardmove = 450
+	cmd.in_forward = true
+end
+
+--- @param cmd SetupCommandEvent
+--- @param angle Angle
+--- @return void
+function Pathfinder.createMove(cmd, angle)
+	if not MenuGroup.enableMovement:get() then
+		return
+	end
+
+	angle:set(0)
+
+	Pathfinder.lastMovementAngle = angle
+
+	if not Config.isEmulatingRealUserInput then
+		cmd.move_yaw = angle.y
+		cmd.forwardmove = 450
+	end
+
+	local directions = {
+		[0] = function()
+			cmd.forwardmove = 450
+			cmd.in_forward = true
+		end,
+		[-45] = function()
+			cmd.forwardmove = 450
+			cmd.sidemove = 450
+			cmd.in_forward = true
+			cmd.in_moveright = true
+		end,
+		[-90] = function()
+			cmd.sidemove = 450
+			cmd.in_right = true
+		end,
+		[-135] = function()
+			cmd.forwardmove = -450
+			cmd.sidemove = 450
+			cmd.in_right = true
+			cmd.in_back = true
+		end,
+		[180] = function()
+			cmd.forwardmove = -450
+			cmd.in_back = true
+		end,
+		[135] = function()
+			cmd.forwardmove = -450
+			cmd.sidemove = -450
+			cmd.in_back = true
+			cmd.in_left = true
+		end,
+		[90] = function()
+			cmd.sidemove = -450
+			cmd.in_left = true
+		end,
+		[45] = function()
+			cmd.forwardmove = 450
+			cmd.sidemove = -450
+			cmd.in_forward = true
+			cmd.in_left = true
+		end
+	}
+
+	--- @type fun(): void
+	local closestCallback
+	local lowestDelta = math.huge
+
+	for yaw, callback in pairs(directions) do
+		local directionAngle = Angle:new(0, yaw + cmd.move_yaw):normalize()
+		local deltaAngle = directionAngle:getAbsDiff(angle)
+
+		if deltaAngle.y < lowestDelta then
+			lowestDelta = deltaAngle.y
+			closestCallback = callback
+		end
+	end
+
+	if closestCallback then
+		closestCallback()
+	end
+end
+
+return Nyx.class("Pathfinder", Pathfinder)
+--}}}

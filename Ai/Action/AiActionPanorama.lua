@@ -12,6 +12,7 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --{{{ Modules
 local AiAction = require "gamesense/Nyx/v1/Dominion/Ai/Action/AiAction"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --}}}
 
 --{{{ AiActionPanorama
@@ -30,6 +31,7 @@ function AiActionPanorama:__init()
 	self.timer = Timer:new():startThenElapse()
 
 	self:openAndEquipGraffitis()
+	self:autoAcceptMatches()
 
 	Callbacks.init(function()
 		Client.fireAfter(1, function()
@@ -55,8 +57,19 @@ function AiActionPanorama:__init()
 end
 
 --- @return void
+function AiActionPanorama:autoAcceptMatches()
+	if MenuGroup.autoAcceptMatches:get() then
+		Panorama.LobbyAPI.SetLocalPlayerReady("accept")
+	end
+
+	Client.fireAfter(Client.getRandomFloat(4, 8), function()
+		self:autoAcceptMatches()
+	end)
+end
+
+--- @return void
 function AiActionPanorama:closeAllPopups()
-	panorama.loadstring('UiToolkitAPI.CloseAllVisiblePopups()', 'CSGOMainMenu')()
+	panorama.loadstring("UiToolkitAPI.CloseAllVisiblePopups()", "CSGOMainMenu")()
 end
 
 --- @return void
@@ -75,22 +88,21 @@ end
 function AiActionPanorama:autoAcceptAdminInvites()
 	for i = 1, Panorama.PartyBrowserAPI.GetInvitesCount() do
 		local lobbyId = Panorama.PartyBrowserAPI.GetInviteXuidByIndex(i - 1)
-
-		local found = false
+		local isAdminFound = false
 
 		for j = 0, 5 do
 			local xuid = Panorama.PartyBrowserAPI.GetPartyMemberXuid(lobbyId, j)
 
-			if Config.isAdministrator(xuid) or self.ai.reaper.manifest.steamId64Map[xuid] then
+			if Config.isAdministrator(xuid) or (self.ai.reaper.isEnabled and self.ai.reaper.manifest.steamId64Map[xuid]) then
 				Panorama.PartyBrowserAPI.ActionJoinParty(lobbyId)
 
-				found = true
+				isAdminFound = true
 
 				break
 			end
 		end
 
-		if found then
+		if isAdminFound then
 			break
 		end
 	end
@@ -136,9 +148,7 @@ end
 
 --- @return void
 function AiActionPanorama:unmutePlayers()
-	for _, player in Player.findAll(function()
-		return true
-	end) do
+	for _, player in Player.findAll() do
 		local steamid64 = player:getSteamId64()
 
 		if Panorama.GameStateAPI.IsSelectedPlayerMuted(steamid64) then

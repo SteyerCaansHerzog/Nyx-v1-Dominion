@@ -1,15 +1,14 @@
 --{{{ Dependencies
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
-local Menu = require "gamesense/Nyx/v1/Dominion/Utility/Menu"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --}}}
 
 --{{{ AiChatCommandCmd
---- @class AiChatCommandCmd : AiChatCommand
+--- @class AiChatCommandCmd : AiChatCommandBase
 local AiChatCommandCmd = {
     cmd = "cmd",
     requiredArgs = 0,
@@ -28,11 +27,11 @@ function AiChatCommandCmd:invoke(ai, sender, args)
     local toggle = args[1]
 
     if toggle == "on" then
-        Menu.useChatCommands:set(true)
+        MenuGroup.useChatCommands:set(true)
     elseif toggle == "off" then
-        Menu.useChatCommands:set(false)
+        MenuGroup.useChatCommands:set(false)
     end
 end
 
-return Nyx.class("AiChatCommandCmd", AiChatCommandCmd, AiChatCommand)
+return Nyx.class("AiChatCommandCmd", AiChatCommandCmd, AiChatCommandBase)
 --}}}

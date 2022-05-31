@@ -7,13 +7,13 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --}}}
 
 --{{{ AiStateRush
---- @class AiStateRush : AiState
+--- @class AiStateRush : AiStateBase
 --- @field canRushThisRound boolean
 local AiStateRush = {
     name = "Rush"
@@ -88,5 +88,5 @@ function AiStateRush:think(cmd)
     end
 end
 
-return Nyx.class("AiStateRush", AiStateRush, AiState)
+return Nyx.class("AiStateRush", AiStateRush, AiStateBase)
 --}}}

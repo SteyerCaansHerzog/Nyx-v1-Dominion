@@ -12,12 +12,13 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateFollow
---- @class AiStateFollow : AiState
+--- @class AiStateFollow : AiStateBase
 --- @field isFollowing boolean
 --- @field followingPlayer Player
 --- @field lastFollowingPlayOrigin Vector3
@@ -92,7 +93,7 @@ function AiStateFollow:think(cmd)
     end
 
     if distance < 250 then
-       self.ai.view:lookAtLocation(self.followingPlayer:getOrigin():offset(0, 0, 64), 4, self.ai.view.noiseType.IDLE, "Follow look at player")
+       View.lookAtLocation(self.followingPlayer:getOrigin():offset(0, 0, 64), 4, View.noise.idle, "Follow look at player")
     end
 end
 
@@ -124,5 +125,5 @@ function AiStateFollow:move()
     })
 end
 
-return Nyx.class("AiStateFollow", AiStateFollow, AiState)
+return Nyx.class("AiStateFollow", AiStateFollow, AiStateBase)
 --}}}

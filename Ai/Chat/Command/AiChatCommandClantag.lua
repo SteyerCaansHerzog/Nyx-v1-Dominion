@@ -5,11 +5,11 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
 
 --{{{ Modules
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommand"
+local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBase"
 --}}}
 
 --{{{ AiChatCommandClantag
---- @class AiChatCommandClantag : AiChatCommand
+--- @class AiChatCommandClantag : AiChatCommandBase
 --- @field clantag string
 local AiChatCommandClantag = {
     cmd = "tag",
@@ -51,5 +51,5 @@ function AiChatCommandClantag:setClantag(clantag)
     end
 end
 
-return Nyx.class("AiChatCommandClantag", AiChatCommandClantag, AiChatCommand)
+return Nyx.class("AiChatCommandClantag", AiChatCommandClantag, AiChatCommandBase)
 --}}}
