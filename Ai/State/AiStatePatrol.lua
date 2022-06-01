@@ -4,6 +4,7 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
+local Trace = require "gamesense/Nyx/v1/Api/Trace"
 --}}}
 
 --{{{ Modules
@@ -75,9 +76,9 @@ function AiStatePatrol:assess()
     if AiUtility.client:isCounterTerrorist() and bomb and not self.hasNotifiedTeamOfBomb then
         local eyeOrigin = AiUtility.client:getEyeOrigin()
         local bombOrigin = bomb:m_vecOrigin()
-        local _, _, eid = eyeOrigin:getTraceLine(bombOrigin, Client.getEid())
+        local trace = Trace.getLineToPosition(eyeOrigin, bombOrigin, AiUtility.traceOptionsAttacking)
 
-        if eid == bomb.eid then
+        if not trace.isIntersectingGeometry then
             self:beginPatrol(bombOrigin, AiUtility.client)
 
             return AiPriority.PATROL_BOMB

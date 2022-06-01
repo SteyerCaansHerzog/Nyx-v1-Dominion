@@ -5,6 +5,7 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Server = require "gamesense/Nyx/v1/Api/Server"
 local Table = require "gamesense/Nyx/v1/Api/Table"
+local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
@@ -12,6 +13,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 --}}}
@@ -283,11 +285,11 @@ function Nodegraph.getRandomForBombsiteOfType(node, bombsite)
 end
 
 --- @generic T
+--- @param node T
 --- @param origin Vector3
 --- @field radius number
---- @param node T
 --- @return T
-function Nodegraph.getVisible(origin, radius, node)
+function Nodegraph.getVisible(node, origin, radius)
     --- @type NodeTypeBase[]
     local filter = {}
 
@@ -306,7 +308,6 @@ function Nodegraph.getVisible(origin, radius, node)
     --- @type NodeTypeBase[]
     local nodes = {}
     local iNodes = 0
-    local eid = Client.getEid()
 
     for _, search in pairs(filter) do
         if node and node.id and node.id == search.id then
@@ -316,9 +317,9 @@ function Nodegraph.getVisible(origin, radius, node)
         local distance = origin:getDistance(search.origin)
 
         if distance < radius then
-            local _, fraction = origin:getTraceLine(search.origin, eid)
+            local trace = Trace.getLineToPosition(origin, search.origin, AiUtility.traceOptionsAttacking)
 
-            if fraction == 1 then
+            if not trace.isIntersectingGeometry then
                 iNodes = iNodes + 1
                 nodes[iNodes] = search
             end
@@ -329,11 +330,11 @@ function Nodegraph.getVisible(origin, radius, node)
 end
 
 --- @generic T
+--- @param node T
 --- @param origin Vector3
 --- @param radius number
---- @param node T
 --- @return T
-function Nodegraph.getVisibleOfType(origin, radius, node)
+function Nodegraph.getVisibleOfType(node, origin, radius)
     if not Nodegraph.nodesByType[node.type] then
         return {}
     end
@@ -343,7 +344,6 @@ function Nodegraph.getVisibleOfType(origin, radius, node)
     --- @type NodeTypeBase[]
     local nodes = {}
     local iNodes = 0
-    local eid = Client.getEid()
 
     for _, search in pairs(Nodegraph.nodesByType[node.type]) do
         if node.id and node.id == search.id then
@@ -353,9 +353,9 @@ function Nodegraph.getVisibleOfType(origin, radius, node)
         local distance = origin:getDistance(search.origin)
 
         if distance < radius then
-            local _, fraction = origin:getTraceLine(search.origin, eid)
+            local trace = Trace.getLineToPosition(origin, search.origin, AiUtility.traceOptionsAttacking)
 
-            if fraction == 1 then
+            if not trace.isIntersectingGeometry then
                 iNodes = iNodes + 1
                 nodes[iNodes] = search
             end

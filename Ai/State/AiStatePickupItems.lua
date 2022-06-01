@@ -3,6 +3,7 @@ local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local CsgoWeapons = require "gamesense/csgo_weapons"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -215,7 +216,7 @@ function AiStatePickupItems:activate() end
 
 --- @return void
 function AiStatePickupItems:deactivate()
-    if self.item and self.item:m_hOwnerEntity() == Client.getEid() then
+    if self.item and self.item:m_hOwnerEntity() == LocalPlayer.eid then
         if AiUtility.client:hasPrimary() then
             Client.equipPrimary()
         else

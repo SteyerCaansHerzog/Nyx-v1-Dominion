@@ -5,6 +5,7 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
 local CsgoWeapons = require "gamesense/csgo_weapons"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
@@ -1617,7 +1618,7 @@ function AiStateEngage:attackBestTarget(cmd)
 
         if AiUtility.isBombBeingDefusedByEnemy or (lastNoticedAgo >= 0 and lastNoticedAgo < 1) then
             local bangOrigin = enemy:getOrigin():offset(0, 0, 46)
-            local traceEid, traceDamage = eyeOrigin:getTraceBullet(bangOrigin, Client.getEid())
+            local traceEid, traceDamage = eyeOrigin:getTraceBullet(bangOrigin, LocalPlayer.eid)
             local isBangable = true
 
             if player:hasSniper() then
@@ -2533,7 +2534,6 @@ function AiStateEngage:preAimThroughCorners()
         return
     end
 
-    local playerEid = Client.getEid()
     local playerOrigin = player:getOrigin()
     local hitboxes = target:getHitboxPositions({
         Player.hitbox.HEAD,
@@ -2571,7 +2571,7 @@ function AiStateEngage:preAimThroughCorners()
         for _, hitbox in pairs(hitboxes) do
             hitbox = hitbox + targetVelocity
 
-            local _, fraction, eid = playerOrigin:getTraceLine(hitbox, playerEid)
+            local _, fraction, eid = playerOrigin:getTraceLine(hitbox, LocalPlayer.eid)
 
             if eid == target.eid or fraction == 1 then
                 self.preAimThroughCornersBlockTimer:start()
