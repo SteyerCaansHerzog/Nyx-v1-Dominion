@@ -5,6 +5,7 @@ Competitive matchmaking bot for CS:GO.
 - https://github.com/SteyerCaansHerzog/Nyx-v1-Api
 - https://gamesense.pub/forums/viewtopic.php?id=18807
 - https://gamesense.pub/forums/viewtopic.php?id=30643
+- https://gamesense.pub/forums/viewtopic.php?id=23653
 
 # Installation
 Place the project in the `Counter-Strike Global Offensive` directory under `lua/gamesense/Nyx/v1/Dominion`.
