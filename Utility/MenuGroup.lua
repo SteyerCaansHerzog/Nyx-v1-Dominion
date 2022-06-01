@@ -28,13 +28,13 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --- @field selectedNode MenuItem
 ---
 --- @field enableAi MenuItem
---- @field voicePack MenuItem
---- @field enableView MenuItem
---- @field visualisePathfinding MenuItem
 --- @field enableAutoBuy MenuItem
 --- @field enableAimbot MenuItem
 --- @field aimSkillLevel MenuItem
 --- @field visualiseAimbot MenuItem
+---
+--- @field enableMicrophone MenuItem
+--- @field voicePack MenuItem
 ---
 --- @field restoreReaperManifest MenuItem
 ---
@@ -74,6 +74,8 @@ function MenuGroup.__setup()
     MenuGroup.autoAcceptMatches = menu:addCheckbox("> Auto-accept Matches"):setParent(MenuGroup.master)
     MenuGroup.autoClosePopups = menu:addCheckbox("> Auto-close Popups"):setParent(MenuGroup.master)
     MenuGroup.useChatCommands = menu:addCheckbox("> Use Chat Commands"):set(true):setParent(MenuGroup.master)
+
+    MenuGroup.group:addLabel("----------------------------------------")
 
     Callbacks.shutdown(function()
         cvar.fps_max:set_int(0)

@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -24,8 +25,8 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 local AiStateDrop = {
     name = "Drop",
     requestableGear = {
-        bomb = Client.equipBomb,
-        weapon = Client.equipPrimary
+        bomb = LocalPlayer.equipBomb,
+        weapon = LocalPlayer.equipPrimary
     }
 }
 
@@ -102,7 +103,7 @@ function AiStateDrop:think(cmd)
             if self.droppingGearTimer:isElapsedThenStop(0.33) then
                 self.ai.voice.pack:speakGifting()
 
-                Client.dropGear()
+                LocalPlayer.dropGear()
 
                 self.isDroppingGear = false
 

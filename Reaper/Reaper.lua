@@ -5,6 +5,7 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Localization = require "gamesense/Nyx/v1/Api/Localization"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
@@ -651,7 +652,7 @@ function Reaper:think()
 			health = health,
 			isAlive = isAlive,
 			isAttacked = AiUtility.isEnemyVisible,
-			isFlashed = Client.isFlashed(),
+			isFlashed = LocalPlayer.isFlashed(),
 			isInGame = Server.isIngame(),
 			isLobbyHost = isLobbyHost,
 			isLobbyQueuing = isLobbyQueuing,

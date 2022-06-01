@@ -2,11 +2,13 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
+local Voice = require "gamesense/Nyx/v1/Api/Voice"
 --}}}
 
 --{{{ Modules
@@ -74,15 +76,18 @@ function AiVoice:__init()
     self.packs = packs
     self.packsListboxMap = packNames
 
-    MenuGroup.group:addLabel("---- Voice Pack ----"):setParent(MenuGroup.master)
+    MenuGroup.enableMicrophone = MenuGroup.group:addCheckbox(" > Enable Microphone"):addCallback(function(item)
+    	Voice.isEnabled = item:get()
+    end):setParent(MenuGroup.master)
+
     MenuGroup.voicePack = MenuGroup.group:addList("    > Voice Pack", packNames):addCallback(function(item)
     	self.pack = self.packs[item:get() + 1]
-    end):setParent(MenuGroup.master)
+    end):setParent(MenuGroup.enableMicrophone)
 
     self.flashbangTimer = Timer:new():startThenElapse()
 
     Callbacks.runCommand(function()
-        if Client.isFlashed() and self.flashbangTimer:isElapsedThenRestart(10) then
+        if LocalPlayer.isFlashed() and self.flashbangTimer:isElapsedThenRestart(10) then
             self.pack:speakNotifyFlashbanged()
         end
     end)

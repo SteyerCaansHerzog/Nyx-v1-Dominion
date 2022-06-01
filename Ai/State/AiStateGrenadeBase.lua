@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -308,9 +309,9 @@ function AiStateGrenadeBase:deactivate()
     self.inBehaviorTimer:stop()
 
     if AiUtility.client:hasPrimary() then
-        Client.equipPrimary()
+        LocalPlayer.equipPrimary()
     else
-        Client.equipPistol()
+        LocalPlayer.equipPistol()
     end
 end
 

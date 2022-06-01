@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -79,7 +80,7 @@ end
 
 --- @return void
 function AiStatePlant:assess()
-    if not Client.hasBomb() then
+    if not LocalPlayer.hasBomb() then
         return AiPriority.IGNORE
     end
 
@@ -197,7 +198,7 @@ function AiStatePlant:think(cmd)
 
         self.ai.canUseGear = false
 
-        Client.equipBomb()
+        LocalPlayer.equipBomb()
     end
 
     if distance < 72 then

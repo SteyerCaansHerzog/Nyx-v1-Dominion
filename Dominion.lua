@@ -16,5 +16,5 @@ local NodegraphEditor = require "gamesense/Nyx/v1/Dominion/Traversal/NodegraphEd
 local AiController = require "gamesense/Nyx/v1/Dominion/Ai/AiController"
 --}}}
 
-NodegraphEditor:new()
 AiController:new()
+NodegraphEditor:new()

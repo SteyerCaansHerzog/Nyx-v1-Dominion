@@ -198,7 +198,7 @@ function AiStateWatch:think(cmd)
         cmd.in_duck = true
 
         if LocalPlayer:isHoldingSniper() then
-            Client.scope()
+            LocalPlayer.scope()
         end
     end
 
@@ -216,9 +216,9 @@ function AiStateWatch:think(cmd)
 
         if not LocalPlayer:isHoldingGun() then
             if LocalPlayer:hasPrimary() then
-                Client.equipPrimary()
+                LocalPlayer.equipPrimary()
             else
-                Client.equipPistol()
+                LocalPlayer.equipPistol()
             end
         end
     end

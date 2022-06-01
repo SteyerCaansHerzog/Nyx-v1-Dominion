@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -180,7 +181,7 @@ end
 
 --- @return void
 function AiStateFlashbangDynamic:deactivate()
-    Client.equipPrimary()
+    LocalPlayer.equipPrimary()
 
     self.throwAttemptCooldownTimer:restart()
 
@@ -233,7 +234,7 @@ function AiStateFlashbangDynamic:think(cmd)
      View.isCrosshairSmoothed = false
 
     if not AiUtility.client:isHoldingWeapon(Weapons.FLASHBANG) then
-        Client.equipFlashbang()
+        LocalPlayer.equipFlashbang()
     end
 
    View.lookInDirection(self.throwAngles, 4.5, View.noise.none, "FlashbangDynamic look at throw angle")

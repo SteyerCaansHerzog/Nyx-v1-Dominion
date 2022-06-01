@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -67,7 +68,7 @@ function AiStateEvade:assess()
         return AiPriority.IGNORE
     end
 
-    if not Client.hasBomb() and not self.hurtTimer:isElapsed(10) and AiUtility.timeData.roundtime_remaining > 40 then
+    if not LocalPlayer.hasBomb() and not self.hurtTimer:isElapsed(10) and AiUtility.timeData.roundtime_remaining > 40 then
         self.isLookingAtPathfindingDirection = true
 
         return AiPriority.EVADE_PASSIVE
@@ -81,7 +82,7 @@ function AiStateEvade:assess()
     end
 
     -- We're flashed.
-    if Client.isFlashed() then
+    if LocalPlayer.isFlashed() then
         if not AiUtility.isClientPlanting and player:m_bIsDefusing() == 0 then
             return AiPriority.EVADE_ACTIVE
         end

@@ -5,6 +5,7 @@ local Color = require "gamesense/Nyx/v1/Api/Color"
 local CsgoWeapons = require "gamesense/csgo_weapons"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local ISurface = require "gamesense/Nyx/v1/Api/ISurface"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
@@ -142,8 +143,8 @@ function AiController:initFields()
 		self.currentState = nil
 	end)
 
-	MenuGroup.visualisePathfinding = MenuGroup.group:addCheckbox("    > Visualise AI"):setParent(MenuGroup.enableAi)
-	MenuGroup.enableAutoBuy = MenuGroup.group:addCheckbox("    > Buy Weapons"):setParent(MenuGroup.enableAi)
+	MenuGroup.visualisePathfinding = MenuGroup.group:addCheckbox("    | Visualise AI"):setParent(MenuGroup.enableAi)
+	MenuGroup.enableAutoBuy = MenuGroup.group:addCheckbox("    | Buy Weapons"):setParent(MenuGroup.enableAi)
 
 	self.reaper = Reaper:new({
 		ai = self
@@ -305,7 +306,7 @@ function AiController:initEvents()
 		end
 
 		if e.player:isClient() and e.player:isHoldingBoltActionRifle() then
-			Client.unscope(true)
+			LocalPlayer.unscope(true)
 		end
 	end)
 end
@@ -873,12 +874,12 @@ function AiController:activities(cmd)
 	end
 
 	if canUseKnife then
-		Client.equipKnife()
+		LocalPlayer.equipKnife()
 	else
 		if AiUtility.client:hasPrimary() then
-			Client.equipPrimary()
+			LocalPlayer.equipPrimary()
 		else
-			Client.equipPistol()
+			LocalPlayer.equipPistol()
 		end
 	end
 
@@ -951,7 +952,7 @@ function AiController:antiFlash(cmd)
 	self.canLookAwayFromFlash = true
 
 	if canLookAwayFromFlash then
-		Client.unscope()
+		LocalPlayer.unscope()
 		View.lookInDirection(-(eyeOrigin:getAngle(self.flashbang:m_vecOrigin())), 4.5, View.noise.moving, "AiController avoid flashbang")
 	end
 end
@@ -1023,7 +1024,7 @@ function AiController:unscope()
 	end
 
 	if isScoped and self.unscopeTimer:isElapsed(self.unscopeTime) then
-		Client.unscope(true)
+		LocalPlayer.unscope(true)
 	end
 end
 
@@ -1032,8 +1033,8 @@ end
 function AiController:think(cmd)
 	if not MenuGroup.master:get() or not MenuGroup.enableAi:get() or self.reaper.isActive then
 		-- Fix issue with AI trying to equip the last gear forever.
-		if Client.isEquipping() then
-			Client.cancelEquip()
+		if LocalPlayer.isEquipping() then
+			LocalPlayer.cancelEquip()
 		end
 
 		return

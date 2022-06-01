@@ -362,9 +362,9 @@ function AiStateDefend:think(cmd)
         -- Equip the correct gear.
         if not LocalPlayer:isHoldingGun() then
             if LocalPlayer:hasPrimary() then
-                Client.equipPrimary()
+                LocalPlayer.equipPrimary()
             else
-                Client.equipPistol()
+                LocalPlayer.equipPistol()
             end
         end
 
@@ -375,7 +375,7 @@ function AiStateDefend:think(cmd)
         self.isJigglingUponReachingSpot = false
 
         if LocalPlayer:isHoldingSniper() then
-            Client.unscope()
+            LocalPlayer.unscope()
         end
 
         self.defendTimer:stop()
@@ -392,7 +392,7 @@ function AiStateDefend:think(cmd)
         self.isDefending = true
 
         if LocalPlayer:isHoldingSniper() then
-            Client.scope()
+            LocalPlayer.scope()
         end
     end
 end

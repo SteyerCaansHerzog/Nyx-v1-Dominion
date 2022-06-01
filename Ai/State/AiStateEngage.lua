@@ -403,7 +403,7 @@ function AiStateEngage:assess()
         end
     end
 
-    if Client.isFlashed() and self.bestTarget and AiUtility.visibleEnemies[self.bestTarget.eid] then
+    if LocalPlayer.isFlashed() and self.bestTarget and AiUtility.visibleEnemies[self.bestTarget.eid] then
         return AiPriority.ENGAGE_PANIC
     end
 
@@ -624,7 +624,7 @@ end
 function AiStateEngage:hasNoticedEnemies()
     local ignorePlayerAfter = self.ignorePlayerAfter
 
-    if Client.hasBomb() then
+    if LocalPlayer.hasBomb() then
         ignorePlayerAfter = 3
     end
 
@@ -1392,7 +1392,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
 
         -- Jiggling whilst scoped might look stupid.
         if AiUtility.client:isHoldingSniper() then
-            Client.scope()
+            LocalPlayer.scope()
         end
 
         if self.isHoldingAngleDucked then
@@ -1528,9 +1528,9 @@ function AiStateEngage:attackBestTarget(cmd)
     -- Ensure player is holding weapon.
     if not player:isHoldingGun() then
         if AiUtility.client:hasPrimary() then
-            Client.equipPrimary()
+            LocalPlayer.equipPrimary()
         else
-            Client.equipPistol()
+            LocalPlayer.equipPistol()
         end
     end
 
@@ -1542,11 +1542,11 @@ function AiStateEngage:attackBestTarget(cmd)
 
     if AiUtility.client:isHoldingPrimary() then
         if ammoRatio == 0 and AiUtility.isClientThreatened then
-            Client.equipPistol()
+            LocalPlayer.equipPistol()
         end
     else
         if not AiUtility.isClientThreatened then
-            Client.equipPrimary()
+            LocalPlayer.equipPrimary()
         end
     end
 
@@ -1678,7 +1678,7 @@ function AiStateEngage:attackBestTarget(cmd)
     end
 
     -- Shoot while blind.
-    if Client.isFlashed() and AiUtility.visibleEnemies[enemy.eid] then
+    if LocalPlayer.isFlashed() and AiUtility.visibleEnemies[enemy.eid] then
         self:shoot(cmd, self.shootAtOrigin, enemy)
 
         return
@@ -2260,7 +2260,7 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
     end
 
     if fov < 12 then
-        Client.scope()
+        LocalPlayer.scope()
     end
 
     -- Always come to a complete stop when using snipers.

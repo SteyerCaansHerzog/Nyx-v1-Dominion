@@ -98,6 +98,7 @@ function NodegraphEditor:initFields()
     self.moveNodeResetDelay = Timer:new():startThenElapse()
     self.nextNodeTimer = Timer:new():startThenElapse()
 
+    MenuGroup.group:addLabel("----------------------------------------")
     MenuGroup.enableEditor = MenuGroup.group:addCheckbox("> Enable Nodegraph Editor"):setParent(MenuGroup.master)
 
     MenuGroup.drawDistance = MenuGroup.group:addSlider("> Draw distance", 10, 100, {

@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -39,7 +40,7 @@ function AiChatCommandBomb:invoke(ai, sender, args)
         return
     end
 
-    if not Client.hasBomb() then
+    if not LocalPlayer.hasBomb() then
         return
     end
 

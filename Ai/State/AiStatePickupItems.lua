@@ -218,9 +218,9 @@ function AiStatePickupItems:activate() end
 function AiStatePickupItems:deactivate()
     if self.item and self.item:m_hOwnerEntity() == LocalPlayer.eid then
         if AiUtility.client:hasPrimary() then
-            Client.equipPrimary()
+            LocalPlayer.equipPrimary()
         else
-            Client.equipPistol()
+            LocalPlayer.equipPistol()
         end
     end
 end

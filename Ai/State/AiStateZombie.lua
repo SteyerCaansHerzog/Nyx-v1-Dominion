@@ -72,7 +72,7 @@ end
 function AiStateZombie:think(cmd)
     Pathfinder.ifIdleThenRetryLastRequest()
 
-    Client.equipKnife()
+    LocalPlayer.equipKnife()
 
     self.ai.canUseGear = false
 

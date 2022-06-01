@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
@@ -114,7 +115,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateKnife:think(cmd)
-    Client.equipKnife()
+    LocalPlayer.equipKnife()
 
     self.ai.canUseGear = false
 

@@ -219,8 +219,8 @@ end
 --- @return void
 function Pathfinder.initMenu()
 	MenuGroup.enablePathfinder = MenuGroup.group:addCheckbox(" > Enable Pathfinder"):setParent(MenuGroup.master)
-	MenuGroup.visualisePath = MenuGroup.group:addCheckbox("    > Visualise Path"):setParent(MenuGroup.enablePathfinder)
-	MenuGroup.enableMovement = MenuGroup.group:addCheckbox("    > Enable Movement"):setParent(MenuGroup.enablePathfinder)
+	MenuGroup.enableMovement = MenuGroup.group:addCheckbox("    | Enable Movement"):setParent(MenuGroup.enablePathfinder)
+	MenuGroup.visualisePath = MenuGroup.group:addCheckbox("    | Visualise Path"):setParent(MenuGroup.enablePathfinder)
 end
 
 --- @param nodes NodeTypeBase[]

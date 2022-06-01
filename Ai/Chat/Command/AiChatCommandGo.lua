@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
@@ -88,7 +89,7 @@ function AiChatCommandGo:invoke(ai, sender, args)
                 ai.states.pushDemolition:activate(objective)
             end
 
-            if Client.hasBomb() then
+            if LocalPlayer.hasBomb() then
                 ai.states.plant:activate(objective)
             end
         elseif player:isCounterTerrorist() then

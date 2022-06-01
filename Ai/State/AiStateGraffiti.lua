@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
@@ -71,7 +72,7 @@ function AiStateGraffiti:assess()
         return AiPriority.IGNORE
     end
 
-    if Client.getGraffitiCooldown() > 0 then
+    if LocalPlayer.getGraffitiCooldown() > 0 then
         return AiPriority.IGNORE
     end
 
@@ -95,7 +96,7 @@ function AiStateGraffiti:think()
     if Client.getCameraAngles().p > 75 then
         self.isEnabled = false
 
-        Client.sprayGraffiti()
+        LocalPlayer.sprayGraffiti()
     end
 end
 

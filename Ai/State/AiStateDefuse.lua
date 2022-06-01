@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -231,7 +232,7 @@ function AiStateDefuse:think(cmd)
             self.ai.states.evade.isBlocked = true
 
             if not AiUtility.client:isHoldingWeapon(Weapons.SMOKE) then
-                Client.equipSmoke()
+                LocalPlayer.equipSmoke()
             end
 
            View.lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 4.5, View.noise.none, "Defuse look to drop smoke")
