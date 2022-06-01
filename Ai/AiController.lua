@@ -152,23 +152,7 @@ function AiController:initFields()
 
 	self.voice = AiVoice:new()
 
-	local states = {}
 
-	for id, state in pairs(self.states) do
-		states[id] = state:new({
-			ai = self
-		})
-	end
-
-	self.states = states
-
-	local commands = {}
-
-	for id, command in pairs(self.commands) do
-		commands[id] = command
-	end
-
-	self.commands = commands
 
 	local actions = {}
 
@@ -198,6 +182,51 @@ function AiController:initEvents()
 	Callbacks.init(function()
 		self.dynamicSkillRoundKills = 0
 		self.dynamicSkillHasDied = false
+
+		local states = {}
+
+		--- @param state AiStateBase
+		for id, state in pairs(self.states) do repeat
+			if state.requiredNodes then
+				local isNodeAvailable = true
+				local unavailableNodes = {}
+
+				for _, node in pairs(state.requiredNodes) do
+					if not Nodegraph.isNodeAvailable(node) then
+						isNodeAvailable = false
+
+						table.insert(unavailableNodes, node.name)
+					end
+				end
+
+				if not isNodeAvailable then
+					Logger.console(
+						2,
+						"AI state '%s' requires the following nodes: '%s', but they are not present on the map. This state has not been loaded.",
+						state.name,
+						Table.getImploded(unavailableNodes, ", ")
+					)
+
+					break
+				end
+			end
+
+			local object = state:new({
+				ai = self
+			})
+
+			states[id] = object
+		until true end
+
+		self.states = states
+
+		local commands = {}
+
+		for id, command in pairs(self.commands) do
+			commands[id] = command
+		end
+
+		self.commands = commands
 	end)
 
 	Callbacks.frame(function()
@@ -796,7 +825,7 @@ function AiController:activities(cmd)
 
 	self.isWalking = nil
 
-	local clientOrigin = AiUtility.client:getOrigin()
+	local clientOrigin = LocalPlayer:getOrigin()
 
 	for _, inferno in Entity.find("CInferno") do
 		if clientOrigin:getDistance(inferno:m_vecOrigin()) < 300 then
@@ -876,7 +905,7 @@ function AiController:activities(cmd)
 	if canUseKnife then
 		LocalPlayer.equipKnife()
 	else
-		if AiUtility.client:hasPrimary() then
+		if LocalPlayer:hasPrimary() then
 			LocalPlayer.equipPrimary()
 		else
 			LocalPlayer.equipPistol()
@@ -996,7 +1025,7 @@ function AiController:antiFly(cmd)
 		lastValue = value
 	until true end
 
-	local onGround = AiUtility.client:getFlag(Player.flags.FL_ONGROUND)
+	local onGround = LocalPlayer:getFlag(Player.flags.FL_ONGROUND)
 
 	if not onGround and fails > 10 then
 		cmd.in_jump = true
@@ -1013,7 +1042,7 @@ function AiController:unscope()
 		return
 	end
 
-	local isScoped = AiUtility.client:m_bIsScoped() == 1
+	local isScoped = LocalPlayer:m_bIsScoped() == 1
 
 	if isScoped and not self.unscopeTimer:isStarted() then
 		self.unscopeTimer:start()

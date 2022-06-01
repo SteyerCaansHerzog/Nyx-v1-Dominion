@@ -119,8 +119,8 @@ end
 --- @return void
 function AiStateDrop:buyGear()
     Client.fireAfter(Math.getRandomFloat(0.75, 1.25), function()
-        if not AiUtility.client:hasWeapons(WeaponInfo.primaries) then
-            local balance = AiUtility.client:m_iAccount()
+        if not LocalPlayer:hasWeapons(WeaponInfo.primaries) then
+            local balance = LocalPlayer:m_iAccount()
 
             if not balance or (balance and balance >= 3200) then
                 UserInput.execute("buy m4a4; buy ak47; buy m4a1_silencer")

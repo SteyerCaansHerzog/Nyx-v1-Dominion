@@ -44,36 +44,6 @@ function AiStateDefuse:__init()
     Callbacks.roundStart(function()
         self.lookAtOffset = Vector3:newRandom(-16, 16)
     end)
-
-    Callbacks.bombPlanted(function()
-        Client.fireAfter(0.1, function()
-            local player = AiUtility.client
-            local playerOrigin = player:getOrigin()
-            local bomb = AiUtility.plantedBomb
-
-            if not bomb then
-                return
-            end
-
-            local nearestSite = self.ai.nodegraph:getNearestSiteName(bomb:m_vecOrigin())
-            --- @type Node[]
-            local chokes = self.ai.nodegraph[string.format("objective%sChoke", nearestSite:upper())]
-
-            for _, choke in pairs(chokes) do repeat
-                if Math.getRandomInt(1, 3) ~= 1 or playerOrigin:getDistance(choke.origin) <= 512 then
-                    break
-                end
-
-                for _, node in pairs(self.ai.nodegraph.nodes) do
-                    if choke.origin:getDistance(node.origin) < 128 then
-                        node.active = false
-                    end
-                end
-            until true end
-
-            self.ai.nodegraph:rePathfind()
-        end)
-    end)
 end
 
 --- @return void
@@ -93,7 +63,7 @@ function AiStateDefuse:assess()
     end
 
     -- Can't defuse if we're not already on the bomb.
-    if not AiUtility.canDefuse and not AiUtility.client:m_bIsDefusing() == 1 then
+    if not AiUtility.canDefuse and not LocalPlayer:m_bIsDefusing() == 1 then
         return AiPriority.IGNORE
     end
 
@@ -107,7 +77,7 @@ function AiStateDefuse:assess()
         return AiPriority.IGNORE
     end
 
-    local defuseTime = AiUtility.client:m_bHasDefuser() == 1 and 5 or 10
+    local defuseTime = LocalPlayer:m_bHasDefuser() == 1 and 5 or 10
 
     -- We might as well stick the defuse if we have 1 second left.
     if AiUtility.defuseTimer:isElapsed(defuseTime - 1) then
@@ -157,8 +127,6 @@ end
 
 --- @return void
 function AiStateDefuse:activate()
-    self.ai.nodegraph:reactivateAllNodes()
-
     local bomb = AiUtility.plantedBomb
 
     if not bomb then
@@ -201,7 +169,7 @@ function AiStateDefuse:think(cmd)
     self.activity = "Retaking bombsite"
 
     local bombOrigin = bomb:m_vecOrigin()
-    local distance = AiUtility.client:getOrigin():getDistance(bombOrigin)
+    local distance = LocalPlayer:getOrigin():getDistance(bombOrigin)
 
     if distance < 64 then
         View.isCrosshairUsingVelocity = false
@@ -211,7 +179,7 @@ function AiStateDefuse:think(cmd)
         self.isDefusing = false
     end
 
-    if AiUtility.client:m_bIsDefusing() == 1 then
+    if LocalPlayer:m_bIsDefusing() == 1 then
         View.lookInDirection(Client.getCameraAngles(), 4, View.noise.none, "Defuse keep current angles")
     elseif distance < 256 then
        View.lookAtLocation(bombOrigin:clone():offset(5, -3, 14), 4.5, View.noise.moving, "Defuse look at bomb")
@@ -224,20 +192,20 @@ function AiStateDefuse:think(cmd)
         cmd.in_use = true
         cmd.in_duck = true
 
-        if AiUtility.client:hasWeapon(Weapons.SMOKE)
+        if LocalPlayer:hasWeapon(Weapons.SMOKE)
             and Table.isEmpty(AiUtility.visibleEnemies)
-            and (not AiUtility.closestEnemy or (AiUtility.closestEnemy and AiUtility.client:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) > 400))
+            and (not AiUtility.closestEnemy or (AiUtility.closestEnemy and LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) > 400))
         then
             self.ai.canUseGear = false
             self.ai.states.evade.isBlocked = true
 
-            if not AiUtility.client:isHoldingWeapon(Weapons.SMOKE) then
+            if not LocalPlayer:isHoldingWeapon(Weapons.SMOKE) then
                 LocalPlayer.equipSmoke()
             end
 
            View.lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 4.5, View.noise.none, "Defuse look to drop smoke")
 
-            if AiUtility.client:isAbleToAttack() then
+            if LocalPlayer:isAbleToAttack() then
                 if Client.getCameraAngles().p > 22 then
                     self.inThrowTimer:ifPausedThenStart()
                 end

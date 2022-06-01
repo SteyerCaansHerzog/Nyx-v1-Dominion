@@ -160,7 +160,7 @@ function AiStateKnife:think(cmd)
         end
 
         if traceJump.isIntersectingGeometry then
-            if AiUtility.client:m_vecVelocity():getMagnitude() < 100 then
+            if LocalPlayer:m_vecVelocity():getMagnitude() < 100 then
                 local zDelta = clientOrigin.z - targetOrigin.z
 
                 if zDelta < -32 then

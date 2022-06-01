@@ -84,7 +84,7 @@ function AiStateFlashbangDynamic:assess()
     end
 
     -- Don't bother if we don't even have a flashbang on us.
-    if not AiUtility.client:hasWeapon(Weapons.FLASHBANG) then
+    if not LocalPlayer:hasWeapon(Weapons.FLASHBANG) then
         return AiPriority.IGNORE
     end
 
@@ -99,7 +99,7 @@ function AiStateFlashbangDynamic:assess()
 
     -- Oh Source, do tell us where this stray nade "prediction" went?
     local impactTrace = Trace.getHullAtAngle(clientEyeOrigin, predictionAngles, bounds, {
-        skip = AiUtility.client.eid,
+        skip = LocalPlayer.eid,
         mask = Trace.mask.SHOT_HULL,
         distance = predictionDistance
     }, "AiStateFlashbangDynamic.assess<FindFlashbangDetonatePoint>")
@@ -233,7 +233,7 @@ function AiStateFlashbangDynamic:think(cmd)
      View.isCrosshairUsingVelocity = true
      View.isCrosshairSmoothed = false
 
-    if not AiUtility.client:isHoldingWeapon(Weapons.FLASHBANG) then
+    if not LocalPlayer:isHoldingWeapon(Weapons.FLASHBANG) then
         LocalPlayer.equipFlashbang()
     end
 
@@ -242,8 +242,8 @@ function AiStateFlashbangDynamic:think(cmd)
     local maxDiff = self.throwAngles:getMaxDiff(Client.getCameraAngles())
 
     if maxDiff < 15
-        and AiUtility.client:isHoldingWeapon(Weapons.FLASHBANG)
-        and AiUtility.client:isAbleToAttack()
+        and LocalPlayer:isHoldingWeapon(Weapons.FLASHBANG)
+        and LocalPlayer:isAbleToAttack()
     then
         self.isThrowing = true
     end

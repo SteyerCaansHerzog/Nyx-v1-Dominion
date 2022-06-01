@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -36,11 +37,11 @@ end
 --- @return void
 function AiStateRush:assess()
     if AiUtility.gamemode == "hostage" then
-        if not AiUtility.client:isTerrorist() then
+        if not LocalPlayer:isTerrorist() then
             return AiPriority.IGNORE
         end
     else
-        if not AiUtility.client:isCounterTerrorist() then
+        if not LocalPlayer:isCounterTerrorist() then
             return AiPriority.IGNORE
         end
     end

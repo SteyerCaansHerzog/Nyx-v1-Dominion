@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -27,7 +28,7 @@ function AiStateRescueHostage:assess()
         return AiPriority.IGNORE
     end
 
-    if AiUtility.client:m_hCarriedHostage() == nil then
+    if LocalPlayer:m_hCarriedHostage() == nil then
         return AiPriority.IGNORE
     end
 

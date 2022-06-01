@@ -19,7 +19,11 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field trafficQueueNode NodeSpotTrafficQueue
 --- @field isWaiting boolean
 local AiStateTrafficControl = {
-    name = "Traffic Control"
+    name = "Traffic Control",
+    requiredNodes = {
+        Node.hintTrafficControl,
+        Node.spotTrafficQueue
+    }
 }
 
 --- @param fields AiStateTrafficControl

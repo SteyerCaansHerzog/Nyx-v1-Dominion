@@ -34,8 +34,8 @@ end
 
 --- @param menu MenuGroup
 --- @return void
-function NodeSpotWatch:setCustomizers(menu)
-    NodeTypeSpot.setCustomizers(self, menu)
+function NodeSpotWatch:setupCustomizers(menu)
+    NodeTypeSpot.setupCustomizers(self, menu)
 
     self:addCustomizer("weapons", function()
         return menu.group:addDropdown("    > Weapons", {

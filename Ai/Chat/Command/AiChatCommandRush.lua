@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local UserInput = require "gamesense/Nyx/v1/Api/UserInput"
 --}}}
@@ -26,7 +27,7 @@ function AiChatCommandRush:invoke(ai, sender, args)
         return
     end
 
-    if not AiUtility.client:isCounterTerrorist() then
+    if not LocalPlayer:isCounterTerrorist() then
         return
     end
 

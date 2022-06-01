@@ -75,8 +75,8 @@ end
 
 --- @param menu MenuGroup
 --- @return void
-function NodeTypeObjective:setCustomizers(menu)
-	NodeTypeBase.setCustomizers(self, menu)
+function NodeTypeObjective:setupCustomizers(menu)
+	NodeTypeBase.setupCustomizers(self, menu)
 
 	self:addCustomizer("size", function()
 		return menu.group:addSlider("    > Size", 1, 10, {

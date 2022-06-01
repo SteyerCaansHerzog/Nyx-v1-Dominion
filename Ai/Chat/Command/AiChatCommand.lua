@@ -5,6 +5,7 @@ local AiChatCommand = {
 	aim = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandAim",
 	bt = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBacktrack",
 	bomb = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBomb",
+	boost = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandBoost",
 	chat = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandChat",
 	tag = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandClantag",
 	cmd = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandCmd",
@@ -32,6 +33,7 @@ local AiChatCommand = {
 	stop = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandStop",
 	vote = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandVote",
 	wait = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandWait",
+	zombie = require "gamesense/Nyx/v1/Dominion/Ai/Chat/Command/AiChatCommandZombie",
 }
 
 return AiChatCommand

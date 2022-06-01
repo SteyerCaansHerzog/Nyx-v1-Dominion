@@ -103,7 +103,7 @@ function AiStateGrenadeBase:assess()
     end
 
     -- We don't have the type of grenade in question.
-    if not AiUtility.client:hasWeapons(self.weapons) then
+    if not LocalPlayer:hasWeapons(self.weapons) then
         return AiPriority.IGNORE
     end
 
@@ -162,7 +162,7 @@ function AiStateGrenadeBase:getBestLineup(nodes)
     -- Should we check if enemies could be affected by the line-up?
     local isCheckingEnemies = true
 
-    if AiUtility.client:isTerrorist() and not AiUtility.roundTimer:isElapsed(20) and not self.isCheckingEnemiesRequired then
+    if LocalPlayer:isTerrorist() and not AiUtility.roundTimer:isElapsed(20) and not self.isCheckingEnemiesRequired then
         isCheckingEnemies = false
     end
 
@@ -248,7 +248,7 @@ function AiStateGrenadeBase:watchForOccupiedNodes()
         return
     end
 
-    local clientOrigin = AiUtility.client:getOrigin()
+    local clientOrigin = LocalPlayer:getOrigin()
 
     for _, node in pairs(nodes) do repeat
         local distance = clientOrigin:getDistance(node.origin)
@@ -308,7 +308,7 @@ function AiStateGrenadeBase:deactivate()
     self.node = nil
     self.inBehaviorTimer:stop()
 
-    if AiUtility.client:hasPrimary() then
+    if LocalPlayer:hasPrimary() then
         LocalPlayer.equipPrimary()
     else
         LocalPlayer.equipPistol()
@@ -395,7 +395,7 @@ function AiStateGrenadeBase:think(cmd)
             self.isInThrow = true
         end
 
-        local speed = AiUtility.client:m_vecVelocity():getMagnitude()
+        local speed = LocalPlayer:m_vecVelocity():getMagnitude()
 
         if deltaAngles.p < 1.5
             and deltaAngles.y < 1.5

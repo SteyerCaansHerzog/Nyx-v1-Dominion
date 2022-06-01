@@ -64,8 +64,8 @@ end
 
 --- @param menu MenuGroup
 --- @return void
-function NodeHintTrafficControl:setCustomizers(menu)
-    NodeTypeBase.setCustomizers(self, menu)
+function NodeHintTrafficControl:setupCustomizers(menu)
+    NodeTypeBase.setupCustomizers(self, menu)
 
     self:addCustomizer("occupancyRadius", function()
         return menu.group:addSlider("    > Occupancy check radius", 1, 15, {

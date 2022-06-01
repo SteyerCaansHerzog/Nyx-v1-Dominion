@@ -115,7 +115,7 @@ function AiVoice:__init()
             local teamWins
             local oppositionWins
 
-            if AiUtility.client:isTerrorist() then
+            if LocalPlayer:isTerrorist() then
                 teamWins = tWins
                 oppositionWins = ctWins
             else
@@ -173,7 +173,7 @@ function AiVoice:__init()
 
             self.clientWonLastRound = e.winner == team
 
-            local isWinner = e.winner == AiUtility.client:m_iTeamNum()
+            local isWinner = e.winner == LocalPlayer:m_iTeamNum()
             local roundsPlayed = Entity.getGameRules():m_totalRoundsPlayed()
             local maxRounds = cvar.mp_maxrounds:get_int()
             local halfTime = math.floor(maxRounds / 2)
@@ -212,7 +212,7 @@ function AiVoice:__init()
                 return
             end
 
-            if not AiUtility.client:isAlive() or not AiUtility.isLastAlive then
+            if not LocalPlayer:isAlive() or not AiUtility.isLastAlive then
                 if isWinner then
                     self.pack:speakRoundEndWon()
                 else

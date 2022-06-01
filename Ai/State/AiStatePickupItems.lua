@@ -217,7 +217,7 @@ function AiStatePickupItems:activate() end
 --- @return void
 function AiStatePickupItems:deactivate()
     if self.item and self.item:m_hOwnerEntity() == LocalPlayer.eid then
-        if AiUtility.client:hasPrimary() then
+        if LocalPlayer:hasPrimary() then
             LocalPlayer.equipPrimary()
         else
             LocalPlayer.equipPistol()
@@ -242,7 +242,7 @@ function AiStatePickupItems:think(cmd)
     local owner = self.item:m_hOwnerEntity()
     local isDefuseKit = self.item.classname == "CEconEntity"
 
-    if isDefuseKit and AiUtility.client:m_bHasDefuser() == 1 then
+    if isDefuseKit and LocalPlayer:m_bHasDefuser() == 1 then
         self.item = nil
 
         return
@@ -251,7 +251,7 @@ function AiStatePickupItems:think(cmd)
     if self.item:m_vecOrigin() == nil or owner then
         self.item = nil
 
-        if AiUtility.gameRules:m_bFreezePeriod() == 1 and owner == AiUtility.client.eid then
+        if AiUtility.gameRules:m_bFreezePeriod() == 1 and owner == LocalPlayer.eid then
             self.ai.voice.pack:speakGratitude()
         end
 

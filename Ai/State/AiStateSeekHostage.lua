@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -51,7 +52,7 @@ function AiStateSeekHostage:assess()
         return AiPriority.IGNORE
     end
 
-    if not AiUtility.client:isCounterTerrorist() then
+    if not LocalPlayer:isCounterTerrorist() then
         return AiPriority.IGNORE
     end
 
@@ -67,7 +68,7 @@ function AiStateSeekHostage:assess()
     self:findHostage()
 
     if self.activeHostage then
-        local distance = AiUtility.client:getOrigin():getDistance(self.hostageOrigin)
+        local distance = LocalPlayer:getOrigin():getDistance(self.hostageOrigin)
 
         if distance < 600 then
             return AiPriority.SEEK_HOSTAGE_EXPEDITE
@@ -83,7 +84,7 @@ end
 
 --- @return void
 function AiStateSeekHostage:findHostage()
-    local clientOrigin = AiUtility.client:getOrigin()
+    local clientOrigin = LocalPlayer:getOrigin()
     --- @type Entity
     local closestHostage
     local closestDistance = math.huge
@@ -154,7 +155,7 @@ function AiStateSeekHostage:think(cmd)
             self:activate()
         end
 
-        local clientOrigin = AiUtility.client:m_vecOrigin()
+        local clientOrigin = LocalPlayer:m_vecOrigin()
         local lookAtOrigin = self.hostageOrigin:clone():offset(0, 0, 40)
         local distance = clientOrigin:getDistance(self.hostageOrigin)
 

@@ -10,9 +10,12 @@ local NodeTypeTraverse = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeT
 --{{{ NodeTraverseGeneric
 --- @class NodeTraverseGeneric : NodeTypeTraverse
 local NodeTraverseGeneric = {
-    name = "Run (Volume)",
+    name = "Run (Wide Space)",
     description = {
-        "Informs the AI of how to traverse the map by walking."
+        "Informs the AI of how to traverse the map by running.",
+        "",
+        "- For use in wide spaces where the AI can follow",
+        "a path in a randomised manner."
     },
     isPlanar = true,
     isNameHidden = true,

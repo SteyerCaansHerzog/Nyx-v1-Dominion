@@ -2,6 +2,7 @@
 local Animate = require "gamesense/Nyx/v1/Api/Animate"
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local PerlinNoise = require "gamesense/Nyx/v1/Api/PerlinNoise"
@@ -223,7 +224,7 @@ function View.setTargetNoise(targetViewAngles)
 
 	-- Change between "in movement" and "standing still" noise parameters.
 	if View.currentNoise.isBasedOnVelocity then
-		local velocity = AiUtility.client:m_vecVelocity():getMagnitude()
+		local velocity = LocalPlayer:m_vecVelocity():getMagnitude()
 
 		velocityMod = Math.getClamped(Math.getFloat(5 + velocity, 450) * 1, 0, 450)
 	end
@@ -397,7 +398,7 @@ function View.think(cmd)
 		return
 	end
 
-	local aimPunchAngles = AiUtility.client:m_aimPunchAngle()
+	local aimPunchAngles = LocalPlayer:m_aimPunchAngle()
 	local correctedViewAngles = View.viewAngles:clone()
 
 	if View.isRcsEnabled then
@@ -422,7 +423,7 @@ function View.think(cmd)
 
 	View.lookNote = nil
 
-	local clientOrigin = AiUtility.client:getOrigin()
+	local clientOrigin = LocalPlayer:getOrigin()
 
 	-- Shoot out cover.
 	if Pathfinder.isObstructedByObstacle then

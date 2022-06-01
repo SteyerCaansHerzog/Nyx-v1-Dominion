@@ -1,6 +1,5 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -25,7 +24,10 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field watchTime number
 --- @field watchTimer Timer
 local AiStateWatch = {
-    name = "Watch"
+    name = "Watch",
+    requiredNodes = {
+        Node.spotWatch
+    }
 }
 
 --- @param fields AiStateWatch

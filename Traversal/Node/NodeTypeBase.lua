@@ -325,7 +325,7 @@ end
 ---
 --- @param menu MenuGroup
 --- @return void
-function NodeTypeBase:setCustomizers(menu)
+function NodeTypeBase:setupCustomizers(menu)
     self.customizers = {}
 
     if self.isLinkedToBombsite then
@@ -340,7 +340,7 @@ end
 --- @return void
 function NodeTypeBase:addCustomizer(field, item)
     if not NodeTypeBase.customizerItems[field] then
-        NodeTypeBase.customizerItems[field] = item()
+        NodeTypeBase.customizerItems[field] = item
     end
 
     table.insert(self.customizers, field)

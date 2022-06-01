@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
@@ -82,7 +83,7 @@ end
 function AiStateCheck:think(cmd)
     self.activity = string.format("Going to check %s", self.objectiveName)
 
-    local distance = AiUtility.client:getOrigin():getDistance(self.node.origin)
+    local distance = LocalPlayer:getOrigin():getDistance(self.node.origin)
 
     if distance < 350 then
         self.activity = string.format("Checking %s", self.objectiveName)

@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
@@ -320,7 +321,7 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.playerFootstep(function(e)
-        if AiUtility.client:getOrigin():getDistance(e.player:getOrigin()) > 3000 then
+        if LocalPlayer:getOrigin():getDistance(e.player:getOrigin()) > 3000 then
             return
         end
 
@@ -328,7 +329,7 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.weaponReload(function(e)
-        if AiUtility.client:getOrigin():getDistance(e.player:getOrigin()) > 3000 then
+        if LocalPlayer:getOrigin():getDistance(e.player:getOrigin()) > 3000 then
             return
         end
 
@@ -336,7 +337,7 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.weaponZoom(function(e)
-        if AiUtility.client:getOrigin():getDistance(e.player:getOrigin()) > 2000 then
+        if LocalPlayer:getOrigin():getDistance(e.player:getOrigin()) > 2000 then
             return
         end
 
@@ -527,8 +528,8 @@ function AiUtility.updateThreats()
     AiUtility.threats = {}
 
     -- Update threats.
-    local eyeOrigin = Client.getEyeOrigin() + AiUtility.client:m_vecVelocity():set(nil, nil, 0) * 0.33
-    local clientOrigin = AiUtility.client:getOrigin()
+    local eyeOrigin = Client.getEyeOrigin() + LocalPlayer:m_vecVelocity():set(nil, nil, 0) * 0.33
+    local clientOrigin = LocalPlayer:getOrigin()
     local threatUpdateTime = 0.15
     local threats = 0
 

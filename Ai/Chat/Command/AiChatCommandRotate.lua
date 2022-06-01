@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -45,7 +46,7 @@ function AiChatCommandRotate:invoke(ai, sender, args)
     local node = ai.nodegraph:getSiteNode(site)
 
     -- We're already near the site. It would be pointless to activate the rotation.
-    if AiUtility.client:getOrigin():getDistance(node.origin) < 1000 then
+    if LocalPlayer:getOrigin():getDistance(node.origin) < 1000 then
         return
     end
 

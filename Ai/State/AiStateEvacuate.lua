@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
@@ -47,10 +48,10 @@ function AiStateEvacuate:assess()
         return AiPriority.SAVE_ROUND
     end
 
-    if AiUtility.client:isCounterTerrorist() then
+    if LocalPlayer:isCounterTerrorist() then
         -- We're defusing, we shouldn't evacuate.
         -- We can only be defusing if we have time.
-        if AiUtility.client:m_bIsDefusing() == 1 then
+        if LocalPlayer:m_bIsDefusing() == 1 then
             return AiPriority.IGNORE
         end
 
@@ -63,7 +64,7 @@ function AiStateEvacuate:assess()
         if AiUtility.plantedBomb and not AiUtility.canDefuse then
             return AiPriority.SAVE_ROUND
         end
-    elseif AiUtility.client:isTerrorist() then
+    elseif LocalPlayer:isTerrorist() then
         -- We should save.
         if self:isRoundWinProbabilityLow()then
             return AiPriority.SAVE_ROUND
@@ -100,14 +101,14 @@ function AiStateEvacuate:isRoundWinProbabilityLow()
     end
 
     -- We have no valuables.
-    if not AiUtility.client:hasPrimary() then
+    if not LocalPlayer:hasPrimary() then
         return false
     end
 
     local teamDisparity = AiUtility.teammatesAlive - AiUtility.enemiesAlive
     local isBombPlanted = AiUtility.isBombPlanted()
 
-    if AiUtility.client:isCounterTerrorist() then
+    if LocalPlayer:isCounterTerrorist() then
         -- 5v1 scenario.
         if teamDisparity <= -4 then
             return true
@@ -121,11 +122,11 @@ function AiStateEvacuate:isRoundWinProbabilityLow()
             end
 
             -- We're last, there's 2+ enemies, and we're low.
-            if AiUtility.isLastAlive and AiUtility.enemiesAlive >= 2 and AiUtility.client:m_iHealth() <= 33 then
+            if AiUtility.isLastAlive and AiUtility.enemiesAlive >= 2 and LocalPlayer:m_iHealth() <= 33 then
                 return true
             end
         end
-    elseif AiUtility.client:isTerrorist() then
+    elseif LocalPlayer:isTerrorist() then
         -- We haven't planted. This makes our odds really bad.
         if not isBombPlanted then
             -- 5v1 scenario.
@@ -134,7 +135,7 @@ function AiStateEvacuate:isRoundWinProbabilityLow()
             end
 
             -- We're last, there's 2+ enemies, and we're low.
-            if AiUtility.isLastAlive and AiUtility.enemiesAlive >= 3 and AiUtility.client:m_iHealth() <= 33 then
+            if AiUtility.isLastAlive and AiUtility.enemiesAlive >= 3 and LocalPlayer:m_iHealth() <= 33 then
                 return true
             end
         end
@@ -196,8 +197,8 @@ function AiStateEvacuate:think(cmd)
         })
     end
 
-    local trace = Trace.getLineToPosition(AiUtility.client:getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateEvacuate.think<FindSpotVisible>")
-    local distance = AiUtility.client:getOrigin():getDistance(self.node.origin)
+    local trace = Trace.getLineToPosition(LocalPlayer:getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateEvacuate.think<FindSpotVisible>")
+    local distance = LocalPlayer:getOrigin():getDistance(self.node.origin)
 
     if distance < 32 then
         cmd.in_duck = true
@@ -218,7 +219,7 @@ end
 --- @return Node
 function AiStateEvacuate:getHideNode()
     local nodes = {}
-    local clientOrigin = AiUtility.client:getOrigin()
+    local clientOrigin = LocalPlayer:getOrigin()
     local plantOrigin
 
     if AiUtility.plantedBomb then

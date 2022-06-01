@@ -75,7 +75,7 @@ function MenuGroup.__setup()
     MenuGroup.autoClosePopups = menu:addCheckbox("> Auto-close Popups"):setParent(MenuGroup.master)
     MenuGroup.useChatCommands = menu:addCheckbox("> Use Chat Commands"):set(true):setParent(MenuGroup.master)
 
-    MenuGroup.group:addLabel("----------------------------------------")
+    MenuGroup.group:addLabel("----------------------------------------"):setParent(MenuGroup.master)
 
     Callbacks.shutdown(function()
         cvar.fps_max:set_int(0)

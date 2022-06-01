@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -138,7 +139,7 @@ function AiVoicePackGenericBase:speakClientHurtByEnemy(event)
 			minDelay = 1,
 			maxDelay = 1.5,
 			condition = function()
-				return not AiUtility.isRoundOver and not AiUtility.isLastAlive and AiUtility.client:isAlive()
+				return not AiUtility.isRoundOver and not AiUtility.isLastAlive and LocalPlayer:isAlive()
 			end
 		})
 	end
@@ -156,7 +157,7 @@ function AiVoicePackGenericBase:speakClientHurtByTeammate(event)
 			minDelay = 0.33,
 			maxDelay = 1,
 			condition = function()
-				return not AiUtility.isRoundOver and not AiUtility.isLastAlive and AiUtility.client:isAlive()
+				return not AiUtility.isRoundOver and not AiUtility.isLastAlive and LocalPlayer:isAlive()
 			end
 		})
 	end
@@ -598,7 +599,7 @@ function AiVoicePackGenericBase:speakLastAlive()
 		minDelay = 1,
 		maxDelay = 4,
 		condition = function()
-			return not AiUtility.isRoundOver and AiUtility.client:isAlive()
+			return not AiUtility.isRoundOver and LocalPlayer:isAlive()
 		end
 	})
 end
@@ -613,7 +614,7 @@ function AiVoicePackGenericBase:speakGifting()
 		minDelay = 0,
 		maxDelay = 1,
 		condition = function()
-			return AiUtility.client:isAlive()
+			return LocalPlayer:isAlive()
 		end
 	})
 end
@@ -628,7 +629,7 @@ function AiVoicePackGenericBase:speakGratitude()
 		minDelay = 0,
 		maxDelay = 2,
 		condition = function()
-			return AiUtility.client:isAlive()
+			return LocalPlayer:isAlive()
 		end
 	})
 end
@@ -643,7 +644,7 @@ function AiVoicePackGenericBase:speakAgreement()
 		minDelay = 2.5,
 		maxDelay = 4,
 		condition = function()
-			return AiUtility.client:isAlive()
+			return LocalPlayer:isAlive()
 		end
 	})
 end
@@ -661,7 +662,7 @@ function AiVoicePackGenericBase:speakNoProblem()
 		minDelay = 0,
 		maxDelay = 3,
 		condition = function()
-			return AiUtility.client:isAlive()
+			return LocalPlayer:isAlive()
 		end
 	})
 end

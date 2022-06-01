@@ -10,10 +10,12 @@ local NodeTypeTraverse = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeT
 --{{{ NodeTraverseNarrow
 --- @class NodeTraverseNarrow : NodeTypeTraverse
 local NodeTraverseNarrow = {
-    name = "Narrow",
+    name = "Run (Narrow Space)",
     description = {
-        "Informs the AI of how to traverse the map by walking.",
-        "Intended for narrow throughways."
+        "Informs the AI of how to traverse the map by running.",
+        "",
+        "- For use in narrow space where the AI does not",
+        "have much choice in a path's randomness."
     },
     isPlanar = false,
     colorSecondary = Color:hsla(235, 0.65, 0.7)

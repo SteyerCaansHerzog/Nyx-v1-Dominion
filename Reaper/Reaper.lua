@@ -617,10 +617,10 @@ function Reaper:think()
 
 		if Server.isIngame() then
 			map = globals.mapname()
-			callout = Localization.get(AiUtility.client:m_szLastPlaceName())
-			health = AiUtility.client:m_iHealth()
-			isAlive = AiUtility.client:isAlive()
-			team = AiUtility.client:m_iTeamNum()
+			callout = Localization.get(LocalPlayer:m_szLastPlaceName())
+			health = LocalPlayer:m_iHealth()
+			isAlive = LocalPlayer:isAlive()
+			team = LocalPlayer:m_iTeamNum()
 			isWarmup = Entity.getGameRules():m_bWarmupPeriod() == 1
 
 			if AiUtility.timeData then

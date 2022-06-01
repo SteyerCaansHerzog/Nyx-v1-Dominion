@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
@@ -8,7 +9,9 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
@@ -49,8 +52,8 @@ function AiStateDefendHostageCarrier:assess()
         return AiPriority.IGNORE
     end
 
-    if AiUtility.isHostageCarriedByTeammate and not AiUtility.client:m_hCarriedHostage() then
-        local clientOrigin = AiUtility.client:getOrigin()
+    if AiUtility.isHostageCarriedByTeammate and not LocalPlayer:m_hCarriedHostage() then
+        local clientOrigin = LocalPlayer:getOrigin()
 
         --- @type Entity
         local closestHostageCarrier
@@ -113,29 +116,11 @@ end
 
 --- @return void
 function AiStateDefendHostageCarrier:move()
-    --- @type Node[]
-    local nodes = {}
-    --- @type Node[]
-    local closestNode
-    local closestNodeDistance = math.huge
+    local node = Nodegraph.getRandom(Node.traverseGeneric, self.lastOrigin, 200)
 
-    for _, node in pairs(self.ai.nodegraph.nodes) do
-        local distance = self.lastOrigin:getDistance(node.origin)
-
-        if distance < 200 then
-            table.insert(nodes, node)
-        end
-
-        if distance < closestNodeDistance then
-            closestNodeDistance = distance
-            closestNode = node
-        end
-    end
-
-    local node = not Table.isEmpty(nodes) and Table.getRandom(nodes) or closestNode
-
-   self.ai.nodegraph:pathfind(node.origin, {
-        objective = Node.types.GOAL
+    Pathfinder.moveToNode(node, {
+        task = "Follow hostage carrier",
+        goalReachedRadius = 150
     })
 end
 

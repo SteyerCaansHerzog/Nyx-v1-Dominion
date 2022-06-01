@@ -35,8 +35,8 @@ end
 
 --- @param menu MenuGroup
 --- @return void
-function NodeHintBlockRetake:setCustomizers(menu)
-    NodeTypeHint.setCustomizers(self, menu)
+function NodeHintBlockRetake:setupCustomizers(menu)
+    NodeTypeHint.setupCustomizers(self, menu)
 
     self:addCustomizer("isActivatedByChance", function()
     	return menu.group:addCheckbox("    > Is activated by chance")

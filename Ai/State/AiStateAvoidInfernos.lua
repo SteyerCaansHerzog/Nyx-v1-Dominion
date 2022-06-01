@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -29,7 +30,7 @@ function AiStateAvoidInfernos:__init() end
 
 --- @return void
 function AiStateAvoidInfernos:assess()
-    local clientOrigin = AiUtility.client:getOrigin()
+    local clientOrigin = LocalPlayer:getOrigin()
 
     -- Find an inferno that we're probably inside of.
     for _, inferno in Entity.find("CInferno") do

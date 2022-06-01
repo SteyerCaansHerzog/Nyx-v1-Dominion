@@ -1,7 +1,6 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local DrawDebug = require "gamesense/Nyx/v1/Api/DrawDebug"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
@@ -42,7 +41,13 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field jiggleTimer Timer
 --- @field node NodeTypeDefend
 local AiStateDefend = {
-    name = "Defend"
+    name = "Defend",
+    requiredNodes = {
+        Node.defendSiteCt,
+        Node.defendSiteT,
+        Node.defendBombCt,
+        Node.defendBombT,
+    }
 }
 
 --- @param fields AiStateDefend
@@ -143,6 +148,10 @@ function AiStateDefend:assessDemolition()
         -- This will practically force the AI to go to the site.
         if self.getToSiteTimer:isStarted() and not self.getToSiteTimer:isElapsed(12) then
             return AiPriority.DEFEND_EXPEDITE
+        end
+
+        if AiUtility.isBombBeingPlantedByTeammate then
+            return AiPriority.DEFEND_PLANTER
         end
 
         -- We can hold an approaching enemy.

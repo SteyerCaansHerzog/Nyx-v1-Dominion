@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
@@ -39,7 +40,7 @@ function AiStatePushHostage:assess()
         return AiPriority.IGNORE
     end
 
-    if not AiUtility.client:isCounterTerrorist() then
+    if not LocalPlayer:isCounterTerrorist() then
         return AiPriority.IGNORE
     end
 

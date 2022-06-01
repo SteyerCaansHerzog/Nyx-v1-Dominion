@@ -29,8 +29,8 @@ end
 
 --- @param menu MenuGroup
 --- @return void
-function NodeTraverseBreakObstacle:setCustomizers(menu)
-    NodeTypeTraverse.setCustomizers(self, menu)
+function NodeTraverseBreakObstacle:setupCustomizers(menu)
+    NodeTypeTraverse.setupCustomizers(self, menu)
 
     self:addCustomizer("isDuck", function()
         return menu.group:addCheckbox("    > Duck when passing")

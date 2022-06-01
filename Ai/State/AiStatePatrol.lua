@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -73,8 +74,8 @@ function AiStatePatrol:assess()
 
     local bomb = AiUtility.bomb
 
-    if AiUtility.client:isCounterTerrorist() and bomb and not self.hasNotifiedTeamOfBomb then
-        local eyeOrigin = AiUtility.client:getEyeOrigin()
+    if LocalPlayer:isCounterTerrorist() and bomb and not self.hasNotifiedTeamOfBomb then
+        local eyeOrigin = LocalPlayer:getEyeOrigin()
         local bombOrigin = bomb:m_vecOrigin()
         local trace = Trace.getLineToPosition(eyeOrigin, bombOrigin, AiUtility.traceOptionsAttacking)
 

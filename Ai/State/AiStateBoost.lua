@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
@@ -49,7 +50,7 @@ end
 --- @return number
 function AiStateBoost:assess()
     if self.boostPlayer then
-        if AiUtility.client:getOrigin():getDistance2(self.boostPlayer:getOrigin()) < 256 then
+        if LocalPlayer:getOrigin():getDistance2(self.boostPlayer:getOrigin()) < 256 then
             return AiPriority.BOOST_ACTIVE
         end
 
@@ -103,7 +104,7 @@ function AiStateBoost:think(cmd)
         return
     end
 
-    local playerOrigin = AiUtility.client:getOrigin()
+    local playerOrigin = LocalPlayer:getOrigin()
     local originDistance = playerOrigin:getDistance2(self.boostOrigin)
     local senderDistance = playerOrigin:getDistance(self.boostPlayer:getOrigin())
 
@@ -137,7 +138,7 @@ function AiStateBoost:think(cmd)
                 cmd.in_duck = true
             end
 
-            View.lookAtLocation(self.boostPlayer:getHitboxPosition(Player.hitbox.NECK), 2, View.noise.idle, "Boost look at booster")
+            View.lookAtLocation(self.boostPlayer:getHitboxPosition(Player.hitbox.NECK), 5.5, View.noise.idle, "Boost look at booster")
         end
     end
 

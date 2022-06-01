@@ -228,7 +228,7 @@ function AiStateEngage:initEvents()
             return
         end
 
-        if AiUtility.client:getOrigin():getDistance(e.player:getOrigin()) > 600 then
+        if LocalPlayer:getOrigin():getDistance(e.player:getOrigin()) > 600 then
             return
         end
 
@@ -244,7 +244,7 @@ function AiStateEngage:initEvents()
             return
         end
 
-        if AiUtility.client:getOrigin():getDistance(e.player:getOrigin()) > 600 then
+        if LocalPlayer:getOrigin():getDistance(e.player:getOrigin()) > 600 then
             return
         end
 
@@ -372,7 +372,7 @@ function AiStateEngage:initEvents()
             self.blockTimer:start()
         end
 
-        if e.victim:isTeammate() and AiUtility.client:getOrigin():getDistance(e.victim:getOrigin()) < 1250 then
+        if e.victim:isTeammate() and LocalPlayer:getOrigin():getDistance(e.victim:getOrigin()) < 1250 then
             self:noticeEnemy(e.attacker, 1600, true, "Teammate killed")
         end
 
@@ -391,7 +391,7 @@ function AiStateEngage:assess()
     self.sprayTimer:isElapsedThenStop(self.sprayTime)
     self.watchTimer:isElapsedThenStop(self.watchTime)
 
-    local clientOrigin = AiUtility.client:getOrigin()
+    local clientOrigin = LocalPlayer:getOrigin()
 
     -- Do not try to engage people from inside of a smoke.
     -- It looks really dumb.
@@ -509,7 +509,7 @@ function AiStateEngage:requestRotations()
     end
 
     -- Only CTs should bark rotate commands.
-    if not AiUtility.client:isCounterTerrorist() then
+    if not LocalPlayer:isCounterTerrorist() then
         return
     end
 
@@ -528,7 +528,7 @@ end
 
 --- @return void
 function AiStateEngage:callRotateToSite()
-    local clientOrigin = AiUtility.client:getOrigin()
+    local clientOrigin = LocalPlayer:getOrigin()
     local nearestSite = self.ai.nodegraph:getNearestSiteNode(clientOrigin)
     local nearestSiteName = self.ai.nodegraph:getNearestSiteName(clientOrigin)
 
@@ -548,7 +548,7 @@ end
 
 --- @return void
 function AiStateEngage:callGoToSite()
-    local clientOrigin = AiUtility.client:getOrigin()
+    local clientOrigin = LocalPlayer:getOrigin()
     local nearestSite = self.ai.nodegraph:getNearestSiteNode(clientOrigin)
     local nearestSiteName = self.ai.nodegraph:getNearestSiteName(clientOrigin)
 
@@ -582,7 +582,7 @@ end
 --- @param reason string
 --- @return void
 function AiStateEngage:noticeEnemy(player, range, isLoud, reason)
-    if not AiUtility.client:isAlive() then
+    if not LocalPlayer:isAlive() then
         return
     end
 
@@ -596,7 +596,7 @@ function AiStateEngage:noticeEnemy(player, range, isLoud, reason)
         return
     end
 
-    if AiUtility.client:getOrigin():getDistance(enemyOrigin) > range then
+    if LocalPlayer:getOrigin():getDistance(enemyOrigin) > range then
         return
     end
 
@@ -1249,7 +1249,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
                 isBackingUp = false
             elseif self.isStrafePeeking then
                 isBackingUp = false
-            elseif AiUtility.client:isCounterTerrorist() then
+            elseif LocalPlayer:isCounterTerrorist() then
                 isBackingUp = false
             elseif AiUtility.isHostageCarriedByTeammate or AiUtility.isHostageCarriedByEnemy then
                 isBackingUp = false
@@ -1259,7 +1259,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
                 isBackingUp = false
             elseif self.isStrafePeeking then
                 isBackingUp = false
-            elseif AiUtility.client:isCounterTerrorist() then
+            elseif LocalPlayer:isCounterTerrorist() then
                 if AiUtility.plantedBomb or AiUtility.isBombBeingPlantedByEnemy then
                     isBackingUp = false
                 end
@@ -1276,7 +1276,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
                         break
                     end
                 end
-            elseif AiUtility.client:isTerrorist() then
+            elseif LocalPlayer:isTerrorist() then
                 if AiUtility.timeData.roundtime_remaining < 40  then
                     isBackingUp = false
                 elseif not AiUtility.plantedBomb or AiUtility.isBombBeingDefusedByEnemy then
@@ -1323,7 +1323,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
         end
 
         if isAvoidingSmokes then
-            local clientOrigin = AiUtility.client:getOrigin()
+            local clientOrigin = LocalPlayer:getOrigin()
             --- @type Entity
             local nearSmoke
 
@@ -1381,7 +1381,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
 
         if self.ai.nodegraph.path then
             self.isHoldingAngle = Math.getChance(1)
-            self.isHoldingAngleDucked = AiUtility.client:hasSniper() or Math.getChance(4)
+            self.isHoldingAngleDucked = LocalPlayer:hasSniper() or Math.getChance(4)
 
             if self.isHoldingAngle then
                self.ai.nodegraph:clearPath("Enemy is around corner")
@@ -1391,7 +1391,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
         self.patienceTimer:ifPausedThenStart()
 
         -- Jiggling whilst scoped might look stupid.
-        if AiUtility.client:isHoldingSniper() then
+        if LocalPlayer:isHoldingSniper() then
             LocalPlayer.scope()
         end
 
@@ -1527,7 +1527,7 @@ function AiStateEngage:attackBestTarget(cmd)
 
     -- Ensure player is holding weapon.
     if not player:isHoldingGun() then
-        if AiUtility.client:hasPrimary() then
+        if LocalPlayer:hasPrimary() then
             LocalPlayer.equipPrimary()
         else
             LocalPlayer.equipPistol()
@@ -1540,7 +1540,7 @@ function AiStateEngage:attackBestTarget(cmd)
     local maxAmmo = csgoWeapon.primary_clip_size
     local ammoRatio = ammo / maxAmmo
 
-    if AiUtility.client:isHoldingPrimary() then
+    if LocalPlayer:isHoldingPrimary() then
         if ammoRatio == 0 and AiUtility.isClientThreatened then
             LocalPlayer.equipPistol()
         end
@@ -1750,7 +1750,7 @@ function AiStateEngage:setIsVisibleToBestTarget()
 
     local enemyEyeOrigin = self.bestTarget:getEyeOrigin()
 
-    for _, hitbox in pairs(AiUtility.client:getHitboxPositions({
+    for _, hitbox in pairs(LocalPlayer:getHitboxPositions({
         Player.hitbox.HEAD,
         Player.hitbox.PELVIS,
         Player.hitbox.LEFT_LOWER_LEG,
@@ -1810,7 +1810,7 @@ function AiStateEngage:canHoldAngle()
         end
     end
 
-    local clientOrigin = AiUtility.client:getOrigin()
+    local clientOrigin = LocalPlayer:getOrigin()
     local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 32)
     local hullTrace = Trace.getHullAtPosition(clientOrigin:clone():offset(0, 0, 16), bounds, AiUtility.traceOptionsAttacking)
 
@@ -1820,7 +1820,7 @@ function AiStateEngage:canHoldAngle()
     end
 
     -- Don't hold if the enemy is planting or has planted the bomb.
-    if AiUtility.client:isCounterTerrorist() and AiUtility.gamemode ~= "hostage" and not AiUtility.plantedBomb and not AiUtility.isBombBeingPlantedByEnemy then
+    if LocalPlayer:isCounterTerrorist() and AiUtility.gamemode ~= "hostage" and not AiUtility.plantedBomb and not AiUtility.isBombBeingPlantedByEnemy then
         -- If we're the closest to enemy, maybe don't permanently hold the angle.
         if self.bestTarget then
             local isClosestToEnemy = true
@@ -1846,7 +1846,7 @@ function AiStateEngage:canHoldAngle()
     end
 
     -- Don't hold if the enemy is defusing the bomb.
-    if AiUtility.client:isTerrorist() and not AiUtility.isBombBeingDefusedByEnemy then
+    if LocalPlayer:isTerrorist() and not AiUtility.isBombBeingDefusedByEnemy then
         -- Ts should prefer defense in hostage.
         if AiUtility.gamemode == "hostage" and not AiUtility.isHostageCarriedByEnemy then
             return true
@@ -1867,7 +1867,7 @@ function AiStateEngage:canHoldAngle()
         end
 
         local distanceToSite = self.ai.nodegraph:getNearestSiteNode(clientOrigin).origin:getDistance(clientOrigin)
-        local isNearPlantedBomb = AiUtility.plantedBomb and AiUtility.client:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 512
+        local isNearPlantedBomb = AiUtility.plantedBomb and LocalPlayer:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 512
 
         -- Please don't hold angles if we have to plant.
         if AiUtility.bombCarrier and not AiUtility.bombCarrier:is(AiUtility.client) then
@@ -1929,7 +1929,7 @@ function AiStateEngage:walk()
         canWalk = false
     end
 
-    if AiUtility.client:m_bIsScoped() == 1 then
+    if LocalPlayer:m_bIsScoped() == 1 then
         canWalk = false
     end
 
@@ -1968,7 +1968,7 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
     end
 
     -- Don't shoot when in-air.
-    if not AiUtility.client:getFlag(Player.flags.FL_ONGROUND) then
+    if not LocalPlayer:getFlag(Player.flags.FL_ONGROUND) then
         return
     end
 
@@ -1976,7 +1976,7 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
    self.ai.nodegraph.canJump = false
     self.ai.canLookAwayFromFlash = false
 
-    local distance = AiUtility.client:getOrigin():getDistance(aimAtBaseOrigin)
+    local distance = LocalPlayer:getOrigin():getDistance(aimAtBaseOrigin)
 
     -- Update the offset to the shoot origin.
     if distance < 200 then
@@ -2041,7 +2041,7 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
     -- Avoid shooting at teammates if possible.
     -- This will not be perfect, but it'll help most of the time.
     local distanceToHitbox = clientEyeOrigin:getDistance(aimAtOrigin)
-    local correctedAngles = Client.getCameraAngles() + AiUtility.client:m_aimPunchAngle() * 2
+    local correctedAngles = Client.getCameraAngles() + LocalPlayer:m_aimPunchAngle() * 2
     local box = (clientEyeOrigin + correctedAngles:getForward() * distanceToHitbox):getBox(Vector3.align.CENTER, 16)
 
     for _, vertex in pairs(box) do
@@ -2101,7 +2101,7 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
         method = AiStateEngage.shootHeavy
     end
 
-    local weapon = Entity:create(AiUtility.client:m_hActiveWeapon())
+    local weapon = Entity:create(LocalPlayer:m_hActiveWeapon())
     local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
 
     method(self, cmd, aimAtOrigin, fov, csgoWeapon)
@@ -2131,7 +2131,7 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
     elseif not self.canRunAndShoot then
         self:actionJiggle(self.jiggleTime * 0.33)
 
-        isVelocityOk = AiUtility.client:m_vecVelocity():getMagnitude() < 100
+        isVelocityOk = LocalPlayer:m_vecVelocity():getMagnitude() < 100
     elseif AiUtility.totalThreats > 1 then
         self:actionBackUp()
     end
@@ -2224,7 +2224,7 @@ function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
         self:actionStop(cmd)
     end
 
-    local isVelocityOk = AiUtility.client:m_vecVelocity():getMagnitude() < 100
+    local isVelocityOk = LocalPlayer:m_vecVelocity():getMagnitude() < 100
 
     if fov < 14
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
@@ -2271,8 +2271,8 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
 
     if fov < 4
         and self.scopedTimer:isElapsedThenStop(fireDelay)
-        and AiUtility.client:m_bIsScoped() == 1
-        and AiUtility.client:m_vecVelocity():getMagnitude() < fireUnderVelocity
+        and LocalPlayer:m_bIsScoped() == 1
+        and LocalPlayer:m_vecVelocity():getMagnitude() < fireUnderVelocity
     then
         self:fireWeapon(cmd)
     end
@@ -2380,14 +2380,14 @@ function AiStateEngage:actionCounterStrafe(cmd)
         cmd.in_duck = true
     end
 
-    if AiUtility.client:m_flDuckSpeed() < 3  then
+    if LocalPlayer:m_flDuckSpeed() < 3  then
         self.ai.nodegraph.isAllowedToMove = false
 
         return
     end
 
     if self.strafePeekDirection and self.bestTarget then
-        local angleToEnemy = AiUtility.client:getOrigin():getAngle(self.bestTarget:getOrigin())
+        local angleToEnemy = LocalPlayer:getOrigin():getAngle(self.bestTarget:getOrigin())
 
         --- @type Vector3
         local moveAngle = Nyx.call(angleToEnemy, "get%s", self.strafePeekDirection)
@@ -2404,7 +2404,7 @@ function AiStateEngage:actionStop(cmd)
         cmd.in_duck = true
     end
 
-    local velocity = AiUtility.client:m_vecVelocity()
+    local velocity = LocalPlayer:m_vecVelocity()
 
     -- Stop moving when our velocity has fallen below threshold.
     if velocity:getMagnitude() < 70 then

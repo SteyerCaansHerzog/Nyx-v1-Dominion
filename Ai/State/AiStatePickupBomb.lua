@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
@@ -62,7 +63,7 @@ function AiStatePickupBomb:assess()
         return AiPriority.IGNORE
     end
 
-    if not AiUtility.client:isTerrorist() then
+    if not LocalPlayer:isTerrorist() then
         return AiPriority.IGNORE
     end
 

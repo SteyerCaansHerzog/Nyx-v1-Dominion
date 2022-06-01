@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -60,7 +61,7 @@ function AiStateChickenInteraction:assess()
         return AiPriority.IGNORE
     end
 
-    if not AiUtility.client:isHoldingKnife() then
+    if not LocalPlayer:isHoldingKnife() then
         self.targetChicken = nil
 
         return AiPriority.IGNORE
@@ -83,7 +84,7 @@ function AiStateChickenInteraction:assess()
     --- @type Entity
     local closestChicken
     local closestChickenDistance = math.huge
-    local playerOrigin = AiUtility.client:getOrigin()
+    local playerOrigin = LocalPlayer:getOrigin()
 
     for _, chicken in Entity.find("CChicken") do
         if not self.blacklist[chicken.eid] then
@@ -147,7 +148,7 @@ function AiStateChickenInteraction:think(cmd)
         self.activity = "Pick up birds"
     end
 
-    if not AiUtility.client:isHoldingKnife() then
+    if not LocalPlayer:isHoldingKnife() then
         self:reset()
 
         return
@@ -161,7 +162,7 @@ function AiStateChickenInteraction:think(cmd)
         return
     end
 
-    local playerOrigin = AiUtility.client:getOrigin()
+    local playerOrigin = LocalPlayer:getOrigin()
     local distance = playerOrigin:getDistance(chickenOrigin)
 
     if distance > 500 then

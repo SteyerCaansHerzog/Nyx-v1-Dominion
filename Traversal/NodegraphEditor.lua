@@ -98,7 +98,7 @@ function NodegraphEditor:initFields()
     self.moveNodeResetDelay = Timer:new():startThenElapse()
     self.nextNodeTimer = Timer:new():startThenElapse()
 
-    MenuGroup.group:addLabel("----------------------------------------")
+    MenuGroup.group:addLabel("----------------------------------------"):setParent(MenuGroup.master)
     MenuGroup.enableEditor = MenuGroup.group:addCheckbox("> Enable Nodegraph Editor"):setParent(MenuGroup.master)
 
     MenuGroup.drawDistance = MenuGroup.group:addSlider("> Draw distance", 10, 100, {
@@ -115,8 +115,8 @@ function NodegraphEditor:initFields()
 
     MenuGroup.group:addLabel("------------------------------------------------"):setParent(MenuGroup.enableEditor)
 
-    for _, nodeType in pairs(Node) do
-        nodeType:setCustomizers(MenuGroup)
+    for field, cachedItem in pairs(NodeTypeBase.customizerItems) do
+        NodeTypeBase.customizerItems[field] = cachedItem()
     end
 
     for _, item in pairs(NodeTypeBase.customizerItems) do
@@ -150,43 +150,10 @@ function NodegraphEditor:initFields()
     MenuGroup.group:addButton("Create nodegraph", function()
     	Nodegraph.create(Nodegraph.getFilename())
     end):setParent(MenuGroup.enableEditor)
-
-    local nodeClassNames = {}
-
-    for _, nodeType in pairs(self.nodes) do
-        table.insert(nodeClassNames, nodeType.name)
-    end
-
-    table.sort(nodeClassNames)
-
-    MenuGroup.selectedNode = MenuGroup.group:addList("    > Selected Node Type", nodeClassNames):addCallback(function(item)
-        if not MenuGroup.master:get() or not MenuGroup.enableEditor:get() then
-            self.node:setCustomizersVisibility(false)
-
-            return
-        end
-
-        local iNode = item:get() + 1
-
-        self.node:setCustomizersVisibility(false)
-
-        self.node = self.nodes[iNode]
-        self.iNode = iNode
-
-        self.node:setCustomizersVisibility(true)
-    end):setParent(MenuGroup.enableEditor)
 end
 
 --- @return void
 function NodegraphEditor:initEvents()
-    Callbacks.init(function()
-        if not Server.getMapName() then
-            return
-        end
-
-        Nodegraph.load(Nodegraph.getFilename())
-    end)
-
     Callbacks.frame(function()
         if not MenuGroup.master:get() or not MenuGroup.enableEditor:get() then
             return

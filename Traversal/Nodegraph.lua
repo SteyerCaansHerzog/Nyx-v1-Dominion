@@ -14,6 +14,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 --}}}
@@ -65,6 +66,8 @@ function Nodegraph.initFields()
             Nodegraph.nodesBombsiteA[node.__classname] = {}
             Nodegraph.nodesBombsiteB[node.__classname] = {}
         end
+
+        node:setupCustomizers(MenuGroup)
     end
 
     for _, node in pairs(NodeType) do
@@ -74,6 +77,16 @@ end
 
 --- @return void
 function Nodegraph.initEvents()
+    Callbacks.init(function()
+        local filename = Nodegraph.getFilename()
+
+        if not filename then
+            return
+        end
+
+        Nodegraph.load(filename)
+    end)
+
     Callbacks.frame(function()
         for _, node in pairs(Nodegraph.nodes) do
             node:onThink(Nodegraph)
@@ -154,6 +167,12 @@ function Nodegraph.remove(node)
     table.insert(Nodegraph.freeIds, node.id)
 
     node:onRemove(Nodegraph)
+end
+
+--- @param node NodeTypeBase
+--- @return boolean
+function Nodegraph.isNodeAvailable(node)
+    return not Table.isEmpty(Nodegraph.nodesByClass[node.__classname])
 end
 
 --- Warning: never directly edit the table this function returns as it returns a field from the graph by reference.

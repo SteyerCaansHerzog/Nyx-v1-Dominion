@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -37,17 +38,17 @@ function AiStateDeveloper:activate()
     })
 
     -- Kirsty.
-    if AiUtility.client:getSteamId64() == "76561198816968549" then
+    if LocalPlayer:getSteamId64() == "76561198816968549" then
         Pathfinder.moveToNode(Nodegraph.getById(155))
     end
 
     -- Bropp.
-    if AiUtility.client:getSteamId64() == "76561198373386496" then
+    if LocalPlayer:getSteamId64() == "76561198373386496" then
         Pathfinder.moveToNode(Nodegraph.getById(270))
     end
 
     -- Retard community banned.
-    if AiUtility.client:getSteamId64() == "76561198117895205" then
+    if LocalPlayer:getSteamId64() == "76561198117895205" then
         Pathfinder.moveToNode(Nodegraph.getById(172))
     end
 end

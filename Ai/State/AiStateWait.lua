@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -88,7 +89,7 @@ end
 function AiStateWait:think(cmd)
     self.activity = "Waiting on teammate"
 
-    local clientOrigin = AiUtility.client:getOrigin()
+    local clientOrigin = LocalPlayer:getOrigin()
     local distanceToPlayer = clientOrigin:getDistance(self.waitingOnPlayer:getOrigin())
     local distanceToNode = clientOrigin:getDistance(self.node.origin)
 

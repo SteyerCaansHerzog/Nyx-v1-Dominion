@@ -24,6 +24,7 @@ local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --- @field priority AiPriority
 --- @field priorityMap string[]
 --- @field think fun(self: AiStateBase, cmd: SetupCommandEvent): void
+--- @field requiredNodes NodeTypeBase[]
 local AiStateBase = {
     priorityMap = Table.getInverted(AiPriority)
 }

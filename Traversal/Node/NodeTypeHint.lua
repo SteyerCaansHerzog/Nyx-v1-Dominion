@@ -38,8 +38,8 @@ end
 
 --- @param menu MenuGroup
 --- @return void
-function NodeTypeHint:setCustomizers(menu)
-	NodeTypeBase.setCustomizers(self, menu)
+function NodeTypeHint:setupCustomizers(menu)
+	NodeTypeBase.setupCustomizers(self, menu)
 
 	self:addCustomizer("radius", function()
 		return menu.group:addSlider("    > Hint Radius", 1, 10, {

@@ -29,8 +29,8 @@ end
 
 --- @param menu MenuGroup
 --- @return void
-function NodeTypeGrenade:setCustomizers(menu)
-	NodeTypeBase.setCustomizers(self, menu)
+function NodeTypeGrenade:setupCustomizers(menu)
+	NodeTypeBase.setupCustomizers(self, menu)
 
 	self:addCustomizer("isJump", function()
 		return menu.group:addCheckbox("    > Jump")
