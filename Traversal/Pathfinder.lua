@@ -781,7 +781,7 @@ function Pathfinder.traverseActivePath(cmd)
 		Pathfinder.moveDuckTimer:restart()
 	end
 
-	if Pathfinder.moveDuckTimer:isNotElapsedThenStop(0.5) then
+	if Pathfinder.moveDuckTimer:isNotElapsedThenStop(2) then
 		cmd.in_duck = true
 	end
 

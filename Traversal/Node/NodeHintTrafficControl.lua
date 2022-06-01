@@ -54,11 +54,11 @@ function NodeHintTrafficControl:render(nodegraph, isRenderingMetaData)
     end
 
     if self.occupancyRadius then
-        self.origin:clone():offset(0, 0, -18):drawCircle3D(self.occupancyRadius, self.renderColorInfo)
+        self.origin:clone():offset(0, 0, -18):drawCircle3D(self.occupancyRadius, self.renderColorFovPrimary)
     end
 
     if self.queueLinkRadius then
-        self.origin:clone():offset(0, 0, -18):drawCircle3D(self.queueLinkRadius, self.renderColorInfo:setLightness(0.65))
+        self.origin:clone():offset(0, 0, -18):drawCircle3D(self.queueLinkRadius, self.renderColorFovPrimary:setLightness(0.65))
     end
 end
 

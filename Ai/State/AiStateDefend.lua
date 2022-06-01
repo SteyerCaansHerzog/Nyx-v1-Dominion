@@ -1,7 +1,9 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local DrawDebug = require "gamesense/Nyx/v1/Api/DrawDebug"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -90,7 +92,7 @@ function AiStateDefend:__init()
 
     Callbacks.bombPlanted(function()
     	Client.fireAfter(1, function()
-            if AiUtility.plantedBomb and AiUtility.client:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) > 1000 then
+            if AiUtility.plantedBomb and LocalPlayer.origin:getDistance(AiUtility.plantedBomb:m_vecOrigin()) > 1000 then
                 self.getToSiteTimer:start()
             end
     	end)
@@ -114,17 +116,14 @@ end
 
 --- @return number
 function AiStateDefend:assessDemolition()
-    local player = AiUtility.client
     local bomb = AiUtility.plantedBomb
 
-    if player:isCounterTerrorist() then
+    if LocalPlayer:isCounterTerrorist() then
         if bomb then
-            self.bombsite = self.ai.nodegraph:getNearestSiteName(bomb:m_vecOrigin())
+            self.bombsite = Nodegraph.getClosestBombsiteName(bomb:m_vecOrigin())
 
             -- Defend our teammate who is defusing.
             if AiUtility.isBombBeingDefusedByTeammate then
-                self.isDefendingDefuser = true
-
                 return AiPriority.DEFEND_DEFUSER
             end
         end
@@ -138,7 +137,7 @@ function AiStateDefend:assessDemolition()
         return AiPriority.DEFEND_GENERIC
     end
 
-    if player:isTerrorist() then
+    if LocalPlayer:isTerrorist() then
         -- We're not near the site.
         -- This will practically force the AI to go to the site.
         if self.getToSiteTimer:isStarted() and not self.getToSiteTimer:isElapsed(12) then
@@ -151,9 +150,9 @@ function AiStateDefend:assessDemolition()
         end
 
         -- We should probably go to the site.
-        if AiUtility.bombCarrier and not AiUtility.bombCarrier:is(AiUtility.client) then
+        if AiUtility.bombCarrier and not AiUtility.bombCarrier:is(LocalPlayer) then
             local bombCarrierOrigin = AiUtility.bombCarrier:getOrigin()
-            local bombsite = self.ai.nodegraph:getNearestSiteNode(bombCarrierOrigin)
+            local bombsite = Nodegraph.getClosestBombsiteName(bombCarrierOrigin)
 
             if bombCarrierOrigin:getDistance(bombsite.origin) < 750 then
                 return AiPriority.DEFEND_PASSIVE
@@ -169,9 +168,7 @@ end
 
 --- @return number
 function AiStateDefend:assessHostage()
-    local player = AiUtility.client
-
-    if player:isTerrorist() then
+    if LocalPlayer:isTerrorist() then
         -- The CTs have a hostage.
         if AiUtility.isHostageCarriedByEnemy then
             return AiPriority.IGNORE
@@ -192,7 +189,6 @@ end
 --- @return void
 function AiStateDefend:reset()
     self.isDefending = false
-    self.isDefendingDefuser = false
     self.isAtDestination = false
     self.isOnDefendSpot = false
     self.node = nil
@@ -228,10 +224,10 @@ function AiStateDefend:activate(site, swapPair)
     local bomb = AiUtility.plantedBomb
 
     if bomb then
-        site = self.ai.nodegraph:getNearestSiteName(bomb:m_vecOrigin())
+        site = Nodegraph.getClosestBombsiteName(bomb:m_vecOrigin())
     end
 
-    --- @type Node
+    --- @type NodeTypeDefend
     local node
 
     if swapPair and self.node then
@@ -246,10 +242,10 @@ function AiStateDefend:activate(site, swapPair)
 
     self.node = node
     self.isDefending = false
-    self.isDefendingDefuser = false
     self.isAtDestination = false
     self.isOnDefendSpot = false
     self.isJiggling = false
+    self.isFirstJiggle = true
     self.isAllowedToDuckAtNode = Client.getChance(2)
 
     self.defendTimer:stop()
@@ -260,12 +256,13 @@ function AiStateDefend:activate(site, swapPair)
     if AiUtility.gamemode == "hostage" then
         task = "Defending hostages"
     else
-        task = string.format("Defending %s site", self.node.site:upper())
+        task = string.format("Defending %s site", self.node.bombsite:upper())
     end
 
-    self.ai.nodegraph:pathfind(self.node.origin, {
-        objective = Node.types.GOAL,
-        task = task
+    Pathfinder.moveToNode(self.node, {
+        task = task,
+        isCounterStrafingOnGoal = true,
+        goalReachedRadius = 8,
     })
 end
 
@@ -276,7 +273,7 @@ function AiStateDefend:think(cmd)
         return
     end
 
-    local distance = AiUtility.client:getOrigin():offset(0, 0, 18):getDistance(self.node.origin)
+    local distance = AiUtility.clientNodeOrigin:getDistance(self.node.origin)
 
     -- Set activity string.
     if AiUtility.gamemode == "hostage" then
@@ -299,9 +296,10 @@ function AiStateDefend:think(cmd)
     end
 
     -- Restart defend procedure somewhere else.
+    -- Don't do this if we're defending against a specific threat.
     if self.ai.priority ~= AiPriority.DEFEND_ACTIVE and self.defendTimer:isElapsedThenStop(self.defendTime) then
         self.defendTime = Client.getRandomFloat(3, 8)
-        self.isJigglingUponReachingSpot = Client.getChance(2)
+        self.isJigglingUponReachingSpot = Client.getChance(0.75)
         self.isJiggling = false
 
         -- Move to another spot on the site.
@@ -319,16 +317,24 @@ function AiStateDefend:think(cmd)
         end
 
         if self.isJiggling then
+            local jiggleTime = self.jiggleTime
+
+            if self.isFirstJiggle then
+                jiggleTime = jiggleTime * 0.5
+            end
+
             self.jiggleTimer:ifPausedThenStart()
 
-            if self.jiggleTimer:isElapsedThenRestart(self.jiggleTime) then
+            if self.jiggleTimer:isElapsedThenRestart(jiggleTime) then
+                self.isFirstJiggle = false
+
                 self.jiggleDirection = self.jiggleDirection == "Left" and "Right" or "Left"
             end
 
             --- @type Vector3
             local direction = self.node.direction[string.format("get%s", self.jiggleDirection)](self.node.direction)
 
-            self.ai.nodegraph.moveAngle = direction:getAngleFromForward()
+            Pathfinder.moveInDirection(direction)
         end
     end
 
@@ -338,29 +344,23 @@ function AiStateDefend:think(cmd)
 
         self.defendTimer:ifPausedThenStart()
 
-        local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
-        local lookDirectionTrace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding, "AiStateDefend.think<FindLookAngle>")
         local nodeVisibleTrace = Trace.getLineToPosition(Client.getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateDefend.think<FindSpotVisible>")
 
         -- Duck when holding this node.
-        if self.isAllowedToDuckAtNode and distance < 32 then
-            local duckTrace = Trace.getLineToPosition(self.node.origin:clone():offset(0, 0, 28), lookDirectionTrace.endPosition, AiUtility.traceOptionsAttacking, "AiStateDefend.think<FindCanDuck>")
-
-            if not duckTrace.isIntersectingGeometry then
-                cmd.in_duck = true
-            end
+        if self.isAllowedToDuckAtNode and distance < 32 and self.node.isAllowedToDuck then
+            cmd.in_duck = true
         end
 
         -- Look at the angle we intend to hold.
         if not nodeVisibleTrace.isIntersectingGeometry then
-            View.lookAtLocation(lookDirectionTrace.endPosition, 4, View.noise.moving, "Defend look at angle")
+            View.lookAtLocation(self.node.lookAtOrigin, 6.5, View.noise.moving, "Defend look at angle")
 
             self.ai.isWalking = true
         end
 
         -- Equip the correct gear.
-        if not AiUtility.client:isHoldingGun() then
-            if AiUtility.client:hasPrimary() then
+        if not LocalPlayer:isHoldingGun() then
+            if LocalPlayer:hasPrimary() then
                 Client.equipPrimary()
             else
                 Client.equipPistol()
@@ -373,7 +373,7 @@ function AiStateDefend:think(cmd)
         self.isJiggling = false
         self.isJigglingUponReachingSpot = false
 
-        if AiUtility.client:isHoldingSniper() then
+        if LocalPlayer:isHoldingSniper() then
             Client.unscope()
         end
 
@@ -381,66 +381,49 @@ function AiStateDefend:think(cmd)
     end
 
     -- Repathfind.
-    if not self.isAtDestination and self.ai.nodegraph:isIdle() then
-        self.ai.nodegraph:rePathfind()
+    if not self.isAtDestination and Pathfinder.isIdle() then
+        Pathfinder.retryLastRequest()
     end
 
     -- Reached destination.
-    if distance < 30 then
+    if distance < 10 then
         self.isAtDestination = true
         self.isDefending = true
 
-        if AiUtility.client:isHoldingSniper() then
+        if LocalPlayer:isHoldingSniper() then
             Client.scope()
         end
     end
 end
 
---- @param site string|Node
---- @return Node
-function AiStateDefend:getActivityNode(site)
-    local team = AiUtility.client:m_iTeamNum()
+--- @param bombsite string|NodeTypeDefend
+--- @return NodeTypeDefend
+function AiStateDefend:getActivityNode(bombsite)
+    bombsite = bombsite or self.bombsite
 
-    if AiUtility.gamemode == "hostage" then
-        return Nodegraph.getRandom(Node.defendHostageT)
+    if LocalPlayer:isCounterTerrorist() then
+        local class
+
+        if AiUtility.isBombBeingDefusedByTeammate then
+            class = Node.defendBombCt
+        else
+            class = Node.defendSiteCt
+        end
+
+        return Nodegraph.getRandomForBombsite(class, bombsite)
+    elseif LocalPlayer:isTerrorist() then
+        local class
+
+        if AiUtility.gamemode == "hostage" then
+            class = Node.defendHostageT
+        elseif AiUtility.isBombBeingPlantedByTeammate then
+            class = Node.defendBombT
+        else
+            class = Node.defendSiteT
+        end
+
+        return Nodegraph.getRandomForBombsite(class, bombsite)
     end
-
-    if not site then
-        site = self.bombsite
-    end
-
-    local nodes
-
-    if self.isDefendingDefuser then
-        local defendNodes = {
-            A = Nodegraph.getForBombsite(Node.defendBombCt, "A"),
-            B = Nodegraph.getForBombsite(Node.defendBombCt, "B"),
-        }
-
-        nodes = defendNodes[site]
-    else
-        local defendNodes = {
-            [2] = {
-                A = Nodegraph.getForBombsite(Node.defendSiteT, "A"),
-                B = Nodegraph.getForBombsite(Node.defendSiteT, "B"),
-            },
-            [3] = {
-                A = Nodegraph.getForBombsite(Node.defendSiteCt, "A"),
-                B = Nodegraph.getForBombsite(Node.defendSiteCt, "B"),
-            }
-        }
-
-        nodes = defendNodes[team][site]
-    end
-
-    --- @type Node
-    local node = {}
-
-    while node and not node.active do
-        node = Table.getRandom(nodes)
-    end
-
-    return node
 end
 
 return Nyx.class("AiStateDefend", AiStateDefend, AiStateBase)

@@ -28,6 +28,7 @@ local MapInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/MapInfo"
 --- @field bombDetonationTime number
 --- @field canDefuse boolean
 --- @field client Player
+--- @field clientNodeOrigin Vector3
 --- @field clientThreatenedBy Player
 --- @field clientThreatenedFromOrigin Vector3
 --- @field closestEnemy Player
@@ -80,6 +81,7 @@ end
 function AiUtility:initFields()
     AiUtility.isPerformingCalculations = true
     AiUtility.client = Player.getClient()
+    AiUtility.clientNodeOrigin = Client.getOrigin():offset(0, 0, 18)
     AiUtility.visibleEnemies = {}
     AiUtility.lastVisibleEnemyTimer = Timer:new()
     AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
@@ -356,6 +358,7 @@ end
 --- @return void
 function AiUtility.updateMisc()
     AiUtility.client = Player.getClient()
+    AiUtility.clientNodeOrigin = Client.getOrigin():offset(0, 0, 18)
     AiUtility.bomb = Entity.findOne("CC4")
     AiUtility.plantedBomb = Entity.findOne("CPlantedC4")
     AiUtility.gameRules = Entity.getGameRules()

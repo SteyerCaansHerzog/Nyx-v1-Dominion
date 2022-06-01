@@ -22,7 +22,8 @@ local NodeSpotWatch = {
     colorSecondary = Color:hsla(25, 0.8, 0.5),
     isDirectional = true,
     weaponsSnipers = "Snipers Only",
-    weaponsOthers = "Other Weapons"
+    weaponsOthers = "Other Weapons",
+    lookZOffset = 28
 }
 
 --- @param fields NodeSpotWatch

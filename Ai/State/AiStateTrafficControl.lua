@@ -135,7 +135,7 @@ end
 function AiStateTrafficControl:think(cmd)
     self.activity = "Queuing in traffic"
 
-    View.lookInDirection(self.trafficQueueNode.direction, 4, View.noise.moving, "Traffic Control watch angle")
+    View.lookAtLocation(self.trafficQueueNode.lookAtOrigin, 4, View.noise.moving, "Traffic Control watch angle")
     Pathfinder.ifIdleThenRetryLastRequest()
 
     if not self:isOccupied(self.trafficControlNode) then

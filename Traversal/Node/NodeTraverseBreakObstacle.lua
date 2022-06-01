@@ -17,7 +17,8 @@ local NodeTraverseBreakObstacle = {
         "obstacles."
     },
     colorSecondary = Color:hsla(0, 0.8, 0.6),
-    isDirectional = true
+    isDirectional = true,
+    lookDistanceThreshold = 0
 }
 
 --- @param fields NodeTraverseBreakObstacle
@@ -34,6 +35,16 @@ function NodeTraverseBreakObstacle:setCustomizers(menu)
     self:addCustomizer("isDuck", function()
         return menu.group:addCheckbox("    > Duck when passing")
     end)
+end
+
+--- @param nodegraph Nodegraph
+--- @return void
+function NodeTraverseBreakObstacle:onSetup(nodegraph)
+    if self.isDuck then
+        self.lookZOffset = 28
+    end
+
+    NodeTypeTraverse.onSetup(self, nodegraph)
 end
 
 return Nyx.class("NodeTraverseBreakObstacle", NodeTraverseBreakObstacle, NodeTypeTraverse)

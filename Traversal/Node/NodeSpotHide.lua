@@ -18,7 +18,8 @@ local NodeSpotHide = {
         "- The AI will check these corners when passing by."
     },
     colorSecondary = Color:hsla(55, 0.8, 0.6),
-    isDirectional = true
+    isDirectional = true,
+    lookZOffset = 28
 }
 
 --- @param fields NodeSpotHide

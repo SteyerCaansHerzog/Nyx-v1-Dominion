@@ -32,7 +32,7 @@ function NodeTypeHint:render(nodegraph, isRenderingMetaData)
 	end
 
 	if self.radius then
-		self.origin:clone():offset(0, 0, -18):drawCircle3D(self.radius, self.renderColorInfo)
+		self.origin:clone():offset(0, 0, -18):drawCircle3D(self.radius, self.renderColorFovPrimary)
 	end
 end
 

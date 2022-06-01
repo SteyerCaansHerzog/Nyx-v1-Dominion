@@ -24,13 +24,14 @@ local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 --- @class Nodegraph : Class
 --- @field freeIds number[]
 --- @field iNodes number
---- @field nodes NodeTypeBase[]
---- @field nodesByType table<string, NodeTypeBase[]>
---- @field nodesByClass table<string, NodeTypeBase[]>
---- @field nodeTypes NodeTypeBase[]
+--- @field isLoaded boolean
 --- @field nodeClassMap table<string, NodeTypeBase[]>
+--- @field nodes NodeTypeBase[]
 --- @field nodesBombsiteA table<string, NodeTypeBase[]>
 --- @field nodesBombsiteB table<string, NodeTypeBase[]>
+--- @field nodesByClass table<string, NodeTypeBase[]>
+--- @field nodesByType table<string, NodeTypeBase[]>
+--- @field nodeTypes NodeTypeBase[]
 local Nodegraph = {}
 
 --- @return void
@@ -49,6 +50,7 @@ function Nodegraph.initFields()
     Nodegraph.nodeClassMap = {}
     Nodegraph.nodesBombsiteA = {}
     Nodegraph.nodesBombsiteB = {}
+    Nodegraph.isLoaded = false
 
     --- @type NodeTypeBase[]
     local classes = Node
@@ -58,11 +60,8 @@ function Nodegraph.initFields()
         Nodegraph.nodeClassMap[node.__classname] = node
 
         if node.isLinkedToBombsite then
-            if node.bombsite == "A" then
-                Nodegraph.nodesBombsiteA[node.__classname] = {}
-            elseif node.bombsite == "B" then
-                Nodegraph.nodesBombsiteB[node.__classname] = {}
-            end
+            Nodegraph.nodesBombsiteA[node.__classname] = {}
+            Nodegraph.nodesBombsiteB[node.__classname] = {}
         end
     end
 
@@ -119,6 +118,16 @@ function Nodegraph.add(node)
     Nodegraph.nodesByClass[node.__classname][id] = node
     Nodegraph.nodesByType[node.type][id] = node
     Nodegraph.nodes[id] = node
+
+    node:onCreatePost(Nodegraph)
+
+    if node.isLinkedToBombsite then
+        if node.bombsite == "A" then
+            table.insert(Nodegraph.nodesBombsiteA[node.__classname], node)
+        elseif node.bombsite == "B" then
+            table.insert(Nodegraph.nodesBombsiteB[node.__classname], node)
+        end
+    end
 
     for _, search in pairs(Nodegraph.nodes) do
         search:onSetup(Nodegraph)
@@ -224,9 +233,9 @@ end
 function Nodegraph.getForBombsite(node, bombsite)
     bombsite = bombsite:upper()
 
-    if node.bombsite == "A" then
+    if bombsite == "A" then
         return Nodegraph.nodesBombsiteA[node.__classname]
-    elseif node.bombsite == "B" then
+    elseif bombsite == "B" then
         return Nodegraph.nodesBombsiteB[node.__classname]
     end
 end
@@ -657,6 +666,14 @@ function Nodegraph.load(filename)
 
         Nodegraph.nodesByClass[node.__classname][node.id] = node
         Nodegraph.nodesByType[node.type][node.id] = node
+
+        if node.isLinkedToBombsite then
+            if node.bombsite == "A" then
+                table.insert(Nodegraph.nodesBombsiteA[node.__classname], node)
+            elseif node.bombsite == "B" then
+                table.insert(Nodegraph.nodesBombsiteB[node.__classname], node)
+            end
+        end
     end
 
     Nodegraph.freeIds = {}
@@ -674,6 +691,8 @@ function Nodegraph.load(filename)
     for _, node in pairs(nodes) do
         node:onSetup(Nodegraph)
     end
+
+    Nodegraph.isLoaded = true
 
     Logger.console(0, "Loaded nodegraph from '%s'.", filename)
 end

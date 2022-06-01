@@ -1,24 +1,18 @@
---- Nyx.to Domnion
+--- Copyright, Steyer Caans Herzog <kessie@nyx.to>
+--- All rights reserved.
 ---
---- AI service for CS:GO. Play competitive matchmaking with intuitive bots.
----
---- author Steyer Caans Herzog, Nyx.to <kessie@nyx.to>
---- domain https://nyx.to/dominion
----
---- language LuaJIT
---- license Proprietary
----
---- dependencies
----     gamesense/nyx
----     gamesense/csgo_weapons
----     gamesense/localization
+--- Dependencies:
+--- - Nyx-v1-API <https://github.com/SteyerCaansHerzog/Nyx-v1-Api>
+--- - CSGO-Weapon-Data <https://gamesense.pub/forums/viewtopic.php?id=18807>
+--- - Localization-API <https://gamesense.pub/forums/viewtopic.php?id=30643>
+
+--{{{ Dependencies
+-- Initialise the local player before all other AI modules.
+require "gamesense/Nyx/v1/Api/LocalPlayer"
+--}}}
 
 --{{{ Modules
---local AiController = require "gamesense/Nyx/v1/Dominion/Ai/AiController"
-local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local NodegraphEditor = require "gamesense/Nyx/v1/Dominion/Traversal/NodegraphEditor"
-local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
 local AiController = require "gamesense/Nyx/v1/Dominion/Ai/AiController"
 --}}}
 

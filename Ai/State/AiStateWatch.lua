@@ -1,10 +1,9 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
-local Trace = require "gamesense/Nyx/v1/Api/Trace"
 --}}}
 
 --{{{ Modules
@@ -52,12 +51,12 @@ function AiStateWatch:assess()
     -- Handle hostage gamemode.
     if AiUtility.gamemode == "hostage" then
         -- Only CTs should watch.
-        if not AiUtility.client:isCounterTerrorist() then
+        if not LocalPlayer:isCounterTerrorist() then
             return AiPriority.IGNORE
         end
     else
         -- Only Ts should watch in demolition.
-        if not AiUtility.client:isTerrorist() then
+        if not LocalPlayer:isTerrorist() then
             return AiPriority.IGNORE
         end
     end
@@ -75,12 +74,12 @@ function AiStateWatch:assess()
     end
 
     -- We don't want to watch angles at bad times.
-    if AiUtility.plantedBomb or (AiUtility.bombCarrier and AiUtility.bombCarrier:is(AiUtility.client)) or AiUtility.roundTimer:isElapsed(25) then
+    if AiUtility.plantedBomb or (AiUtility.bombCarrier and AiUtility.bombCarrier:is(LocalPlayer)) or AiUtility.roundTimer:isElapsed(25) then
         return AiPriority.IGNORE
     end
 
     -- Other weapons.
-    if not AiUtility.client:hasPrimary() or AiUtility.client:hasRifle() then
+    if not LocalPlayer:hasPrimary() or LocalPlayer:hasRifle() then
         local node = self:getWatchNode(Node.spotWatch.weaponsOthers, 3)
 
         if node then
@@ -91,7 +90,7 @@ function AiStateWatch:assess()
     end
 
     -- Snipers only.
-    if AiUtility.client:hasSniper() then
+    if LocalPlayer:hasSniper() then
         local node = self:getWatchNode(Node.spotWatch.weaponsSnipers, 0.75)
 
         if node then
@@ -108,7 +107,7 @@ end
 --- @param chance number
 --- @return NodeSpotWatch
 function AiStateWatch:getWatchNode(weapons, chance)
-    local clientOrigin = AiUtility.client:getOrigin()
+    local clientOrigin = LocalPlayer.origin
 
     for _, node in pairs(Nodegraph.get(Node.spotWatch)) do repeat
         if self.blacklist[node.id] then
@@ -171,7 +170,7 @@ function AiStateWatch:think(cmd)
         return
     end
 
-    local clientOrigin = AiUtility.client:getOrigin()
+    local clientOrigin = LocalPlayer.origin
     local distance = clientOrigin:getDistance(self.node.origin)
 
     if not self.isWatching then
@@ -197,7 +196,7 @@ function AiStateWatch:think(cmd)
 
         cmd.in_duck = true
 
-        if AiUtility.client:isHoldingSniper() then
+        if LocalPlayer:isHoldingSniper() then
             Client.scope()
         end
     end
@@ -210,15 +209,12 @@ function AiStateWatch:think(cmd)
     end
 
     if distance < 200 then
-        local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
-        local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding, "AiStateWatch.think<FindSpotVisible>")
-
-        View.lookAtLocation(trace.endPosition, 3, View.noise.none, "Watch look at angle")
+        View.lookAtLocation(self.node.lookAtOrigin, 3, View.noise.none, "Watch look at angle")
 
         self.ai.canUseKnife = false
 
-        if not AiUtility.client:isHoldingGun() then
-            if AiUtility.client:hasPrimary() then
+        if not LocalPlayer:isHoldingGun() then
+            if LocalPlayer:hasPrimary() then
                 Client.equipPrimary()
             else
                 Client.equipPistol()

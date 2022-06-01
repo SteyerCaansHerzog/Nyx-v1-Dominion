@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
@@ -38,7 +39,7 @@ function AiStateZombie:__init() end
 
 --- @return void
 function AiStateZombie:assess()
-    if not AiUtility.client:isTerrorist() then
+    if not LocalPlayer:isTerrorist() then
         return AiPriority.IGNORE
     end
 
@@ -116,7 +117,7 @@ function AiStateZombie:think(cmd)
         end
 
         if traceJump.isIntersectingGeometry then
-            if AiUtility.client:m_vecVelocity():getMagnitude() < 100 then
+            if LocalPlayer.velocity:getMagnitude() < 100 then
                 local zDelta = clientOrigin.z - targetOrigin.z
 
                 if zDelta < -32 then

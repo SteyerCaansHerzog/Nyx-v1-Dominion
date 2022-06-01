@@ -124,18 +124,6 @@ function NodegraphEditor:initFields()
 
     MenuGroup.group:addLabel("------------------------------------------------"):setParent(MenuGroup.enableEditor)
 
-    MenuGroup.group:addButton("Load nodegraph", function()
-        Nodegraph.load(Nodegraph.getFilename())
-    end):setParent(MenuGroup.enableEditor)
-
-    MenuGroup.group:addButton("Save nodegraph", function()
-        Nodegraph.save(Nodegraph.getFilename())
-    end):setParent(MenuGroup.enableEditor)
-
-    MenuGroup.group:addButton("Create nodegraph", function()
-    	Nodegraph.create(Nodegraph.getFilename())
-    end):setParent(MenuGroup.enableEditor)
-
     local nodeGroupNames = {}
     --- @type NodeTypeBase[]
     local types = NodeType
@@ -149,6 +137,18 @@ function NodegraphEditor:initFields()
     MenuGroup.visibleGroups = MenuGroup.group:addMultiDropdown("    > Visible Groups", nodeGroupNames):addCallback(function(item)
         self.visibleGroups = Table.getMap(item:get())
     end):setParent(MenuGroup.enableEditor):set(nodeGroupNames)
+
+    MenuGroup.group:addButton("Load nodegraph", function()
+        Nodegraph.load(Nodegraph.getFilename())
+    end):setParent(MenuGroup.enableEditor)
+
+    MenuGroup.group:addButton("Save nodegraph", function()
+        Nodegraph.save(Nodegraph.getFilename())
+    end):setParent(MenuGroup.enableEditor)
+
+    MenuGroup.group:addButton("Create nodegraph", function()
+    	Nodegraph.create(Nodegraph.getFilename())
+    end):setParent(MenuGroup.enableEditor)
 
     local nodeClassNames = {}
 
@@ -406,10 +406,10 @@ function NodegraphEditor:processAdd()
     if not self.spawnError then
         self.highlightNode, self.highlightNodeColor = node, Color:hsla(120, 0.8, 0.6, 50)
 
-        if not Menu.isOpen() and self.keyAdd:wasPressed() then
-            Nodegraph.add(node)
+        if self.keyAdd:wasPressed() then
+            node:onCreatePre(Nodegraph)
 
-            node:onCreate(Nodegraph)
+            Nodegraph.add(node)
         end
     else
         self.keyAdd:reset()

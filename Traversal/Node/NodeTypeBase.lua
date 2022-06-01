@@ -1,7 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
-local DrawDebug = require "gamesense/Nyx/v1/Api/DrawDebug"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -15,6 +14,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
+local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestList"
 --}}}
@@ -29,6 +29,10 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 
 --- @class NodeTypeBase : Class
 --- @field bombsite string
+--- @field collisionHullGap Vector3[]
+--- @field collisionHullHumanDucking Vector3[]
+--- @field collisionHullHumanStanding Vector3[]
+--- @field collisionHullNode Vector3[]
 --- @field colorPrimary Color
 --- @field colorSecondary Color
 --- @field connections NodeTypeBase[]
@@ -52,28 +56,32 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field isPlanar boolean
 --- @field isTransient boolean
 --- @field isTraversal boolean
+--- @field lookAtOrigin Vector3
+--- @field lookFromOrigin Vector3
+--- @field lookZOffset number
 --- @field name string
 --- @field origin Vector3
 --- @field pathOffset number
 --- @field pathOrigin Vector3
 --- @field renderAlpha number
---- @field renderColorInfo Color
+--- @field renderColorFovPrimary Color
+--- @field renderColorFovPrimaryMuted Color
+--- @field renderColorFovSecondary Color
 --- @field renderColorPrimary Color
 --- @field renderColorSecondary Color
+--- @field lookDistanceThreshold number
 --- @field type string
---- @field collisionHullHumanStanding Vector3[]
---- @field collisionHullHumanDucking Vector3[]
---- @field collisionHullNode Vector3[]
---- @field collisionHullGap Vector3[]
 local NodeTypeBase = {
     name = "Unnamed Node Type",
     description = {"No description given."},
-    isActive = true,
-    isLinkedToBombsite = false,
-    isDirectional = false,
-    isConnectable = true,
     customizerItems = {},
-    drawDistance = 1024
+    drawDistance = 1024,
+    isActive = true,
+    isConnectable = true,
+    isDirectional = false,
+    isLinkedToBombsite = false,
+    lookZOffset = 46,
+    lookDistanceThreshold = 200
 }
 
 --- @param fields NodeTypeBase
@@ -129,13 +137,15 @@ function NodeTypeBase:render(nodegraph, isRenderingMetaData)
     local cameraOrigin = Client.getCameraOrigin()
     local origin = Client.getOrigin()
     local cameraAngles = Client.getCameraAngles()
-    local alphaModDistance = Math.getClamped(Math.getInversedFloat(origin:getDistance(self.origin), 350), 0, 1) * 255
-    local alphaModFoV = Math.getClamped(Math.getInversedFloat(cameraAngles:getFov(cameraOrigin, self.origin), 25), 0, 1) * 255
+    local alphaModDistance = Math.getClamped(Math.getInversedFloat(origin:getDistance(self.origin), 400), 0, 1) * 255
+    local alphaModFoV = Math.getClamped(Math.getInversedFloat(cameraAngles:getFov(cameraOrigin, self.origin), 30), 0.1, 1) * 255
 
     self.renderAlpha = Math.getClamped(Math.getInversedFloat(origin:getDistance(self.origin), NodeTypeBase.drawDistance), 0, 1) * 255
     self.renderColorPrimary = self.colorPrimary:clone():setAlpha(self.renderAlpha)
     self.renderColorSecondary = self.colorSecondary:clone():setAlpha(self.renderAlpha)
-    self.renderColorInfo = self.renderColorPrimary:clone():setAlpha(math.min(alphaModDistance, alphaModFoV))
+    self.renderColorFovPrimary = self.renderColorPrimary:clone():setAlpha(math.min(alphaModDistance, alphaModFoV))
+    self.renderColorFovPrimaryMuted = self.renderColorPrimary:clone():setAlpha(math.min(alphaModDistance, alphaModFoV) * 0.4)
+    self.renderColorFovSecondary = self.renderColorSecondary:clone():setAlpha(math.min(alphaModDistance, alphaModFoV))
 
     if not self:isRenderable() then
         self.iRenderTopLines = 0
@@ -203,13 +213,36 @@ function NodeTypeBase:render(nodegraph, isRenderingMetaData)
             title = string.format("%i %s", self.id, self.name)
         end
 
-        self:renderTopText(self.renderColorInfo, title)
+        self:renderTopText(self.renderColorFovPrimary, title)
     end
 
     if self.customizers then
         for _, field in pairs(self.customizers) do
-            self:renderBottomText(self.renderColorInfo, "%s %s", field, self[field])
+            self:renderBottomText(self.renderColorFovPrimary, "%s %s", field, self[field])
         end
+    end
+
+    if Debug.isDisplayingNodeConnections then
+        for _, node in pairs(self.connections) do
+            self:renderTopText(self.renderColorFovPrimaryMuted, node.id)
+        end
+    end
+
+    if Debug.isDisplayingNodeLookAngles and self.lookAtOrigin then
+        local color
+        local distance = self.lookFromOrigin:getDistance(self.lookAtOrigin)
+
+        if distance < self.lookDistanceThreshold then
+            color = ColorList.ERROR
+
+            self.lookAtOrigin:drawScaledCircleOutline(50, 15, color)
+        else
+            color = self.renderColorSecondary
+
+        end
+
+        self.lookFromOrigin:drawScaledCircle(30, color)
+        self.lookFromOrigin:drawLine(self.lookAtOrigin, color)
     end
 
     self.iRenderTopLines = 0
@@ -257,6 +290,15 @@ function NodeTypeBase:renderBottomText(color, ...)
     drawPos:drawSurfaceText(Font.SMALL, color, "c", string.format(...))
 
     self.iRenderBottomLines = self.iRenderBottomLines + 1
+end
+
+--- @return Vector3
+function NodeTypeBase:setLookAtOrigin()
+    local lookFromOrigin = self.origin:clone():offset(0, 0, self.lookZOffset)
+    local lookDirectionTrace = Trace.getLineAtAngle(lookFromOrigin, self.direction, AiUtility.traceOptionsAttacking, "NodeTypeDefend.getLookOrigin<FindLookAngle>")
+
+    self.lookAtOrigin = lookDirectionTrace.endPosition
+    self.lookFromOrigin = lookFromOrigin
 end
 
 --- Returns a string describing a problem with the node that will inhibit the AI in gameplay.
@@ -486,17 +528,23 @@ function NodeTypeBase:deactivate()
     self.isActive = false
 end
 
---- Executed upon the node being added to the graph.
+--- Executed immediately before adding the node to the graph.
 ---
 --- @param nodegraph Nodegraph
 --- @return void
-function NodeTypeBase:onCreate(nodegraph)
-    for _, connection in pairs(self.connections) do
-        connection.connections[self.id] = self
-    end
-
+function NodeTypeBase:onCreatePre(nodegraph)
     if self.isDirectional then
         self.direction = Client.getCameraAngles()
+    end
+end
+
+--- Executed immediately before after adding the node to the graph.
+---
+--- @param nodegraph Nodegraph
+--- @return void
+function NodeTypeBase:onCreatePost(nodegraph)
+    for _, connection in pairs(self.connections) do
+        connection.connections[self.id] = self
     end
 end
 
@@ -524,6 +572,11 @@ function NodeTypeBase:onSetup(nodegraph)
         end
 
         self.pathOffset = offset
+    end
+
+    -- Set look at data for directional nodes.
+    if self.isDirectional then
+        self:setLookAtOrigin()
     end
 end
 

@@ -4,6 +4,7 @@ local AiStateList = {
 	avoidInfernos = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateAvoidInfernos",
 	boost = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBoost",
 	chickenInteraction = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateChickenInteraction",
+	defend = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefend",
 	developer = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDeveloper",
 	evade = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateEvade",
 	idle = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateIdle",

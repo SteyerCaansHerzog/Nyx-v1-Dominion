@@ -16,7 +16,8 @@ local NodeSpotPlant = {
     },
     colorSecondary = Color:hsla(350, 0.8, 0.7),
     isLinkedToBombsite = true,
-    isDirectional = true
+    isDirectional = true,
+    lookDistanceThreshold = 0
 }
 
 --- @param fields NodeSpotPlant

@@ -1,19 +1,23 @@
 --{{{ Dependencies
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Trace = require "gamesense/Nyx/v1/Api/Trace"
 --}}}
 
 --{{{ Modules
 local NodeTypeBase = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeBase"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 
 --{{{ NodeTypeDefend
 --- @class NodeTypeDefend : NodeTypeBase
 --- @field pairedWith NodeTypeDefend
+--- @field isAllowedToDuck boolean
 local NodeTypeDefend = {
 	type = "Defend",
 	isConnectable = true,
 	isDirectional = true,
 	isLinkedToBombsite = true,
+	lookDistanceThreshold = 200
 }
 
 --- @param fields NodeTypeDefend
@@ -49,12 +53,6 @@ end
 
 --- @param nodegraph Nodegraph
 --- @return void
-function NodeTypeDefend:onCreate(nodegraph)
-	NodeTypeBase.onCreate(self, nodegraph)
-end
-
---- @param nodegraph Nodegraph
---- @return void
 function NodeTypeDefend:onRemove(nodegraph)
 	NodeTypeBase.onRemove(self, nodegraph)
 
@@ -67,6 +65,11 @@ end
 --- @return void
 function NodeTypeDefend:onSetup(nodegraph)
 	NodeTypeBase.onSetup(self, nodegraph)
+
+	local lookFromOrigin = self.lookFromOrigin:clone():offset(0, 0, -18)
+	local trace = Trace.getLineToPosition(lookFromOrigin, self.lookAtOrigin, AiUtility.traceOptionsAttacking)
+
+	self.isAllowedToDuck = not trace.isIntersectingGeometry
 
 	if self.pairedWith then
 		return

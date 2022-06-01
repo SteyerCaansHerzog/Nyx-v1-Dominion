@@ -47,7 +47,7 @@ function NodeTypeObjective:render(nodegraph, isRenderingMetaData)
 			nextVertex = plane[k + 1]
 		end
 
-		vertex:drawLine(nextVertex, self.renderColorInfo)
+		vertex:drawLine(nextVertex, self.renderColorFovPrimary)
 	end
 end
 
