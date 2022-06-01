@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Voice = require "gamesense/Nyx/v1/Api/Voice"
@@ -112,7 +113,7 @@ function AiVoicePack:speak(lines, options)
 
     Table.setMissing(options, self.defaultSpeakOptions)
 
-    if not Client.getChance(options.chance) then
+    if not Math.getChance(options.chance) then
         return
     end
 
@@ -124,7 +125,7 @@ function AiVoicePack:speak(lines, options)
         self:lock()
     end
 
-    local delay = Client.getRandomFloat(options.minDelay, options.maxDelay)
+    local delay = Math.getRandomFloat(options.minDelay, options.maxDelay)
 
     Client.fireAfter(delay, function()
         if not options.condition or (options.condition and options.condition()) then
@@ -150,7 +151,7 @@ function AiVoicePack:speakSequence(sequence, options)
 
     Table.setMissing(options, self.defaultSpeakOptions)
 
-    if not Client.getChance(options.chance) then
+    if not Math.getChance(options.chance) then
         return
     end
 
@@ -162,7 +163,7 @@ function AiVoicePack:speakSequence(sequence, options)
         self:lock()
     end
 
-    Client.fireAfter(Client.getRandomFloat(options.minDelay, options.maxDelay), function()
+    Client.fireAfter(Math.getRandomFloat(options.minDelay, options.maxDelay), function()
         local finalSequence = {}
 
         for key, lineOrLines in pairs(sequence) do
@@ -193,7 +194,7 @@ function AiVoicePack:speakRandomSequence(sequences, options)
 
     Table.setMissing(options, self.defaultSpeakOptions)
 
-    if not Client.getChance(options.chance) then
+    if not Math.getChance(options.chance) then
         return
     end
 
@@ -205,7 +206,7 @@ function AiVoicePack:speakRandomSequence(sequences, options)
         self:lock()
     end
 
-    Client.fireAfter(Client.getRandomFloat(options.minDelay, options.maxDelay), function()
+    Client.fireAfter(Math.getRandomFloat(options.minDelay, options.maxDelay), function()
         local sequence = Table.getRandom(sequences)
         local finalSequence = {}
 

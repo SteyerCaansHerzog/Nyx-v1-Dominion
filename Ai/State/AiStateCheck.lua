@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -31,7 +32,7 @@ end
 
 --- @return void
 function AiStateCheck:__init()
-    self.abortDistance = Client.getRandomInt(64, 256)
+    self.abortDistance = Math.getRandomInt(64, 256)
 
     Callbacks.roundStart(function()
     	self:reset()

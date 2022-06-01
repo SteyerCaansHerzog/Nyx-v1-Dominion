@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -112,12 +113,12 @@ function AiStatePushDemolition:getActivityNode(site)
     }
 
     if not site then
-        site = Client.getRandomInt(1, 2) == 1 and "a" or "b"
+        site = Math.getRandomInt(1, 2) == 1 and "a" or "b"
     end
 
     nodes = nodes[site]
 
-    return nodes[Client.getRandomInt(1, #nodes)]
+    return nodes[Math.getRandomInt(1, #nodes)]
 end
 
 return Nyx.class("AiStatePushDemolition", AiStatePushDemolition, AiStateBase)

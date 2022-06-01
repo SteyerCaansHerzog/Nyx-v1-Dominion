@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -56,10 +57,10 @@ function AiStateFreezetime:__init()
     	self.freezeTimer:restart()
         self.freezeTime = cvar.mp_freezetime:get_int()
 
-        if Client.getChance(3) then
-            self.freezeTimeCutoff = Client.getRandomFloat(0.1, 1)
+        if Math.getChance(3) then
+            self.freezeTimeCutoff = Math.getRandomFloat(0.1, 1)
         else
-            self.freezeTimeCutoff = -(self.freezeTime * Client.getRandomFloat(0.1, 0.8))
+            self.freezeTimeCutoff = -(self.freezeTime * Math.getRandomFloat(0.1, 0.8))
         end
     end)
 end
@@ -90,10 +91,10 @@ function AiStateFreezetime:think(cmd)
     self.activity = "Idling in freezetime"
 
     if self.nextBehaviorTimer:isElapsedThenRestart(self.nextBehaviorTime) then
-        self.nextBehaviorTime = Client.getRandomFloat(4, 10)
+        self.nextBehaviorTime = Math.getRandomFloat(4, 10)
         self.target = Table.getRandomFromNonIndexed(AiUtility.teammates)
 
-        if Client.getChance(9) then
+        if Math.getChance(9) then
             local behaviors = {
                 AiStateFreezetime.actionLookAtTeammate,
                 AiStateFreezetime.actionSpinAround,
@@ -123,8 +124,8 @@ function AiStateFreezetime:actionLookAtTeammate(cmd)
         self.crouchTimer:ifPausedThenStart()
 
         if self.crouchTimer:isElapsed(self.crouchTime) then
-            self.crouchCooldownTime = Client.getRandomFloat(1, 4)
-            self.crouchTime = Client.getRandomFloat(0.6, 1)
+            self.crouchCooldownTime = Math.getRandomFloat(1, 4)
+            self.crouchTime = Math.getRandomFloat(0.6, 1)
 
             self.crouchCooldownTimer:restart()
             self.crouchTimer:stop()

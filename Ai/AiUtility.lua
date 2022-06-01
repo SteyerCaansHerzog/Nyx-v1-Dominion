@@ -86,7 +86,7 @@ function AiUtility:initFields()
     AiUtility.lastVisibleEnemyTimer = Timer:new()
     AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
     AiUtility.enemyFovs = Table.populateForMaxPlayers(math.huge)
-    AiUtility.ignorePresenceAfter = Client.getRandomFloat(10, 15)
+    AiUtility.ignorePresenceAfter = Math.getRandomFloat(10, 15)
 
     AiUtility.lastPresenceTimers = {}
 

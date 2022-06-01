@@ -122,7 +122,7 @@ function AiController:initFields()
 	self.antiFlyValues = {}
 	self.canBuyThisRound = true
 	self.canInspectWeapon = true
-	self.canInspectWeaponTime = Client.getRandomFloat(50, 90)
+	self.canInspectWeaponTime = Math.getRandomFloat(50, 90)
 	self.canInspectWeaponTimer = Timer:new():start()
 	self.deactivatedNodes = {}
 	self.deactivatedNodesByBlock = {}
@@ -338,7 +338,7 @@ function AiController:buyGrenades(limit)
 
 	for _, nade in pairs(nades) do
 		if i <= limit then
-			Client.fireAfter(Client.getRandomFloat(0.25, 1), function()
+			Client.fireAfter(Math.getRandomFloat(0.25, 1), function()
 				UserInput.execute(nade)
 			end)
 
@@ -365,9 +365,9 @@ function AiController:autoBuy(isImmediate)
 	local buyAfter
 
 	if isImmediate then
-		buyAfter = Client.getRandomFloat(0, 0.5)
+		buyAfter = Math.getRandomFloat(0, 0.5)
 	else
-		buyAfter = Client.getRandomFloat(minDelay, maxDelay)
+		buyAfter = Math.getRandomFloat(minDelay, maxDelay)
 	end
 
 	Client.fireAfter(buyAfter, function()
@@ -380,7 +380,7 @@ function AiController:autoBuy(isImmediate)
 		end
 
 		local player = AiUtility.client
-		local grenadeLimit = Client.getRandomInt(1, player:isCounterTerrorist() and 2 or 3)
+		local grenadeLimit = Math.getRandomInt(1, player:isCounterTerrorist() and 2 or 3)
 
 		for _, weapon in pairs(WeaponInfo.primaries) do
 			if player:hasWeapon(weapon) then
@@ -399,7 +399,7 @@ function AiController:autoBuy(isImmediate)
 
 		if roundsPlayed == 0 or roundsPlayed == halftimeRounds then
 			if player:isCounterTerrorist() then
-				if Client.getChance(2) then
+				if Math.getChance(2) then
 					UserInput.execute("buy defuser")
 
 					self:buyGrenades(4)
@@ -421,7 +421,7 @@ function AiController:autoBuy(isImmediate)
 
 		local team = player:m_iTeamNum()
 		local canBuyRifle = balance - (team == 2 and 3000 or 3050) >= 0
-		local canBuyAwp = (balance - 5750 >= 0) and Client.getChance(3)
+		local canBuyAwp = (balance - 5750 >= 0) and Math.getChance(3)
 		local canBuyUtility = false
 		local canBuyAllNades = balance > 7000
 
@@ -431,7 +431,7 @@ function AiController:autoBuy(isImmediate)
 			return
 		end
 
-		if Client.getChance(15) and balance > 2000 and balance < 3500 then
+		if Math.getChance(15) and balance > 2000 and balance < 3500 then
 			UserInput.execute("buy vest; buy ssg08;")
 
 			self:buyGrenades(1)
@@ -443,7 +443,7 @@ function AiController:autoBuy(isImmediate)
 			canBuyUtility = true
 		elseif canBuyRifle then
 			local isBuyingCheapRifle = balance - (team == 2 and 3700 or 4200) < 0
-			local isBuyingScopedRifle = balance > 4500 and Client.getChance(3)
+			local isBuyingScopedRifle = balance > 4500 and Math.getChance(3)
 
 			if isBuyingCheapRifle then
 				UserInput.execute("buy famas; buy galilar")
@@ -514,10 +514,10 @@ function AiController:forceBuy()
 		"ump45"
 	}
 
-	Client.fireAfter(Client.getRandomFloat(1, 2), function()
+	Client.fireAfter(Math.getRandomFloat(1, 2), function()
 		local balance = player:m_iAccount()
 		local isBuyingSmg = (balance - 1500) >= 0
-		local isBuyingNegev = (balance - 2500 >= 0) and Client.getChance(5)
+		local isBuyingNegev = (balance - 2500 >= 0) and Math.getChance(5)
 
 		if isBuyingNegev then
 			UserInput.execute("buy negev")
@@ -888,7 +888,7 @@ function AiController:activities(cmd)
 
 	if self.canInspectWeaponTimer:isElapsedThenRestart(self.canInspectWeaponTime) and canInspectWeapon then
 		self.canInspectWeaponTimer:restart()
-		self.canInspectWeaponTime = Client.getRandomFloat(30, 90)
+		self.canInspectWeaponTime = Math.getRandomFloat(30, 90)
 
 		Client.execute("+lookatweapon")
 

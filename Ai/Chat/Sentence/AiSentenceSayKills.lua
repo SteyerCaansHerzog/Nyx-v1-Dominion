@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -132,7 +133,7 @@ function AiSentenceSayKills:replyToPlayerDeath(e)
             self:speak("DEATH_WP")
         elseif e.noscope or e.attackerblind or e.thrusmoke then
             self:speak("DEATH_WP")
-        elseif Client.getChance(8) then
+        elseif Math.getChance(8) then
             self:speak("DEATH_WP")
         end
     end

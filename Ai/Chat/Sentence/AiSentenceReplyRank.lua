@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -36,7 +37,7 @@ function AiSentenceReplyRank:__init()
             local ranks = {"silver","silver","silver","silver","silver elite","sem","nova","nova","nova","nova master","guardian","guardian","mge","dmg","le","lem","supreme","global"}
             local rank
 
-            if Client.getChance(4) then
+            if Math.getChance(4) then
                 rank = Table.getRandom(ranks) -- Lie about our rank
             else
                 rank = ranks[Panorama.MyPersonaAPI.GetCompetitiveRank()]

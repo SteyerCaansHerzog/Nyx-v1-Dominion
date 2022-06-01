@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -114,8 +115,8 @@ function AiStateBoost:think(cmd)
 
     if self.boostLookTimer:isElapsedThenRestart(2) then
         self.boostLookAngles = self.boostPlayer:getCameraAngles():offset(
-            Client.getRandomFloat(-2, 2),
-            Client.getRandomFloat(-8, 8)
+            Math.getRandomFloat(-2, 2),
+            Math.getRandomFloat(-8, 8)
         )
     end
 

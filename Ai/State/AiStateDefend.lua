@@ -4,6 +4,7 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local DrawDebug = require "gamesense/Nyx/v1/Api/DrawDebug"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -53,14 +54,14 @@ end
 --- @return void
 function AiStateDefend:__init()
     self.defendTimer = Timer:new()
-    self.defendTime = Client.getRandomFloat(2, 6)
+    self.defendTime = Math.getRandomFloat(2, 6)
     self.jiggleTimer = Timer:new():start()
-    self.jiggleTime = Client.getRandomFloat(0.25, 0.5)
+    self.jiggleTime = Math.getRandomFloat(0.25, 0.5)
     self.jiggleDirection = "Left"
     self.getToSiteTimer = Timer:new()
 
     Callbacks.init(function()
-        self.bombsite = Client.getRandomInt(1, 2) == 1 and "A" or "B"
+        self.bombsite = Math.getRandomInt(1, 2) == 1 and "A" or "B"
     end)
 
     Callbacks.roundStart(function()
@@ -246,7 +247,7 @@ function AiStateDefend:activate(site, swapPair)
     self.isOnDefendSpot = false
     self.isJiggling = false
     self.isFirstJiggle = true
-    self.isAllowedToDuckAtNode = Client.getChance(2)
+    self.isAllowedToDuckAtNode = Math.getChance(2)
 
     self.defendTimer:stop()
     self.jiggleTimer:stop()
@@ -298,12 +299,12 @@ function AiStateDefend:think(cmd)
     -- Restart defend procedure somewhere else.
     -- Don't do this if we're defending against a specific threat.
     if self.ai.priority ~= AiPriority.DEFEND_ACTIVE and self.defendTimer:isElapsedThenStop(self.defendTime) then
-        self.defendTime = Client.getRandomFloat(3, 8)
-        self.isJigglingUponReachingSpot = Client.getChance(0.75)
+        self.defendTime = Math.getRandomFloat(3, 8)
+        self.isJigglingUponReachingSpot = Math.getChance(0.75)
         self.isJiggling = false
 
         -- Move to another spot on the site.
-        if Client.getChance(15) then
+        if Math.getChance(15) then
             self:activate(self.bombsite, false)
         else
             self:activate(self.bombsite, true)

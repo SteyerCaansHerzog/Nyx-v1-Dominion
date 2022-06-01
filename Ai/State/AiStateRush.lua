@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
@@ -28,7 +29,7 @@ end
 --- @return void
 function AiStateRush:__init()
     Callbacks.roundStart(function()
-        self.canRushThisRound = Client.getChance(8)
+        self.canRushThisRound = Math.getChance(8)
     end)
 end
 

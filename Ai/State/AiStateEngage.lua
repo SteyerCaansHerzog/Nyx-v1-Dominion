@@ -160,7 +160,7 @@ function AiStateEngage:initFields()
     self.isIgnoringDormancy = false
     self.isSneaking = false
     self.jiggleDirection = "Left"
-    self.jiggleTime = Client.getRandomFloat(0.33, 0.66)
+    self.jiggleTime = Math.getRandomFloat(0.33, 0.66)
     self.jiggleTimer = Timer:new():startThenElapse()
     self.lastSoundTimer = Timer:new():start()
     self.noticedPlayerTimers = {}
@@ -262,7 +262,7 @@ function AiStateEngage:initEvents()
         self:reset()
 
         self.isIgnoringDormancy = true
-        self.jiggleTime = Client.getRandomFloat(0.33, 0.66)
+        self.jiggleTime = Math.getRandomFloat(0.33, 0.66)
     end)
 
     Callbacks.runCommand(function()
@@ -1379,8 +1379,8 @@ function AiStateEngage:moveOnBestTarget(cmd)
         self.activity = "Holding enemy"
 
         if self.ai.nodegraph.path then
-            self.isHoldingAngle = Client.getChance(1)
-            self.isHoldingAngleDucked = AiUtility.client:hasSniper() or Client.getChance(4)
+            self.isHoldingAngle = Math.getChance(1)
+            self.isHoldingAngleDucked = AiUtility.client:hasSniper() or Math.getChance(4)
 
             if self.isHoldingAngle then
                self.ai.nodegraph:clearPath("Enemy is around corner")
@@ -1426,7 +1426,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
             end
 
             -- Find a visible node nearby.
-            if distance < 1000 and Client.getChance(0.66) then
+            if distance < 1000 and Math.getChance(0.66) then
                 i = i + 1
 
                 if i > 50 then
@@ -2587,9 +2587,9 @@ function AiStateEngage:preAimThroughCorners()
         local offsetRange = Math.getFloat(Math.getClamped(distance, 0, 1024), 1024) * 100
 
         self.preAimThroughCornersOrigin = hitboxPosition:offset(
-            Client.getRandomFloat(-offsetRange, offsetRange),
-            Client.getRandomFloat(-offsetRange, offsetRange),
-            Client.getRandomFloat(-8, 2)
+            Math.getRandomFloat(-offsetRange, offsetRange),
+            Math.getRandomFloat(-offsetRange, offsetRange),
+            Math.getRandomFloat(-8, 2)
         )
     end
 

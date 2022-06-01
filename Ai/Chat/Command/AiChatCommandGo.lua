@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -64,7 +65,7 @@ function AiChatCommandGo:invoke(ai, sender, args)
 
     ai.voice.pack:speakAgreement()
 
-    Client.fireAfter(Client.getRandomFloat(1, 2), function()
+    Client.fireAfter(Math.getRandomFloat(1, 2), function()
         if ai.states.boost.isBoosting then
             return
         end

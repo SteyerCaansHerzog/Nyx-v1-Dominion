@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
@@ -40,7 +41,7 @@ function AiStateWatch:__init()
     self.watchTimer = Timer:new()
 
     Callbacks.roundStart(function()
-        self.watchTime = Client.getRandomFloat(8, 16)
+        self.watchTime = Math.getRandomFloat(8, 16)
 
     	self:reset()
     end)
@@ -123,7 +124,7 @@ function AiStateWatch:getWatchNode(weapons, chance)
         end
 
         -- Blacklist the node for now.
-        if not Client.getChance(chance) then
+        if not Math.getChance(chance) then
             self.blacklist[node.id] = true
 
             break

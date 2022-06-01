@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Http = require "gamesense/http"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -140,7 +141,7 @@ function AiChatbotGpt3:processChatMessage(e)
 
 	-- Don't reply to every message ever sent.
 	-- Set AiChatbotGpt3.replyChance to 1 to always reply.
-	if not Client.getChance(self.replyChance) then
+	if not Math.getChance(self.replyChance) then
 		return
 	end
 
@@ -229,7 +230,7 @@ function AiChatbotGpt3:reply(sender, text)
 		end
 
 		-- Create a natural delay before replying to the sender.
-		local delay = Client.getRandomFloat(1, 4) + (reply:len() * Client.getRandomFloat(0.09, 0.15))
+		local delay = Math.getRandomFloat(1, 4) + (reply:len() * Math.getRandomFloat(0.09, 0.15))
 
 		-- Remember what we have replied.
 		table.insert(self.history[steamId64], {

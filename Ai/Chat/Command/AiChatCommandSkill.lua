@@ -42,7 +42,7 @@ function AiChatCommandSkill:invoke(ai, sender, args)
 
     if max then
         max = Math.getClamped(tonumber(max), ai.states.engage.skillLevelMin, ai.states.engage.skillLevelMax)
-        skill = Client.getRandomInt(min, max)
+        skill = Math.getRandomInt(min, max)
     end
 
     ai.states.engage:setAimSkill(skill)

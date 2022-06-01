@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local UserInput = require "gamesense/Nyx/v1/Api/UserInput"
@@ -116,7 +117,7 @@ end
 
 --- @return void
 function AiStateDrop:buyGear()
-    Client.fireAfter(Client.getRandomFloat(0.75, 1.25), function()
+    Client.fireAfter(Math.getRandomFloat(0.75, 1.25), function()
         if not AiUtility.client:hasWeapons(WeaponInfo.primaries) then
             local balance = AiUtility.client:m_iAccount()
 

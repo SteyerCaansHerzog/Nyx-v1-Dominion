@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
@@ -90,7 +91,7 @@ function AiStateFlashbangDynamic:assess()
     local bounds = Vector3:newBounds(Vector3.align.CENTER, 8)
 
     -- Angle to try our mentally handicapped flash prediction with.
-    local predictionAngles = Angle:new(Client.getRandomFloat(-85, 25), Client.getRandomFloat(-180, 180))
+    local predictionAngles = Angle:new(Math.getRandomFloat(-85, 25), Math.getRandomFloat(-180, 180))
 
     -- I literally threw a flash into the sky and asked God for the approximate distance it flew before going off.
     local predictionDistance = 700

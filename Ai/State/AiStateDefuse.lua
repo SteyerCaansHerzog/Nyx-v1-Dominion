@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -58,7 +59,7 @@ function AiStateDefuse:__init()
             local chokes = self.ai.nodegraph[string.format("objective%sChoke", nearestSite:upper())]
 
             for _, choke in pairs(chokes) do repeat
-                if Client.getRandomInt(1, 3) ~= 1 or playerOrigin:getDistance(choke.origin) <= 512 then
+                if Math.getRandomInt(1, 3) ~= 1 or playerOrigin:getDistance(choke.origin) <= 512 then
                     break
                 end
 

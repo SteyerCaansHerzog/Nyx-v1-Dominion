@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -95,7 +96,7 @@ end
 function AiStatePushHostage:getActivityNode()
     local nodes = self.ai.nodegraph.objectivePushHostage
 
-    return nodes[Client.getRandomInt(1, #nodes)]
+    return nodes[Math.getRandomInt(1, #nodes)]
 end
 
 return Nyx.class("AiStatePushHostage", AiStatePushHostage, AiStateBase)

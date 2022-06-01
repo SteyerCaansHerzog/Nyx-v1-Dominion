@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -45,7 +46,7 @@ end
 --- @param nodegraph Nodegraph
 --- @return void
 function NodeHintBlockRetake:block(nodegraph)
-    if self.isActivatedByChance and not Client.getChance(2) then
+    if self.isActivatedByChance and not Math.getChance(2) then
         return
     end
 

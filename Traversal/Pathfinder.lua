@@ -1020,8 +1020,8 @@ function Pathfinder.avoidTeammates(cmd)
 	Pathfinder.avoidTeammatesTimer:ifPausedThenStart()
 
 	if Pathfinder.avoidTeammatesTimer:isElapsedThenStop(Pathfinder.avoidTeammatesDuration) then
-		Pathfinder.avoidTeammatesDirection = Client.getChance(2) and "Left" or "Right"
-		Pathfinder.avoidTeammatesDuration = Client.getRandomFloat(0.66, 1)
+		Pathfinder.avoidTeammatesDirection = Math.getChance(2) and "Left" or "Right"
+		Pathfinder.avoidTeammatesDuration = Math.getRandomFloat(0.66, 1)
 	end
 
 	local directionMethod = string.format("get%s", Pathfinder.avoidTeammatesDirection)

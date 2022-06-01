@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Player = require "gamesense/Nyx/v1/Api/Player"
@@ -173,7 +174,7 @@ function DominionClient:__init()
         end
 
         if self.allocation and Server.isIngame() then
-            Client.fireAfter(Client.getRandomFloat(8, 16), function()
+            Client.fireAfter(Math.getRandomFloat(8, 16), function()
                 Client.execute("disconnect")
 
                 if self.isInLobby then

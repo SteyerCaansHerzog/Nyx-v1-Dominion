@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -74,7 +75,7 @@ function AiSentence:canSpeak()
         return false
     end
 
-    if not Client.getChance(self.probability) then
+    if not Math.getChance(self.probability) then
         return false
     end
 
@@ -91,7 +92,7 @@ function AiSentence:speak(substructure)
     local message = self:getMessage(substructure)
     local typingDelay = message:len() * 0.1
 
-    Client.fireAfter(Client.getRandomFloat(typingDelay + self.minDelay, typingDelay + self.maxDelay), function()
+    Client.fireAfter(Math.getRandomFloat(typingDelay + self.minDelay, typingDelay + self.maxDelay), function()
         Messenger.send(message, false)
     end)
 end
@@ -106,7 +107,7 @@ function AiSentence:speakMultipleRaw(messages)
     local totalTypingDelay = 0
 
     for _, message in pairs(messages) do
-        local typingDelay = Client.getRandomFloat(1, 2) + message:len() * 0.075
+        local typingDelay = Math.getRandomFloat(1, 2) + message:len() * 0.075
 
         totalTypingDelay = totalTypingDelay + typingDelay
 

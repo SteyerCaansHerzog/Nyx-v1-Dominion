@@ -198,7 +198,7 @@ function View.setTargetNoise(targetViewAngles)
 	if View.currentNoise.isRandomlyToggled then
 		-- Toggle interval handles how long to wait until we start applying noise.
 		if View.currentNoise.toggleIntervalTimer:isElapsedThenStop(View.currentNoise.toggleInterval) then
-			View.currentNoise.toggleInterval = Client.getRandomFloat(View.currentNoise.toggleIntervalMin, View.currentNoise.toggleIntervalMax)
+			View.currentNoise.toggleInterval = Math.getRandomFloat(View.currentNoise.toggleIntervalMin, View.currentNoise.toggleIntervalMax)
 
 			View.currentNoise.togglePeriodTimer:start()
 		end
@@ -206,7 +206,7 @@ function View.setTargetNoise(targetViewAngles)
 		-- Period interval handles how long we apply the noise for.
 		if View.currentNoise.togglePeriodTimer:isStarted() then
 			if View.currentNoise.togglePeriodTimer:isElapsedThenStop(View.currentNoise.togglePeriod) then
-				View.currentNoise.togglePeriod = Client.getRandomFloat(View.currentNoise.togglePeriodMin, View.currentNoise.togglePeriodMax)
+				View.currentNoise.togglePeriod = Math.getRandomFloat(View.currentNoise.togglePeriodMin, View.currentNoise.togglePeriodMax)
 
 				View.currentNoise.toggleIntervalTimer:start()
 			end

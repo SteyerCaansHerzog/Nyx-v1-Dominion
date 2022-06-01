@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -27,7 +28,7 @@ function AiChatCommandFollow:invoke(ai, sender, args)
 
     ai.voice.pack:speakAgreement()
 
-    Client.fireAfter(Client.getRandomFloat(0.5, 1.5), function()
+    Client.fireAfter(Math.getRandomFloat(0.5, 1.5), function()
         if sender:isAlive() then
             ai.states.follow:follow(sender)
         end

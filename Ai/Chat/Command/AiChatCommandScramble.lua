@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -24,9 +25,9 @@ function AiChatCommandScramble:invoke(ai, sender, args)
         return
     end
 
-    local site = Client.getChance(2) and "a" or "b"
+    local site = Math.getChance(2) and "a" or "b"
 
-    Client.fireAfter(Client.getRandomFloat(1, 2), function()
+    Client.fireAfter(Math.getRandomFloat(1, 2), function()
         ai.states.defend:activate(ai, site, false, false)
     end)
 end

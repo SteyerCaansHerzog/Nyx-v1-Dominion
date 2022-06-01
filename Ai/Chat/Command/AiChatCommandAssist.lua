@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 
@@ -39,7 +40,7 @@ function AiChatCommandAssist:invoke(ai, sender, args)
     origin = origin - forward * 18
     origin = origin:getTraceLine(origin + Vector3:new(0, 0, -Vector3.MAX_DISTANCE), sender.eid)
 
-    Client.fireAfter(Client.getRandomFloat(1, 2), function()
+    Client.fireAfter(Math.getRandomFloat(1, 2), function()
         ai.states.patrol:beginPatrol(origin, sender)
     end)
 end

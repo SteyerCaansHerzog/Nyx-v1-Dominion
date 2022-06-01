@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -158,13 +159,13 @@ function AiSentenceTemplate:__init()
     self.structures = {}
     self.insertions = {}
     self.timer = Timer:new():start()
-    self.interval = Client.getRandomFloat(300, 500)
+    self.interval = Math.getRandomFloat(300, 500)
 end
 
 --- @return void
 function AiSentenceTemplate:replyOnTick()
     if self.timer:isElapsedThenRestart(self.interval) then
-        self.interval = Client.getRandomFloat(300, 500)
+        self.interval = Math.getRandomFloat(300, 500)
 
         self:speakMultipleRaw(Table.getRandom(self.messages))
     end

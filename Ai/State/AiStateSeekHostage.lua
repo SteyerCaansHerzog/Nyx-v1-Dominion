@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
@@ -185,7 +186,7 @@ end
 function AiStateSeekHostage:getActivityNode()
     local nodes = self.ai.nodegraph.objectiveHostage
 
-    return nodes[Client.getRandomInt(1, #nodes)]
+    return nodes[Math.getRandomInt(1, #nodes)]
 end
 
 return Nyx.class("AiStateSeekHostage", AiStateSeekHostage, AiStateBase)

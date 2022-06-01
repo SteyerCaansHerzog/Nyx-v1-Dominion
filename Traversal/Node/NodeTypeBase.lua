@@ -616,8 +616,8 @@ function NodeTypeBase:onIsNext(nodegraph, path)
         end
 
         local idealPathOrigin = self.origin + Vector3:new(
-            Client.getRandomFloat(-self.pathOffset, self.pathOffset),
-            Client.getRandomFloat(-self.pathOffset, self.pathOffset),
+            Math.getRandomFloat(-self.pathOffset, self.pathOffset),
+            Math.getRandomFloat(-self.pathOffset, self.pathOffset),
             0
         )
 

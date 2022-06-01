@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
@@ -73,7 +74,7 @@ end
 
 --- @return void
 function AiStatePlant:setSite()
-    self.plantAt = Client.getRandomInt(1, 2) == 1 and "a" or "b"
+    self.plantAt = Math.getRandomInt(1, 2) == 1 and "a" or "b"
 end
 
 --- @return void

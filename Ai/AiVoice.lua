@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -87,13 +88,13 @@ function AiVoice:__init()
     end)
 
     Callbacks.levelInit(function()
-    	Client.fireAfter(Client.getRandomFloat(10, 20), function()
+    	Client.fireAfter(Math.getRandomFloat(10, 20), function()
             if Entity.getGameRules():m_bWarmupPeriod() == 1 then
                 self.pack:speakWarmupGreeting()
             end
     	end)
 
-        Client.fireAfter(Client.getRandomFloat(22, 40), function()
+        Client.fireAfter(Math.getRandomFloat(22, 40), function()
             if Entity.getGameRules():m_bWarmupPeriod() == 1 then
                 self.pack:speakWarmupIdle()
             end

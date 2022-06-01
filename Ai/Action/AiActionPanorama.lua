@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Player = require "gamesense/Nyx/v1/Api/Player"
@@ -62,7 +63,7 @@ function AiActionPanorama:autoAcceptMatches()
 		Panorama.LobbyAPI.SetLocalPlayerReady("accept")
 	end
 
-	Client.fireAfter(Client.getRandomFloat(4, 8), function()
+	Client.fireAfter(Math.getRandomFloat(4, 8), function()
 		self:autoAcceptMatches()
 	end)
 end
