@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -13,7 +14,9 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
@@ -84,44 +87,31 @@ function AiStateFollow:think(cmd)
     self.activity = "Following teammate"
 
     local followingPlayerOrigin = self.followingPlayer:getOrigin()
-    local distance = followingPlayerOrigin:getDistance(self.lastFollowingPlayOrigin)
+    local distanceToLastOrigin = followingPlayerOrigin:getDistance(self.lastFollowingPlayOrigin)
+    local distanceToPlayer = followingPlayerOrigin:getDistance(LocalPlayer:getOrigin())
 
-    if distance > 64 then
+    if distanceToLastOrigin > 64 then
         self.lastFollowingPlayOrigin = followingPlayerOrigin
 
         self:move()
     end
 
-    if distance < 250 then
-       View.lookAtLocation(self.followingPlayer:getOrigin():offset(0, 0, 64), 4, View.noise.idle, "Follow look at player")
+    if distanceToPlayer < 100 then
+        Pathfinder.clearActivePathAndLastRequest()
+    end
+
+    if distanceToLastOrigin < 300 then
+       View.lookAtLocation(self.followingPlayer:getOrigin():offset(0, 0, 64), 5, View.noise.idle, "Follow look at player")
     end
 end
 
 --- @return void
 function AiStateFollow:move()
-    --- @type Node[]
-    local nodes = {}
-    --- @type Node[]
-    local closestNode
-    local closestNodeDistance = math.huge
+    local node = Nodegraph.getRandom(Node.traverseGeneric, self.lastFollowingPlayOrigin, 200)
 
-    for _, node in pairs(self.ai.nodegraph.nodes) do
-        local distance = self.lastFollowingPlayOrigin:getDistance(node.origin)
-
-        if distance < 200 then
-            table.insert(nodes, node)
-        end
-
-        if distance < closestNodeDistance then
-            closestNodeDistance = distance
-            closestNode = node
-        end
-    end
-
-    local node = not Table.isEmpty(nodes) and Table.getRandom(nodes) or closestNode
-
-   self.ai.nodegraph:pathfind(node.origin, {
-        objective = Node.types.GOAL
+    Pathfinder.moveToNode(node, {
+        task = "Follow player",
+        goalReachedRadius = 150
     })
 end
 

@@ -17,7 +17,9 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
@@ -27,7 +29,9 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field lookAtOffset Vector3
 --- @field inThrowTimer Timer
 local AiStateDefuse = {
-    name = "Defuse"
+    name = "Defuse",
+    delayedMouseMin = 0.1,
+    delayedMouseMax = 0.4
 }
 
 --- @param fields AiStateDefuse
@@ -134,23 +138,10 @@ function AiStateDefuse:activate()
     end
 
     local bombOrigin = bomb:m_vecOrigin()
-    local pathEnd
-    local task
 
-    if self.ai.priority == AiPriority.DEFEND_DEFUSER then
-        pathEnd = Table.getRandom(self.ai.nodegraph:getVisibleNodesFrom(bombOrigin:clone():offset(0, 0, 128)), Node).origin
-        task = "Defending the defuser"
-    else
-        pathEnd = bombOrigin
-        task = string.format("Retaking %s site", self.ai.nodegraph:getNearestSiteName(bombOrigin):upper())
-    end
-
-   self.ai.nodegraph:pathfind(pathEnd, {
-        objective = Node.types.BOMB,
-        task = task,
-        onComplete = function()
-           self.ai.nodegraph:log("Defusing the bomb")
-        end
+    Pathfinder.moveToLocation(bombOrigin, {
+        task = "Defuse the bomb",
+        isAllowedToTraverseSmokes = true
     })
 end
 
@@ -180,7 +171,7 @@ function AiStateDefuse:think(cmd)
     end
 
     if LocalPlayer:m_bIsDefusing() == 1 then
-        View.lookInDirection(Client.getCameraAngles(), 4, View.noise.none, "Defuse keep current angles")
+        View.lookAlongAngle(Client.getCameraAngles(), 4, View.noise.none, "Defuse keep current angles")
     elseif distance < 256 then
        View.lookAtLocation(bombOrigin:clone():offset(5, -3, 14), 4.5, View.noise.moving, "Defuse look at bomb")
     end
@@ -190,20 +181,22 @@ function AiStateDefuse:think(cmd)
 
         self.ai.canReload = false
         cmd.in_use = true
-        cmd.in_duck = true
+
+        Pathfinder.duck()
 
         if LocalPlayer:hasWeapon(Weapons.SMOKE)
             and Table.isEmpty(AiUtility.visibleEnemies)
             and (not AiUtility.closestEnemy or (AiUtility.closestEnemy and LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) > 400))
         then
             self.ai.canUseGear = false
-            self.ai.states.evade.isBlocked = true
+
+            self.ai.states.evade:block()
 
             if not LocalPlayer:isHoldingWeapon(Weapons.SMOKE) then
                 LocalPlayer.equipSmoke()
             end
 
-           View.lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 4.5, View.noise.none, "Defuse look to drop smoke")
+           View.lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 4.5, View.noise.moving, "Defuse look to drop smoke")
 
             if LocalPlayer:isAbleToAttack() then
                 if Client.getCameraAngles().p > 22 then
@@ -216,6 +209,8 @@ function AiStateDefuse:think(cmd)
             end
         end
     end
+
+    Pathfinder.ifIdleThenRetryLastRequest()
 end
 
 return Nyx.class("AiStateDefuse", AiStateDefuse, AiStateBase)

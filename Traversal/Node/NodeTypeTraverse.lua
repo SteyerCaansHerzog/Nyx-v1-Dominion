@@ -14,7 +14,8 @@ local NodeTypeBase = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeB
 local NodeTypeTraverse = {
     type = "Traverse",
     colorPrimary = Color:hsla(235, 0.16, 0.65),
-    isTraversal = true
+    isTraversal = true,
+
 }
 
 --- @param fields NodeTypeTraverse

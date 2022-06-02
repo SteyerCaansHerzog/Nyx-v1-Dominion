@@ -16,7 +16,8 @@ local NodeTraverseClimb = {
         "by climbing an obstacle."
     },
     colorSecondary = Color:hsla(100, 0.8, 0.6),
-    isJump = true
+    isJump = true,
+    isCollisionTestWeak = true
 }
 
 --- @param fields NodeTraverseClimb

@@ -12,6 +12,9 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
@@ -24,6 +27,8 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field requestedGear string
 local AiStateDrop = {
     name = "Drop",
+    delayedMouseMin = 0.2,
+    delayedMouseMax = 0.5,
     requestableGear = {
         bomb = LocalPlayer.equipBomb,
         weapon = LocalPlayer.equipPrimary
@@ -60,8 +65,10 @@ end
 
 --- @return void
 function AiStateDrop:activate()
-    self.ai.nodegraph:pathfind(self.requestingPlayer:getOrigin(), {
-        task = "Drop teammate my item"
+    Pathfinder.moveToLocation(self.requestingPlayer:getOrigin(), {
+        task = "Drop gear to teammate",
+        goalReachedRadius = 75,
+        isAllowedToTraverseInactives = true
     })
 end
 
@@ -84,9 +91,7 @@ function AiStateDrop:think(cmd)
 
     if isFreezeTime or distance < 200 then
         -- Stop approaching the player.
-        if self.ai.nodegraph:isActive() then
-            self.ai.nodegraph:clearPath("Drop reached destination")
-        end
+        Pathfinder.clearActivePathAndLastRequest()
 
         local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), hitbox)
 

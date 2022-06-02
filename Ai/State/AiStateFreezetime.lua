@@ -15,6 +15,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
@@ -94,13 +95,10 @@ function AiStateFreezetime:think(cmd)
         self.nextBehaviorTime = Math.getRandomFloat(4, 10)
         self.target = Table.getRandomFromNonIndexed(AiUtility.teammates)
 
-        if Math.getChance(9) then
-            local behaviors = {
-                AiStateFreezetime.actionLookAtTeammate,
-                AiStateFreezetime.actionSpinAround,
-            }
-
-            self.currentBehavior = Table.getRandom(behaviors)
+        if Math.getChance(10) then
+            self.currentBehavior = AiStateFreezetime.actionSpinAround
+        elseif Math.getChance(1) then
+            self.currentBehavior = AiStateFreezetime.actionLookAtTeammate
         else
             self.currentBehavior = self.actionIdle
         end
@@ -134,14 +132,14 @@ function AiStateFreezetime:actionLookAtTeammate(cmd)
         end
     end
 
-    local targetEyeOrigin = self.target:getEyeOrigin()
+    local targetOrigin = self.target:getOrigin():offset(0, 0, 64)
 
     -- I don't know why this sometimes returns nil.
-    if not targetEyeOrigin then
+    if not targetOrigin then
         return
     end
 
-    View.lookAtLocation(targetEyeOrigin, 4, View.noise.idle, "Freezetime idling")
+    View.lookAtLocation(targetOrigin, 4, View.noise.idle, "Freezetime idling")
 end
 
 --- @param cmd SetupCommandEvent
@@ -149,7 +147,7 @@ end
 function AiStateFreezetime:actionSpinAround(cmd)
     self.lookAngles:offset(0, 90 * Time.getDelta())
 
-    View.lookInDirection(self.lookAngles, 6, View.noise.idle, "Freezetime idling")
+    View.lookAlongAngle(self.lookAngles, 6, View.noise.idle, "Freezetime idling")
 end
 
 return Nyx.class("AiStateFreezetime", AiStateFreezetime, AiStateBase)

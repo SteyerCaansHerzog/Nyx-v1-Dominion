@@ -24,7 +24,9 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field isHostageFound boolean
 --- @field reseekTimer Timer
 local AiStateSeekHostage = {
-    name = "Seek Hostage"
+    name = "Seek Hostage",
+    delayedMouseMin = 0.1,
+    delayedMouseMax = 0.2
 }
 
 --- @param fields AiStateSeekHostage

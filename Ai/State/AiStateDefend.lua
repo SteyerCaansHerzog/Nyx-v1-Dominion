@@ -40,6 +40,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field jiggleTime number
 --- @field jiggleTimer Timer
 --- @field node NodeTypeDefend
+--- @field isFirstSpot boolean
 local AiStateDefend = {
     name = "Defend",
     requiredNodes = {
@@ -64,10 +65,8 @@ function AiStateDefend:__init()
     self.jiggleTime = Math.getRandomFloat(0.25, 0.5)
     self.jiggleDirection = "Left"
     self.getToSiteTimer = Timer:new()
-
-    Callbacks.init(function()
-        self.bombsite = Math.getRandomInt(1, 2) == 1 and "A" or "B"
-    end)
+    self.bombsite = Math.getChance(2) and "A" or "B"
+    self.isFirstSpot = false
 
     Callbacks.roundStart(function()
         self.getToSiteTimer:stop()
@@ -90,6 +89,7 @@ function AiStateDefend:__init()
         local site = (operand % 2) == 0 and "A" or "B"
 
         self.bombsite = site
+        self.isFirstSpot = true
     end)
 
     Callbacks.roundEnd(function()
@@ -241,7 +241,7 @@ function AiStateDefend:activate(site, swapPair)
     local node
 
     if swapPair and self.node then
-        node = self.node.pair
+        node = self.node.pairedWith
     else
         node = self:getActivityNode(site)
     end
@@ -257,6 +257,7 @@ function AiStateDefend:activate(site, swapPair)
     self.isJiggling = false
     self.isFirstJiggle = true
     self.isAllowedToDuckAtNode = Math.getChance(2)
+    self.isJigglingUponReachingSpot = Math.getChance(0.75)
 
     self.defendTimer:stop()
     self.jiggleTimer:stop()
@@ -264,15 +265,15 @@ function AiStateDefend:activate(site, swapPair)
     local task
 
     if AiUtility.gamemode == "hostage" then
-        task = "Defending hostages"
+        task = "Defend the hostages"
     else
-        task = string.format("Defending %s site", self.node.bombsite:upper())
+        task = string.format("Defend %s site", self.node.bombsite:upper())
     end
 
     Pathfinder.moveToNode(self.node, {
         task = task,
         isCounterStrafingOnGoal = true,
-        goalReachedRadius = 8,
+        goalReachedRadius = 8
     })
 end
 
@@ -284,6 +285,47 @@ function AiStateDefend:think(cmd)
     end
 
     local distance = AiUtility.clientNodeOrigin:getDistance(self.node.origin)
+
+    if distance < 300 then
+        self.isOnDefendSpot = true
+        self.ai.canUseKnife = false
+
+        self.defendTimer:ifPausedThenStart()
+
+        local nodeVisibleTrace = Trace.getLineToPosition(Client.getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateDefend.think<FindSpotVisible>")
+
+        -- Duck when holding this node.
+        if self.isAllowedToDuckAtNode and distance < 32 and self.node.isAllowedToDuck then
+            Pathfinder.duck()
+        end
+
+        -- Look at the angle we intend to hold.
+        if not nodeVisibleTrace.isIntersectingGeometry then
+            View.lookAtLocation(self.node.lookAtOrigin, 5.5, View.noise.moving, "Defend look at angle")
+            Pathfinder.walk()
+        end
+
+        -- Equip the correct gear.
+        if not LocalPlayer:isHoldingGun() then
+            if LocalPlayer:hasPrimary() then
+                LocalPlayer.equipPrimary()
+            else
+                LocalPlayer.equipPistol()
+            end
+        end
+
+        self.ai.canUnscope = false
+    else
+        self.isOnDefendSpot = false
+        self.isJiggling = false
+        self.isJigglingUponReachingSpot = false
+
+        if LocalPlayer:isHoldingSniper() then
+            LocalPlayer.unscope()
+        end
+
+        self.defendTimer:stop()
+    end
 
     -- Set activity string.
     if AiUtility.gamemode == "hostage" then
@@ -308,16 +350,16 @@ function AiStateDefend:think(cmd)
     -- Restart defend procedure somewhere else.
     -- Don't do this if we're defending against a specific threat.
     if self.ai.priority ~= AiPriority.DEFEND_ACTIVE and self.defendTimer:isElapsedThenStop(self.defendTime) then
-        self.defendTime = Math.getRandomFloat(3, 8)
-        self.isJigglingUponReachingSpot = Math.getChance(0.75)
-        self.isJiggling = false
+        self.defendTime = Math.getRandomFloat(3.5, 6)
 
         -- Move to another spot on the site.
-        if Math.getChance(15) then
+        if Math.getChance(30) then
             self:activate(self.bombsite, false)
         else
             self:activate(self.bombsite, true)
         end
+
+        return
     end
 
     -- Jiggle hold the angle.
@@ -346,48 +388,6 @@ function AiStateDefend:think(cmd)
 
             Pathfinder.moveInDirection(direction)
         end
-    end
-
-    if distance < 300 then
-        self.isOnDefendSpot = true
-        self.ai.canUseKnife = false
-
-        self.defendTimer:ifPausedThenStart()
-
-        local nodeVisibleTrace = Trace.getLineToPosition(Client.getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateDefend.think<FindSpotVisible>")
-
-        -- Duck when holding this node.
-        if self.isAllowedToDuckAtNode and distance < 32 and self.node.isAllowedToDuck then
-            cmd.in_duck = true
-        end
-
-        -- Look at the angle we intend to hold.
-        if not nodeVisibleTrace.isIntersectingGeometry then
-            View.lookAtLocation(self.node.lookAtOrigin, 6.5, View.noise.moving, "Defend look at angle")
-
-            self.ai.isWalking = true
-        end
-
-        -- Equip the correct gear.
-        if not LocalPlayer:isHoldingGun() then
-            if LocalPlayer:hasPrimary() then
-                LocalPlayer.equipPrimary()
-            else
-                LocalPlayer.equipPistol()
-            end
-        end
-
-        self.ai.canUnscope = false
-    else
-        self.isOnDefendSpot = false
-        self.isJiggling = false
-        self.isJigglingUponReachingSpot = false
-
-        if LocalPlayer:isHoldingSniper() then
-            LocalPlayer.unscope()
-        end
-
-        self.defendTimer:stop()
     end
 
     -- Repathfind.

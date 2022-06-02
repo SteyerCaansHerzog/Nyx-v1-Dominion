@@ -30,6 +30,7 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --{{{ View
 --- @class View : Class
 --- @field aimPunchAngles Angle
+--- @field currentNoise ViewNoise
 --- @field isAllowedToWatchCorners boolean
 --- @field isCrosshairSmoothed boolean
 --- @field isCrosshairUsingVelocity boolean
@@ -39,11 +40,18 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --- @field lastCameraAngles Angle
 --- @field lastLookAtLocationOrigin Vector3
 --- @field lookAtAngles Angle
---- @field lookNote string
+--- @field lookState string
 --- @field lookSpeed number
+--- @field lookSpeedDelay Timer
+--- @field lookSpeedDelayed number
+--- @field lookSpeedDelayMax number
+--- @field lookSpeedDelayMin number
+--- @field lookSpeedDelayTimer Timer
+--- @field lookSpeedIdeal number
 --- @field lookSpeedModifier number
+--- @field lookState string
+--- @field lookStateCached string
 --- @field nodegraph Nodegraph
---- @field currentNoise ViewNoise
 --- @field noise ViewNoiseType
 --- @field overrideViewAngles Angle
 --- @field pitchFine number
@@ -73,15 +81,18 @@ end
 --- @return void
 function View.initFields()
 	View.aimPunchAngles = Angle:new(0, 0)
-	View.isCrosshairUsingVelocity = true
+	View.isCrosshairUsingVelocity = false
 	View.lastCameraAngles = Client.getCameraAngles()
 	View.lookAtAngles = Client.getCameraAngles()
 	View.lookSpeed = 0
+	View.lookSpeedDelay = Math.getRandomFloat(0.25, 0.6)
+	View.lookSpeedDelayTimer = Timer:new():start()
+	View.lookSpeedDelayed = 0
 	View.lookSpeedModifier = 1.2
 	View.recoilControl = 2
 	View.useCooldown = Timer:new():start()
 	View.velocity = Angle:new()
-	View.velocityBoundary = 25
+	View.velocityBoundary = 20
 	View.velocityGainModifier = 0.7
 	View.velocityResetSpeed = 100
 	View.viewAngles = Client.getCameraAngles()
@@ -90,6 +101,7 @@ function View.initFields()
 	View.pitchSoft = 0
 	View.yawFine = 0
 	View.yawSoft = 0
+	View.lookSpeedIdeal = 0
 
 	View.setNoiseType(ViewNoiseType.none)
 end
@@ -124,11 +136,24 @@ function View.setViewAngles()
 	local idealViewAngles = Client.getCameraAngles()
 	local smoothingCutoffThreshold = 0
 
+	if View.lookState ~= View.lookStateCached then
+		if Config.isDebugging then
+			Logger.console(0, View.lookState)
+		end
+
+		print(View.lookState)
+		View.delayMovement()
+
+		View.lookStateCached = View.lookState
+	end
+
+	View.setDelayedLookSpeed()
+
 	if View.overrideViewAngles then
 		-- AI wants to look at something particular.
 		View.setIdealOverride(idealViewAngles)
 
-		smoothingCutoffThreshold = 0.5
+		smoothingCutoffThreshold = 0.6
 	elseif Pathfinder.isOk() then
 		-- Perform generic look behaviour.
 		View.setIdealLookAhead(idealViewAngles)
@@ -136,6 +161,8 @@ function View.setViewAngles()
 		View.setIdealWatchCorner(idealViewAngles)
 
 		smoothingCutoffThreshold = 1
+	else
+		View.lookState = "None"
 	end
 
 	--- @type Angle
@@ -169,12 +196,34 @@ function View.setViewAngles()
 	View.interpolateViewAngles(targetViewAngles)
 end
 
+--- @return void
+function View.delayMovement()
+	View.lookSpeedDelayTimer:restart()
+	View.lookSpeedDelayed = 0
+	View.lookSpeedDelay = Math.getRandomFloat(View.lookSpeedDelayMin, View.lookSpeedDelayMax)
+end
+
+--- @return void
+function View.setDelayedLookSpeed()
+	if View.lookSpeedDelayMax == 0 then
+		View.lookSpeed = View.lookSpeedIdeal
+
+		return
+	end
+
+	if View.lookSpeedDelayTimer:isElapsed(View.lookSpeedDelay) then
+		View.lookSpeedDelayed = Math.getClamped(View.lookSpeedDelayed + 40 * Time.getDelta(), 0, View.lookSpeedIdeal)
+	end
+
+	View.lookSpeed = View.lookSpeedDelayed
+end
+
 --- @param targetViewAngles Angle
 --- @return void
 function View.interpolateViewAngles(targetViewAngles)
 	targetViewAngles:normalize()
 
-	View.viewAngles:lerp(targetViewAngles, math.min(20, View.lookSpeed * View.lookSpeedModifier))
+	View.viewAngles:lerpTickrate(targetViewAngles, math.min(20, View.lookSpeed * View.lookSpeedModifier))
 end
 
 --- @param noise ViewNoise
@@ -197,26 +246,24 @@ function View.setTargetNoise(targetViewAngles)
 
 	-- Randomise when and for how long the noise is applied to the mouse.
 	if View.currentNoise.isRandomlyToggled then
-		-- Toggle interval handles how long to wait until we start applying noise.
 		if View.currentNoise.toggleIntervalTimer:isElapsedThenStop(View.currentNoise.toggleInterval) then
 			View.currentNoise.toggleInterval = Math.getRandomFloat(View.currentNoise.toggleIntervalMin, View.currentNoise.toggleIntervalMax)
 
 			View.currentNoise.togglePeriodTimer:start()
 		end
 
-		-- Period interval handles how long we apply the noise for.
 		if View.currentNoise.togglePeriodTimer:isStarted() then
-			if View.currentNoise.togglePeriodTimer:isElapsedThenStop(View.currentNoise.togglePeriod) then
+			if not View.currentNoise.togglePeriodTimer:isElapsed(View.currentNoise.togglePeriod) then
+				targetViewAngles:set(targetViewAngles.p + View.pitchFine + View.pitchSoft, targetViewAngles.y + View.yawFine + View.yawSoft)
+			else
 				View.currentNoise.togglePeriod = Math.getRandomFloat(View.currentNoise.togglePeriodMin, View.currentNoise.togglePeriodMax)
 
+				View.currentNoise.togglePeriodTimer:stop()
 				View.currentNoise.toggleIntervalTimer:start()
 			end
-		else
-			targetViewAngles:set(targetViewAngles.p + View.pitchFine + View.pitchSoft, targetViewAngles.y + View.yawFine + View.yawSoft)
-
-			-- We're not applying noise right now.
-			return
 		end
+
+		return
 	end
 
 	-- Scale the noise based on velocity.
@@ -267,7 +314,7 @@ end
 --- @return void
 function View.setTargetVelocity(targetViewAngles)
 	if not View.isCrosshairUsingVelocity then
-		View.isCrosshairUsingVelocity = true
+		View.isCrosshairUsingVelocity = false
 
 		return
 	end
@@ -357,15 +404,16 @@ function View.setIdealLookAhead(idealViewAngles)
 	-- We want to look roughly head height of the goal.
 	lookOrigin:offset(0, 0, 46)
 
-	-- Set look speed so we don't use the speed set by AI behaviour.
-	View.lookSpeed = 6.5
-	View.lookNote = "View look ahead of path"
-
 	-- Generate our look ahead view angles.
 	idealViewAngles:setFromAngle(Client.getEyeOrigin():getAngle(lookOrigin))
 
 	-- Shake the mouse movement.
 	View.setNoiseType(ViewNoiseType.moving)
+
+	View.lookState = "View look ahead of path"
+	View.lookSpeedIdeal = 6
+	View.lookSpeedDelayMin = 0.3
+	View.lookSpeedDelayMax = 0.9
 end
 
 --- @param idealViewAngles Angle
@@ -379,16 +427,18 @@ function View.setIdealWatchCorner(idealViewAngles)
 
 	-- I actually refactored something for once, instead of doing it in 4 places in slightly different ways.
 	-- No, don't open AiStateEvade. Don't look in there.
-	if AiUtility.clientThreatenedFromOrigin then
-		idealViewAngles:setFromAngle(Client.getEyeOrigin():getAngle(AiUtility.clientThreatenedFromOrigin))
-
-		View.lookSpeed = 4
-		View.lookNote = "View watch corner"
-
-		View.setNoiseType(ViewNoiseType.moving)
-
+	if not AiUtility.clientThreatenedFromOrigin then
 		return
 	end
+
+	idealViewAngles:setFromAngle(Client.getEyeOrigin():getAngle(AiUtility.clientThreatenedFromOrigin))
+
+	View.setNoiseType(ViewNoiseType.moving)
+
+	View.lookState = "View watch corner"
+	View.lookSpeedIdeal = 6.5
+	View.lookSpeedDelayMin = 0.2
+	View.lookSpeedDelayMax = 0.6
 end
 
 --- @param cmd SetupCommandEvent
@@ -407,6 +457,8 @@ function View.think(cmd)
 		correctedViewAngles = (correctedViewAngles - View.aimPunchAngles * View.recoilControl):normalize()
 	end
 
+	correctedViewAngles:normalize()
+
 	View.lookAtAngles = correctedViewAngles
 	View.overrideViewAngles = nil
 	View.isViewLocked = false
@@ -417,12 +469,6 @@ function View.think(cmd)
 	-- Reset noise. Defaults to none at all.
 	View.setNoiseType(ViewNoiseType.none)
 
-	if Config.isDebugging then
-		Logger.console(0, View.lookNote)
-	end
-
-	View.lookNote = nil
-
 	local clientOrigin = LocalPlayer:getOrigin()
 
 	-- Shoot out cover.
@@ -431,7 +477,7 @@ function View.think(cmd)
 		local maxDiff = correctedViewAngles:getMaxDiff(node.direction)
 
 		View.overrideViewAngles = node.direction
-		View.lookSpeed = 4
+		View.lookSpeedIdeal = 4
 		View.isViewLocked =  true
 
 		if clientOrigin:getDistance2(node.origin) < 20 and maxDiff < 20 and View.useCooldown:isElapsedThenRestart(0.5) then
@@ -445,7 +491,7 @@ function View.think(cmd)
 		local maxDiff = correctedViewAngles:getMaxDiff(node.direction)
 
 		View.overrideViewAngles = node.direction
-		View.lookSpeed = 4
+		View.lookSpeedIdeal = 4
 		View.isViewLocked =  true
 
 		if clientOrigin:getDistance2(node.origin) < 20 and maxDiff < 20 and View.useCooldown:isElapsedThenRestart(0.5) then
@@ -464,9 +510,26 @@ function View.lookAtLocation(origin, speed, noise, note)
 	end
 
 	View.overrideViewAngles = Client.getEyeOrigin():getAngle(origin)
-	View.lookSpeed = speed
+	View.lookSpeedIdeal = speed
 	View.lastLookAtLocationOrigin = origin
-	View.lookNote = note
+	View.lookState = note
+
+	View.setNoiseType(noise or ViewNoiseType.none)
+end
+
+--- @param direction Vector3
+--- @param speed number
+--- @param noise number
+--- @return void
+function View.lookAlongAngle(direction, speed, noise, note)
+	if View.isViewLocked then
+		return
+	end
+
+	View.overrideViewAngles = direction
+	View.lookSpeedIdeal = speed
+	View.lastLookAtLocationOrigin = nil
+	View.lookState = note
 
 	View.setNoiseType(noise or ViewNoiseType.none)
 end
@@ -480,10 +543,10 @@ function View.lookInDirection(angle, speed, noise, note)
 		return
 	end
 
-	View.overrideViewAngles = angle
-	View.lookSpeed = speed
+	View.overrideViewAngles = angle:getForward()
+	View.lookSpeedIdeal = speed
 	View.lastLookAtLocationOrigin = nil
-	View.lookNote = note
+	View.lookState = note
 
 	View.setNoiseType(noise or ViewNoiseType.none)
 end

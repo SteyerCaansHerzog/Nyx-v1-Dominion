@@ -5,6 +5,7 @@ local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Table = require "gamesense/Nyx/v1/Api/Table"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 --}}}
 
@@ -12,7 +13,9 @@ local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
@@ -20,7 +23,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @class AiStateEvacuate : AiStateBase
 --- @field isBombPlanted boolean
 --- @field isForcedToSave boolean
---- @field node Node
+--- @field node NodeSpotHide
 --- @field isAtDestination boolean
 local AiStateEvacuate = {
     name = "Evacuate"
@@ -155,6 +158,13 @@ function AiStateEvacuate:activate()
     self.isBombPlanted = AiUtility.isBombPlanted()
     self.node = node
     self.isAtDestination = false
+
+    Pathfinder.moveToNode(node, {
+        task = "Evacuate to hiding spot",
+        onReachedGoal = function()
+        	self.isAtDestination = true
+        end
+    })
 end
 
 --- @return void
@@ -179,29 +189,17 @@ function AiStateEvacuate:think(cmd)
 
     for _, teammate in pairs(AiUtility.teammates) do
         if teammate:getOrigin():getDistance(self.node.origin) < 32 then
-            self.node = nil
-
             self:activate()
         end
     end
 
     self.activity = "Going to hide"
 
-    if not self.isAtDestination and self.ai.nodegraph:isIdle() then
-        self.ai.nodegraph:pathfind(self.node.origin, {
-            objective = Node.types.GOAL,
-            task = "Evacuating to hiding spot",
-            onComplete = function()
-                self.isAtDestination = true
-            end
-        })
-    end
-
     local trace = Trace.getLineToPosition(LocalPlayer:getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateEvacuate.think<FindSpotVisible>")
     local distance = LocalPlayer:getOrigin():getDistance(self.node.origin)
 
     if distance < 32 then
-        cmd.in_duck = true
+        Pathfinder.duck()
     end
 
     if not trace.isIntersectingGeometry and distance < 200 then
@@ -214,65 +212,33 @@ function AiStateEvacuate:think(cmd)
 
        View.lookAtLocation(trace.endPosition, 4, View.noise.none, "Evacuate look at angle")
     end
+
+    if not self.isAtDestination and Pathfinder.isIdle() then
+        Pathfinder.retryLastRequest()
+    end
 end
 
---- @return Node
+--- @return NodeSpotHide
 function AiStateEvacuate:getHideNode()
+    --- @type NodeSpotHide
     local nodes = {}
+
     local clientOrigin = LocalPlayer:getOrigin()
-    local plantOrigin
+    local bombOrigin = AiUtility.plantedBomb and AiUtility.plantedBomb:m_vecOrigin()
 
-    if AiUtility.plantedBomb then
-        plantOrigin = AiUtility.plantedBomb:getOrigin()
-    end
+    for _, node in pairs(Nodegraph.get(Node.spotHide)) do repeat
+        if clientOrigin:getDistance(node.origin) < 1000 then
+            break
+        end
 
-    if self.isForcedToSave then
-        --- @type Node
-        local closestNode
-        local closestNodeDistance = math.huge
+        if bombOrigin and bombOrigin:getDistance(node.origin) < 2000 then
+            break
+        end
 
-        for _, node in pairs(self.ai.nodegraph.nodes) do repeat
-            -- Node is too close to planted bomb.
-            if plantOrigin and node.origin:getDistance(plantOrigin) < 2500 then
-                break
-            end
+        table.insert(nodes, node)
+    until true end
 
-            local distanceToClient = clientOrigin:getDistance(node.origin)
-            local isAvailable = true
-
-            -- Teammate is already in this spot.
-            for _, teammate in pairs(AiUtility.teammates) do
-                if teammate:getOrigin():getDistance(node.origin) < 32 then
-                    isAvailable = false
-
-                    break
-                end
-            end
-
-            -- This node is fine.
-            if isAvailable and node.type == Node.types.HIDE and distanceToClient < closestNodeDistance then
-                closestNodeDistance = distanceToClient
-
-                closestNode = node
-            end
-        until true end
-
-        return closestNode
-    else
-        -- Find a random node.
-        for _, node in pairs(self.ai.nodegraph.nodes) do repeat
-            -- Node is too close to planted bomb.
-            if plantOrigin and node.origin:getDistance(plantOrigin) < 2500 then
-                break
-            end
-
-            if node.type == Node.types.HIDE then
-                table.insert(nodes, node)
-            end
-        until true end
-
-        return nodes[Math.getRandomInt(1, #nodes)]
-    end
+    return Table.getRandom(nodes)
 end
 
 return Nyx.class("AiStateEvacuate", AiStateEvacuate, AiStateBase)

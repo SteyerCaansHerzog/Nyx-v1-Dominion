@@ -27,7 +27,9 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field blacklist boolean[]
 --- @field interaction string
 local AiStateChickenInteraction = {
-    name = "Chicken Interaction"
+    name = "Chicken Interaction",
+    delayedMouseMin = 0.1,
+    delayedMouseMax = 0.3
 }
 
 --- @param fields AiStateChickenInteraction

@@ -43,6 +43,8 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field threatCooldownTimer Timer
 local AiStateGrenadeBase = {
     name = "GrenadeBase",
+    delayedMouseMin = 0,
+    delayedMouseMax = 0.15,
     globalCooldownTimer = Timer:new():startThenElapse(),
     usedNodes = {},
     rangeThreshold = 2000
@@ -387,7 +389,7 @@ function AiStateGrenadeBase:think(cmd)
         View.isCrosshairUsingVelocity = false
         View.isCrosshairSmoothed = true
 
-       View.lookInDirection(self.node.direction, 5, View.noise.none, "GrenadeBase look at line-up")
+       View.lookAlongAngle(self.node.direction, 5, View.noise.none, "GrenadeBase look at line-up")
 
         local deltaAngles = self.node.direction:getAbsDiff(Client.getCameraAngles())
 

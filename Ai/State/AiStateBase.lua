@@ -18,15 +18,19 @@ local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --- @field activity string
 --- @field ai AiController
 --- @field assess fun(self: AiStateBase): number
+--- @field delayedMouseMax number
+--- @field delayedMouseMin number
 --- @field isBlocked boolean
 --- @field lastPriority number
 --- @field name string
 --- @field priority AiPriority
 --- @field priorityMap string[]
---- @field think fun(self: AiStateBase, cmd: SetupCommandEvent): void
 --- @field requiredNodes NodeTypeBase[]
+--- @field think fun(self: AiStateBase, cmd: SetupCommandEvent): void
 local AiStateBase = {
-    priorityMap = Table.getInverted(AiPriority)
+    priorityMap = Table.getInverted(AiPriority),
+    delayedMouseMin = 0.33,
+    delayedMouseMax = 0.66
 }
 
 --- @param fields AiStateBase
@@ -62,17 +66,30 @@ function AiStateBase:getCoverNode(range, target)
         table.insert(enemyEyeOrigins, enemy:getOrigin():offset(0, 0, 64))
     end
 
-    --- @type NodeTypeTraverse[]
-    local possibleNodes = {}
+    --- @type NodeTypeTraverse
+    local farthestNode
+    local farthestDistance = -1
+    local closestOrigin
     local i = 0
 
+    if AiUtility.closestEnemy then
+        closestOrigin = AiUtility.closestEnemy:getOrigin()
+    else
+        closestOrigin = clientOrigin
+    end
+
     for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do
-        if clientOrigin:getDistance(node.origin) < range and coverAngle:getFov(clientOrigin, node.origin) > 75 then
+        local distance = closestOrigin:getDistance(node.origin)
+
+        if distance > farthestDistance and clientOrigin:getDistance(node.origin) < range and coverAngle:getFov(clientOrigin, node.origin) > 75 then
             i = i + 1
 
             if i > 50 then
                 break
             end
+
+            farthestDistance = distance
+            farthestNode = node
 
             local isVisibleToEnemy = false
 
@@ -87,32 +104,8 @@ function AiStateBase:getCoverNode(range, target)
             end
 
             if not isVisibleToEnemy then
-                table.insert(possibleNodes, node)
+                farthestNode = node
             end
-        end
-    end
-
-    if Table.isEmpty(possibleNodes) then
-        return nil
-    end
-
-    --- @type Node
-    local farthestNode
-    local farthestDistance = -1
-    local closestOrigin
-
-    if AiUtility.closestEnemy then
-        closestOrigin = AiUtility.closestEnemy:getOrigin()
-    else
-        closestOrigin = clientOrigin
-    end
-
-    for _, node in pairs(possibleNodes) do
-        local distance = closestOrigin:getDistance(node.origin)
-
-        if distance > farthestDistance then
-            farthestDistance = distance
-            farthestNode = node
         end
     end
 

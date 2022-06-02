@@ -32,9 +32,14 @@ local ViewNoiseType = {
 	}),
 	idle = ViewNoise:new({
 		name = "Idle",
-		timeExponent = 5,
+		timeExponent = 50,
 		isBasedOnVelocity = false,
 		isRandomlyToggled = true,
+
+		toggleIntervalMin = 1,
+		toggleIntervalMax = 6,
+		togglePeriodMin = 0.1,
+		togglePeriodMax = 2.5,
 
 		pitchFineX = 0.001,
 		pitchFineY = 0.002,
@@ -62,9 +67,9 @@ local ViewNoiseType = {
 		pitchFineY = 0.005,
 		pitchFineZ = 0.0033,
 
-		pitchSoftX = 0.0012,
-		pitchSoftY = 0.0015,
-		pitchSoftZ = 0.0035,
+		pitchSoftX = 0.001,
+		pitchSoftY = 0.001,
+		pitchSoftZ = 0.001,
 
 		yawFineX = 0.006,
 		yawFineY = 0.045,

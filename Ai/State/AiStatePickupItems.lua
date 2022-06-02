@@ -32,7 +32,9 @@ local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --- @field recalculateItemsTimer Timer
 --- @field useCooldown Timer
 local AiStatePickupItems = {
-    name = "PickupItems"
+    name = "PickupItems",
+    delayedMouseMin = 0,
+    delayedMouseMax = 0.2
 }
 
 --- @param fields AiStatePickupItems

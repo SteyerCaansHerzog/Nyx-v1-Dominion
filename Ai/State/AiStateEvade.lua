@@ -68,7 +68,7 @@ function AiStateEvade:assess()
         return AiPriority.IGNORE
     end
 
-    if not LocalPlayer.hasBomb() and not self.hurtTimer:isElapsed(10) and AiUtility.timeData.roundtime_remaining > 40 then
+    if not AiUtility.plantedBomb and not LocalPlayer.hasBomb() and not self.hurtTimer:isElapsed(7.5) and AiUtility.timeData.roundtime_remaining > 40 then
         self.isLookingAtPathfindingDirection = true
 
         return AiPriority.EVADE_PASSIVE

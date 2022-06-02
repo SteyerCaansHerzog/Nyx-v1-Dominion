@@ -14,6 +14,7 @@ local NodeTypeTraverse = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeT
 --{{{ NodeHintBlockRetake
 --- @class NodeHintBlockRetake : NodeTypeHint
 --- @field isActivatedByChance boolean
+--- @field blockedNodes NodeTypeTraverse[]
 local NodeHintBlockRetake = {
     name = "Block (Retake)",
     description = {
@@ -31,6 +32,13 @@ local NodeHintBlockRetake = {
 --- @return NodeHintBlockRetake
 function NodeHintBlockRetake:new(fields)
 	return Nyx.new(self, fields)
+end
+
+--- @return void
+function NodeHintBlockRetake:__init()
+    NodeTypeHint.__init(self)
+
+    self.blockedNodes = {}
 end
 
 --- @param menu MenuGroup

@@ -95,7 +95,6 @@ local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --- @field voice AiVoice
 --- @field lockStateTimer Timer
 local AiController = {
-	states = AiState,
 	commands = AiChatCommand,
 	actions = {},
 	chatbots = {
@@ -114,6 +113,8 @@ end
 function AiController:__init()
 	self:initFields()
 	self:initEvents()
+
+	Logger.console(0, "AI Controller is ready.")
 end
 
 --- @return void
@@ -143,16 +144,14 @@ function AiController:initFields()
 		self.currentState = nil
 	end)
 
-	MenuGroup.visualisePathfinding = MenuGroup.group:addCheckbox("    | Visualise AI"):setParent(MenuGroup.enableAi)
 	MenuGroup.enableAutoBuy = MenuGroup.group:addCheckbox("    | Buy Weapons"):setParent(MenuGroup.enableAi)
+	MenuGroup.visualisePathfinding = MenuGroup.group:addCheckbox("    | Visualise AI"):setParent(MenuGroup.enableAi)
 
 	self.reaper = Reaper:new({
 		ai = self
 	})
 
 	self.voice = AiVoice:new()
-
-
 
 	local actions = {}
 
@@ -180,13 +179,17 @@ end
 --- @return void
 function AiController:initEvents()
 	Callbacks.init(function()
+		if not Server.isIngame() then
+			return
+		end
+
 		self.dynamicSkillRoundKills = 0
 		self.dynamicSkillHasDied = false
 
 		local states = {}
 
 		--- @param state AiStateBase
-		for id, state in pairs(self.states) do repeat
+		for id, state in pairs(AiState) do repeat
 			if state.requiredNodes then
 				local isNodeAvailable = true
 				local unavailableNodes = {}
@@ -563,13 +566,6 @@ function AiController:forceBuy()
 
 		self:buyGrenades(1)
 	end)
-end
-
---- @generic T
---- @param state T|AiStateBase
---- @return T
-function AiController:getState(state)
-	return self.states[state.name]
 end
 
 --- @param e PlayerChatEvent
@@ -982,7 +978,7 @@ function AiController:antiFlash(cmd)
 
 	if canLookAwayFromFlash then
 		LocalPlayer.unscope()
-		View.lookInDirection(-(eyeOrigin:getAngle(self.flashbang:m_vecOrigin())), 4.5, View.noise.moving, "AiController avoid flashbang")
+		View.lookAlongAngle(-(eyeOrigin:getAngle(self.flashbang:m_vecOrigin())), 4.5, View.noise.moving, "AiController avoid flashbang")
 	end
 end
 
@@ -1094,11 +1090,16 @@ function AiController:think(cmd)
 	local currentState
 	local highestPriority = -1
 
+	--- @param state AiStateBase
 	for _, state in pairs(self.states) do repeat
 		if state.isBlocked then
 			state.isBlocked = false
 
 			break
+		end
+
+		if not state.assess then
+			error(string.format("The state '%s' does not have an assess() method.", state.name))
 		end
 
 		local priority = state:assess()
@@ -1130,11 +1131,13 @@ function AiController:think(cmd)
 			end
 
 			if isActivatable then
+				View.lookSpeedDelay = Math.getRandomFloat(currentState.delayedMouseMin, currentState.delayedMouseMax)
+
 				Pathfinder.clearActivePathAndLastRequest()
 
 				currentState:activate()
 
-				Logger.console(3, "Changed AI state to '%s'.", currentState.name)
+				Logger.console(3, "Changed AI state to '%s' [%i].", currentState.name, highestPriority)
 			end
 		end
 

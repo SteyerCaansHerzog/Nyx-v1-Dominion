@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Menu = require "gamesense/Nyx/v1/Api/Menu"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -18,9 +19,11 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
+local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
 local NodeTypeBase = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeBase"
@@ -531,7 +534,38 @@ function NodegraphEditor:render()
         iNodes = iNodes + 1
     end
 
-    -- Node count
+    if Debug.isDisplayingConnectionCollisions then
+        Pathfinder.isEnabled =  true
+
+        Pathfinder.moveToNode(Nodegraph.getRandom(Node.traverseGeneric), {
+            task = "Display collision hulls",
+            onFoundPath = function()
+            	Client.fireAfter(1, function()
+                    Pathfinder.retryLastRequest()
+
+                    for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do repeat
+                        node.connectionCollisions = {}
+                    until true end
+            	end)
+            end
+        })
+
+        for _, collisions in pairs(Pathfinder.goalCollisions) do
+            for _, collision in pairs(collisions) do
+                local color
+
+                if collision.isIntersectingGeometry then
+                    color = Color:rgba(255, 0, 0)
+                else
+                    color = Color:rgba(0, 255, 0)
+                end
+
+                collision.origin:drawCube(collision.bounds, color)
+            end
+        end
+    end
+
+    -- Node count.
     height = 30
 
     UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, ColorList.FONT_NORMAL, height)
@@ -539,7 +573,7 @@ function NodegraphEditor:render()
 
     drawPos:offset(0, height + margin)
 
-    -- Information
+    -- Information.
     height = 30
 
     local text = "[R] Nodegraph Editing (ENABLED)"
@@ -584,7 +618,7 @@ function NodegraphEditor:render()
     drawPos:offset(0, height)
 
 
-    -- Selected node information
+    -- Selected node information.
     height = 10 + #self.node.description * lineHeight
 
     UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_2, ColorList.BACKGROUND_3, height)
@@ -616,7 +650,7 @@ function NodegraphEditor:render()
     end
 
 
-    -- Warning
+    -- Warning.
     if iProblems > 0 then
         drawPos:offset(0, margin)
 
@@ -627,7 +661,7 @@ function NodegraphEditor:render()
     end
 
 
-    -- Error
+    -- Error.
     if self.spawnError then
         drawPos:offset(0, margin)
 
@@ -637,7 +671,7 @@ function NodegraphEditor:render()
         drawPos:offset(0, height)
     end
 
-    -- Node list
+    -- Node list.
     local drawListPos = Vector2:new(padding, padding)
     local count = 4
     local iStart = self.iNode - count

@@ -21,7 +21,9 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field lastKillCutoff number
 --- @field lastKillTimer Timer
 local AiStateGraffiti = {
-    name = "Graffiti"
+    name = "Graffiti",
+    delayedMouseMin = 0,
+    delayedMouseMax = 0
 }
 
 --- @param fields AiStateGraffiti
@@ -91,7 +93,7 @@ function AiStateGraffiti:think()
 
     local newCameraAngles = Client.getCameraAngles():set(80)
 
-    View.lookInDirection(newCameraAngles, 6, View.noise.minor, "Graffiti look at floor")
+    View.lookAlongAngle(newCameraAngles, 6, View.noise.minor, "Graffiti look at floor")
 
     if Client.getCameraAngles().p > 75 then
         self.isEnabled = false

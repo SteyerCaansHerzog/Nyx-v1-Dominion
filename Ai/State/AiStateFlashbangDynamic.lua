@@ -32,7 +32,9 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field throwTimer Timer
 --- @field threatCooldownTimer Timer
 local AiStateFlashbangDynamic = {
-    name = "Flashbang Dynamic"
+    name = "Flashbang Dynamic",
+    delayedMouseMin = 0.05,
+    delayedMouseMax = 0.2
 }
 
 --- @param fields AiStateFlashbangDynamic
@@ -237,7 +239,7 @@ function AiStateFlashbangDynamic:think(cmd)
         LocalPlayer.equipFlashbang()
     end
 
-   View.lookInDirection(self.throwAngles, 4.5, View.noise.none, "FlashbangDynamic look at throw angle")
+   View.lookAlongAngle(self.throwAngles, 4.5, View.noise.none, "FlashbangDynamic look at throw angle")
 
     local maxDiff = self.throwAngles:getMaxDiff(Client.getCameraAngles())
 

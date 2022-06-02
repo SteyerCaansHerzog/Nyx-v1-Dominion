@@ -129,6 +129,8 @@ local WeaponMode = {
 --- @field weaponMode number
 local AiStateEngage = {
     name = "Engage",
+    delayedMouseMin = 0,
+    delayedMouseMax = 0,
     skillLevelMin = 0,
     skillLevelMax = 10
 }

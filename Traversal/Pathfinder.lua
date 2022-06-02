@@ -21,6 +21,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AStar = require "gamesense/Nyx/v1/Dominion/Traversal/AStar"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
+local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
@@ -81,10 +82,14 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field deactivatedNodesPool NodeTypeBase[]
 --- @field directMovementAngle Angle
 --- @field isAllowedToAvoidTeammates boolean
+--- @field isAllowedToDuck boolean
 --- @field isAllowedToJump boolean
 --- @field isAllowedToMove boolean
+--- @field isAllowedToWalk boolean
 --- @field isAvoidingTeammate boolean
+--- @field isDucking boolean
 --- @field isEnabled boolean
+--- @field isJumping boolean
 --- @field isObstructedByDoor boolean
 --- @field isObstructedByObstacle boolean
 --- @field isObstructedByTeammate boolean
@@ -98,6 +103,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field path PathfinderPath
 --- @field pathfindInterval number
 --- @field pathfindIntervalTimer Timer
+--- @field goalCollisions table<number, NodeTypeBaseConnectionCollision[]>
 local Pathfinder = {}
 
 --- @return void
@@ -105,19 +111,25 @@ function Pathfinder.__setup()
 	Pathfinder.initFields()
 	Pathfinder.initEvents()
 	Pathfinder.initMenu()
+
+	Logger.console(0, "Pathfinder is ready.")
 end
 
 --- @return void
 function Pathfinder.initFields()
-	Pathfinder.isEnabled = true
-	Pathfinder.pathfindInterval = 0.4
+	Pathfinder.avoidTeammatesDirection = "Left"
+	Pathfinder.avoidTeammatesDuration = 0.6
 	Pathfinder.avoidTeammatesTimer = Timer:new()
+	Pathfinder.isAllowedToDuck = true
+	Pathfinder.isAllowedToJump = true
+	Pathfinder.isAllowedToWalk = true
+	Pathfinder.isEnabled = true
 	Pathfinder.moveDuckTimer = Timer:new()
 	Pathfinder.moveObstructedTimer = Timer:new()
 	Pathfinder.moveOnGroundTimer = Timer:new():startThenElapse()
-	Pathfinder.avoidTeammatesDirection = "Left"
-	Pathfinder.avoidTeammatesDuration = 0.6
+	Pathfinder.pathfindInterval = 0.4
 	Pathfinder.pathfindIntervalTimer = Timer:new():startThenElapse()
+	Pathfinder.goalCollisions = {}
 end
 
 --- @return void
@@ -308,8 +320,22 @@ function Pathfinder.blockTeammateAvoidance()
 end
 
 --- @return void
-function Pathfinder.moveStop()
+function Pathfinder.standStill()
 	Pathfinder.isAllowedToMove = false
+end
+
+--- @return void
+function Pathfinder.walk()
+	Pathfinder.isWalking = true
+end
+
+--- @return void
+function Pathfinder.duck()
+	Pathfinder.isDucking = true
+end
+
+function Pathfinder.jump()
+	Pathfinder.isJumping = true
 end
 
 --- @param direction Vector3
@@ -504,20 +530,30 @@ function Pathfinder.handleLastRequest()
 
 	-- Setup node connections.
 	startGoal:setConnections(Nodegraph, {
-		isHumanCollisionHull = true,
+		isCollisionInfoSaved = true,
 		isInversingConnections = true,
 		isRestrictingConnections = true,
 		isTestingForGaps = true,
+		isUsingHumanCollisionTest = true,
 		maxConnections = 8,
 	})
 
 	endGoal:setConnections(Nodegraph, {
-		isHumanCollisionHull = false,
+		isCollisionInfoSaved = true,
 		isInversingConnections = true,
 		isRestrictingConnections = true,
 		isTestingForGaps = true,
+		isUsingHumanCollisionTest = true,
 		maxConnections = 8,
 	})
+
+	if Debug.isDisplayingConnectionCollisions then
+		Pathfinder.goalCollisions = {
+			startGoal.connectionCollisions
+		}
+
+		return
+	end
 
 	-- No connections for start node.
 	if startGoal:isConnectionless() then
@@ -605,7 +641,7 @@ function Pathfinder.handleLastRequest()
 
 	Pathfinder.clearLastRequest()
 
-	Logger.console(3, "Pathfind task '%s'", pathfinderOptions.task)
+	Logger.console(3, "Pathfind task '%s'.", pathfinderOptions.task)
 end
 
 --- @param options PathfinderOptions
@@ -727,7 +763,7 @@ function Pathfinder.traverseActivePath(cmd)
 	Pathfinder.airDuck(cmd)
 
 	if Pathfinder.directMovementAngle then
-		Pathfinder.handleWalking(cmd)
+		Pathfinder.handleMovementOptions(cmd)
 		Pathfinder.createMove(cmd, Pathfinder.directMovementAngle)
 
 		Pathfinder.directMovementAngle = nil
@@ -781,8 +817,8 @@ function Pathfinder.traverseActivePath(cmd)
 		Pathfinder.moveDuckTimer:restart()
 	end
 
-	if Pathfinder.moveDuckTimer:isNotElapsedThenStop(2) then
-		cmd.in_duck = true
+	if Pathfinder.moveDuckTimer:isNotElapsedThenStop(1) then
+		Pathfinder.duck()
 	end
 
 	if isGoal and pathfinderOptions.isCounterStrafingOnGoal and distance2d < pathfinderOptions.goalReachedRadius * 2 then
@@ -799,8 +835,12 @@ function Pathfinder.traverseActivePath(cmd)
 				end
 
 				if currentNode.origin.z - clientOrigin.z > 25 then
-					if Pathfinder.moveObstructedTimer:isElapsed(0.04) and clientSpeed < 75 then
-						cmd.in_jump = true
+					if Pathfinder.moveObstructedTimer:isElapsed(0.01) then
+						Pathfinder.duck()
+					end
+
+					if Pathfinder.moveObstructedTimer:isElapsed(0.05) and clientSpeed < 75 then
+						Pathfinder.jump()
 
 						Pathfinder.incrementPath()
 					end
@@ -813,7 +853,7 @@ function Pathfinder.traverseActivePath(cmd)
 					return
 				end
 
-				cmd.in_jump = true
+				Pathfinder.jump()
 
 				Pathfinder.incrementPath()
 			end,
@@ -832,7 +872,7 @@ function Pathfinder.traverseActivePath(cmd)
 					return
 				end
 
-				cmd.in_jump = true
+				Pathfinder.jump()
 
 				Pathfinder.incrementPath()
 
@@ -856,8 +896,6 @@ function Pathfinder.traverseActivePath(cmd)
 		if Pathfinder.isAllowedToJump then
 			jumpHandlers[currentNode.__classid]()
 		end
-
-		Pathfinder.isAllowedToJump = true
 	elseif currentNode:is(Node.traverseBreakObstacle) then
 		Pathfinder.detectObstacles(currentNode)
 
@@ -884,7 +922,7 @@ function Pathfinder.traverseActivePath(cmd)
 		end
 	end
 
-	Pathfinder.handleWalking(cmd)
+	Pathfinder.handleMovementOptions(cmd)
 
 	if AiUtility.gameRules:m_bFreezePeriod() ~= 1 then
 		if clientSpeed < 100 then
@@ -929,7 +967,7 @@ end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function Pathfinder.handleWalking(cmd)
+function Pathfinder.handleMovementOptions(cmd)
 	local clientOrigin = LocalPlayer:getOrigin()
 
 	for _, inferno in Entity.find("CInferno") do
@@ -938,11 +976,27 @@ function Pathfinder.handleWalking(cmd)
 		end
 	end
 
-	if Pathfinder.isWalking then
+	if Pathfinder.isAllowedToWalk and Pathfinder.isWalking then
 		Pathfinder.isWalking = false
 
 		cmd.in_speed = true
 	end
+
+	if Pathfinder.isAllowedToDuck and Pathfinder.isDucking then
+		Pathfinder.isDucking = false
+
+		cmd.in_duck = true
+	end
+
+	if Pathfinder.isAllowedToJump and Pathfinder.isJumping then
+		Pathfinder.isJumping = false
+
+		cmd.in_jump = true
+	end
+
+	Pathfinder.isAllowedToWalk = true
+	Pathfinder.isAllowedToDuck = true
+	Pathfinder.isAllowedToJump = true
 end
 
 --- @param node NodeTraverseBreakObstacle

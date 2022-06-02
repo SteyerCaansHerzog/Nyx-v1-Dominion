@@ -19,14 +19,22 @@ local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestList"
 --}}}
 
---{{{ NodeTypeBase
+--{{{ Definitions
 --- @class NodeTypeBaseConnectionOptions
---- @field isHumanCollisionHull boolean
+--- @field isCollisionInfoSaved boolean
 --- @field isInversingConnections boolean
 --- @field isRestrictingConnections boolean
 --- @field isTestingForGaps boolean
+--- @field isUsingHumanCollisionTest boolean
 --- @field maxConnections number
 
+--- @class NodeTypeBaseConnectionCollision
+--- @field origin Vector3
+--- @field bounds Vector3[]
+--- @field isIntersectingGeometry boolean
+--}}}
+
+--{{{ NodeTypeBase
 --- @class NodeTypeBase : Class
 --- @field bombsite string
 --- @field collisionHullGap Vector3[]
@@ -35,6 +43,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field collisionHullNode Vector3[]
 --- @field colorPrimary Color
 --- @field colorSecondary Color
+--- @field connectionCollisions NodeTypeBaseConnectionCollision[]
 --- @field connections NodeTypeBase[]
 --- @field customizerItems MenuItem[]
 --- @field customizers string[]
@@ -57,6 +66,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field isTransient boolean
 --- @field isTraversal boolean
 --- @field lookAtOrigin Vector3
+--- @field lookDistanceThreshold number
 --- @field lookFromOrigin Vector3
 --- @field lookZOffset number
 --- @field name string
@@ -69,8 +79,8 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field renderColorFovSecondary Color
 --- @field renderColorPrimary Color
 --- @field renderColorSecondary Color
---- @field lookDistanceThreshold number
 --- @field type string
+--- @field isCollisionTestWeak boolean
 local NodeTypeBase = {
     name = "Unnamed Node Type",
     description = {"No description given."},
@@ -105,6 +115,7 @@ end
 --- @return void
 function NodeTypeBase:__init()
     self.connections = {}
+    self.connectionCollisions = {}
     self.pathOrigin = self.origin
     self.iRenderTopLines = 0
     self.iRenderBottomLines = 0
@@ -398,7 +409,7 @@ function NodeTypeBase:setConnections(nodegraph, options)
     local hullBounds
     local hullOffset = 0
 
-    if options.isHumanCollisionHull then
+    if options.isUsingHumanCollisionTest then
         if LocalPlayer:getFlag(LocalPlayer.flags.FL_DUCKING) then
             hullBounds = NodeTypeBase.collisionHullHumanDucking
         else
@@ -413,7 +424,7 @@ function NodeTypeBase:setConnections(nodegraph, options)
     local fallBounds = NodeTypeBase.collisionHullGap
     local selfCollisionOrigin = self.origin:clone():offset(0, 0, hullOffset)
 
-    for _, node in Table.sortedPairs(nodegraph.nodes, function(a, b)
+    for _, node in Table.sortedPairs(nodegraph.nodesByType.Traverse, function(a, b)
         return self.origin:getDistance(a.origin) < self.origin:getDistance(b.origin)
     end) do repeat
         if iConnections == options.maxConnections then
@@ -422,12 +433,6 @@ function NodeTypeBase:setConnections(nodegraph, options)
 
         if node.id == self.id then
             break
-        end
-
-        if not self.isTransient and not node.isTransient then
-            if not self.isTraversal and not node.isTraversal then
-                break
-            end
         end
 
         if not self.isConnectable or not node.isConnectable then
@@ -454,10 +459,40 @@ function NodeTypeBase:setConnections(nodegraph, options)
             end
         end
 
-        local targetCollisionOrigin = node.origin:clone():offset(0, 0, hullOffset)
-        local hullTrace = Trace.getHullToPosition(selfCollisionOrigin, targetCollisionOrigin, hullBounds, AiUtility.traceOptionsPathfinding)
+        local isCollisionOk = true
 
-        if not hullTrace.isIntersectingGeometry then
+        if node.isCollisionTestWeak and options.isUsingHumanCollisionTest then
+            if distance < 150 then
+                local collisionTrace = Trace.getHullToPosition(self.origin, node.origin, Vector3:newBounds(Vector3.align.CENTER, 6), AiUtility.traceOptionsPathfinding)
+
+                if options.isCollisionInfoSaved then
+                    self.connectionCollisions[node.id] = {
+                        origin = node.origin:clone(),
+                        bounds = Vector3:newBounds(Vector3.align.CENTER, 6),
+                        isIntersectingGeometry = collisionTrace.isIntersectingGeometry
+                    }
+
+                    isCollisionOk = not collisionTrace.isIntersectingGeometry
+                end
+            else
+                isCollisionOk = false
+            end
+        else
+            local targetCollisionOrigin = node.origin:clone():offset(0, 0, hullOffset)
+            local collisionTrace = Trace.getHullToPosition(selfCollisionOrigin, targetCollisionOrigin, hullBounds, AiUtility.traceOptionsPathfinding)
+
+            if options.isCollisionInfoSaved then
+                self.connectionCollisions[node.id] = {
+                    origin = targetCollisionOrigin,
+                    bounds = hullBounds,
+                    isIntersectingGeometry = collisionTrace.isIntersectingGeometry
+                }
+            end
+
+            isCollisionOk = not  collisionTrace.isIntersectingGeometry
+        end
+
+        if isCollisionOk then
             if options.isTestingForGaps then
                 local isGap = false
                 local steps = 1
@@ -561,8 +596,10 @@ function NodeTypeBase:onSetup(nodegraph)
         -- Default planar test offset.
         local offset = 5
 
-        -- Determine the maximum offset we can use for planar nodes' offsets.
+        -- Determine the maximum offset we can use for planar nodes' path offsets.
         -- This will make planar offsets become small in tight spaces, and larger in open areas.
+        -- The intent is for the AI to take randomised paths. These validation functions
+        -- give us the maximum possible offset the AI could perform.
         for _, item in pairs(PlanarTestList) do
             if not item.validation(origin) then
                 break
@@ -608,19 +645,31 @@ function NodeTypeBase:onIsInPath(nodegraph) end
 --- @param path PathfinderPath
 --- @return void
 function NodeTypeBase:onIsNext(nodegraph, path)
-    if self.isPlanar then
+    -- Don't make the first node in a path offset.
+    -- If the AI keeps remaking the path, it's likely to zig-zag on the spot.
+    if self.isPlanar and path.idx > 1 then
         local nextNode = path.nodes[path.idx + 1]
 
+        -- Never offset the path if the next node is a jump or duck,
+        -- or the AI may not line them up properly.
         if nextNode and (nextNode.isJump or nextNode.isDuck) then
             return
         end
 
+        -- Generate a realistic offset based on the distance.
+        -- Close nodes in the path shouldn't want to make the AI strafe really hard.
+        local distance = LocalPlayer:getOrigin():getDistance(self.origin)
+        local pct = Math.getClampedFloat(distance, 150, 0, 150)
+        local pathOffset = self.pathOffset * pct
+
+        -- Generate the world position we would like the AI to walk to.
         local idealPathOrigin = self.origin + Vector3:new(
-            Math.getRandomFloat(-self.pathOffset, self.pathOffset),
-            Math.getRandomFloat(-self.pathOffset, self.pathOffset),
+            Math.getRandomFloat(-pathOffset, pathOffset),
+            Math.getRandomFloat(-pathOffset, pathOffset),
             0
         )
 
+        -- Generate the world position that the AI can physically walk to.
         local trace = Trace.getHullToPosition(
             self.origin,
             idealPathOrigin,

@@ -202,7 +202,7 @@ function AiStatePlant:think(cmd)
     end
 
     if distance < 72 then
-        View.lookInDirection(self.node.direction, 5, View.noise.idle, "Plant look at angle")
+        View.lookAlongAngle(self.node.direction, 5, View.noise.idle, "Plant look at angle")
         self.ai.isQuickStopping = true
     end
 

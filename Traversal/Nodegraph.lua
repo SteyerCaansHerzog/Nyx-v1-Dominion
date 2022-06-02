@@ -41,6 +41,8 @@ local Nodegraph = {}
 function Nodegraph.__setup()
     Nodegraph.initFields()
     Nodegraph.initEvents()
+
+    Logger.console(0, "Nodegraph is ready.")
 end
 
 --- @return void
@@ -58,6 +60,7 @@ function Nodegraph.initFields()
     --- @type NodeTypeBase[]
     local classes = Node
 
+    --- @param node NodeTypeBase
     for _, node in pairs(classes) do
         Nodegraph.nodesByClass[node.__classname] = {}
         Nodegraph.nodeClassMap[node.__classname] = node
@@ -70,6 +73,7 @@ function Nodegraph.initFields()
         node:setupCustomizers(MenuGroup)
     end
 
+    --- @param node NodeTypeBase
     for _, node in pairs(NodeType) do
         Nodegraph.nodesByType[node.type] = {}
     end
@@ -78,6 +82,10 @@ end
 --- @return void
 function Nodegraph.initEvents()
     Callbacks.init(function()
+        if not Server.isIngame() then
+            return
+        end
+
         local filename = Nodegraph.getFilename()
 
         if not filename then
