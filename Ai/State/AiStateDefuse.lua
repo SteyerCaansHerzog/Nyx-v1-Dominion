@@ -52,10 +52,8 @@ end
 
 --- @return void
 function AiStateDefuse:assess()
-    local player = AiUtility.client
-
     -- Only CTs can defuse.
-    if not player:isCounterTerrorist() then
+    if not LocalPlayer:isCounterTerrorist() then
         return AiPriority.IGNORE
     end
 
@@ -88,7 +86,7 @@ function AiStateDefuse:assess()
         return AiPriority.DEFUSE_STICK
     end
 
-    local clientOrigin = player:getOrigin()
+    local clientOrigin = LocalPlayer:getOrigin()
     local isCovered = false
     local bombOrigin = AiUtility.plantedBomb:m_vecOrigin()
 
@@ -101,7 +99,7 @@ function AiStateDefuse:assess()
     end
 
     -- We're covered by a teammate.
-    if player:m_bIsDefusing() == 1 and isCovered then
+    if LocalPlayer:m_bIsDefusing() == 1 and isCovered then
         return AiPriority.DEFUSE_COVERED
     end
 

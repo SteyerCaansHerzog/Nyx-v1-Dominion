@@ -81,14 +81,12 @@ end
 --- @return void
 function AiUtility:initFields()
     AiUtility.isPerformingCalculations = true
-    AiUtility.client = Player.getClient()
     AiUtility.clientNodeOrigin = Client.getOrigin():offset(0, 0, 18)
     AiUtility.visibleEnemies = {}
     AiUtility.lastVisibleEnemyTimer = Timer:new()
     AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
     AiUtility.enemyFovs = Table.populateForMaxPlayers(math.huge)
     AiUtility.ignorePresenceAfter = Math.getRandomFloat(10, 15)
-
     AiUtility.lastPresenceTimers = {}
 
     for i = 1, 64 do
@@ -192,7 +190,6 @@ function AiUtility:initEvents()
     Callbacks.init(function()
     	AiUtility.bombCarrier = nil
         AiUtility.enemiesAlive = 5
-        AiUtility.client = Player.getClient()
 
         if globals.mapname() and MapInfo[globals.mapname()] then
             AiUtility.gamemode = MapInfo[globals.mapname()].gamemode
@@ -358,7 +355,6 @@ end
 
 --- @return void
 function AiUtility.updateMisc()
-    AiUtility.client = Player.getClient()
     AiUtility.clientNodeOrigin = Client.getOrigin():offset(0, 0, 18)
     AiUtility.bomb = Entity.findOne("CC4")
     AiUtility.plantedBomb = Entity.findOne("CPlantedC4")

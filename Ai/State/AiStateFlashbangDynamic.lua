@@ -138,7 +138,7 @@ function AiStateFlashbangDynamic:assess()
 
         -- Check if we're going to throw it into a wall at close range.
         local nearTrace = Trace.getLineAtAngle(clientEyeOrigin, predictionAngles:clone():offset(-12), {
-            skip = AiUtility.client.eid,
+            skip = LocalPlayer.eid,
             mask = Trace.mask.VISIBLE,
             distance = 200
         }, "AiStateFlashbangDynamic.assess<FindWallTooClose>")

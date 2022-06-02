@@ -269,10 +269,9 @@ function AiStateEngage:initEvents()
     end)
 
     Callbacks.runCommand(function()
-        local player = AiUtility.client
         local bomb = AiUtility.plantedBomb
 
-        if bomb and player:isCounterTerrorist() then
+        if bomb and LocalPlayer:isCounterTerrorist() then
             local bombOrigin = bomb:m_vecOrigin()
 
             for _, enemy in pairs(AiUtility.enemies) do
@@ -288,7 +287,7 @@ function AiStateEngage:initEvents()
             end
         end
 
-        if player:m_bIsScoped() == 1 then
+        if LocalPlayer:m_bIsScoped() == 1 then
             self.scopedTimer:ifPausedThenStart()
         else
             self.scopedTimer:stop()
@@ -447,9 +446,7 @@ end
 --- @return void
 function AiStateEngage:activate()
     if self.enemySpottedCooldown:isElapsedThenRestart(60) then
-        local player = AiUtility.client
-
-        if AiUtility.bombCarrier and AiUtility.bombCarrier:is(self.bestTarget) and player:isCounterTerrorist() then
+        if AiUtility.bombCarrier and AiUtility.bombCarrier:is(self.bestTarget) and LocalPlayer:isCounterTerrorist() then
             if not AiUtility.isLastAlive then
                self.ai.voice.pack:speakNotifyTeamOfBombCarrier()
             end
@@ -671,8 +668,7 @@ function AiStateEngage:setBestTarget()
     local selectedEnemy
     local lowestFov = math.huge
     local closestDistance = math.huge
-    local player = AiUtility.client
-    local origin = player:getOrigin()
+    local origin = LocalPlayer:getOrigin()
 
     for _, enemy in pairs(AiUtility.enemies) do
         if enemy:m_bIsDefusing() == 1 then
@@ -763,8 +759,7 @@ function AiStateEngage:setWeaponStats(enemy)
         return
     end
 
-    local player = AiUtility.client
-    local weapon = player:getWeapon()
+    local weapon = LocalPlayer:getWeapon()
     local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
     --- @type AiStateEngageWeaponStats[]
     local weaponTypes = {
@@ -789,7 +784,7 @@ function AiStateEngage:setWeaponStats(enemy)
             runAtCloseRange = true,
             priorityHitbox = Player.hitbox.NECK,
             evaluate = function()
-                return player:isHoldingWeapons({
+                return LocalPlayer:isHoldingWeapons({
                     Weapons.SCAR20,
                     Weapons.G3SG1
                 })
@@ -817,7 +812,7 @@ function AiStateEngage:setWeaponStats(enemy)
             priorityHitbox = Player.hitbox.SPINE_2,
             isBoltAction = true,
             evaluate = function()
-                return player:isHoldingWeapon(Weapons.AWP)
+                return LocalPlayer:isHoldingWeapon(Weapons.AWP)
             end
         },
         {
@@ -842,7 +837,7 @@ function AiStateEngage:setWeaponStats(enemy)
             priorityHitbox = Player.hitbox.HEAD,
             isBoltAction = true,
             evaluate = function()
-                return player:isHoldingWeapon(Weapons.SSG08)
+                return LocalPlayer:isHoldingWeapon(Weapons.SSG08)
             end
         },
         {
@@ -866,7 +861,7 @@ function AiStateEngage:setWeaponStats(enemy)
             runAtCloseRange = true,
             priorityHitbox = Player.hitbox.NECK,
             evaluate = function()
-                return player:isHoldingLmg()
+                return LocalPlayer:isHoldingLmg()
             end
         },
         {
@@ -890,7 +885,7 @@ function AiStateEngage:setWeaponStats(enemy)
             runAtCloseRange = false,
             priorityHitbox = Player.hitbox.SPINE_3,
             evaluate = function()
-                return player:isHoldingRifle()
+                return LocalPlayer:isHoldingRifle()
             end
         },
         {
@@ -914,7 +909,7 @@ function AiStateEngage:setWeaponStats(enemy)
             runAtCloseRange = true,
             priorityHitbox = Player.hitbox.NECK,
             evaluate = function()
-                return player:isHoldingShotgun()
+                return LocalPlayer:isHoldingShotgun()
             end
         },
         {
@@ -938,7 +933,7 @@ function AiStateEngage:setWeaponStats(enemy)
             runAtCloseRange = true,
             priorityHitbox = Player.hitbox.NECK,
             evaluate = function()
-                return player:isHoldingSmg()
+                return LocalPlayer:isHoldingSmg()
             end
         },
         {
@@ -1035,7 +1030,7 @@ function AiStateEngage:setWeaponStats(enemy)
             runAtCloseRange = true,
             priorityHitbox = Player.hitbox.HEAD,
             evaluate = function()
-                return player:isHoldingPistol()
+                return LocalPlayer:isHoldingPistol()
             end
         },
     }
@@ -1055,7 +1050,7 @@ function AiStateEngage:setWeaponStats(enemy)
         return
     end
 
-    local distance = player:getOrigin():getDistance(enemy:getOrigin())
+    local distance = LocalPlayer:getOrigin():getDistance(enemy:getOrigin())
 
     if distance >= selectedWeaponType.ranges.long then
         self.tapFireTime = selectedWeaponType.firerates.long
@@ -1100,9 +1095,7 @@ function AiStateEngage:render()
         return
     end
 
-    local player = AiUtility.client
-
-    if not player:isAlive() then
+    if not LocalPlayer:isAlive() then
         return
     end
 
@@ -1111,10 +1104,10 @@ function AiStateEngage:render()
 
     local kd = string.format(
         "%i / %i (%i KD)",
-        player:m_iKills(), player:m_iDeaths(), player:getKdRatio()
+        LocalPlayer:m_iKills(), LocalPlayer:m_iDeaths(), LocalPlayer:getKdRatio()
     )
 
-    local kdColor = Color:hsla(0, 0.8, 0.6):setHue(Math.getClamped(Math.getFloat(player:getKdRatio(), 2), 0, 1) * 100)
+    local kdColor = Color:hsla(0, 0.8, 0.6):setHue(Math.getClamped(Math.getFloat(LocalPlayer:getKdRatio(), 2), 0, 1) * 100)
 
     self:renderText(uiPos, kdColor, kd)
     self:renderTimer("REACT", uiPos, self.reactionTimer, self.currentReactionTime)
@@ -1494,8 +1487,6 @@ function AiStateEngage:attackBestTarget(cmd)
         View.lookAtLocation(self.lookAtOccludedOrigin, 4, View.noise.minor, "Engage look-at occlusion")
     end
 
-    local player = AiUtility.client
-
     -- Spray.
     if self.sprayTimer:isStarted() and not self.sprayTimer:isElapsed(self.sprayTime) then
         self.ai.canReload = false
@@ -1528,7 +1519,7 @@ function AiStateEngage:attackBestTarget(cmd)
     end
 
     -- Ensure player is holding weapon.
-    if not player:isHoldingGun() then
+    if not LocalPlayer:isHoldingGun() then
         if LocalPlayer:hasPrimary() then
             LocalPlayer.equipPrimary()
         else
@@ -1536,7 +1527,7 @@ function AiStateEngage:attackBestTarget(cmd)
         end
     end
 
-    local weapon = Entity:create(player:m_hActiveWeapon())
+    local weapon = Entity:create(LocalPlayer:m_hActiveWeapon())
     local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
     local ammo = weapon:m_iClip1()
     local maxAmmo = csgoWeapon.primary_clip_size
@@ -1623,7 +1614,7 @@ function AiStateEngage:attackBestTarget(cmd)
             local traceEid, traceDamage = eyeOrigin:getTraceBullet(bangOrigin, LocalPlayer.eid)
             local isBangable = true
 
-            if player:hasSniper() then
+            if LocalPlayer:hasSniper() then
                 if ammoRatio < 1 then
                     -- Banging with AWP is often not a great idea.
                     -- So we're only going to allow it if the AI has a full mag.
@@ -1872,7 +1863,7 @@ function AiStateEngage:canHoldAngle()
         local isNearPlantedBomb = AiUtility.plantedBomb and LocalPlayer:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 512
 
         -- Please don't hold angles if we have to plant.
-        if AiUtility.bombCarrier and not AiUtility.bombCarrier:is(AiUtility.client) then
+        if AiUtility.bombCarrier and not AiUtility.bombCarrier:is(LocalPlayer) then
             return true
         end
 
@@ -1889,12 +1880,11 @@ end
 
 --- @return void
 function AiStateEngage:walk()
-    local player = AiUtility.client
     local canWalk
 
     if self.bestTarget and AiUtility.closestEnemy then
         local clientEyeOrigin = Client.getEyeOrigin()
-        local predictedEyeOrigin = clientEyeOrigin + player:m_vecVelocity() * 0.8
+        local predictedEyeOrigin = clientEyeOrigin + LocalPlayer:m_vecVelocity() * 0.8
         local enemyOrigin = AiUtility.closestEnemy:getOrigin()
         local distance = clientEyeOrigin:getDistance(enemyOrigin)
         local trace = Trace.getLineToPosition(predictedEyeOrigin, self.bestTarget:getOrigin():offset(0, 0, 48), AiUtility.traceOptionsAttacking)
@@ -1904,7 +1894,7 @@ function AiStateEngage:walk()
             canWalk = true
         end
 
-        if player:isCounterTerrorist() and AiUtility.plantedBomb then
+        if LocalPlayer:isCounterTerrorist() and AiUtility.plantedBomb then
             if AiUtility.bombDetonationTime < 20 then
                 canWalk = false
             elseif distance > 350 then
@@ -2440,8 +2430,7 @@ function AiStateEngage:strafePeek()
         return
     end
 
-    local player = AiUtility.client
-    local playerOrigin = player:getOrigin()
+    local playerOrigin = LocalPlayer:getOrigin()
     local enemyOrigin = enemy:getOrigin()
     local angleToEnemy = playerOrigin:getAngle(enemyOrigin)
 
@@ -2525,8 +2514,7 @@ function AiStateEngage:preAimThroughCorners()
         return
     end
 
-    local player = AiUtility.client
-    local clientVelocity = player:m_vecVelocity()
+    local clientVelocity = LocalPlayer:m_vecVelocity()
 
     if clientVelocity:getMagnitude() < 50 then
         return
@@ -2536,7 +2524,7 @@ function AiStateEngage:preAimThroughCorners()
         return
     end
 
-    local playerOrigin = player:getOrigin()
+    local playerOrigin = LocalPlayer:getOrigin()
     local hitboxes = target:getHitboxPositions({
         Player.hitbox.HEAD,
         Player.hitbox.LEFT_LOWER_LEG,

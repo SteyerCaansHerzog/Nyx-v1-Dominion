@@ -80,8 +80,7 @@ function AiStateDrop:think(cmd)
     self.ai.canLookAwayFromFlash = false
     self.ai.canUseGear = false
 
-    local player = AiUtility.client
-    local distance = player:getOrigin():getDistance(self.requestingPlayer:getOrigin())
+    local distance = LocalPlayer:getOrigin():getDistance(self.requestingPlayer:getOrigin())
     local hitbox = self.requestingPlayer:getOrigin():offset(0, 0, 64)
     local isFreezeTime = AiUtility.gameRules:m_bFreezePeriod() == 1
 
@@ -100,7 +99,7 @@ function AiStateDrop:think(cmd)
             self.droppingGearTimer:ifPausedThenStart()
 
             -- We need to buy something before we can drop.
-            if isFreezeTime and not player:hasWeapons(WeaponInfo.primaries) and player:m_iAccount() > 3200 then
+            if isFreezeTime and not LocalPlayer:hasWeapons(WeaponInfo.primaries) and LocalPlayer:m_iAccount() > 3200 then
                 UserInput.execute("buy m4a4; buy ak47; buy m4a1_silencer")
             end
 

@@ -168,8 +168,7 @@ function AiVoice:__init()
 
     Callbacks.roundEnd(function(e)
         Client.fireAfter(0.1, function()
-            local player = AiUtility.client
-            local team = player:m_iTeamNum()
+            local team = LocalPlayer:m_iTeamNum()
 
             self.clientWonLastRound = e.winner == team
 
@@ -184,7 +183,7 @@ function AiVoice:__init()
             local teamWins
             local oppositionWins
 
-            if player:isTerrorist() then
+            if LocalPlayer:isTerrorist() then
                 teamWins = tWins
                 oppositionWins = ctWins
             else
@@ -309,9 +308,7 @@ function AiVoice:__init()
             self.pack:speakClientDefusingBomb()
         end
 
-        local player = AiUtility.client
-
-        if e.player:isEnemy() and player:isAlive() and player:getOrigin():getDistance(e.player:getOrigin()) < 1500 then
+        if e.player:isEnemy() and LocalPlayer:isAlive() and LocalPlayer:getOrigin():getDistance(e.player:getOrigin()) < 1500 then
             self.pack:speakEnemyDefusingBomb()
         end
     end)
@@ -325,9 +322,7 @@ function AiVoice:__init()
             self.pack:speakClientPlantingBomb()
         end
 
-        local player = AiUtility.client
-
-        if e.player:isEnemy() and player:isAlive() and player:getOrigin():getDistance(e.player:getOrigin()) < 1500 then
+        if e.player:isEnemy() and LocalPlayer:isAlive() and LocalPlayer:getOrigin():getDistance(e.player:getOrigin()) < 1500 then
             self.pack:speakEnemyPlantingBomb()
         end
     end)

@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
@@ -34,10 +35,9 @@ function AiChatCommandBoost:invoke(ai, sender, args)
 
     self.isTaken = false
 
-    local player = AiUtility.client
     local senderOrigin = sender:getOrigin()
 
-    if player:getOrigin():getDistance(senderOrigin) > 1400 then
+    if LocalPlayer:getOrigin():getDistance(senderOrigin) > 1400 then
         return
     end
 
@@ -63,14 +63,14 @@ function AiChatCommandBoost:invoke(ai, sender, args)
     end) do
         i = i + 1
 
-        if k == player.eid then
+        if k == LocalPlayer.eid then
             orderInQueue = i
 
             break
         end
     end
 
-    Client.fireAfter(orderInQueue, function()
+    Client.fireAfter(orderInQueue * 0.6, function()
         if not self.isTaken then
             ai.states.boost:boost(sender, traceAim.endPosition)
 

@@ -30,13 +30,11 @@ function AiChatCommandBomb:invoke(ai, sender, args)
         return
     end
 
-    local player = AiUtility.client
-
-    if not player:isAlive() then
+    if not LocalPlayer:isAlive() then
         return
     end
 
-    if player:getOrigin():getDistance(sender:getOrigin()) > 800 then
+    if LocalPlayer:getOrigin():getDistance(sender:getOrigin()) > 800 then
         return
     end
 

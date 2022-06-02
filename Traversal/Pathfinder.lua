@@ -1039,11 +1039,9 @@ function Pathfinder.avoidTeammates(cmd)
 		return
 	end
 
-	local player = AiUtility.client
-
 	local isBlocked = false
-	local origin = player:getOrigin()
-	local collisionOrigin = origin:clone():offset(0, 0, 36) + (Pathfinder.lastMovementAngle:clone():set(0):getForward() * 40)
+	local clientOrigin = LocalPlayer:getOrigin()
+	local collisionOrigin = clientOrigin:clone():offset(0, 0, 36) + (Pathfinder.lastMovementAngle:clone():set(0):getForward() * 40)
 	local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 20, 20, 40)
 	--- @type Player
 	local blockingTeammate

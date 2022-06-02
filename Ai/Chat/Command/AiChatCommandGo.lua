@@ -39,7 +39,7 @@ function AiChatCommandGo:invoke(ai, sender, args)
         return
     end
 
-    if sender:is(AiUtility.client) or not LocalPlayer:isAlive() then
+    if sender:is(LocalPlayer) or not LocalPlayer:isAlive() then
         return
     end
 
@@ -62,8 +62,6 @@ function AiChatCommandGo:invoke(ai, sender, args)
         return
     end
 
-    local player = AiUtility.client
-
     ai.voice.pack:speakAgreement()
 
     Client.fireAfter(Math.getRandomFloat(1, 2), function()
@@ -75,7 +73,7 @@ function AiChatCommandGo:invoke(ai, sender, args)
         ai.states.patrol:reset()
         ai.states.sweep:activate(objective)
 
-        if player:isTerrorist() then
+        if LocalPlayer:isTerrorist() then
             if objective == "CT" or objective == "T" then
                 ai.states.check:activate(objective)
             else
@@ -92,7 +90,7 @@ function AiChatCommandGo:invoke(ai, sender, args)
             if LocalPlayer.hasBomb() then
                 ai.states.plant:activate(objective)
             end
-        elseif player:isCounterTerrorist() then
+        elseif LocalPlayer:isCounterTerrorist() then
             if objective == "CT" or objective == "T" then
                 ai.states.check:activate(objective)
             else

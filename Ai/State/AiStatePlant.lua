@@ -84,8 +84,7 @@ function AiStatePlant:assess()
         return AiPriority.IGNORE
     end
 
-    local player = AiUtility.client
-    local playerOrigin = player:getOrigin()
+    local playerOrigin = LocalPlayer:getOrigin()
     local siteName = self.ai.nodegraph:getNearestSiteName(playerOrigin)
     local site = self.ai.nodegraph:getSiteNode(siteName)
     local closestPlantNode = self.ai.nodegraph:getClosestNodeOf(playerOrigin, Node.types.PLANT)
@@ -143,8 +142,7 @@ end
 --- @param site string
 --- @return void
 function AiStatePlant:activate(site)
-    local player = AiUtility.client
-    local origin = player:getOrigin()
+    local origin = LocalPlayer:getOrigin()
 
     if site then
         self.plantAt = site
@@ -190,8 +188,7 @@ end
 function AiStatePlant:think(cmd)
     self.activity = "Going to plant bomb"
 
-    local player = AiUtility.client
-    local distance = player:getOrigin():getDistance2(self.node.origin)
+    local distance = LocalPlayer:getOrigin():getDistance2(self.node.origin)
 
     if distance < 150 then
         self.activity = "Planting bomb"
@@ -209,7 +206,7 @@ function AiStatePlant:think(cmd)
     if distance < 25 then
         cmd.in_duck = true
 
-        if player:isAbleToAttack() then
+        if LocalPlayer:isAbleToAttack() then
             self.plantDelayTimer:ifPausedThenStart()
 
             if self.plantDelayTimer:isElapsed(self.plantDelayTime) then

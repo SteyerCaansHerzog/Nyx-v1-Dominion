@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
@@ -56,7 +57,7 @@ function AiChatCommandBase:isValid(ai, sender, args)
         return true
     end
 
-    if sender:is(AiUtility.client) then
+    if sender:is(LocalPlayer) then
         return false
     end
 

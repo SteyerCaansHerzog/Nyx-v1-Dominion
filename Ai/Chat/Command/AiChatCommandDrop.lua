@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 --}}}
@@ -29,13 +30,11 @@ function AiChatCommandDrop:invoke(ai, sender, args)
         return
     end
 
-    local player = AiUtility.client
-
-    if not player:isAlive() then
+    if not LocalPlayer:isAlive() then
         return
     end
 
-    if player:getOrigin():getDistance(sender:getOrigin()) > 800 then
+    if LocalPlayer:getOrigin():getDistance(sender:getOrigin()) > 800 then
         return
     end
 
@@ -56,7 +55,7 @@ function AiChatCommandDrop:invoke(ai, sender, args)
         end
     end
 
-    if closestTeammate and closestTeammate.eid ~= player.eid then
+    if closestTeammate and closestTeammate.eid ~= LocalPlayer.eid then
         return
     end
 

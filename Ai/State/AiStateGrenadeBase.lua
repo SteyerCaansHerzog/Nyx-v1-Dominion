@@ -168,8 +168,7 @@ function AiStateGrenadeBase:getBestLineup(nodes)
         isCheckingEnemies = false
     end
 
-    local player = AiUtility.client
-    local clientOrigin = player:getOrigin()
+    local clientOrigin = LocalPlayer:getOrigin()
     local clientCenter = clientOrigin:offset(0, 0, 48)
 
     --- @type Node
@@ -333,7 +332,6 @@ function AiStateGrenadeBase:think(cmd)
         return
     end
 
-
     if AiStateGrenadeBase.usedNodes[self.node.id] and not AiStateGrenadeBase.usedNodes[self.node.id]:isElapsed(15) then
         self:deactivate()
 
@@ -354,8 +352,7 @@ function AiStateGrenadeBase:think(cmd)
 
     self.ai.states.evade.isBlocked = true
 
-    local player = AiUtility.client
-    local playerOrigin = player:getOrigin()
+    local playerOrigin = LocalPlayer:getOrigin()
 
     self.isInThrow = false
 
@@ -403,8 +400,8 @@ function AiStateGrenadeBase:think(cmd)
             and deltaAngles.y < 1.5
             and distance < 32
             and self.throwTimer:isElapsedThenRestart(self.throwTime)
-            and player:isHoldingWeapons(self.weapons)
-            and player:isAbleToAttack()
+            and LocalPlayer:isHoldingWeapons(self.weapons)
+            and LocalPlayer:isAbleToAttack()
             and speed < 5
         then
             cmd.in_attack = true
@@ -416,23 +413,21 @@ end
 
 --- @return Node[]
 function AiStateGrenadeBase:getNodes()
-    local player = AiUtility.client
-
     if AiUtility.gamemode == "hostage" then
-        if player:isCounterTerrorist() then
+        if LocalPlayer:isCounterTerrorist() then
             return self.ai.nodegraph[self.retakeNode]
-        elseif player:isTerrorist() then
+        elseif LocalPlayer:isTerrorist() then
             return self.ai.nodegraph[self.holdNode]
         end
     end
 
-    if player:isCounterTerrorist() then
+    if LocalPlayer:isCounterTerrorist() then
         if AiUtility.plantedBomb then
             return self.ai.nodegraph[self.retakeNode]
         end
 
         return self.ai.nodegraph[self.defendNode]
-    elseif player:isTerrorist() then
+    elseif LocalPlayer:isTerrorist() then
         local isSiteTaken = false
 
         if AiUtility.plantedBomb then

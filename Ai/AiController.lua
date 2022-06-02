@@ -411,13 +411,12 @@ function AiController:autoBuy(isImmediate)
 		if not self.canBuyThisRound then
 			return
 		end
-
-		local player = AiUtility.client
-		local grenadeLimit = Math.getRandomInt(1, player:isCounterTerrorist() and 2 or 3)
+		
+		local grenadeLimit = Math.getRandomInt(1, LocalPlayer:isCounterTerrorist() and 2 or 3)
 
 		for _, weapon in pairs(WeaponInfo.primaries) do
-			if player:hasWeapon(weapon) then
-				if player:m_iArmor() < 33 then
+			if LocalPlayer:hasWeapon(weapon) then
+				if LocalPlayer:m_iArmor() < 33 then
 					UserInput.execute("buy vest; buy vesthelm")
 				end
 
@@ -431,7 +430,7 @@ function AiController:autoBuy(isImmediate)
 		local halftimeRounds = math.floor(cvar.mp_maxrounds:get_int() / 2)
 
 		if roundsPlayed == 0 or roundsPlayed == halftimeRounds then
-			if player:isCounterTerrorist() then
+			if LocalPlayer:isCounterTerrorist() then
 				if Math.getChance(2) then
 					UserInput.execute("buy defuser")
 
@@ -446,13 +445,13 @@ function AiController:autoBuy(isImmediate)
 			return
 		end
 
-		local balance = player:m_iAccount()
+		local balance = LocalPlayer:m_iAccount()
 
 		if not balance then
 			return
 		end
 
-		local team = player:m_iTeamNum()
+		local team = LocalPlayer:m_iTeamNum()
 		local canBuyRifle = balance - (team == 2 and 3000 or 3050) >= 0
 		local canBuyAwp = (balance - 5750 >= 0) and Math.getChance(3)
 		local canBuyUtility = false
@@ -492,11 +491,11 @@ function AiController:autoBuy(isImmediate)
 		end
 
 		if canBuyUtility then
-			if player:m_iArmor() < 33 then
+			if LocalPlayer:m_iArmor() < 33 then
 				UserInput.execute("buy vest; buy vesthelm")
 			end
 
-			if player:isCounterTerrorist() then
+			if LocalPlayer:isCounterTerrorist() then
 				UserInput.execute("buy defuser")
 			end
 
@@ -511,11 +510,11 @@ end
 
 --- @return void
 function AiController:forceBuy()
-	local player = AiUtility.client
+
 
 	for _, weapon in pairs(WeaponInfo.primaries) do
-		if player:hasWeapon(weapon) then
-			if player:m_iArmor() < 33 then
+		if LocalPlayer:hasWeapon(weapon) then
+			if LocalPlayer:m_iArmor() < 33 then
 				UserInput.execute("buy vest; buy vesthelm")
 			end
 
@@ -523,13 +522,13 @@ function AiController:forceBuy()
 		end
 	end
 
-	local balance = player:m_iAccount()
+	local balance = LocalPlayer:m_iAccount()
 
 	if not balance then
 		return
 	end
 
-	local team = player:m_iTeamNum()
+	local team = LocalPlayer:m_iTeamNum()
 	local canBuyRifle = balance - (team == 2 and 3000 or 3050) > 0
 
 	if canBuyRifle then
@@ -548,7 +547,7 @@ function AiController:forceBuy()
 	}
 
 	Client.fireAfter(Math.getRandomFloat(1, 2), function()
-		local balance = player:m_iAccount()
+		local balance = LocalPlayer:m_iAccount()
 		local isBuyingSmg = (balance - 1500) >= 0
 		local isBuyingNegev = (balance - 2500 >= 0) and Math.getChance(5)
 
@@ -560,7 +559,7 @@ function AiController:forceBuy()
 			UserInput.execute("buy %s;", Table.getRandom(cheap))
 		end
 
-		if player:m_iArmor() < 33 then
+		if LocalPlayer:m_iArmor() < 33 then
 			UserInput.execute("buy vest; buy vesthelm")
 		end
 
@@ -592,9 +591,7 @@ function AiController:renderUi()
 		return
 	end
 
-	local player = AiUtility.client
-
-	if not player then
+	if not LocalPlayer then
 		return
 	end
 
@@ -614,8 +611,8 @@ function AiController:renderUi()
 		[2] = "T",
 		[3] = "CT"
 	}
-	local team = teamNames[player:m_iTeamNum()]
-	local name = string.format("( %s ) %s", team, player:getName())
+	local team = teamNames[LocalPlayer:m_iTeamNum()]
+	local name = string.format("( %s ) %s", team, LocalPlayer:getName())
 
 	if not team then
 		return
@@ -623,7 +620,7 @@ function AiController:renderUi()
 
 	local screenBgColor = Color:rgba(0, 0, 0, 200)
 
-	if not player:isAlive() then
+	if not LocalPlayer:isAlive() then
 		name = name .. " (DEAD)"
 		nameBgColor = Color:rgba(255, 50, 50, 255)
 		screenBgColor = Color:rgba(150, 25, 25, 150)
@@ -638,7 +635,7 @@ function AiController:renderUi()
 	local nameWidth = ISurface.getTextSize(Font.MEDIUM_BOLD, name)
 
 	uiPos:clone():offset(-5):drawSurfaceRectangle(Vector2:new(nameWidth + 10, 25), nameBgColor)
-	uiPos:drawSurfaceText(Font.MEDIUM_BOLD, teamColors[player:m_iTeamNum()], "l", name)
+	uiPos:drawSurfaceText(Font.MEDIUM_BOLD, teamColors[LocalPlayer:m_iTeamNum()], "l", name)
 	uiPos:offset(0, offset)
 
 	uiPos:clone():offset(-5, 5):drawSurfaceRectangle(spacerDimensions, spacerColor)
@@ -668,10 +665,10 @@ function AiController:renderUi()
 	local teamWins
 	local enemyWins
 
-	if player:isTerrorist() then
+	if LocalPlayer:isTerrorist() then
 		teamWins = tWins
 		enemyWins = ctWins
-	elseif player:isCounterTerrorist() then
+	elseif LocalPlayer:isCounterTerrorist() then
 		teamWins = ctWins
 		enemyWins = tWins
 	end
@@ -681,9 +678,9 @@ function AiController:renderUi()
 		roundType,
 		teamWins,
 		enemyWins,
-		player:m_iKills(),
-		player:m_iDeaths(),
-		player:getKdRatio()
+		LocalPlayer:m_iKills(),
+		LocalPlayer:m_iDeaths(),
+		LocalPlayer:getKdRatio()
 	))
 
 	uiPos:offset(0, offset)
@@ -736,7 +733,7 @@ function AiController:renderUi()
 		return
 	end
 
-	if not player:isAlive() then
+	if not LocalPlayer:isAlive() then
 		return
 	end
 
@@ -801,7 +798,7 @@ function AiController:renderUi()
 		if goalNode then
 			uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
 				"Distance to goal: %iu",
-				player:getOrigin():getDistance(goalNode.origin)
+				LocalPlayer:getOrigin():getDistance(goalNode.origin)
 			))
 
 			uiPos:offset(0, offset)
@@ -843,11 +840,10 @@ function AiController:activities(cmd)
 	self.canReload = true
 	self.canUseKnife = true
 
-	local player = AiUtility.client
-	local origin = player:getOrigin()
+	local origin = LocalPlayer:getOrigin()
 
 	if canReload and not AiUtility.isClientThreatened and not AiUtility.isRoundOver then
-		local weapon = Entity:create(player:m_hActiveWeapon())
+		local weapon = Entity:create(LocalPlayer:m_hActiveWeapon())
 
 		-- SetupCommandEvent but no weapon? Valve?
 		if weapon then
@@ -1074,15 +1070,9 @@ function AiController:think(cmd)
 		return
 	end
 
-	if not AiUtility.client then
-		return
-	end
-
 	self:antiFly(cmd)
-
-	local player = AiUtility.client
-
-	if not player:isAlive() then
+	
+	if not LocalPlayer:isAlive() then
 		return
 	end
 

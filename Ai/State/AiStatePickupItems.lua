@@ -79,10 +79,9 @@ function AiStatePickupItems:assess()
         return self.currentPriority
     end
 
-    local player = AiUtility.client
-    local origin = player:getOrigin()
+    local origin = LocalPlayer:getOrigin()
 
-    if player:isCounterTerrorist() and player:m_bHasDefuser() == 0 then
+    if LocalPlayer:isCounterTerrorist() and LocalPlayer:m_bHasDefuser() == 0 then
         self.item = self:getNearbyItems({Weapons.DEFUSER})
 
         if self.item then
@@ -98,7 +97,7 @@ function AiStatePickupItems:assess()
     local mainWeapon
     local lowestPriority = math.huge
 
-    for _, weapon in pairs(player:getWeapons()) do
+    for _, weapon in pairs(LocalPlayer:getWeapons()) do
         local priority = WeaponInfo.dispositions[weapon.classname]
 
         if priority and priority < lowestPriority then
@@ -181,8 +180,7 @@ end
 --- @param items number[]
 --- @return Entity
 function AiStatePickupItems:getNearbyItems(items)
-    local player = AiUtility.client
-    local origin = player:getOrigin()
+    local origin = LocalPlayer:getOrigin()
 
     for _, item in Entity.find(items) do repeat
         if self.entityBlacklist[item.eid] then
@@ -260,8 +258,7 @@ function AiStatePickupItems:think(cmd)
         return
     end
 
-    local player = AiUtility.client
-    local origin = player:getOrigin()
+    local origin = LocalPlayer:getOrigin()
     local weaponOrigin = self.item:m_vecOrigin()
     local distance = origin:getDistance(weaponOrigin)
     local trace = Trace.getLineInDirection(weaponOrigin, Vector3:new(0, 0, -1), AiUtility.traceOptionsPathfinding, "AiStatePickupItems.think<FindItemDistanceToGround>")

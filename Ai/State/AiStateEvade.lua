@@ -74,8 +74,6 @@ function AiStateEvade:assess()
         return AiPriority.EVADE_PASSIVE
     end
 
-    local player = AiUtility.client
-
     -- We can be peeked by an enemy.
     if not AiUtility.isClientThreatened then
         return AiPriority.IGNORE
@@ -83,7 +81,7 @@ function AiStateEvade:assess()
 
     -- We're flashed.
     if LocalPlayer.isFlashed() then
-        if not AiUtility.isClientPlanting and player:m_bIsDefusing() == 0 then
+        if not AiUtility.isClientPlanting and LocalPlayer:m_bIsDefusing() == 0 then
             return AiPriority.EVADE_ACTIVE
         end
     end
@@ -94,13 +92,13 @@ function AiStateEvade:assess()
     end
 
     -- We're reloading.
-    if player:isReloading() and player:getReloadProgress() < 0.66 then
+    if LocalPlayer:isReloading() and LocalPlayer:getReloadProgress() < 0.66 then
         return AiPriority.EVADE_ACTIVE
     end
 
     -- We're switching weapons.
-    if (Time.getCurtime() - player:m_flNextAttack()) <= 0
-        and player:getWeapon().classname ~= "CC4"
+    if (Time.getCurtime() - LocalPlayer:m_flNextAttack()) <= 0
+        and LocalPlayer:getWeapon().classname ~= "CC4"
     then
         return AiPriority.EVADE_ACTIVE
     end

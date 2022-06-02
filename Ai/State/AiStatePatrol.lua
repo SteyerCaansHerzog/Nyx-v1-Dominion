@@ -80,7 +80,7 @@ function AiStatePatrol:assess()
         local trace = Trace.getLineToPosition(eyeOrigin, bombOrigin, AiUtility.traceOptionsAttacking)
 
         if not trace.isIntersectingGeometry then
-            self:beginPatrol(bombOrigin, AiUtility.client)
+            self:beginPatrol(bombOrigin, LocalPlayer)
 
             return AiPriority.PATROL_BOMB
         end
@@ -152,8 +152,7 @@ function AiStatePatrol:think(cmd)
     end
 
     if self.isOnPatrol then
-        local player = AiUtility.client
-        local origin = player:getOrigin()
+        local origin = LocalPlayer:getOrigin()
 
         if origin:getDistance(self.patrolOrigin) < 1024 then
             self.activity = "Patrolling bomb"
@@ -166,8 +165,7 @@ end
 
 --- @return Node
 function AiStatePatrol:getPatrolNode()
-    local player = AiUtility.client
-    local origin = player:getOrigin()
+    local origin = LocalPlayer:getOrigin()
     local filterOrigin = self.patrolOrigin
 
     local filterNodes = {}
