@@ -15,7 +15,7 @@ local NodeTypeTraverse = {
     type = "Traverse",
     colorPrimary = Color:hsla(235, 0.16, 0.65),
     isTraversal = true,
-
+    isPathable = true
 }
 
 --- @param fields NodeTypeTraverse

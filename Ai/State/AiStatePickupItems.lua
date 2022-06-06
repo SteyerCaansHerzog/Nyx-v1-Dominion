@@ -18,7 +18,9 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --}}}
@@ -32,7 +34,7 @@ local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --- @field recalculateItemsTimer Timer
 --- @field useCooldown Timer
 local AiStatePickupItems = {
-    name = "PickupItems",
+    name = "Pickup Items",
     delayedMouseMin = 0,
     delayedMouseMax = 0.2
 }
@@ -169,7 +171,15 @@ function AiStatePickupItems:assess()
         self.item = chosenWeapon
         self.lookAtItem = true
 
-        self.currentPriority = AiUtility.isRoundOver and AiPriority.ROUND_OVER_PICKUP_ITEMS or AiPriority.PICKUP_WEAPON
+        local priority = AiPriority.PICKUP_WEAPON
+
+        if not LocalPlayer:hasPrimary() then
+            priority = AiPriority.PICKUP_WEAPON_URGENT
+        elseif AiUtility.isRoundOver then
+            priority = AiPriority.PICKUP_WEAPON_ROUND_OVER
+        end
+
+        self.currentPriority = priority
 
         return self.currentPriority
     end
@@ -258,29 +268,26 @@ function AiStatePickupItems:think(cmd)
         return
     end
 
-    local origin = LocalPlayer:getOrigin()
-    local weaponOrigin = self.item:m_vecOrigin()
-    local distance = origin:getDistance(weaponOrigin)
-    local trace = Trace.getLineInDirection(weaponOrigin, Vector3:new(0, 0, -1), AiUtility.traceOptionsPathfinding, "AiStatePickupItems.think<FindItemDistanceToGround>")
-    local weaponDistanceToFloor = weaponOrigin:getDistance(trace.endPosition)
+    local itemOrigin = self.item:m_vecOrigin()
+    local floorTrace = Trace.getLineInDirection(itemOrigin, Vector3.align.DOWN, AiUtility.traceOptionsPathfinding)
 
-    if self.ai.nodegraph.pathfindFails > 2 and weaponDistanceToFloor < 10 then
-        self.entityBlacklist[self.item.eid] = true
+    if itemOrigin:getDistance(floorTrace.endPosition) < 10 and Pathfinder.isIdle() then
+        Pathfinder.clearActivePathAndLastRequest()
 
-        self.item = nil
+        Pathfinder.moveToLocation(self.item:m_vecOrigin(), {
+            task = "Pick up item",
+            isConnectingGoalByCollisionLine = true,
+            onFailedToFindPath = function()
+                self.entityBlacklist[self.item.eid] = true
 
-        return
-    end
-
-    if self.ai.nodegraph:isIdle() then
-        self.ai.nodegraph:pathfind(self.item:m_vecOrigin(), {
-            objective = Node.types.GOAL,
-            task = "Picking up dropped weapon",
-            onComplete = function()
-               self.ai.nodegraph:log("At dropped weapon")
+                self.item = nil
             end
         })
     end
+
+    local origin = LocalPlayer:getOrigin()
+    local weaponOrigin = self.item:m_vecOrigin()
+    local distance = origin:getDistance(weaponOrigin)
 
     if self.lookAtItem and distance < 250 then
        View.lookAtLocation(weaponOrigin, 5, View.noise.idle, "PickupItems look at item")
@@ -289,6 +296,8 @@ function AiStatePickupItems:think(cmd)
     if distance < 128 and self.useCooldown:isElapsedThenRestart(0.1) then
         cmd.in_use = true
     end
+
+    Pathfinder.ifIdleThenRetryLastRequest()
 end
 
 return Nyx.class("AiStatePickupItems", AiStatePickupItems, AiStateBase)

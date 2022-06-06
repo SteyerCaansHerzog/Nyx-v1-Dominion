@@ -15,7 +15,9 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
@@ -54,14 +56,13 @@ end
 
 --- @param player Player
 --- @param origin Vector3
---- @param nodegraph Nodegraph
 --- @return void
-function AiStateWait:wait(player, origin, nodegraph)
+function AiStateWait:wait(player, origin)
     self.isWaiting = true
     self.waitingOnPlayer = player
     self.waitingOrigin = origin
 
-    self:move(nodegraph)
+    self:move()
 end
 
 --- @return void
@@ -93,10 +94,6 @@ function AiStateWait:think(cmd)
     local distanceToPlayer = clientOrigin:getDistance(self.waitingOnPlayer:getOrigin())
     local distanceToNode = clientOrigin:getDistance(self.node.origin)
 
-    if distanceToNode < 128 and self.ai.nodegraph.path then
-       self.ai.nodegraph:clearPath("Wait stop")
-    end
-
     if distanceToNode < 250 and distanceToPlayer < 250 then
        View.lookAtLocation(self.waitingOnPlayer:getOrigin():offset(0, 0, 64), 5, View.noise.idle, "Wait look at player")
     end
@@ -104,31 +101,19 @@ end
 
 --- @return void
 function AiStateWait:move()
-    --- @type Node[]
-    local nodes = {}
-    --- @type Node[]
-    local closestNode
-    local closestNodeDistance = math.huge
+    local node = Nodegraph.getRandom(Node.traverseGeneric, self.waitingOrigin, 300)
 
-    for _, node in pairs(self.ai.nodegraph.nodes) do
-        local distance = self.waitingOrigin:getDistance(node.origin)
+    if not node then
+        self.isWaiting = false
 
-        if distance < 256 then
-            table.insert(nodes, node)
-        end
-
-        if distance < closestNodeDistance then
-            closestNodeDistance = distance
-            closestNode = node
-        end
+        return
     end
-
-    local node = not Table.isEmpty(nodes) and Table.getRandom(nodes) or closestNode
 
     self.node = node
 
-    self.ai.nodegraph:pathfind(node.origin, {
-        objective = Node.types.GOAL
+    Pathfinder.moveToNode(node, {
+        task = "Wait on player",
+        goalReachedRadius = 150
     })
 end
 

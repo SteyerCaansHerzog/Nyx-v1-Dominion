@@ -20,7 +20,10 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field hostageCarrier Player
 --- @field lastOrigin Vector3
 local AiStateDefendHostageCarrier = {
-    name = "Defend Hostage Carrier"
+    name = "Defend Hostage Carrier",
+    requiredGamemodes = {
+        AiUtility.gamemodes.HOSTAGE
+    }
 }
 
 --- @param fields AiStateDefendHostageCarrier
@@ -48,10 +51,6 @@ end
 
 --- @return void
 function AiStateDefendHostageCarrier:assess()
-    if AiUtility.gamemode ~= "hostage" then
-        return AiPriority.IGNORE
-    end
-
     if AiUtility.isHostageCarriedByTeammate and not LocalPlayer:m_hCarriedHostage() then
         local clientOrigin = LocalPlayer:getOrigin()
 

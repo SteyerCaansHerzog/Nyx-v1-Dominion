@@ -36,7 +36,7 @@ end
 
 --- @return void
 function AiStateRush:assess()
-    if AiUtility.gamemode == "hostage" then
+    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
         if not LocalPlayer:isTerrorist() then
             return AiPriority.IGNORE
         end

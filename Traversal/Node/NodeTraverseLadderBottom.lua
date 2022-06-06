@@ -14,7 +14,7 @@ local NodeTraverseLadderBottom = {
     description = {
         "Informs the AI of how to traverse the map via ladders."
     },
-    colorSecondary = Color:hsla(50, 0.8, 0.6),
+    colorSecondary = Color:hsla(40, 0.8, 0.6),
     isPlanar = false,
     isDirectional = true
 }
@@ -23,6 +23,22 @@ local NodeTraverseLadderBottom = {
 --- @return NodeTraverseLadderBottom
 function NodeTraverseLadderBottom:new(fields)
 	return Nyx.new(self, fields)
+end
+
+--- @param nodegraph Nodegraph
+--- @return string
+function NodeTraverseLadderBottom:getError(nodegraph)
+    local isConnected = false
+
+    for _, connection in pairs(self.connections) do
+        if connection.__classname == "NodeTraverseLadderTop" then
+            isConnected = true
+
+            break
+        end
+    end
+
+    return not isConnected and "No ladder top"
 end
 
 return Nyx.class("NodeTraverseLadderBottom", NodeTraverseLadderBottom, NodeTypeTraverse)

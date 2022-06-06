@@ -3,6 +3,7 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
+local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 --}}}
 
@@ -19,19 +20,23 @@ local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --- @field activity string
 --- @field ai AiController
 --- @field assess fun(self: AiStateBase): number
+--- @field deactivate fun(self: AiStateBase): void
 --- @field delayedMouseMax number
 --- @field delayedMouseMin number
 --- @field isBlocked boolean
---- @field lastPriority number
+--- @field isCurrentState boolean
+--- @field isQueuedForReactivation boolean
 --- @field name string
---- @field priority AiPriority
+--- @field priority number
 --- @field priorityMap string[]
+--- @field requiredGamemodes string[]
 --- @field requiredNodes NodeTypeBase[]
 --- @field think fun(self: AiStateBase, cmd: SetupCommandEvent): void
+--- @field abuseLockTimer Timer
 local AiStateBase = {
     priorityMap = Table.getInverted(AiPriority),
-    delayedMouseMin = 0.33,
-    delayedMouseMax = 0.66
+    delayedMouseMin = 0.25,
+    delayedMouseMax = 0.55
 }
 
 --- @param fields AiStateBase
@@ -41,8 +46,62 @@ function AiStateBase:new(fields)
 end
 
 --- @return void
+function AiStateBase:__setup()
+    self.abuseLockTimer = Timer:new()
+end
+
+--- @return string
+function AiStateBase:getError()
+    if self.requiredNodes then
+        local isNodeAvailable = true
+        local unavailableNodes = {}
+
+        for _, node in pairs(self.requiredNodes) do
+            if not Nodegraph.isNodeAvailable(node) then
+                isNodeAvailable = false
+
+                table.insert(unavailableNodes, node.name)
+            end
+        end
+
+        if not isNodeAvailable then
+            return string.format(
+                "The following nodes are required on the map: '%s'",
+                Table.getImploded(unavailableNodes, ", ")
+            )
+        end
+    end
+
+    if self.requiredGamemodes then
+        local isValidGamemode = false
+
+        for _, gamemode in pairs(self.requiredGamemodes) do
+            if AiUtility.gamemode == gamemode then
+                isValidGamemode = true
+
+                break
+            end
+        end
+
+        if not isValidGamemode then
+            return string.format(
+                "Only the following gamemodes are supported: '%s'",
+                Table.getImploded(self.requiredGamemodes)
+            )
+        end
+    end
+
+    return nil
+end
+
+--- @return void
 function AiStateBase:block()
     self.isBlocked = true
+end
+
+--- @return void
+function AiStateBase:queueForReactivation()
+    self.isQueuedForReactivation = true
 end
 
 --- @param range number

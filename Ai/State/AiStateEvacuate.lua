@@ -26,7 +26,10 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field node NodeSpotHide
 --- @field isAtDestination boolean
 local AiStateEvacuate = {
-    name = "Evacuate"
+    name = "Evacuate",
+    requiredNodes = {
+        Node.spotHide
+    }
 }
 
 --- @param fields AiStateEvacuate
@@ -205,7 +208,9 @@ function AiStateEvacuate:think(cmd)
     if not trace.isIntersectingGeometry and distance < 200 then
         self.activity = "Hiding"
 
-        self.ai.canUseKnife = false
+        self.ai.routines.manageGear:block()
+
+        LocalPlayer.equipAvailableWeapon()
 
         local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
         local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding, "AiStateEvacuate.think<FindLookAngle>")

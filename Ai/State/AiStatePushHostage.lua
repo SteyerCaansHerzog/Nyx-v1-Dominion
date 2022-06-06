@@ -10,14 +10,23 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStatePushHostage
 --- @class AiStatePushHostage : AiStateBase
---- @field node Node
+--- @field node NodeSpotPushCt
 local AiStatePushHostage = {
-    name = "Push"
+    name = "Push (Hostage)",
+    requiredNodes = {
+        Node.spotPushCt
+    },
+    requiredGamemodes = {
+        AiUtility.gamemodes.HOSTAGE
+    }
 }
 
 --- @param fields AiStatePushHostage
@@ -36,10 +45,6 @@ end
 
 --- @return void
 function AiStatePushHostage:assess()
-    if AiUtility.gamemode ~= "hostage" then
-        return AiPriority.IGNORE
-    end
-
     if not LocalPlayer:isCounterTerrorist() then
         return AiPriority.IGNORE
     end
@@ -48,7 +53,7 @@ function AiStatePushHostage:assess()
         return AiPriority.IGNORE
     end
 
-    if not AiUtility.roundTimer:isStarted() or AiUtility.roundTimer:isElapsed(30) then
+    if AiUtility.timeData.roundtime > 30 then
         return AiPriority.IGNORE
     end
 
@@ -65,11 +70,10 @@ function AiStatePushHostage:activate()
 
     self.node = node
 
-   self.ai.nodegraph:pathfind(node.origin, {
-        objective = Node.types.GOAL,
-        task = string.format("Push the map"),
-        onComplete = function()
-            self.isDeactivated = true
+    Pathfinder.moveToNode(node, {
+        task = "Push the map",
+        onReachedGoal = function()
+        	self.isDeactivated = true
         end
     })
 end
@@ -87,17 +91,11 @@ function AiStatePushHostage:think(cmd)
     end
 
     self.activity = "Pushing the map"
-
-    if self.ai.nodegraph:isIdle() then
-        self.ai.nodegraph:rePathfind()
-    end
 end
 
 --- @return Node
 function AiStatePushHostage:getActivityNode()
-    local nodes = self.ai.nodegraph.objectivePushHostage
-
-    return nodes[Math.getRandomInt(1, #nodes)]
+    return Nodegraph.getRandom(Node.spotPushCt)
 end
 
 return Nyx.class("AiStatePushHostage", AiStatePushHostage, AiStateBase)

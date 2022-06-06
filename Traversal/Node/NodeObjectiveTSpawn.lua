@@ -15,7 +15,7 @@ local NodeObjectiveTSpawn = {
     description = {
         "This node represents Terrorist spawn.",
     },
-    colorPrimary = Color:hsla(40, 0.8, 0.6),
+    colorPrimary = Color:hsla(0, 1, 1),
     colorSecondary = ColorList.TERRORIST
 }
 

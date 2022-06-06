@@ -23,7 +23,7 @@ local AiStateFlashbang = {
     weapons = {Weapons.FLASHBANG},
     equipFunction = LocalPlayer.equipFlashbang,
     rangeThreshold = 1500,
-    isCheckingEnemiesRequired = true,
+    isCheckingEnemiesRequired = true
 }
 
 --- @param fields AiStateFlashbang

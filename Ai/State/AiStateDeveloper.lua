@@ -22,6 +22,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field angles Angle
 --- @field timerA Timer
 --- @field timerB Timer
+--- @field isTrue boolean
 local AiStateDeveloper = {
     name = "Developer"
 }
@@ -38,6 +39,7 @@ function AiStateDeveloper:__init()
     self.angles = Angle:new()
     self.timerA = Timer:new():startThenElapse()
     self.timerB = Timer:new():startThenElapse()
+    self.isTrue = false
 end
 
 --- @return void
@@ -47,20 +49,7 @@ end
 
 --- @return void
 function AiStateDeveloper:activate()
-    -- Kirsty.
-    if LocalPlayer:getSteamId64() == "76561198816968549" then
-        Pathfinder.moveToNode(Nodegraph.getById(155))
-    end
-
-    -- Bropp.
-    if LocalPlayer:getSteamId64() == "76561198373386496" then
-        Pathfinder.moveToNode(Nodegraph.getById(270))
-    end
-
-    -- Retard community banned.
-    if LocalPlayer:getSteamId64() == "76561198117895205" then
-        Pathfinder.moveToNode(Nodegraph.getById(172))
-    end
+    Pathfinder.moveToNode(Nodegraph.getById(508))
 end
 
 --- @return void
@@ -70,25 +59,10 @@ function AiStateDeveloper:reset() end
 --- @return void
 function AiStateDeveloper:think(cmd)
     self.activity = "Testing"
-
-    if self.timerA:isElapsedThenRestart(2) then
-        self:move()
-    end
-
-    if self.timerA:isElapsed(0.1) then
-        View.lookAtLocation(self.origin, 5, View.noise.none)
-    end
 end
 
 --- @return void
-function AiStateDeveloper:move()
-    Pathfinder.moveToNode(Nodegraph.getRandom(Node.traverseGeneric), {
-        task = "Developer test"
-    })
-
-    self.angles = self.angles:offset(2, 15)
-    self.timerA:restart()
-end
+function AiStateDeveloper:move() end
 
 return Nyx.class("AiStateDeveloper", AiStateDeveloper, AiStateBase)
 --}}}

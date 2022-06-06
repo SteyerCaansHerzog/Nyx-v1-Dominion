@@ -3,6 +3,7 @@
 local AiStateList = {
 	avoidInfernos = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateAvoidInfernos",
 	boost = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBoost",
+	check = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateCheck",
 	chickenInteraction = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateChickenInteraction",
 	defend = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefend",
 	defendHostageCarrier = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefendHostageCarrier",
@@ -15,10 +16,20 @@ local AiStateList = {
 	follow = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFollow",
 	freezetime = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFreezetime",
 	graffiti = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGraffiti",
+	knife = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateKnife",
+	patrol = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePatrol",
+	pickupBomb = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePickupBomb",
+	pickupItems = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePickupItems",
+	plant = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePlant",
+	pushDemolition = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePushDemolition",
+	pushHostage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePushHostage",
+	rescueHostage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateRescueHostage",
+	rotate = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateRotate",
 
 	idle = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateIdle",
 	sweep = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSweep",
 	trafficControl = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateTrafficControl",
+	wait = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWait",
 	watch = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWatch",
 	zombie = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateZombie",
 }

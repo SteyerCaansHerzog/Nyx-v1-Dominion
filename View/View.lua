@@ -18,6 +18,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
+local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
@@ -74,7 +75,6 @@ local View = {
 --- @return void
 function View.__setup()
 	View.initFields()
-	View.initEvents()
 	View.initMenu()
 end
 
@@ -107,18 +107,6 @@ function View.initFields()
 end
 
 --- @return void
-function View.initEvents()
-	Callbacks.setupCommand(function(cmd)
-		if not MenuGroup.master:get() or not MenuGroup.enableView:get() then
-			return
-		end
-
-		View.setViewAngles()
-		View.think(cmd)
-	end)
-end
-
---- @return void
 function View.initMenu()
 	MenuGroup.enableView = MenuGroup.group:addCheckbox(" > Enable Mouse Control"):setParent(MenuGroup.master)
 end
@@ -130,24 +118,24 @@ function View.setViewAngles()
 		Client.setCameraAngles(View.lookAtAngles)
 	end
 
-	-- View angles we want to look at.
-	-- It's overriden by AI behaviours, look ahead of the active path, or rest.
-	--- @type Angle
-	local idealViewAngles = Client.getCameraAngles()
-	local smoothingCutoffThreshold = 0
-
 	if View.lookState ~= View.lookStateCached then
-		if Config.isDebugging then
-			Logger.console(0, View.lookState)
+
+		if Debug.isLoggingLookState then
+			Logger.console(-1, "New mouse control '%s'.", View.lookState)
 		end
 
-		print(View.lookState)
 		View.delayMovement()
 
 		View.lookStateCached = View.lookState
 	end
 
 	View.setDelayedLookSpeed()
+
+	-- View angles we want to look at.
+	-- It's overriden by AI behaviours, look ahead of the active path, or rest.
+	--- @type Angle
+	local idealViewAngles = Client.getCameraAngles()
+	local smoothingCutoffThreshold = 0
 
 	if View.overrideViewAngles then
 		-- AI wants to look at something particular.
@@ -368,6 +356,28 @@ end
 --- @param idealViewAngles Angle
 --- @return void
 function View.setIdealLookAhead(idealViewAngles)
+	local currentNode = Pathfinder.path.node
+
+	if Pathfinder.isAscendingLadder then
+		idealViewAngles:setFromAngle(currentNode.direction:clone():set(-45))
+
+		View.lookState = "View climb ladder"
+		View.lookSpeedIdeal = 6
+		View.lookSpeedDelayMin = 0
+		View.lookSpeedDelayMax = 0
+
+		return
+	elseif Pathfinder.isDescendingLadder then
+		idealViewAngles:setFromAngle(currentNode.direction:clone():set(45))
+
+		View.lookState = "View climb ladder"
+		View.lookSpeedIdeal = 6
+		View.lookSpeedDelayMin = 0
+		View.lookSpeedDelayMax = 0
+
+		return
+	end
+
 	--- @type NodeTypeBase
 	local lookAheadNode
 
@@ -412,8 +422,8 @@ function View.setIdealLookAhead(idealViewAngles)
 
 	View.lookState = "View look ahead of path"
 	View.lookSpeedIdeal = 6
-	View.lookSpeedDelayMin = 0.3
-	View.lookSpeedDelayMax = 0.9
+	View.lookSpeedDelayMin = 0.25
+	View.lookSpeedDelayMax = 0.5
 end
 
 --- @param idealViewAngles Angle
@@ -437,8 +447,8 @@ function View.setIdealWatchCorner(idealViewAngles)
 
 	View.lookState = "View watch corner"
 	View.lookSpeedIdeal = 6.5
-	View.lookSpeedDelayMin = 0.2
-	View.lookSpeedDelayMax = 0.6
+	View.lookSpeedDelayMin = 0.25
+	View.lookSpeedDelayMax = 0.5
 end
 
 --- @param cmd SetupCommandEvent
@@ -517,16 +527,16 @@ function View.lookAtLocation(origin, speed, noise, note)
 	View.setNoiseType(noise or ViewNoiseType.none)
 end
 
---- @param direction Vector3
+--- @param angle Angle
 --- @param speed number
 --- @param noise number
 --- @return void
-function View.lookAlongAngle(direction, speed, noise, note)
+function View.lookAlongAngle(angle, speed, noise, note)
 	if View.isViewLocked then
 		return
 	end
 
-	View.overrideViewAngles = direction
+	View.overrideViewAngles = angle
 	View.lookSpeedIdeal = speed
 	View.lastLookAtLocationOrigin = nil
 	View.lookState = note
@@ -534,16 +544,16 @@ function View.lookAlongAngle(direction, speed, noise, note)
 	View.setNoiseType(noise or ViewNoiseType.none)
 end
 
---- @param angle Angle
+--- @param direction Vector3
 --- @param speed number
 --- @param noise number
 --- @return void
-function View.lookInDirection(angle, speed, noise, note)
+function View.lookInDirection(direction, speed, noise, note)
 	if View.isViewLocked then
 		return
 	end
 
-	View.overrideViewAngles = angle:getForward()
+	View.overrideViewAngles = direction:getAngleFromForward()
 	View.lookSpeedIdeal = speed
 	View.lastLookAtLocationOrigin = nil
 	View.lookState = note

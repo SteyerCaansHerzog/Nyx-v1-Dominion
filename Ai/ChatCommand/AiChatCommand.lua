@@ -1,0 +1,40 @@
+--{{{ AiChatCommand
+--- @class AiChatCommand
+local AiChatCommand = {
+	afk = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandAfk",
+	aim = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandAim",
+	bt = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBacktrack",
+	bomb = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBomb",
+	boost = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBoost",
+	chat = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandChat",
+	tag = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandClantag",
+	cmd = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandCmd",
+	buy = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBuy",
+	dc = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandDisconnect",
+	drop = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandDrop",
+	eco = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandEco",
+	ai = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandEnabled",
+	follow = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandFollow",
+	force = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandForce",
+	go = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandGo",
+	knife = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandKnife",
+	know = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandKnow",
+	log = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandLog",
+	noise = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandNoise",
+	ok = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandOk",
+	assist = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandAssist",
+	reload = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandReload",
+	rot = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandRotate",
+	rush = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandRush",
+	save = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandSave",
+	skill = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandSkill",
+	skipmatch = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandSkipMatch",
+	scramble = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandScramble",
+	stop = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandStop",
+	vote = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandVote",
+	wait = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandWait",
+	zombie = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandZombie",
+}
+
+return AiChatCommand
+--}}}

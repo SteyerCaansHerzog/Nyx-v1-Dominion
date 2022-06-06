@@ -17,6 +17,7 @@ local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/PT/Pathfinder"
 --}}}
 
 --{{{ AiStateGrenadeBase
@@ -158,20 +159,20 @@ function AiStateGrenadeBase:assess()
     return self.priority
 end
 
---- @param nodes Node[]
---- @return Node
+--- @param nodes NodeTypeGrenade[]
+--- @return NodeTypeGrenade
 function AiStateGrenadeBase:getBestLineup(nodes)
     -- Should we check if enemies could be affected by the line-up?
     local isCheckingEnemies = true
 
-    if LocalPlayer:isTerrorist() and not AiUtility.roundTimer:isElapsed(20) and not self.isCheckingEnemiesRequired then
+    if LocalPlayer:isTerrorist() and not AiUtility.timeData.roundtime < 20 and not self.isCheckingEnemiesRequired then
         isCheckingEnemies = false
     end
 
     local clientOrigin = LocalPlayer:getOrigin()
     local clientCenter = clientOrigin:offset(0, 0, 48)
 
-    --- @type Node
+    --- @type NodeTypeGrenade
     local closestNode
     local closestDistance = math.huge
 
@@ -215,7 +216,7 @@ function AiStateGrenadeBase:getBestLineup(nodes)
     return closestNode
 end
 
---- @param node Node
+--- @param node NodeTypeGrenade
 --- @return boolean
 function AiStateGrenadeBase:isEnemyThreatenedByNode(node)
     for _, enemy in pairs(AiUtility.enemies) do repeat
@@ -373,9 +374,11 @@ function AiStateGrenadeBase:think(cmd)
     if distance < 250 then
         self.activity = string.format("Throwing %s", self.name)
 
-        self.ai.canUseGear = false
-        self.ai.canLookAwayFromFlash = false
-        self.ai.isQuickStopping = true
+        self.ai.routines.manageGear:block()
+        self.ai.routines.lookAwayFromFlashbangs:block()
+
+
+        Pathfinder.counterStrafe()
 
         self.equipFunction()
     end
@@ -413,7 +416,7 @@ end
 
 --- @return Node[]
 function AiStateGrenadeBase:getNodes()
-    if AiUtility.gamemode == "hostage" then
+    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
         if LocalPlayer:isCounterTerrorist() then
             return self.ai.nodegraph[self.retakeNode]
         elseif LocalPlayer:isTerrorist() then

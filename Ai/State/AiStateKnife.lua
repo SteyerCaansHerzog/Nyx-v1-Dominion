@@ -14,6 +14,9 @@ local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
@@ -117,12 +120,12 @@ end
 function AiStateKnife:think(cmd)
     LocalPlayer.equipKnife()
 
-    self.ai.canUseGear = false
+    self.ai.routines.manageGear:block()
 
     if not AiUtility.closestEnemy then
         self.activity = "Hunting for enemies"
 
-        if self.ai.nodegraph:isIdle() then
+        if Pathfinder.isIdle() then
             self:pathfindToMiddle()
         end
 
@@ -138,7 +141,7 @@ function AiStateKnife:think(cmd)
         View.lookAtLocation(targetOrigin:clone():offset(0, 0, 64), 4, View.noise.minor, "Knife look at enemy")
     end
 
-    if clientOrigin:getDistance2(targetOrigin) < 350 then
+    if clientOrigin:getDistance2(targetOrigin) < 100 then
         local traceRun = Trace.getHullToPosition(
             Client.getEyeOrigin(),
             AiUtility.closestEnemy:getEyeOrigin(),
@@ -147,28 +150,8 @@ function AiStateKnife:think(cmd)
             "AiStateKnife.think<FindPathableEnemy>"
         )
 
-        local traceJump = Trace.getHullToPosition(
-            Client.getEyeOrigin(),
-            targetOrigin:offset(0, 0, 32),
-            Vector3:newBounds(Vector3.align.CENTER, 16),
-            AiUtility.traceOptionsPathfinding,
-            "AiStateKnife.think<FindPathableEnemy>"
-        )
-
         if not traceRun.isIntersectingGeometry then
-            self.ai.nodegraph.moveAngle = clientOrigin:getAngle(targetOrigin)
-        end
-
-        if traceJump.isIntersectingGeometry then
-            if LocalPlayer:m_vecVelocity():getMagnitude() < 100 then
-                local zDelta = clientOrigin.z - targetOrigin.z
-
-                if zDelta < -32 then
-                    cmd.in_jump = true
-                end
-            end
-
-            return
+            Pathfinder.moveAtAngle(clientOrigin:getAngle(targetOrigin), true)
         end
     end
 
@@ -177,15 +160,13 @@ function AiStateKnife:think(cmd)
         self.lastTargetOrigin = targetOrigin
 
         self:pathfindToEnemy()
-    elseif targetOrigin:getDistance(self.lastTargetOrigin) > 80 then
+    elseif targetOrigin:getDistance(self.lastTargetOrigin) > 150 then
         self.lastTargetOrigin = targetOrigin
 
         self:pathfindToEnemy()
     end
 
-    if self.ai.nodegraph:isIdle() then
-        self.ai.nodegraph:rePathfind()
-    end
+    Pathfinder.ifIdleThenRetryLastRequest()
 end
 
 --- @return void
@@ -193,7 +174,7 @@ function AiStateKnife:pathfindToEnemy()
     local origin
 
     if self.isScared then
-        local node = self.ai.nodegraph:getRandomNodeWithin(AiUtility.closestEnemy:getOrigin(), 600)
+        local node = Nodegraph.getRandom(Node.traverseGeneric, AiUtility.closestEnemy:getOrigin(), 400)
 
         if node then
             origin = node.origin
@@ -201,28 +182,25 @@ function AiStateKnife:pathfindToEnemy()
     end
 
     if origin then
-        self.ai.nodegraph:pathfind(origin, {
-            task = "Knife enemy player"
+        Pathfinder.moveToLocation(origin, {
+            task = "Knife target (scared)"
         })
     else
         local targetOrigin = AiUtility.closestEnemy:getOrigin():offset(0, 0, 18)
 
-        self.ai.nodegraph:pathfind(targetOrigin, {
-            task = "Knife enemy player",
-            onFail = function()
-            	self.ai.nodegraph:pathfind(self.ai.nodegraph:getClosestNode(targetOrigin).origin, {
-                    task = "Knife enemy player"
-                })
-            end
+        Pathfinder.moveToLocation(targetOrigin, {
+            task = "Knife target",
+            isPathfindingToNearestNodeOnFailure = true
         })
     end
 end
 
 --- @return void
 function AiStateKnife:pathfindToMiddle()
-    self.ai.nodegraph:pathfind(self.ai.nodegraph.mapMiddle.origin, {
-        task = "Moving to middle",
-        onComplete = function()
+    Pathfinder.moveToNode(Nodegraph.getOne(Node.objectiveMiddle), {
+        task = "Go to middle",
+        goalReachedRadius = 300,
+        onReachedGoal = function()
         	self:pathfindSweepMap()
         end
     })
@@ -230,8 +208,9 @@ end
 
 --- @return void
 function AiStateKnife:pathfindSweepMap()
-    self.ai.nodegraph:pathfind(self.ai.nodegraph:getRandomNodeWithin(Vector3:new(), Vector3.MAX_DISTANCE).origin, {
-        task = "Find an enemy"
+    Pathfinder.moveToNode(Nodegraph.getRandom(Node.traverseGeneric), {
+        task = "Find an enemy",
+        goalReachedRadius = 200
     })
 end
 

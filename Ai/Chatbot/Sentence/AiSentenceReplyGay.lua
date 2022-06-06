@@ -1,0 +1,57 @@
+--{{{ Dependencies
+local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
+local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+--}}}
+
+--{{{ Modules
+local AiSentenceBase = require "gamesense/Nyx/v1/Dominion/Ai/Chatbot/Sentence/AiSentenceBase"
+--}}}
+
+--{{{ AiSentenceReplyGay
+--- @class AiSentenceReplyGay : AiSentenceBase
+local AiSentenceReplyGay = {}
+
+--- @return AiSentenceReplyGay
+function AiSentenceReplyGay:new()
+    return Nyx.new(self)
+end
+
+--- @return void
+function AiSentenceReplyGay:__init()
+    self.__parent.__init(self)
+
+    self.probability = 3
+    self.maxUses = 2
+
+    self.structures = {
+        "{SHUSH}{PUNCT}"
+    }
+
+    self.insertions = {
+        SHUSH = {
+            "shush", "hush now", "shut it", "shut up", "quiet down", "pipe down"
+        },
+        PUNCT = {
+            "", "."
+        }
+    }
+end
+
+--- @param e PlayerChatEvent
+--- @return void
+function AiSentenceReplyGay:replyToPlayerChat(e)
+    if not self:isValidReplyTarget(e) then
+        return
+    end
+
+    if not self.contains(e.text, {
+        "gay", "homo", "cocksucker"
+    }) then
+        return
+    end
+
+    self:speak()
+end
+
+return Nyx.class("AiSentenceReplyGay", AiSentenceReplyGay, AiSentenceBase)
+--}}}

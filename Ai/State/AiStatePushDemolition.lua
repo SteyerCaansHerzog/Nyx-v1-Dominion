@@ -10,16 +10,25 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStatePushDemolition
 --- @class AiStatePushDemolition : AiStateBase
 --- @field isDeactivated boolean
---- @field node Node
---- @field site string
+--- @field node NodeSpotPushT
 local AiStatePushDemolition = {
-    name = "Push"
+    name = "Push (Demolition)",
+    requiredNodes = {
+        Node.spotPushT
+    },
+    requiredGamemodes = {
+        AiUtility.gamemodes.DEMOLITION,
+        AiUtility.gamemodes.WINGMAN,
+    }
 }
 
 --- @param fields AiStatePushDemolition
@@ -30,96 +39,57 @@ end
 
 --- @return void
 function AiStatePushDemolition:__init()
+    self:setActivityNode()
+
     Callbacks.roundPrestart(function()
         self.isDefendingBomb = false
         self.isDeactivated = false
-        self.node = nil
+
+        self:setActivityNode()
     end)
 end
 
 --- @return void
 function AiStatePushDemolition:assess()
-    if AiUtility.gamemode == "hostage" then
-        return AiPriority.IGNORE
-    end
-
     if not LocalPlayer:isTerrorist() then
         return AiPriority.IGNORE
     end
 
-    if self.isDeactivated or AiUtility.isBombPlanted() then
-        return AiPriority.IGNORE
-    end
-
-    if AiUtility.roundTimer:isElapsed(30) then
+    if self.isDeactivated or AiUtility.isBombPlanted() or AiUtility.timeData.roundtime > 30 then
         return AiPriority.IGNORE
     end
 
     return AiPriority.PUSH
 end
 
---- @param site string
 --- @return void
-function AiStatePushDemolition:activate(site)
-    if not site then
-        site = self.site
-    end
-
-    local node = self:getActivityNode(site)
-
-    if not node then
-        return
-    end
-
-    self.site = site
-    self.node = node
-
-   self.ai.nodegraph:pathfind(node.origin, {
-        objective = Node.types.GOAL,
-        task = string.format("Push to %s site [%i]", node.site:upper(), node.id),
-        onComplete = function()
-            self.ai.nodegraph:log("Pushed onto %s site [%i]", node.site, node.id)
-
-            self.isDeactivated = true
+function AiStatePushDemolition:activate()
+    Pathfinder.moveToNode(self.node, {
+        task = string.format("Push to %s site", self.node.bombsite),
+        onReachedGoal = function()
+        	self.isDeactivated = true
         end
     })
+end
+
+--- @param bombsite string
+--- @return void
+function AiStatePushDemolition:invoke(bombsite)
+    self:setActivityNode(bombsite)
+    self:queueForReactivation()
 end
 
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStatePushDemolition:think(cmd)
-    if not self.node then
-        return
-    end
-
-    if not self.site then
-        return
-    end
-
-    if self.site then
-        self.activity = string.format("Pushing %s", self.site:upper())
-    end
-
-    if self.ai.nodegraph:isIdle() then
-        self.ai.nodegraph:rePathfind()
-    end
+    self.activity = string.format("Pushing %s", self.node.bombsite)
 end
 
---- @param site string
---- @return Node
-function AiStatePushDemolition:getActivityNode(site)
-    local nodes = {
-        a = self.ai.nodegraph.objectiveAPush,
-        b = self.ai.nodegraph.objectiveBPush
-    }
-
-    if not site then
-        site = Math.getRandomInt(1, 2) == 1 and "a" or "b"
-    end
-
-    nodes = nodes[site]
-
-    return nodes[Math.getRandomInt(1, #nodes)]
+--- @param bombsite string
+--- @return NodeSpotPushT
+function AiStatePushDemolition:setActivityNode(bombsite)
+    bombsite = bombsite or AiUtility.randomBombsite
+    self.node = Nodegraph.getRandomForBombsite(Node.spotPushT, bombsite)
 end
 
 return Nyx.class("AiStatePushDemolition", AiStatePushDemolition, AiStateBase)

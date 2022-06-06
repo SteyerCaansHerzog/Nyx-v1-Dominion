@@ -31,7 +31,11 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 local AiStateDefuse = {
     name = "Defuse",
     delayedMouseMin = 0.1,
-    delayedMouseMax = 0.4
+    delayedMouseMax = 0.4,
+    requiredGamemodes = {
+        AiUtility.gamemodes.DEMOLITION,
+        AiUtility.gamemodes.WINGMAN,
+    }
 }
 
 --- @param fields AiStateDefuse
@@ -186,7 +190,7 @@ function AiStateDefuse:think(cmd)
             and Table.isEmpty(AiUtility.visibleEnemies)
             and (not AiUtility.closestEnemy or (AiUtility.closestEnemy and LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) > 400))
         then
-            self.ai.canUseGear = false
+            self.ai.routines.manageGear:block()
 
             self.ai.states.evade:block()
 

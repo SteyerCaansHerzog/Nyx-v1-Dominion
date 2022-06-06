@@ -14,8 +14,8 @@ local NodeObjectiveBombsiteA = {
     description = {
         "This node represents bombsite A.",
     },
-    colorPrimary = Color:hsla(40, 0.8, 0.6),
-    colorSecondary = Color:hsla(230, 0.8, 0.6),
+    colorPrimary = Color:hsla(0, 1, 1),
+    colorSecondary = Color:hsla(0, 0.8, 0.65),
     bombsite = "A"
 }
 

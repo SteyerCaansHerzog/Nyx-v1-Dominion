@@ -19,6 +19,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local GamemodeInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/GamemodeInfo"
 local MapInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/MapInfo"
 --}}}
 
@@ -40,7 +41,8 @@ local MapInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/MapInfo"
 --- @field enemyDistances number[]
 --- @field enemyFovs number[]
 --- @field enemyHitboxes table<number, Vector3[]>
---- @field gamemode "demolition" | "wingman" | "hostage"
+--- @field gamemode string
+--- @field gamemodes GamemodeInfo
 --- @field gameRules GameRules
 --- @field hasBomb Player
 --- @field hostageCarriers Player[]
@@ -60,7 +62,6 @@ local MapInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/MapInfo"
 --- @field lastPresenceTimers Timer[]
 --- @field lastVisibleEnemyTimer Timer
 --- @field plantedBomb Entity
---- @field roundTimer Timer
 --- @field teammates Player[]
 --- @field teammatesAlive number
 --- @field threats boolean[]
@@ -70,12 +71,26 @@ local MapInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/MapInfo"
 --- @field traceOptionsAttacking TraceOptions
 --- @field traceOptionsPathfinding TraceOptions
 --- @field visibleEnemies Player[]
-local AiUtility = {}
+--- @field randomBombsite string
+local AiUtility = {
+    gamemodes = GamemodeInfo
+}
 
 --- @return void
 function AiUtility:__setup()
     AiUtility.initFields()
     AiUtility.initEvents()
+end
+
+--- @return void
+function AiUtility.seedPrng()
+    -- This must be executed as the very first setupCommand event that runs. Before everything else.
+    -- It is responsible for ensuring RNG between AI clients on the same server is properly randomised.
+    if entity.get_local_player() then
+        for _ = 0, entity.get_local_player() * 100 do
+            client.random_float(0, 1)
+        end
+    end
 end
 
 --- @return void
@@ -93,7 +108,6 @@ function AiUtility:initFields()
         AiUtility.lastPresenceTimers[i] = Timer:new():startThenElapse()
     end
 
-    AiUtility.roundTimer = Timer:new()
     AiUtility.defuseTimer = Timer:new()
     AiUtility.lastKnownOrigin = {}
     AiUtility.dormantAt = {}
@@ -104,6 +118,7 @@ function AiUtility:initFields()
     AiUtility.totalThreats = 0
     AiUtility.threatUpdateTimer = Timer:new():startThenElapse()
     AiUtility.gameRules = Server.isIngame() and Entity.getGameRules()
+    AiUtility.randomBombsite = Math.getChance(2) and "A" or "B"
 
     if Server.isIngame() then
         AiUtility.timeData = Table.fromPanorama(Panorama.GameStateAPI.GetTimeDataJSO())
@@ -170,26 +185,11 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.roundEnd(function()
-        AiUtility.roundTimer:stop()
-
         AiUtility.isRoundOver = true
-    end)
-
-    Callbacks.roundFreezeEnd(function()
-        AiUtility.roundTimer:start()
-
-        AiUtility.enemiesAlive = 0
-
-        for _, _ in Player.findAll(function(p)
-            return p:isEnemy()
-        end) do
-            AiUtility.enemiesAlive = AiUtility.enemiesAlive + 1
-        end
     end)
 
     Callbacks.init(function()
     	AiUtility.bombCarrier = nil
-        AiUtility.enemiesAlive = 5
 
         if globals.mapname() and MapInfo[globals.mapname()] then
             AiUtility.gamemode = MapInfo[globals.mapname()].gamemode
@@ -204,6 +204,7 @@ function AiUtility:initEvents()
         AiUtility.isBombBeingPlantedByEnemy = false
         AiUtility.isBombBeingPlantedByTeammate = false
         AiUtility.isClientPlanting = false
+        AiUtility.randomBombsite = Math.getChance(2) and "A" or "B"
     end)
 
     Callbacks.itemPickup(function(e)
@@ -304,8 +305,6 @@ function AiUtility:initEvents()
             AiUtility.enemyFovs = Table.populateForMaxPlayers(math.huge)
             AiUtility.lastKnownOrigin = {}
             AiUtility.dormantAt = {}
-        elseif e.victim:isEnemy() then
-            AiUtility.enemiesAlive = AiUtility.enemiesAlive - 1
         end
 
         if e.attacker:isEnemy() then
@@ -346,6 +345,7 @@ function AiUtility:initEvents()
             return
         end
 
+        AiUtility.seedPrng()
         AiUtility.updateMisc()
         AiUtility.updateThreats()
         AiUtility.updateEnemies()
@@ -410,7 +410,6 @@ function AiUtility.updateEnemies()
     AiUtility.visibleEnemies = {}
     AiUtility.closestEnemy = nil
     AiUtility.isLastAlive = true
-    AiUtility.enemiesAlive = 0
     AiUtility.isEnemyVisible = false
 
     local clientOrigin = Client.getOrigin()

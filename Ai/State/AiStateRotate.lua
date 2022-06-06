@@ -9,8 +9,12 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateRotate
@@ -20,7 +24,15 @@ local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
 --- @field node Node
 --- @field bounds Vector3[]
 local AiStateRotate = {
-    name = "Rotate"
+    name = "Rotate",
+    requiredNodes = {
+        Node.objectiveBombsiteA,
+        Node.objectiveBombsiteB
+    },
+    requiredGamemodes = {
+        AiUtility.gamemodes.DEMOLITION,
+        AiUtility.gamemodes.WINGMAN,
+    }
 }
 
 --- @param fields AiStateRotate
@@ -62,10 +74,6 @@ function AiStateRotate:think(cmd)
 
     self.activity = string.format("Rotating to %s", self.site:upper())
 
-    if self.ai.nodegraph:isIdle() then
-        self:move()
-    end
-
     if LocalPlayer:getOrigin():isInBounds(self.bounds) then
         self:reset()
     end
@@ -76,15 +84,14 @@ end
 function AiStateRotate:rotate(site)
     self.isActive = true
     self.site = site
-    self.node = self.ai.nodegraph:getSiteNode(site)
+    self.node = Nodegraph.getBombsite(site)
     self.bounds = self.node.origin:getBounds(Vector3.align.CENTER, 800, 800, 128)
 end
 
 --- @return void
 function AiStateRotate:move()
-    self.ai.nodegraph:pathfind(self.node.origin, {
-        objective = Node.types.GOAL,
-        task = string.format("Rotating to %s", self.site:upper())
+    Pathfinder.moveToNode(self.node, {
+        task = string.format("Rotate to bombsite %s", self.site)
     })
 end
 

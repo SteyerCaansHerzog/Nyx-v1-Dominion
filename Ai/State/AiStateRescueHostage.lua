@@ -7,13 +7,22 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateRescueHostage
 --- @class AiStateRescueHostage : AiStateBase
 local AiStateRescueHostage = {
-    name = "Rescue Hostage"
+    name = "Rescue Hostage",
+    requiredNodes = {
+        Node.objectiveCtSpawn
+    },
+    requiredGamemodes = {
+        AiUtility.gamemodes.HOSTAGE
+    }
 }
 
 --- @param fields AiStateRescueHostage
@@ -24,10 +33,6 @@ end
 
 --- @return void
 function AiStateRescueHostage:assess()
-    if AiUtility.gamemode ~= "hostage" then
-        return AiPriority.IGNORE
-    end
-
     if LocalPlayer:m_hCarriedHostage() == nil then
         return AiPriority.IGNORE
     end
@@ -37,9 +42,8 @@ end
 
 --- @return void
 function AiStateRescueHostage:activate()
-    self.ai.nodegraph:pathfind(self.ai.nodegraph.objectiveCtSpawn.origin, {
-        objective = Node.types.GOAL,
-        task = string.format("Rescue hostage")
+    Pathfinder.moveToNode(Nodegraph.getOne(Node.objectiveCtSpawn), {
+        task = "Rescue the hostage"
     })
 end
 
@@ -48,11 +52,7 @@ end
 function AiStateRescueHostage:think(cmd)
     self.activity = "Rescuing hostage"
 
-    self.ai.canUseKnife = false
-
-    if self.ai.nodegraph:isIdle() then
-        self.ai.nodegraph:rePathfind()
-    end
+    self.ai.routines.manageGear:block()
 end
 
 return Nyx.class("AiStateRescueHostage", AiStateRescueHostage, AiStateBase)

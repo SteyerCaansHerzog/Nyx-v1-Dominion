@@ -5,12 +5,18 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
+local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 --}}}
 
 --{{{ Definitions
 --- @type ClientWriteManyConsoleItem[]
 local LoggerCode = {
+	[-1] = {
+		color = ColorList.FONT_MUTED,
+		chatColor = Chat.WHITE,
+		text = "[INFO] ",
+	},
 	[0] = {
 		color = ColorList.OK,
 		chatColor = Chat.GREEN,
@@ -38,6 +44,16 @@ local LoggerCode = {
 --- @class Logger : Class
 local Logger = {}
 
+--- @return void
+function Logger.__setup()
+	if Debug.isFilteringConsole then
+		cvar.con_filter_enable:set_int(1)
+		cvar.con_filter_text:set_string("Dominio")
+	else
+		cvar.con_filter_enable:set_int(0)
+	end
+end
+
 --- @vararg string
 --- @return void
 function Logger.message(code, ...)
@@ -57,7 +73,7 @@ function Logger.message(code, ...)
 		},
 		codeData,
 		{
-			color = code == -1 and ColorList.FONT_NORMAL or codeData.color,
+			color = codeData.color:clone():desaturate(0.7):darken(0.05),
 			text = message
 		}
 	})
@@ -80,10 +96,117 @@ function Logger.console(code, ...)
 		},
 		codeData,
 		{
-			color = code == -1 and ColorList.FONT_NORMAL or codeData.color,
+			color = codeData.color:clone():desaturate(0.7):darken(0.05),
 			text = string.format(...)
 		}
 	})
+end
+
+--- @param version string
+function Logger.credits(version)
+	Client.writeBlankLines(3)
+
+	local lines = {
+		"______   _______  _______ _________ _       _________ _______  _",
+		"(  __  \\ (  ___  )(       )\\__   __/( (    /|\\__   __/(  ___  )( (    /|",
+		"| (  \\  )| (   ) || () () |   ) (   |  \\  ( |   ) (   | (   ) ||  \\  ( |",
+		"| |   ) || |   | || || || |   | |   |   \\ | |   | |   | |   | ||   \\ | |",
+		"| |   | || |   | || |(_)| |   | |   | (\\ \\) |   | |   | |   | || (\\ \\) |",
+		"| |   ) || |   | || |   | |   | |   | | \\   |   | |   | |   | || | \\   |",
+		"| (__/  )| (___) || )   ( |___) (___| )  \\  |___) (___| (___) || )  \\  |",
+		"(______/ (_______)|/     \\|\\_______/|/    )_)\\_______/(_______)|/    )_)",
+	}
+
+	Client.writeManyConsole({
+		{
+			color = ColorList.FONT_MUTED,
+			text = "------------------------ "
+		},
+		{
+			color = ColorList.WARNING,
+			text = "nyx.to"
+		},
+		{
+			color = ColorList.FONT_MUTED,
+			text = " | "
+		},
+		{
+			color = ColorList.WARNING,
+			text = "discord.gg/nyx"
+		},
+		{
+			color = ColorList.FONT_MUTED,
+			text = " ------------------------"
+		}
+	})
+
+	for _, line in pairs(lines) do
+		Client.writeConsole(ColorList.PRIMARY, line)
+	end
+
+	Client.writeBlankLines(1)
+
+	Client.writeManyConsole({
+		{
+			color = ColorList.FONT_MUTED,
+			text = "| "
+		},
+		{
+			color = ColorList.FONT_MUTED,
+			text = "Competitive CS:GO AI built for official servers."
+		}
+	})
+
+	Client.writeManyConsole({
+		{
+			color = ColorList.FONT_MUTED,
+			text = "| "
+		},
+		{
+			color = ColorList.FONT_MUTED,
+			text = "Current build: "
+		},
+		{
+			color = ColorList.WARNING,
+			text = string.format("v%s", version)
+		},
+		{
+			color = ColorList.FONT_MUTED,
+			text = "."
+		}
+	})
+
+	Client.writeManyConsole({
+		{
+			color = ColorList.FONT_MUTED,
+			text = "| "
+		},
+		{
+			color = ColorList.FONT_MUTED,
+			text = "Developed and maintained by "
+		},
+		{
+			color = ColorList.WARNING,
+			text = "Kessie#0001"
+		},
+		{
+			color = ColorList.FONT_MUTED,
+			text = "."
+		}
+	})
+
+	Client.writeManyConsole({
+		{
+			color = ColorList.FONT_MUTED,
+			text = "| "
+		},
+		{
+			color = ColorList.FONT_MUTED,
+			text = "Copyright ©2021-2022, all rights reserved."
+		},
+	})
+
+	Client.writeBlankLines(3)
 end
 
 return Nyx.class("Logger", Logger)

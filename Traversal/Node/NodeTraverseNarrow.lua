@@ -18,7 +18,7 @@ local NodeTraverseNarrow = {
         "have much choice in a path's randomness."
     },
     isPlanar = false,
-    colorSecondary = Color:hsla(235, 0.65, 0.7)
+    colorSecondary = Color:hsla(235, 0.12, 0.35)
 }
 
 --- @param fields NodeTraverseNarrow

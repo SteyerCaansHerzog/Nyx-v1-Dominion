@@ -52,7 +52,7 @@ end
 --- @return void
 function AiStateWatch:assess()
     -- Handle hostage gamemode.
-    if AiUtility.gamemode == "hostage" then
+    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
         -- Only CTs should watch.
         if not LocalPlayer:isCounterTerrorist() then
             return AiPriority.IGNORE
@@ -77,7 +77,7 @@ function AiStateWatch:assess()
     end
 
     -- We don't want to watch angles at bad times.
-    if AiUtility.plantedBomb or (AiUtility.bombCarrier and AiUtility.bombCarrier:is(LocalPlayer)) or AiUtility.roundTimer:isElapsed(25) then
+    if AiUtility.plantedBomb or (AiUtility.bombCarrier and AiUtility.bombCarrier:is(LocalPlayer)) or AiUtility.timeData.roundtime_remaining < 60 then
         return AiPriority.IGNORE
     end
 
@@ -205,16 +205,16 @@ function AiStateWatch:think(cmd)
     end
 
     if distance < 100 then
-        self.ai.isQuickStopping = true
-        self.ai.canUnscope = false
+        Pathfinder.counterStrafe()
+        Pathfinder.blockTeammateAvoidance()
 
-        Pathfinder.isAllowedToAvoidTeammates = false
+        self.ai.routines.manageWeaponScope:block()
     end
 
     if distance < 200 then
         View.lookAtLocation(self.node.lookAtOrigin, 3, View.noise.none, "Watch look at angle")
 
-        self.ai.canUseKnife = false
+        self.ai.routines.manageGear:block()
 
         if not LocalPlayer:isHoldingGun() then
             if LocalPlayer:hasPrimary() then

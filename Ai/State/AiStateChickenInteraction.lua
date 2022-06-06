@@ -180,8 +180,8 @@ function AiStateChickenInteraction:think(cmd)
     local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), chickenOrigin)
 
     if distance < 64 and fov < 22 then
-        self.ai.canLookAwayFromFlash = false
-        self.ai.canUseGear = false
+        self.ai.routines.lookAwayFromFlashbangs:block()
+        self.ai.routines.manageGear:block()
         self.ai.canReload = false
 
         if self.interaction == "kill" then

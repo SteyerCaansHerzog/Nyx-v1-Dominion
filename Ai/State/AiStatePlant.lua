@@ -4,6 +4,7 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
 
@@ -12,21 +13,30 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStatePlant
 --- @class AiStatePlant : AiStateBase
---- @field node Node
---- @field plantAt string
+--- @field node NodeSpotPlant
+--- @field bombsite string
 --- @field plantDelayTimer Timer
 --- @field plantDelayTime number
 --- @field isPlanting boolean
 --- @field tellSiteTimer Timer
 --- @field pickRandomSiteTimer Timer
 local AiStatePlant = {
-    name = "Plant"
+    name = "Plant",
+    requiredNodes = {
+        Node.spotPlant
+    },
+    requiredGamemodes = {
+        AiUtility.gamemodes.DEMOLITION,
+        AiUtility.gamemodes.WINGMAN,
+    }
 }
 
 --- @param fields AiStatePlant
@@ -38,22 +48,15 @@ end
 --- @return void
 function AiStatePlant:__init()
     self.plantDelayTimer = Timer:new()
-    self.plantDelayTime = 0.33
+    self.plantDelayTime = 0.2
     self.tellSiteTimer = Timer:new():startThenElapse()
     self.pickRandomSiteTimer = Timer:new()
-
-    Callbacks.init(function()
-        self:setSite()
-    end)
-
-    Callbacks.roundEnd(function()
-        self:setSite()
-    end)
 
     Callbacks.roundStart(function()
         self.isPlanting = false
 
         self.pickRandomSiteTimer:start()
+        self:setPlantNode()
     end)
 
     Callbacks.bombBeginPlant(function(e)
@@ -74,22 +77,16 @@ function AiStatePlant:__init()
 end
 
 --- @return void
-function AiStatePlant:setSite()
-    self.plantAt = Math.getRandomInt(1, 2) == 1 and "a" or "b"
-end
-
---- @return void
 function AiStatePlant:assess()
     if not LocalPlayer.hasBomb() then
         return AiPriority.IGNORE
     end
 
     local playerOrigin = LocalPlayer:getOrigin()
-    local siteName = self.ai.nodegraph:getNearestSiteName(playerOrigin)
-    local site = self.ai.nodegraph:getSiteNode(siteName)
-    local closestPlantNode = self.ai.nodegraph:getClosestNodeOf(playerOrigin, Node.types.PLANT)
+    local bombsite = Nodegraph.getClosestBombsite(playerOrigin)
+    local closestPlantNode = Nodegraph.getClosest(playerOrigin, Node.spotPlant)
     local isCovered = false
-    local distanceToSite = playerOrigin:getDistance(site.origin)
+    local distanceToSite = playerOrigin:getDistance(bombsite.origin)
     local isNearSite = distanceToSite < 1400
     local isOnPlant = playerOrigin:getDistance(closestPlantNode.origin) < 200
 
@@ -139,41 +136,24 @@ function AiStatePlant:assess()
     return AiPriority.PLANT_GENERIC
 end
 
---- @param site string
 --- @return void
-function AiStatePlant:activate(site)
+function AiStatePlant:activate()
+    self:setPlantNode(self.bombsite)
+
     local origin = LocalPlayer:getOrigin()
 
-    if site then
-        self.plantAt = site
-    end
-
-    if origin:getDistance(self.ai.nodegraph.objectiveA.origin) < 1024 then
-        site = "a"
-    elseif origin:getDistance(self.ai.nodegraph.objectiveB.origin) < 1024 then
-        site = "b"
-    end
-
-    local node = self:getPlantNode(site)
-
-    if not node then
-        return
-    end
-
-    self.node = node
-
-   self.ai.nodegraph:pathfind(node.origin, {
-        objective = Node.types.GOAL,
-        task = string.format("Plant on %s site [%i]", node.site:upper(), node.id)
+    Pathfinder.moveToNode(self.node, {
+        task = string.format("Plant the bomb at bombsite %s", self.bombsite),
+        isCounterStrafingOnGoal = true
     })
 
     if self.tellSiteTimer:isElapsedThenRestart(25) and MenuGroup.useChatCommands:get() then
-        self.ai.commands.go:bark(self.plantAt)
+        self.ai.commands.go:bark(self.bombsite:lower())
 
-        local distanceToSite = origin:getDistance(self.ai.nodegraph:getNearestSiteNode(origin).origin)
+        local distanceToSite = origin:getDistance(Nodegraph.getClosestBombsite(origin).origin)
 
         if not AiUtility.isLastAlive and distanceToSite > 800 then
-           self.ai.voice.pack:speakRequestTeammatesToPush(self.plantAt)
+           self.ai.voice.pack:speakRequestTeammatesToPush(self.bombsite)
         end
     end
 end
@@ -181,6 +161,14 @@ end
 --- @return void
 function AiStatePlant:deactivate()
     self.plantDelayTimer:stop()
+end
+
+--- @param bombsite string
+--- @return void
+function AiStatePlant:invoke(bombsite)
+    self.bombsite = bombsite
+
+    self:queueForReactivation()
 end
 
 --- @param cmd SetupCommandEvent
@@ -193,14 +181,14 @@ function AiStatePlant:think(cmd)
     if distance < 150 then
         self.activity = "Planting bomb"
 
-        self.ai.canUseGear = false
+        self.ai.routines.manageGear:block()
 
         LocalPlayer.equipBomb()
     end
 
     if distance < 72 then
         View.lookAlongAngle(self.node.direction, 5, View.noise.idle, "Plant look at angle")
-        self.ai.isQuickStopping = true
+        Pathfinder.counterStrafe()
     end
 
     if distance < 25 then
@@ -215,26 +203,49 @@ function AiStatePlant:think(cmd)
         end
     end
 
-    if self.ai.nodegraph:isIdle() then
-        self.ai.nodegraph:rePathfind()
-    end
+    Pathfinder.ifIdleThenRetryLastRequest()
 end
 
 --- @param site string
 --- @return Node
-function AiStatePlant:getPlantNode(site)
-    local sites = {
-        a = self.ai.nodegraph.objectiveAPlant,
-        b = self.ai.nodegraph.objectiveBPlant
-    }
+function AiStatePlant:setPlantNode(site)
+    local clientOrigin = LocalPlayer:getOrigin()
 
-    if site then
-        self.plantAt = site
-
-        return sites[site][1]
+    if clientOrigin:getDistance(Nodegraph.getOne(Node.objectiveBombsiteA).origin) < 1024 then
+        site = "A"
+    elseif clientOrigin:getDistance(Nodegraph.getOne(Node.objectiveBombsiteB).origin) < 1024 then
+        site = "B"
     else
-        return sites[self.plantAt][1]
+        site = site or AiUtility.randomBombsite
     end
+
+    local nodes = Nodegraph.getForBombsite(Node.spotPlant, site)
+
+    if not nodes then
+        return
+    end
+
+    --- @type NodeSpotPlant
+    local closestNode
+    local closestDistance = math.huge
+
+    for _, node in pairs(nodes) do
+        local distance = clientOrigin:getDistance(node.origin)
+
+        if distance < closestDistance then
+            closestDistance = distance
+            closestNode = node
+        end
+    end
+
+    if not closestNode then
+        return
+    end
+
+    self.node = closestNode
+    self.bombsite = site
+
+    print(self.bombsite)
 end
 
 return Nyx.class("AiStatePlant", AiStatePlant, AiStateBase)

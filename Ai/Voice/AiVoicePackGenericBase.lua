@@ -4,12 +4,12 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiVoicePack = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePack"
+local AiVoicePackBase = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePackBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 
 --{{{ AiVoicePackGenericBase
---- @class AiVoicePackGenericBase : AiVoicePack
+--- @class AiVoicePackGenericBase : AiVoicePackBase
 --- @field groups table<string, number>
 local AiVoicePackGenericBase = {
 	name = "Generic",
@@ -172,9 +172,9 @@ end
 function AiVoicePackGenericBase:speakRequestTeammatesToRotate(bombsite)
 	local group
 
-	if bombsite == "a" then
+	if bombsite == "A" then
 		group = self:getGroupDynamic("RequestTeammatesToRotate_A")
-	elseif bombsite == "b" then
+	elseif bombsite == "B" then
 		group = self:getGroupDynamic("RequestTeammatesToRotate_B")
 	end
 
@@ -198,9 +198,9 @@ end
 function AiVoicePackGenericBase:speakRequestTeammatesToPush(bombsite)
 	local group
 
-	if bombsite == "a" then
+	if bombsite == "A" then
 		group = self:getGroupDynamic("RequestTeammatesToPush_A")
-	elseif bombsite == "b" then
+	elseif bombsite == "B" then
 		group = self:getGroupDynamic("RequestTeammatesToPush_B")
 	end
 
@@ -668,5 +668,5 @@ function AiVoicePackGenericBase:speakNoProblem()
 end
 --}}}
 
-return Nyx.class("AiVoicePackGenericBase", AiVoicePackGenericBase, AiVoicePack)
+return Nyx.class("AiVoicePackGenericBase", AiVoicePackGenericBase, AiVoicePackBase)
 --}}}

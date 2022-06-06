@@ -128,7 +128,7 @@ function AiStateBoost:think(cmd)
     if senderDistance < 500 and originDistance < 200 then
         Pathfinder.blockTeammateAvoidance()
 
-        self.ai.canLookAwayFromFlash = false -- todo
+        self.ai.routines.lookAwayFromFlashbangs:block()
         self.ai.states.evade:block()
 
         local bounds = playerOrigin:clone():offset(0, 0, 32):getBounds(Vector3.align.BOTTOM, 25, 25, 128)

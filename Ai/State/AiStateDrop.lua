@@ -77,15 +77,15 @@ end
 function AiStateDrop:think(cmd)
     self.activity = string.format("Dropping %s", self.requestedGear)
 
-    self.ai.canLookAwayFromFlash = false
-    self.ai.canUseGear = false
+    self.ai.routines.lookAwayFromFlashbangs:block()
+    self.ai.routines.manageGear:block()
 
     local distance = LocalPlayer:getOrigin():getDistance(self.requestingPlayer:getOrigin())
     local hitbox = self.requestingPlayer:getOrigin():offset(0, 0, 64)
     local isFreezeTime = AiUtility.gameRules:m_bFreezePeriod() == 1
 
     if isFreezeTime or distance < 300 then
-        View.lookAtLocation(hitbox, 8, View.noise.minor, "Drop look at requester")
+        View.lookAtLocation(hitbox, 9.5, View.noise.minor, "Drop look at requester")
     end
 
     if isFreezeTime or distance < 200 then
@@ -104,7 +104,7 @@ function AiStateDrop:think(cmd)
             end
 
             -- Drop gear.
-            if self.droppingGearTimer:isElapsedThenStop(0.33) then
+            if self.droppingGearTimer:isElapsedThenStop(0.1) then
                 self.ai.voice.pack:speakGifting()
 
                 LocalPlayer.dropGear()
@@ -112,7 +112,7 @@ function AiStateDrop:think(cmd)
                 self.isDroppingGear = false
 
                 -- We need to rebuy.
-                if isFreezeTime or AiUtility.roundTimer:isNotElapsed(5) then
+                if isFreezeTime or AiUtility.timeData.roundtime < 20 then
                     self:buyGear()
                 end
             end
@@ -122,7 +122,7 @@ end
 
 --- @return void
 function AiStateDrop:buyGear()
-    Client.fireAfter(Math.getRandomFloat(0.75, 1.25), function()
+    Client.fireAfterRandom(0.75, 1.25, function()
         if not LocalPlayer:hasWeapons(WeaponInfo.primaries) then
             local balance = LocalPlayer:m_iAccount()
 

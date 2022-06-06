@@ -14,7 +14,7 @@ local NodeTraverseDoor = {
     description = {
         "Informs the AI of how to traverse the map through doors."
     },
-    colorSecondary = Color:hsla(25, 0.8, 0.6)
+    colorSecondary = Color:hsla(20, 0.8, 0.6)
 }
 
 --- @param fields NodeTraverseDoor

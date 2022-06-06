@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
+local DrawDebug = require "gamesense/Nyx/v1/Api/DrawDebug"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -26,6 +27,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field isRestrictingConnections boolean
 --- @field isTestingForGaps boolean
 --- @field isUsingHumanCollisionTest boolean
+--- @field isUsingLineCollisionTest boolean
 --- @field maxConnections number
 
 --- @class NodeTypeBaseConnectionCollision
@@ -54,6 +56,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field iRenderBottomLines number
 --- @field iRenderTopLines number
 --- @field isActive boolean
+--- @field isCollisionTestWeak boolean
 --- @field isConnectable boolean
 --- @field isDirectional boolean
 --- @field isDuck boolean
@@ -62,6 +65,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field isNameHidden boolean
 --- @field isOccludedByInferno boolean
 --- @field isOccludedBySmoke boolean
+--- @field isPathable boolean
 --- @field isPlanar boolean
 --- @field isTransient boolean
 --- @field isTraversal boolean
@@ -80,7 +84,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field renderColorPrimary Color
 --- @field renderColorSecondary Color
 --- @field type string
---- @field isCollisionTestWeak boolean
+--- @field zDeltaThreshold number
 local NodeTypeBase = {
     name = "Unnamed Node Type",
     description = {"No description given."},
@@ -91,7 +95,8 @@ local NodeTypeBase = {
     isDirectional = false,
     isLinkedToBombsite = false,
     lookZOffset = 46,
-    lookDistanceThreshold = 200
+    lookDistanceThreshold = 200,
+    zDeltaThreshold = 64
 }
 
 --- @param fields NodeTypeBase
@@ -137,6 +142,12 @@ function NodeTypeBase:isAny(nodes)
     end
 
     return false
+end
+
+--- @param node NodeTypeBase
+--- @return boolean
+function NodeTypeBase:isOf(node)
+    return self.type == node.type
 end
 
 --- Renders the node.
@@ -384,6 +395,13 @@ function NodeTypeBase:executeCustomizers()
     end
 end
 
+--- @param node NodeTypeBase
+--- @return void
+function NodeTypeBase:setConnection(node)
+    self.connections[node.id] = node
+    node.connections[self.id] = self
+end
+
 --- Set up all connections for the node.
 ---
 --- @param nodegraph Nodegraph
@@ -424,7 +442,7 @@ function NodeTypeBase:setConnections(nodegraph, options)
     local fallBounds = NodeTypeBase.collisionHullGap
     local selfCollisionOrigin = self.origin:clone():offset(0, 0, hullOffset)
 
-    for _, node in Table.sortedPairs(nodegraph.nodesByType.Traverse, function(a, b)
+    for _, node in Table.sortedPairs(nodegraph.pathableNodes, function(a, b)
         return self.origin:getDistance(a.origin) < self.origin:getDistance(b.origin)
     end) do repeat
         if iConnections == options.maxConnections then
@@ -447,7 +465,7 @@ function NodeTypeBase:setConnections(nodegraph, options)
 
         local zDelta = node.origin.z - self.origin.z
 
-        if node.isJump and zDelta > 64 then
+        if node.isJump and zDelta > node.zDeltaThreshold then
             break
         end
 
@@ -461,7 +479,11 @@ function NodeTypeBase:setConnections(nodegraph, options)
 
         local isCollisionOk = true
 
-        if node.isCollisionTestWeak and options.isUsingHumanCollisionTest then
+        if options.isUsingLineCollisionTest then
+            local trace = Trace.getLineToPosition(self.origin, node.origin, AiUtility.traceOptionsPathfinding)
+
+            isCollisionOk = not trace.isIntersectingGeometry
+        elseif node.isCollisionTestWeak and options.isUsingHumanCollisionTest then
             if distance < 150 then
                 local collisionTrace = Trace.getHullToPosition(self.origin, node.origin, Vector3:newBounds(Vector3.align.CENTER, 6), AiUtility.traceOptionsPathfinding)
 

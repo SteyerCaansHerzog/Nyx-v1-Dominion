@@ -26,6 +26,7 @@ local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
@@ -281,7 +282,7 @@ function AiStateEngage:initEvents()
             end
         end
 
-        if AiUtility.gamemode == "hostage" and AiUtility.isHostageCarriedByEnemy then
+        if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE and AiUtility.isHostageCarriedByEnemy then
             for _, enemy in pairs(AiUtility.hostageCarriers) do
                 self:noticeEnemy(enemy, 4096, true, "Carrying hostage")
             end
@@ -503,10 +504,6 @@ end
 
 --- @return void
 function AiStateEngage:requestRotations()
-    if AiUtility.gamemode == "hostage" then
-        return
-    end
-
     -- Only CTs should bark rotate commands.
     if not LocalPlayer:isCounterTerrorist() then
         return
@@ -1239,7 +1236,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
         -- Avoid too many threats.
         local isBackingUp = true
 
-        if AiUtility.gamemode == "hostage" then
+        if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
             if AiUtility.totalThreats < 2 then
                 isBackingUp = false
             elseif self.isStrafePeeking then
@@ -1406,7 +1403,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
 
         --- @type Node[]
         local selectedNodes = {}
-        --- @type Node
+        --- @type NodeTypeTraverse
         local closestNode
         local closestNodeDistance = math.huge
         local i = 0
@@ -1472,14 +1469,13 @@ function AiStateEngage:attackBestTarget(cmd)
     end
 
     -- Prevent certain generic behaviours.
-    self.ai.canUseGear = false
-    self.ai.canInspectWeapon = false
+    self.ai.routines.manageGear:block()
     self.ai.nodegraph.isAllowedToAvoidTeammates = false
 
     -- Prevent reloading/unscoping when enemies are visible.
     if next(AiUtility.visibleEnemies) then
         self.ai.canReload = false
-        self.ai.canUnscope = false
+        self.ai.routines.manageWeaponScope:block()
     end
 
     -- Look at occluded origin.
@@ -1841,7 +1837,7 @@ function AiStateEngage:canHoldAngle()
     -- Don't hold if the enemy is defusing the bomb.
     if LocalPlayer:isTerrorist() and not AiUtility.isBombBeingDefusedByEnemy then
         -- Ts should prefer defense in hostage.
-        if AiUtility.gamemode == "hostage" and not AiUtility.isHostageCarriedByEnemy then
+        if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE and not AiUtility.isHostageCarriedByEnemy then
             return true
         end
 
@@ -1932,7 +1928,7 @@ function AiStateEngage:walk()
     self.isSneaking = canWalk
 
     if canWalk then
-        self.ai.isWalking = true
+        Pathfinder.walk()
     end
 end
 
@@ -1966,7 +1962,7 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
 
     -- Prevent jumping obstacles. This can kill us.
    self.ai.nodegraph.canJump = false
-    self.ai.canLookAwayFromFlash = false
+    self.ai.routines.lookAwayFromFlashbangs:block()
 
     local distance = LocalPlayer:getOrigin():getDistance(aimAtBaseOrigin)
 
@@ -2609,7 +2605,7 @@ function AiStateEngage:preAimAboutCorners()
     end
 
     if self.preAimAboutCornersAimOrigin then
-        self.ai.canUnscope = false
+        self.ai.routines.manageWeaponScope:block()
 
        View.lookAtLocation(self.preAimAboutCornersAimOrigin, self.slowAimSpeed, View.noise.none, "Engage look at corner")
 

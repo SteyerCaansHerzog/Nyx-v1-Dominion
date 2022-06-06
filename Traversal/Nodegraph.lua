@@ -35,6 +35,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 --- @field nodesByClass table<string, NodeTypeBase[]>
 --- @field nodesByType table<string, NodeTypeBase[]>
 --- @field nodeTypes NodeTypeBase[]
+--- @field pathableNodes NodeTypeBase[]
 local Nodegraph = {}
 
 --- @return void
@@ -55,6 +56,7 @@ function Nodegraph.initFields()
     Nodegraph.nodeClassMap = {}
     Nodegraph.nodesBombsiteA = {}
     Nodegraph.nodesBombsiteB = {}
+    Nodegraph.pathableNodes = {}
     Nodegraph.isLoaded = false
 
     --- @type NodeTypeBase[]
@@ -142,6 +144,10 @@ function Nodegraph.add(node)
     Nodegraph.nodesByType[node.type][id] = node
     Nodegraph.nodes[id] = node
 
+    if node.isPathable then
+        Nodegraph.pathableNodes[node.id] = node
+    end
+
     node:onCreatePost(Nodegraph)
 
     if node.isLinkedToBombsite then
@@ -222,6 +228,30 @@ function Nodegraph.getOfType(node)
     return Nodegraph.nodesByType[node.type] or {}
 end
 
+--- @param bombsite string
+--- @return NodeTypeObjective
+function Nodegraph.getBombsite(bombsite)
+    bombsite = bombsite:upper()
+
+    if bombsite == "A" then
+        return Nodegraph.getOne(Node.objectiveBombsiteA)
+    elseif bombsite == "B" then
+        return Nodegraph.getOne(Node.objectiveBombsiteB)
+    end
+end
+
+--- @param spawn string
+--- @return NodeTypeObjective
+function Nodegraph.getSpawn(spawn)
+    spawn = spawn:upper()
+
+    if spawn == "T" then
+        return Nodegraph.getOne(Node.objectiveTSpawn)
+    elseif spawn == "C" then
+        return Nodegraph.getOne(Node.objectiveCtSpawn)
+    end
+end
+
 --- @param origin Vector3
 --- @return NodeTypeObjective
 function Nodegraph.getClosestBombsite(origin)
@@ -300,7 +330,10 @@ end
 --- @param bombsite string
 --- @return T
 function Nodegraph.getRandomForBombsite(node, bombsite)
-    return Table.getRandom(Nodegraph.getForBombsite(node, bombsite))
+    if type(bombsite) ~= "string" then
+        error("no bombsite", 2)
+    end
+    return Table.getRandom(Nodegraph.getForBombsite(node, bombsite:upper()))
 end
 
 --- @generic T
@@ -308,7 +341,7 @@ end
 --- @param bombsite string
 --- @return T
 function Nodegraph.getRandomForBombsiteOfType(node, bombsite)
-    return Table.getRandom(Nodegraph.getForBombsite(Nodegraph.nodesByType[node.type], bombsite))
+    return Table.getRandom(Nodegraph.getForBombsite(Nodegraph.nodesByType[node.type], bombsite:upper()))
 end
 
 --- @generic T
@@ -531,36 +564,26 @@ function Nodegraph.getRandom(node, origin, radius)
     --- @type NodeTypeBase[]
     local filter = {}
 
-    if node then
-        if not Nodegraph.nodesByClass[node.__classname] then
-            return nil
-        end
-
-        filter = Nodegraph.nodesByClass[node.__classname]
-    else
-        filter = Nodegraph.nodes
+    if not Nodegraph.nodesByClass[node.__classname] then
+        return nil
     end
+
+    filter = Nodegraph.nodesByClass[node.__classname]
 
     --- @type NodeTypeBase[]
     local nodes = {}
-    local iNodes = 0
 
     for _, search in pairs(filter) do
-        if node and node.id and node.id == search.id then
-            break
-        end
-
         if not origin or origin:getDistance(search.origin) < radius then
-            iNodes = iNodes + 1
-            nodes[iNodes] = search
+            table.insert(nodes, search)
         end
     end
 
-    if iNodes > 0 then
-        return Table.getRandom(nodes)
+    if Table.isEmpty(nodes) then
+        return nil
     end
 
-    return nil
+    return Table.getRandom(nodes)
 end
 
 --- @generic T
@@ -700,6 +723,10 @@ function Nodegraph.load(filename)
             elseif node.bombsite == "B" then
                 table.insert(Nodegraph.nodesBombsiteB[node.__classname], node)
             end
+        end
+
+        if node.isPathable then
+            Nodegraph.pathableNodes[node.id] = node
         end
     end
 

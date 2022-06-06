@@ -20,7 +20,7 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --- @field node Node
 --- @field isChecking boolean
 --- @field abortDistance number
---- @field objectiveName string
+--- @field spawn string
 local AiStateCheck = {
     name = "Check"
 }
@@ -35,7 +35,7 @@ end
 function AiStateCheck:__init()
     self.abortDistance = Math.getRandomInt(64, 256)
 
-    Callbacks.roundStart(function()
+    Callbacks.roundPrestart(function()
     	self:reset()
     end)
 end
@@ -45,22 +45,12 @@ function AiStateCheck:assess()
     return self.isChecking and AiPriority.CHECK_SPAWN or AiPriority.IGNORE
 end
 
---- @param spawn string
 --- @return void
-function AiStateCheck:activate(spawn)
-    self.node = self:getSpawn(spawn)
-
-    if not self.node then
-        return
-    end
-
-    local objectiveName = Node.typesName[self.node.type]
-
-    self.objectiveName = objectiveName
+function AiStateCheck:activate()
     self.isChecking = true
 
     Pathfinder.moveToNode(self.node, {
-        task = string.format("Check %s spawn", spawn),
+        task = string.format("Check %s spawn", self.spawn),
         goalReachedRadius = 200,
         onReachedGoal = function()
         	self:reset()
@@ -78,36 +68,34 @@ function AiStateCheck:deactivate()
     self:reset()
 end
 
+--- @param spawn string
+--- @return void
+function AiStateCheck:invoke(spawn)
+    self:setActivityNode(spawn)
+    self:queueForReactivation()
+end
+
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateCheck:think(cmd)
-    self.activity = string.format("Going to check %s", self.objectiveName)
-
     local distance = LocalPlayer:getOrigin():getDistance(self.node.origin)
 
     if distance < 350 then
-        self.activity = string.format("Checking %s", self.objectiveName)
+        self.activity = string.format("Checking %s", self.spawn)
+    else
+        self.activity = string.format("Going to check %s", self.spawn)
     end
 
     if distance < self.abortDistance then
         self.isChecking = false
     end
-
-    Pathfinder.ifIdleThenRetryLastRequest()
 end
 
 --- @param spawn string
 --- @return Node
-function AiStateCheck:getSpawn(spawn)
-    if not spawn then
-        return self.node
-    end
-
-    if spawn == "CT" then
-        return Nodegraph.getOne(Node.objectiveCtSpawn)
-    elseif spawn == "T" then
-        return Nodegraph.getOne(Node.objectiveTSpawn)
-    end
+function AiStateCheck:setActivityNode(spawn)
+    self.spawn = spawn
+    self.node = Nodegraph.getSpawn(spawn)
 end
 
 return Nyx.class("AiStateCheck", AiStateCheck, AiStateBase)

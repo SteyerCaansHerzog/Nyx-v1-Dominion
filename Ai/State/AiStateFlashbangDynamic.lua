@@ -16,6 +16,9 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
@@ -176,8 +179,6 @@ end
 
 --- @return void
 function AiStateFlashbangDynamic:activate()
-   self.ai.nodegraph:clearPath("throw a dynamic grenade")
-
     self.isActivated = true
 end
 
@@ -228,12 +229,16 @@ function AiStateFlashbangDynamic:think(cmd)
     end
 
     self.ai.states.evade.isBlocked = true
-    self.ai.canUseGear = false
-    self.ai.canLookAwayFromFlash = false
-    self.ai.isQuickStopping = true
-    self.ai.nodegraph.isAllowedToAvoidTeammates = false
-     View.isCrosshairUsingVelocity = true
-     View.isCrosshairSmoothed = false
+    self.ai.routines.manageGear:block()
+    self.ai.routines.lookAwayFromFlashbangs:block()
+
+    Pathfinder.counterStrafe()
+    Pathfinder.standStill()
+
+    View.isCrosshairUsingVelocity = true
+    View.isCrosshairSmoothed = false
+
+    Pathfinder.blockTeammateAvoidance()
 
     if not LocalPlayer:isHoldingWeapon(Weapons.FLASHBANG) then
         LocalPlayer.equipFlashbang()

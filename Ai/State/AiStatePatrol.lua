@@ -12,7 +12,9 @@ local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
@@ -21,7 +23,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field patrolOrigin Vector3
 --- @field isBeginningPatrol boolean
 --- @field isOnPatrol boolean
---- @field patrolNode Node
+--- @field patrolNode NodeTypeTraverse
 --- @field patrollingOnBehalfOf Player
 --- @field hasNotifiedTeamOfBomb boolean
 --- @field cooldownTimer Timer
@@ -90,7 +92,9 @@ function AiStatePatrol:assess()
 end
 
 --- @return void
-function AiStatePatrol:activate() end
+function AiStatePatrol:activate()
+    self:move()
+end
 
 --- @return void
 function AiStatePatrol:reset()
@@ -106,7 +110,7 @@ end
 function AiStatePatrol:think(cmd)
     self.activity = "Going to patrol bomb"
 
-    if self.ai.priority == AiPriority.PATROL_BOMB then
+    if self.priority == AiPriority.PATROL_BOMB then
         if not self.hasNotifiedTeamOfBomb then
             local bomb = AiUtility.bomb
 
@@ -130,25 +134,8 @@ function AiStatePatrol:think(cmd)
         end
     end
 
-    if self.isBeginningPatrol or not self.ai.nodegraph.path then
-        self.isBeginningPatrol = false
-        self.isOnPatrol = true
-
-        self.patrolNode = self:getPatrolNode()
-
-        if not self.patrolNode then
-            self.isOnPatrol = false
-
-            return
-        end
-
-       self.ai.nodegraph:pathfind(self.patrolNode.origin, {
-            objective = Node.types.GOAL,
-            task = string.format("Patrolling"),
-            onComplete = function()
-                self.isBeginningPatrol = true
-            end
-        })
+    if self.isBeginningPatrol or Pathfinder.isIdle() then
+        self:move()
     end
 
     if self.isOnPatrol then
@@ -157,26 +144,37 @@ function AiStatePatrol:think(cmd)
         if origin:getDistance(self.patrolOrigin) < 1024 then
             self.activity = "Patrolling bomb"
 
-            self.ai.isWalking = true
-            self.ai.canUseKnife = false
+            Pathfinder.walk()
+
+            self.ai.routines.manageGear:block()
         end
     end
 end
 
---- @return Node
-function AiStatePatrol:getPatrolNode()
-    local origin = LocalPlayer:getOrigin()
-    local filterOrigin = self.patrolOrigin
+--- @return void
+function AiStatePatrol:move()
+    self.isBeginningPatrol = false
+    self.isOnPatrol = true
 
-    local filterNodes = {}
+    self.patrolNode = self:getPatrolNode()
 
-    for _, node in pairs(self.ai.nodegraph.nodes) do
-        if origin:getDistance(node.origin) > 256 and filterOrigin:getDistance(node.origin) < 512 then
-            table.insert(filterNodes, node)
-        end
+    if not self.patrolNode then
+        self.isOnPatrol = false
+
+        return
     end
 
-    return Table.getRandom(filterNodes, Node)
+    Pathfinder.moveToNode(self.patrolNode, {
+        task = "Patrol area",
+        onReachedGoal = function()
+        	self.isBeginningPatrol = true
+        end
+    })
+end
+
+--- @return NodeTypeTraverse
+function AiStatePatrol:getPatrolNode()
+    return Nodegraph.getRandom(Node.traverseGeneric, self.patrolOrigin, self.patrolRadius)
 end
 
 return Nyx.class("AiStatePatrol", AiStatePatrol, AiStateBase)

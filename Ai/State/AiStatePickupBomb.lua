@@ -10,7 +10,9 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
@@ -20,7 +22,11 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field pickupBombFails number
 --- @field pickupBombTimer Timer
 local AiStatePickupBomb = {
-    name = "PickupBomb"
+    name = "Pickup Bomb",
+    requiredGamemodes = {
+        AiUtility.gamemodes.DEMOLITION,
+        AiUtility.gamemodes.WINGMAN,
+    }
 }
 
 --- @param fields AiStatePickupBomb
@@ -100,17 +106,12 @@ function AiStatePickupBomb:activate()
         return
     end
 
-    if not self.ignorePickup and self.pickupBombTimer:isElapsed(2) then
-       self.ai.nodegraph:pathfind(origin, {
-            objective = Node.types.GOAL,
-            task = "Pick up bomb",
-            onComplete = function()
-               self.ai.nodegraph:log("Picking up the bomb")
-            end,
-            onFail = function()
-                self.pickupBombFails = self.pickupBombFails + 1
-
-               self.ai.nodegraph:log("Bomb is unreachable (ignoring it)")
+    if not self.ignorePickup and self.pickupBombTimer:isElapsed(1) then
+        Pathfinder.moveToLocation(origin, {
+            task = "Pick up the bomb",
+            isPathfindingByCollisionLineOnFailure = true,
+            onFailedToFindPath = function()
+            	self.ignorePickup = true
             end
         })
     end
@@ -120,13 +121,7 @@ end
 function AiStatePickupBomb:think()
     self.activity = "Going to pick up bomb"
 
-    if self.pickupBombFails > 3 then
-        self.ignorePickup = true
-    end
-
-    if self.ai.nodegraph:isIdle() then
-        self:activate()
-    end
+    Pathfinder.ifIdleThenRetryLastRequest()
 end
 
 return Nyx.class("AiStatePickupBomb", AiStatePickupBomb, AiStateBase)

@@ -8,8 +8,14 @@
 --- - Web-Sockets-API <https://gamesense.pub/forums/viewtopic.php?id=23653>
 
 --{{{ Modules
-local NodegraphEditor = require "gamesense/Nyx/v1/Dominion/Traversal/NodegraphEditor"
+local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
+
+Logger.credits("2.0.0-beta")
+
+require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+
 local AiController = require "gamesense/Nyx/v1/Dominion/Ai/AiController"
+local NodegraphEditor = require "gamesense/Nyx/v1/Dominion/Traversal/NodegraphEditor"
 --}}}
 
 AiController:new()

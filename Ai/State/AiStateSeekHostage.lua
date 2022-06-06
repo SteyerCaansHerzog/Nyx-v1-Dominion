@@ -26,7 +26,10 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 local AiStateSeekHostage = {
     name = "Seek Hostage",
     delayedMouseMin = 0.1,
-    delayedMouseMax = 0.2
+    delayedMouseMax = 0.2,
+    requiredGamemodes = {
+        AiUtility.gamemodes.HOSTAGE
+    }
 }
 
 --- @param fields AiStateSeekHostage
@@ -46,10 +49,6 @@ end
 
 --- @return void
 function AiStateSeekHostage:assess()
-    if AiUtility.gamemode ~= "hostage" then
-        return AiPriority.IGNORE
-    end
-
     if AiUtility.isRoundOver then
         return AiPriority.IGNORE
     end

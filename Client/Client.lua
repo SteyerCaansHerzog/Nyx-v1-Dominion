@@ -14,7 +14,6 @@ local WebSockets = require "gamesense/Nyx/v1/Api/WebSockets"
 --}}}
 
 --{{{ Modules
-local AiVoice = require "gamesense/Nyx/v1/Dominion/Ai/AiVoice"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 
@@ -174,7 +173,7 @@ function DominionClient:__init()
         end
 
         if self.allocation and Server.isIngame() then
-            Client.fireAfter(Math.getRandomFloat(8, 16), function()
+            Client.fireAfterRandom(8, 16, function()
                 Client.execute("disconnect")
 
                 if self.isInLobby then

@@ -74,7 +74,7 @@ function AiStateZombie:think(cmd)
 
     LocalPlayer.equipKnife()
 
-    self.ai.canUseGear = false
+    self.ai.routines.manageGear:block()
 
     if not AiUtility.closestEnemy then
         self.activity = "Hunting for prey"
