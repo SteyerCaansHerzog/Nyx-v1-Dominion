@@ -25,7 +25,8 @@ local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
@@ -214,7 +215,7 @@ function AiStateEngage:initFields()
         self.lastSeenTimers[i] = Timer:new()
     end
 
-    MenuGroup.enableAimbot = MenuGroup.group:addCheckbox("    > Enable Aimbot"):setParent(MenuGroup.enableAi)
+    MenuGroup.enableAimbot = MenuGroup.group:addCheckbox(" > Enable Aimbot"):setParent(MenuGroup.enableAi)
     MenuGroup.visualiseAimbot = MenuGroup.group:addCheckbox("    > Visualise Aimbot"):setParent(MenuGroup.enableAimbot)
 
     self:setAimSkill(Config.defaultSkillLevel)
@@ -525,8 +526,7 @@ end
 --- @return void
 function AiStateEngage:callRotateToSite()
     local clientOrigin = LocalPlayer:getOrigin()
-    local nearestSite = self.ai.nodegraph:getNearestSiteNode(clientOrigin)
-    local nearestSiteName = self.ai.nodegraph:getNearestSiteName(clientOrigin)
+    local nearestSite = Nodegraph.getClosestBombsite(clientOrigin)
 
     if clientOrigin:getDistance(nearestSite.origin) > 1800 then
         return
@@ -536,8 +536,8 @@ function AiStateEngage:callRotateToSite()
         return
     end
 
-    self.ai.commands.rot:bark(nearestSiteName)
-    self.ai.voice.pack:speakRequestTeammatesToRotate(nearestSiteName)
+    self.ai.commands.rot:bark(nearestSite.bombsite)
+    self.ai.voice.pack:speakRequestTeammatesToRotate(nearestSite.bombsite)
 
     self.tellRotateTimer:restart()
 end
@@ -545,8 +545,7 @@ end
 --- @return void
 function AiStateEngage:callGoToSite()
     local clientOrigin = LocalPlayer:getOrigin()
-    local nearestSite = self.ai.nodegraph:getNearestSiteNode(clientOrigin)
-    local nearestSiteName = self.ai.nodegraph:getNearestSiteName(clientOrigin)
+    local nearestSite = Nodegraph.getClosestBombsite(clientOrigin)
 
     if clientOrigin:getDistance(nearestSite.origin) > 1800 then
         return
@@ -566,8 +565,8 @@ function AiStateEngage:callGoToSite()
         return
     end
 
-    self.ai.commands.go:bark(nearestSiteName)
-    self.ai.voice.pack:speakRequestTeammatesToRotate(nearestSiteName)
+    self.ai.commands.go:bark(nearestSite.bombsite)
+    self.ai.voice.pack:speakRequestTeammatesToRotate(nearestSite.bombsite)
 
     self.tellGoTimer:restart()
 end
@@ -1256,8 +1255,8 @@ function AiStateEngage:moveOnBestTarget(cmd)
                     isBackingUp = false
                 end
 
-                local bombsiteA = self.ai.nodegraph.objectiveA
-                local bombsiteB = self.ai.nodegraph.objectiveB
+                local bombsiteA = Nodegraph.getBombsite("A")
+                local bombsiteB = Nodegraph.getBombsite("B")
 
                 for _, enemy in pairs(AiUtility.enemies) do
                     local enemyOrigin = enemy:getOrigin()
@@ -1291,10 +1290,10 @@ function AiStateEngage:moveOnBestTarget(cmd)
             if cover then
                 self.hasBackupCover = true
 
-                self.ai.nodegraph:pathfind(cover.origin, {
-                    objective = Node.types.ENEMY,
-                    task = string.format("Back-up (threat) from %s", self.bestTarget:getName()),
-                    canUseJump = false
+                Pathfinder.moveToNode(cover, {
+                    task = "Back up from threats",
+                    isAllowedToTraverseLadders = false,
+                    goalReachedRadius = 64
                 })
             else
                 self.hasBackupCover = false
@@ -1339,10 +1338,10 @@ function AiStateEngage:moveOnBestTarget(cmd)
                 if cover then
                     self.hasBackupCover = true
 
-                    self.ai.nodegraph:pathfind(cover.origin, {
-                        objective = Node.types.ENEMY,
-                        task = string.format("Back-up (smoke) from %s", self.bestTarget:getName()),
-                        canUseJump = false
+                    Pathfinder.moveToNode(cover, {
+                        task = "Back up from threats",
+                        isAllowedToTraverseLadders = false,
+                        goalReachedRadius = 64
                     })
                 else
                     self.hasBackupCover = false
@@ -1363,20 +1362,16 @@ function AiStateEngage:moveOnBestTarget(cmd)
 
     local targetOrigin = self.bestTarget:getOrigin()
 
-    if self.lastBestTargetOrigin and self.bestTarget:getFlag(Player.flags.FL_ONGROUND) and targetOrigin:getDistance(self.lastBestTargetOrigin) > 200 then
-       self.ai.nodegraph:clearPath("Enemy moved")
-    end
-
     -- Don't peek the angle. Hold it.
     if self:canHoldAngle() then
         self.activity = "Holding enemy"
 
-        if self.ai.nodegraph.path then
+        if Pathfinder.isOk() then
             self.isHoldingAngle = Math.getChance(1)
             self.isHoldingAngleDucked = LocalPlayer:hasSniper() or Math.getChance(4)
 
             if self.isHoldingAngle then
-               self.ai.nodegraph:clearPath("Enemy is around corner")
+               Pathfinder.clearActivePathAndLastRequest()
             end
         end
 
@@ -1398,10 +1393,16 @@ function AiStateEngage:moveOnBestTarget(cmd)
 
     self.activity = "Moving on enemy"
 
-    if self.ai.nodegraph:isIdle() then
+    local isEnemyDisplaced = false
+
+    if self.lastBestTargetOrigin and self.bestTarget:getFlag(Player.flags.FL_ONGROUND) and targetOrigin:getDistance(self.lastBestTargetOrigin) > 200 then
+        isEnemyDisplaced = true
+    end
+
+    if Pathfinder.isIdle() or isEnemyDisplaced then
         local targetEyeOrigin = self.bestTarget:getEyeOrigin()
 
-        --- @type Node[]
+        --- @type NodeTypeTraverse[]
         local selectedNodes = {}
         --- @type NodeTypeTraverse
         local closestNode
@@ -1409,7 +1410,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
         local i = 0
 
         -- Find a nearby node that is visible to the enemy.
-        for _, node in pairs(self.ai.nodegraph.nodes) do
+        for _, node in pairs(Nodegraph.get(Node.traverseGeneric)) do
             local distance = targetOrigin:getDistance(node.origin)
 
             -- Determine closest node. This is our backup in case there's no visible nodes.
@@ -1436,10 +1437,10 @@ function AiStateEngage:moveOnBestTarget(cmd)
 
         -- We can pathfind to a node visible to the enemy.
         if not Table.isEmpty(selectedNodes) then
-           self.ai.nodegraph:pathfind(Table.getRandom(selectedNodes).origin, {
-                objective = Node.types.ENEMY,
-                task = string.format("Engage (vis) %s", self.bestTarget:getName()),
-                canUseJump = false
+            Pathfinder.moveToNode(Table.getRandom(selectedNodes), {
+                task = "Engage enemy via random position",
+                isPathfindingToNearestNodeIfNoConnections = true,
+                isPathfindingToNearestNodeOnFailure = true
             })
 
             self.lastBestTargetOrigin = targetOrigin
@@ -1450,10 +1451,10 @@ function AiStateEngage:moveOnBestTarget(cmd)
         -- Move to the closest node to the enemy.
         -- The alternative to this is soft-crashing the AI.
         if closestNode then
-           self.ai.nodegraph:pathfind(closestNode.origin, {
-                objective = Node.types.ENEMY,
-                task = string.format("Engage (pxy) %s", self.bestTarget:getName()),
-                canUseJump = false
+            Pathfinder.moveToNode(closestNode, {
+                task = "Engage enemy via nearest position",
+                isPathfindingToNearestNodeIfNoConnections = true,
+                isPathfindingToNearestNodeOnFailure = true
             })
 
             self.lastBestTargetOrigin = targetOrigin
@@ -1470,11 +1471,10 @@ function AiStateEngage:attackBestTarget(cmd)
 
     -- Prevent certain generic behaviours.
     self.ai.routines.manageGear:block()
-    self.ai.nodegraph.isAllowedToAvoidTeammates = false
 
     -- Prevent reloading/unscoping when enemies are visible.
     if next(AiUtility.visibleEnemies) then
-        self.ai.canReload = false
+        self.ai.routines.manageWeaponReload:block()
         self.ai.routines.manageWeaponScope:block()
     end
 
@@ -1485,7 +1485,7 @@ function AiStateEngage:attackBestTarget(cmd)
 
     -- Spray.
     if self.sprayTimer:isStarted() and not self.sprayTimer:isElapsed(self.sprayTime) then
-        self.ai.canReload = false
+        self.ai.routines.manageWeaponReload:block()
 
         if self.bestTarget and not AiUtility.visibleEnemies[self.bestTarget.eid] then
             self:shoot(cmd, self.watchOrigin, self.bestTarget)
@@ -1509,7 +1509,7 @@ function AiStateEngage:attackBestTarget(cmd)
 
     -- Block overpowered spray transfers.
     if not self.blockTimer:isElapsed(self.blockTime) then
-        self.ai.canReload = false
+        self.ai.routines.manageWeaponReload:block()
 
         return
     end
@@ -1541,7 +1541,7 @@ function AiStateEngage:attackBestTarget(cmd)
 
     -- Don't evade when swapping to pistol, because our code is awful.
     if self.equipPistolTimer:isStarted() and not self.equipPistolTimer:isElapsed(3) then
-        self.ai.states.evade.isBlocked = true
+        self.ai.states.evade:block()
     end
 
     -- Target we intend to engage.
@@ -1549,7 +1549,7 @@ function AiStateEngage:attackBestTarget(cmd)
 
     -- Prevent reloading.
     if self.watchTimer:isStarted() and not self.watchTimer:isElapsed(self.watchTime) then
-        self.ai.canReload = false
+        self.ai.routines.manageWeaponReload:block()
     end
 
     -- Watch last known position.
@@ -1855,7 +1855,7 @@ function AiStateEngage:canHoldAngle()
             end
         end
 
-        local distanceToSite = self.ai.nodegraph:getNearestSiteNode(clientOrigin).origin:getDistance(clientOrigin)
+        local distanceToSite = Nodegraph.getClosestBombsite(clientOrigin).origin:getDistance(clientOrigin)
         local isNearPlantedBomb = AiUtility.plantedBomb and LocalPlayer:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 512
 
         -- Please don't hold angles if we have to plant.
@@ -1961,7 +1961,6 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
     end
 
     -- Prevent jumping obstacles. This can kill us.
-   self.ai.nodegraph.canJump = false
     self.ai.routines.lookAwayFromFlashbangs:block()
 
     local distance = LocalPlayer:getOrigin():getDistance(aimAtBaseOrigin)
@@ -2337,7 +2336,7 @@ function AiStateEngage:actionBackUp()
     -- Move backwards because we don't feel like deliberately peeking the entire enemy team at once.
     local angleToEnemy = Client.getOrigin():getAngle(self.bestTarget:getOrigin())
 
-   self.ai.nodegraph.moveAngle = -angleToEnemy
+    Pathfinder.moveAtAngle(-angleToEnemy)
 end
 
 --- @param period number
@@ -2357,7 +2356,7 @@ function AiStateEngage:actionJiggle(period)
         direction = Client.getCameraAngles():getRight()
     end
 
-   self.ai.nodegraph.moveAngle = direction:getAngleFromForward()
+    Pathfinder.moveAtAngle(direction:getAngleFromForward())
 end
 
 --- @param cmd SetupCommandEvent
@@ -2369,7 +2368,7 @@ function AiStateEngage:actionCounterStrafe(cmd)
     end
 
     if LocalPlayer:m_flDuckSpeed() < 3  then
-        self.ai.nodegraph.isAllowedToMove = false
+        Pathfinder.standStill()
 
         return
     end
@@ -2380,7 +2379,7 @@ function AiStateEngage:actionCounterStrafe(cmd)
         --- @type Vector3
         local moveAngle = Nyx.call(angleToEnemy, "get%s", self.strafePeekDirection)
 
-        self.ai.nodegraph.moveAngle = moveAngle:getAngleFromForward()
+        Pathfinder.moveAtAngle(moveAngle:getAngleFromForward())
     end
 end
 
@@ -2396,7 +2395,7 @@ function AiStateEngage:actionStop(cmd)
 
     -- Stop moving when our velocity has fallen below threshold.
     if velocity:getMagnitude() < 70 then
-       self.ai.nodegraph.isAllowedToMove = false
+       Pathfinder.standStill()
 
         return
     end
@@ -2404,7 +2403,7 @@ function AiStateEngage:actionStop(cmd)
     local inverseVelocity = -velocity
 
     -- Counter our current velocity.
-   self.ai.nodegraph.moveAngle = inverseVelocity:getAngleFromForward()
+    Pathfinder.moveAtAngle(inverseVelocity:getAngleFromForward())
 end
 
 --- @return void
@@ -2413,7 +2412,7 @@ function AiStateEngage:strafePeek()
     self.isStrafePeeking = false
 
     if self.strafePeekTimer:isStarted() and not self.strafePeekTimer:isElapsedThenStop(0.5) then
-        self.ai.nodegraph.moveAngle = self.strafePeekMoveAngle
+        Pathfinder.moveAtAngle(self.strafePeekMoveAngle)
         self.isStrafePeeking = true
         self.canWallbang = false
 

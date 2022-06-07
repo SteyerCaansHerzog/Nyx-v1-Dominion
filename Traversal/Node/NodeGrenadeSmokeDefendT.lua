@@ -11,12 +11,12 @@ local NodeTypeGrenade = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTy
 --{{{ NodeGrenadeSmokeDefendT
 --- @class NodeGrenadeSmokeDefendT : NodeTypeGrenade
 local NodeGrenadeSmokeDefendT = {
-    name = "Defensive Smoke (T)",
+    name = "Hold Smoke (T)",
     description = {
         "Smoke spot for the T AI when defending the bombsite."
     },
     colorPrimary = Color:hsla(200, 0, 0.85),
-    colorSecondary = ColorList.COUNTER_TERRORIST
+    colorSecondary = ColorList.TERRORIST
 }
 
 --- @param fields NodeGrenadeSmokeDefendT

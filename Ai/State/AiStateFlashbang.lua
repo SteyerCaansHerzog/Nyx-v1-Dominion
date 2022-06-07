@@ -8,6 +8,7 @@ local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBaseGrenadeBase"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 --}}}
 
 --{{{ AiStateFlashbang
@@ -16,10 +17,10 @@ local AiStateFlashbang = {
     name = "Flashbang",
     priority = AiPriority.FLASHBANG_LINEUP,
     cooldown = 4,
-    defendNode = "objectiveFlashbangDefend",
-    executeNode = "objectiveFlashbangExecute",
-    holdNode = "objectiveFlashbangHold",
-    retakeNode = "objectiveFlashbangRetake",
+    nodeDefendCt = Node.grenadeFlashbangDefendCt,
+    nodeDefendT = Node.grenadeFlashbangDefendT,
+    nodeExecuteT = Node.grenadeFlashbangExecuteT,
+    nodeRetakeCt = Node.grenadeFlashbangRetakeCt,
     weapons = {Weapons.FLASHBANG},
     equipFunction = LocalPlayer.equipFlashbang,
     rangeThreshold = 1500,

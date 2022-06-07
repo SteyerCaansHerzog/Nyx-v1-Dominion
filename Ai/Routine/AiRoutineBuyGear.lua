@@ -302,8 +302,11 @@ function AiRoutineBuyGear:buyRoundCounterTerrorist()
 		}
 	}
 
+	self:equipBodyArmor()
+
 	if not LocalPlayer:hasWeapons(WeaponInfo.primaries) then
 		self:buySet(buys)
+		self:equipDefuser()
 	end
 
 	self:equipFullArmor()

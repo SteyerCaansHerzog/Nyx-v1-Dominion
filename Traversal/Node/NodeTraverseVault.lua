@@ -16,7 +16,10 @@ local NodeTraverseVault = {
         "by vaulting over an obstacle."
     },
     colorSecondary = Color:hsla(150, 0.8, 0.6),
-    isJump = true
+    isJump = true,
+    traversalCost = 20,
+    zDeltaThreshold = 64,
+    zDeltaGoalThreshold = 0
 }
 
 --- @param fields NodeTraverseVault

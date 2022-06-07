@@ -22,9 +22,9 @@ local AiVoicePack = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePack"
 --- @field flashbangTimer Timer
 --- @field isEnabled boolean
 --- @field liveClientPacks number[]
---- @field pack AiVoicePack
---- @field packs AiVoicePack[]
---- @field packsListboxMap AiVoicePack[]
+--- @field pack AiVoicePackBase
+--- @field packs AiVoicePack
+--- @field packsListboxMap table<string, boolean>
 local AiVoice = {
     isEnabled = true
 }

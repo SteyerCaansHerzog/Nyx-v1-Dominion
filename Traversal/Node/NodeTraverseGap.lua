@@ -16,6 +16,7 @@ local NodeTraverseGap = {
         "by clearing gaps."
     },
     colorSecondary = Color:hsla(200, 0.8, 0.6),
+    traversalCost = 60,
     isJump = true
 }
 

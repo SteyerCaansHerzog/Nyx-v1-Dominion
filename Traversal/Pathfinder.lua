@@ -82,7 +82,8 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field cachedLastRequest PathfinderRequest
 --- @field deactivatedNodesPool NodeTypeBase[]
 --- @field directMovementAngle Angle
---- @field goalCollisions table<number, NodeTypeBaseConnectionCollision[]>
+--- @field goalConnectionCollisions table<number, NodeTypeBaseConnectionCollision[]>
+--- @field goalGapCollisions table<number, NodeTypeBaseGapCollision[]>
 --- @field isAllowedToAvoidTeammates boolean
 --- @field isAllowedToDuck boolean
 --- @field isAllowedToJump boolean
@@ -131,9 +132,10 @@ function Pathfinder.initFields()
 	Pathfinder.moveDuckTimer = Timer:new()
 	Pathfinder.moveObstructedTimer = Timer:new()
 	Pathfinder.moveOnGroundTimer = Timer:new()
-	Pathfinder.pathfindInterval = 0.4
+	Pathfinder.pathfindInterval = 0.2
 	Pathfinder.pathfindIntervalTimer = Timer:new():startThenElapse()
-	Pathfinder.goalCollisions = {}
+	Pathfinder.goalConnectionCollisions = {}
+	Pathfinder.goalGapCollisions = {}
 end
 
 --- @return void
@@ -184,11 +186,9 @@ function Pathfinder.initEvents()
 		local pool = {}
 
 		for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do repeat
-			if node.origin:getDistance(e.origin) > 300 then
+			if node.origin:getDistance(e.origin) > 160 then
 				break
 			end
-
-			node:deactivate()
 
 			node.isOccludedBySmoke = true
 
@@ -197,8 +197,6 @@ function Pathfinder.initEvents()
 
 		Client.fireAfter(18, function()
 			for _, node in pairs(pool) do
-				node:activate()
-
 				node.isOccludedBySmoke = false
 			end
 		end)
@@ -209,11 +207,9 @@ function Pathfinder.initEvents()
 		local pool = {}
 
 		for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do repeat
-			if node.origin:getDistance(e.origin) > 150 then
+			if node.origin:getDistance(e.origin) > 200 then
 				break
 			end
-
-			node:deactivate()
 
 			node.isOccludedByInferno = true
 
@@ -222,8 +218,6 @@ function Pathfinder.initEvents()
 
 		Client.fireAfter(6.5, function()
 			for _, node in pairs(pool) do
-				node:activate()
-
 				node.isOccludedByInferno = false
 			end
 		end)
@@ -356,7 +350,7 @@ end
 --- @param isClearingActivePath boolean
 --- @return void
 function Pathfinder.moveAtAngle(angle, isClearingActivePath)
-	Pathfinder.directMovementAngle = angle
+	Pathfinder.directMovementAngle = angle:clone()
 
 	if isClearingActivePath then
 		Pathfinder.clearActivePathAndLastRequest()
@@ -367,6 +361,10 @@ end
 --- @param options PathfinderOptions
 --- @return PathfinderPath
 function Pathfinder.moveToLocation(origin, options)
+	if not origin then
+		error(string.format("Pathfind task '%s' provided no origin to move to.", options.task), 2)
+	end
+
 	Pathfinder.lastRequest = {
 		endOrigin = origin,
 		options = options
@@ -377,6 +375,10 @@ end
 --- @param options PathfinderOptions
 --- @return PathfinderPath
 function Pathfinder.moveToNode(node, options)
+	if not node then
+		error(string.format("Pathfind task '%s' provided no node to move to.", options.task), 2)
+	end
+
 	Pathfinder.lastRequest = {
 		endOrigin = node.origin,
 		options = options
@@ -385,6 +387,10 @@ end
 
 --- @return void
 function Pathfinder.retryLastRequest()
+	if not Pathfinder.cachedLastRequest then
+		return
+	end
+
 	Pathfinder.lastRequest = Pathfinder.cachedLastRequest
 	Pathfinder.lastRequest.startOrigin = LocalPlayer:getOrigin()
 end
@@ -546,7 +552,7 @@ function Pathfinder.handleLastRequest()
 	Nodegraph.addMany({
 		startGoal,
 		endGoal
-	})
+	}, false)
 
 	-- Setup node connections.
 	startGoal:setConnections(Nodegraph, {
@@ -568,8 +574,16 @@ function Pathfinder.handleLastRequest()
 	})
 
 	if Debug.isDisplayingConnectionCollisions then
-		Pathfinder.goalCollisions = {
+		Pathfinder.goalConnectionCollisions = {
 			startGoal.connectionCollisions
+		}
+
+		return
+	end
+
+	if Debug.isDisplayingGapCollisions then
+		Pathfinder.goalGapCollisions = {
+			startGoal.gapCollisions
 		}
 
 		return
@@ -591,7 +605,7 @@ function Pathfinder.handleLastRequest()
 				maxConnections = 8,
 			})
 		else
-			Pathfinder.failPath(pathfinderOptions, "Start is out of bounds")
+			Pathfinder.failPath(pathfinderOptions, nil, "Start is out of bounds")
 
 			return
 		end
@@ -623,7 +637,7 @@ function Pathfinder.handleLastRequest()
 				maxConnections = 8,
 			})
 		else
-			Pathfinder.failPath(pathfinderOptions, "Goal is unreachable")
+			Pathfinder.failPath(pathfinderOptions, endGoal, "Goal is unreachable")
 
 			return
 		end
@@ -642,7 +656,7 @@ function Pathfinder.handleLastRequest()
 
 		-- Still no path.
 		if not tentativePath then
-			Pathfinder.failPath(pathfinderOptions, "No path available")
+			Pathfinder.failPath(pathfinderOptions, endGoal, "No path available")
 
 			return
 		end
@@ -698,9 +712,10 @@ function Pathfinder.handleLastRequest()
 end
 
 --- @param options PathfinderOptions
+--- @param goal NodeTypeGoal|nil
 --- @param error string
 --- @return void
-function Pathfinder.failPath(options, error)
+function Pathfinder.failPath(options, goal, error)
 	Pathfinder.path = {
 		isOk = false,
 		errorMessage = error
@@ -712,7 +727,13 @@ function Pathfinder.failPath(options, error)
 
 	Pathfinder.cleanupLastRequest()
 
-	Logger.console(1, "Pathfind task '%s' failed: %s.", Pathfinder.lastRequest.options.task, error)
+	if goal then
+		local node = Nodegraph.getClosest(goal.origin)
+
+		Logger.console(1, "Pathfind task '%s' failed: %s. Assumed target node: [%i] %s.", Pathfinder.lastRequest.options.task, error, node.id, node.name)
+	else
+		Logger.console(1, "Pathfind task '%s' failed: %s.", Pathfinder.lastRequest.options.task, error)
+	end
 end
 
 --- @param start NodeTypeGoal
@@ -723,10 +744,6 @@ function Pathfinder.getPath(start, goal, options)
 	Pathfinder.nodeClassesInTentativePath = {}
 
 	return AStar.findPath(start, goal, Nodegraph.pathableNodes, true, function(node, neighbor)
-		if not neighbor.isTraversal and not neighbor.isTransient then
-			return false
-		end
-
 		if not node.connections[neighbor.id] then
 			return false
 		end
@@ -754,7 +771,13 @@ function Pathfinder.getPath(start, goal, options)
 				return false
 			end
 
-			if neighbor.origin.z - node.origin.z > neighbor.zDeltaThreshold then
+			local zDelta = neighbor.origin.z - node.origin.z
+
+			if zDelta > neighbor.zDeltaThreshold then
+				return false
+			end
+
+			if node.isGoal and (zDelta > neighbor.zDeltaGoalThreshold) then
 				return false
 			end
 		end
@@ -867,10 +890,6 @@ function Pathfinder.traverseActivePath(cmd)
 	local clientSpeed = LocalPlayer:m_vecVelocity():getMagnitude()
 	local angleToNode = clientOrigin:getAngle(currentNode.pathOrigin)
 
-	Pathfinder.createMove(cmd, angleToNode)
-	Pathfinder.avoidGeometry(cmd)
-	Pathfinder.avoidTeammates(cmd)
-
 	local distance3d = clientOrigin:getDistance(currentNode.pathOrigin)
 	local distance2d = clientOrigin:getDistance2(currentNode.pathOrigin)
 	local isGoal = currentNode:is(Pathfinder.path.endGoal)
@@ -887,6 +906,8 @@ function Pathfinder.traverseActivePath(cmd)
 		Pathfinder.counterStrafe()
 	end
 
+	local isAllowedToCreateMove = true
+
 	if currentNode.isJump then
 		local jumpHandlers = {
 			[Node.traverseClamber.__classid] = function()
@@ -899,7 +920,7 @@ function Pathfinder.traverseActivePath(cmd)
 				end
 
 				if currentNode.origin.z - clientOrigin.z > 25 then
-					if Pathfinder.moveObstructedTimer:isElapsed(0.2) then
+					if Pathfinder.moveObstructedTimer:isElapsed(0.16) then
 						Pathfinder.duck()
 					end
 
@@ -935,7 +956,7 @@ function Pathfinder.traverseActivePath(cmd)
 				end
 			end,
 			[Node.traverseVault.__classid] = function()
-				if distance2d > 60 then
+				if distance2d > 25 then
 					return
 				end
 
@@ -943,8 +964,9 @@ function Pathfinder.traverseActivePath(cmd)
 					return
 				end
 
-				Pathfinder.jump()
+				isAllowedToCreateMove = false
 
+				Pathfinder.jump()
 				Pathfinder.incrementPath()
 			end,
 			[Node.traverseGap.__classid] = function()
@@ -955,21 +977,23 @@ function Pathfinder.traverseActivePath(cmd)
 				local distance = 25
 
 				if not isClientOnGround then
-					distance = 50
+					distance = 64
 				end
 
 				if distance2d > distance then
 					return
 				end
 
+				isAllowedToCreateMove = false
+
 				Pathfinder.jump()
 				Pathfinder.incrementPath()
 
 				--- @type NodeTypeTraverse
-				local nextNode = Pathfinder.path[Pathfinder.path.idx + 1]
+				local previousNode = Pathfinder.path[Pathfinder.path.idx - 1]
 
 				-- Skip a double-gap node.
-				if nextNode and nextNode:is(Node.traverseGap) then
+				if previousNode and previousNode:is(Node.traverseGap) then
 					Pathfinder.incrementPath()
 				end
 			end,
@@ -977,6 +1001,8 @@ function Pathfinder.traverseActivePath(cmd)
 				if distance2d > 20 then
 					return
 				end
+
+				isAllowedToCreateMove = false
 
 				Pathfinder.incrementPath()
 			end
@@ -1061,12 +1087,18 @@ function Pathfinder.traverseActivePath(cmd)
 		if currentNode:is(NodeType.goal) then
 			clearDistance = pathfinderOptions.goalReachedRadius
 		else
-			clearDistance = isClientOnGround and 15 or 40
+			clearDistance = isClientOnGround and 15 or 75
 		end
 
 		if distance2d < clearDistance then
 			Pathfinder.incrementPath()
 		end
+	end
+
+	if isAllowedToCreateMove then
+		Pathfinder.createMove(cmd, angleToNode)
+		Pathfinder.avoidGeometry(cmd)
+		Pathfinder.avoidTeammates(cmd)
 	end
 
 	-- Handle any changes to movement options as a result of the path.

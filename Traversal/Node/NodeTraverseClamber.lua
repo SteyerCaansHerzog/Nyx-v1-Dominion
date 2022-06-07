@@ -20,6 +20,7 @@ local NodeTraverseClamber = {
     colorSecondary = Color:hsla(60, 0.8, 0.6),
     isJump = true,
     isCollisionTestWeak = true,
+    traversalCost = 250,
     zDeltaThreshold = 80,
 }
 

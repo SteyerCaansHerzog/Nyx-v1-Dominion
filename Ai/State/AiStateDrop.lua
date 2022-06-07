@@ -112,7 +112,7 @@ function AiStateDrop:think(cmd)
                 self.isDroppingGear = false
 
                 -- We need to rebuy.
-                if isFreezeTime or AiUtility.timeData.roundtime < 20 then
+                if isFreezeTime or AiUtility.timeData.roundtime_elapsed < cvar.mp_buytime:get_int() then
                     self:buyGear()
                 end
             end

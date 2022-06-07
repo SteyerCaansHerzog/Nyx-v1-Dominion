@@ -126,8 +126,9 @@ function Nodegraph.reset()
 end
 
 --- @param node NodeTypeBase
+--- @param isInvokingOnSetup boolean
 --- @return void
-function Nodegraph.add(node)
+function Nodegraph.add(node, isInvokingOnSetup)
     local id
 
     if not Table.isEmpty(Nodegraph.freeIds) then
@@ -158,16 +159,21 @@ function Nodegraph.add(node)
         end
     end
 
+    if not isInvokingOnSetup then
+        return
+    end
+
     for _, search in pairs(Nodegraph.nodes) do
         search:onSetup(Nodegraph)
     end
 end
 
 --- @param nodes NodeTypeBase[]
+--- @param isInvokingOnSetup boolean
 --- @return void
-function Nodegraph.addMany(nodes)
+function Nodegraph.addMany(nodes, isInvokingOnSetup)
     for _, node in pairs(nodes) do
-        Nodegraph.add(node)
+        Nodegraph.add(node, isInvokingOnSetup)
     end
 end
 
@@ -177,6 +183,7 @@ function Nodegraph.remove(node)
     Nodegraph.nodesByClass[node.__classname][node.id] = nil
     Nodegraph.nodesByType[node.type][node.id] = nil
     Nodegraph.nodes[node.id] = nil
+    Nodegraph.pathableNodes[node.id] = nil
 
     table.insert(Nodegraph.freeIds, node.id)
 

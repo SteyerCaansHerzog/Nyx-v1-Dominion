@@ -34,6 +34,12 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field origin Vector3
 --- @field bounds Vector3[]
 --- @field isIntersectingGeometry boolean
+--- @field isOutOfReach boolean
+
+--- @class NodeTypeBaseGapCollision
+--- @field origin Vector3
+--- @field bounds Vector3[]
+--- @field isIntersectingGeometry boolean
 --}}}
 
 --{{{ NodeTypeBase
@@ -52,6 +58,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field description string[]
 --- @field direction Angle
 --- @field drawDistance number
+--- @field gapCollisions NodeTypeBaseGapCollision[]
 --- @field id number
 --- @field iRenderBottomLines number
 --- @field iRenderTopLines number
@@ -60,6 +67,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field isConnectable boolean
 --- @field isDirectional boolean
 --- @field isDuck boolean
+--- @field isGoal boolean
 --- @field isJump boolean
 --- @field isLinkedToBombsite boolean
 --- @field isNameHidden boolean
@@ -83,20 +91,24 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field renderColorFovSecondary Color
 --- @field renderColorPrimary Color
 --- @field renderColorSecondary Color
+--- @field traversalCost number
 --- @field type string
 --- @field zDeltaThreshold number
+--- @field zDeltaGoalThreshold number
 local NodeTypeBase = {
     name = "Unnamed Node Type",
     description = {"No description given."},
     customizerItems = {},
     drawDistance = 1024,
     isActive = true,
-    isConnectable = true,
+    isConnectable = false,
     isDirectional = false,
     isLinkedToBombsite = false,
-    lookZOffset = 46,
     lookDistanceThreshold = 200,
-    zDeltaThreshold = 64
+    lookZOffset = 46,
+    traversalCost = 0,
+    zDeltaThreshold = 64,
+    zDeltaGoalThreshold = 64,
 }
 
 --- @param fields NodeTypeBase
@@ -121,6 +133,7 @@ end
 function NodeTypeBase:__init()
     self.connections = {}
     self.connectionCollisions = {}
+    self.gapCollisions = {}
     self.pathOrigin = self.origin
     self.iRenderTopLines = 0
     self.iRenderBottomLines = 0
@@ -169,10 +182,10 @@ function NodeTypeBase:render(nodegraph, isRenderingMetaData)
     self.renderColorFovPrimaryMuted = self.renderColorPrimary:clone():setAlpha(math.min(alphaModDistance, alphaModFoV) * 0.4)
     self.renderColorFovSecondary = self.renderColorSecondary:clone():setAlpha(math.min(alphaModDistance, alphaModFoV))
 
-    if not self:isRenderable() then
-        self.iRenderTopLines = 0
-        self.iRenderBottomLines = 0
+    self.iRenderTopLines = 0
+    self.iRenderBottomLines = 0
 
+    if not self:isRenderable() then
         return
     end
 
@@ -186,6 +199,18 @@ function NodeTypeBase:render(nodegraph, isRenderingMetaData)
         outerThickness = 10
 
         self.origin:drawScaledCircleOutline(75, 40, ColorList.ERROR:clone():setAlpha(100))
+    elseif self.isOccludedByInferno then
+        innerRadius = 0
+        outerRadius = 25
+        outerThickness = 10
+
+        self.origin:drawScaledCircleOutline(75, 40, ColorList.WARNING:clone():setAlpha(100))
+    elseif self.isOccludedBySmoke then
+        innerRadius = 0
+        outerRadius = 25
+        outerThickness = 10
+
+        self.origin:drawScaledCircleOutline(75, 40, ColorList.FONT_MUTED:clone():setAlpha(100))
     end
 
     self.origin:drawScaledCircle(innerRadius, self.renderColorPrimary)
@@ -207,10 +232,8 @@ function NodeTypeBase:render(nodegraph, isRenderingMetaData)
         for _, connection in pairs(self.connections) do
             local color
 
-            if connection.isTraversal then
-                color = Color:hsla(235, 0.16, 0.66, math.min(self.renderAlpha, 100))
-            else
-                color = Color:hsla(235, 0.16, 0.66, math.min(self.renderAlpha, 33))
+            if connection.isPathable then
+                color = Color:hsla(235, 0.16, 0.66, math.min(self.renderAlpha, 55))
             end
 
             self.origin:drawLine(connection.origin, color, 0.25)
@@ -266,9 +289,6 @@ function NodeTypeBase:render(nodegraph, isRenderingMetaData)
         self.lookFromOrigin:drawScaledCircle(30, color)
         self.lookFromOrigin:drawLine(self.lookAtOrigin, color)
     end
-
-    self.iRenderTopLines = 0
-    self.iRenderBottomLines = 0
 end
 
 --- Use this check to prevent rendering nodes when it is not needed. This will help with performance.
@@ -453,7 +473,7 @@ function NodeTypeBase:setConnections(nodegraph, options)
             break
         end
 
-        if not self.isConnectable or not node.isConnectable then
+        if not node.isConnectable then
             break
         end
 
@@ -473,6 +493,14 @@ function NodeTypeBase:setConnections(nodegraph, options)
             local height = math.abs(zDelta)
 
             if height > 100 then
+                if options.isCollisionInfoSaved then
+                    self.connectionCollisions[node.id] = {
+                        origin = node.origin,
+                        bounds = self.collisionHullHumanStanding,
+                        isOutOfReach = true
+                    }
+                end
+
                 break
             end
         end
@@ -489,13 +517,13 @@ function NodeTypeBase:setConnections(nodegraph, options)
 
                 if options.isCollisionInfoSaved then
                     self.connectionCollisions[node.id] = {
-                        origin = node.origin:clone(),
-                        bounds = Vector3:newBounds(Vector3.align.CENTER, 6),
+                        origin = node.origin,
+                        bounds = self.collisionHullHumanStanding,
                         isIntersectingGeometry = collisionTrace.isIntersectingGeometry
                     }
-
-                    isCollisionOk = not collisionTrace.isIntersectingGeometry
                 end
+
+                isCollisionOk = not collisionTrace.isIntersectingGeometry
             else
                 isCollisionOk = false
             end
@@ -505,7 +533,7 @@ function NodeTypeBase:setConnections(nodegraph, options)
 
             if options.isCollisionInfoSaved then
                 self.connectionCollisions[node.id] = {
-                    origin = targetCollisionOrigin,
+                    origin = node.origin,
                     bounds = hullBounds,
                     isIntersectingGeometry = collisionTrace.isIntersectingGeometry
                 }
@@ -514,47 +542,57 @@ function NodeTypeBase:setConnections(nodegraph, options)
             isCollisionOk = not  collisionTrace.isIntersectingGeometry
         end
 
-        if isCollisionOk then
-            if options.isTestingForGaps then
-                local isGap = false
-                local steps = 1
+        if not isCollisionOk then
+            break
+        end
 
-                if distance > 300 then
-                    steps = 3
-                elseif distance > 150 then
-                    steps = 2
-                elseif distance < 50 then
-                    steps = 0
+        if options.isTestingForGaps then
+            local isGap = false
+            local steps = 1
+
+            if distance > 300 then
+                steps = 3
+            elseif distance > 150 then
+                steps = 2
+            elseif distance < 50 then
+                steps = 0
+            end
+
+            local maxSteps = steps + 1
+
+            for i = 1, steps do
+                local fraction = i / maxSteps
+                local testOrigin = self.origin:getLerp(node.origin, fraction):offset(0, 0, 0)
+                local fallTrace = Trace.getHullToPosition(testOrigin, testOrigin:clone():offset(0, 0, -48), fallBounds, AiUtility.traceOptionsPathfinding)
+
+                if options.isCollisionInfoSaved then
+                    self.gapCollisions[node.id] = {
+                        origin = node.origin,
+                        bounds = fallBounds,
+                        isIntersectingGeometry = fallTrace.isIntersectingGeometry
+                    }
                 end
 
-                local maxSteps = steps + 1
+                if not fallTrace.isIntersectingGeometry then
+                    isGap = true
 
-                for i = 1, steps do
-                    local fraction = i / maxSteps
-                    local testOrigin = self.origin:getLerp(node.origin, fraction):offset(0, 0, -18)
-                    local fallTrace = Trace.getHullToPosition(testOrigin, testOrigin:clone():offset(0, 0, -64), fallBounds, AiUtility.traceOptionsPathfinding)
-
-                    if not fallTrace.isIntersectingGeometry then
-                        isGap = true
-
-                        break
-                    end
-                end
-
-                if isGap then
                     break
                 end
             end
 
-            if node.isTraversal then
-                iConnections = iConnections + 1
+            if isGap then
+                break
             end
+        end
 
-            self.connections[node.id] = node
+        if node.isTraversal then
+            iConnections = iConnections + 1
+        end
 
-            if options.isInversingConnections then
-                node.connections[self.id] = self
-            end
+        self.connections[node.id] = node
+
+        if options.isInversingConnections then
+            node.connections[self.id] = self
         end
     until true end
 end

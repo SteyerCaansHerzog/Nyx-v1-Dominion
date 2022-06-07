@@ -16,7 +16,10 @@ local NodeTraverseDrop = {
         "by dropping down a ledge."
     },
     colorSecondary = Color:hsla(250, 0.8, 0.66),
-    isJump = true
+    isJump = true,
+    traversalCost = 0,
+    zDeltaThreshold = 32,
+    zDeltaGoalThreshold = 32,
 }
 
 --- @param fields NodeTraverseDrop

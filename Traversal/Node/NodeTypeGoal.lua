@@ -12,9 +12,10 @@ local NodeTypeBase = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeB
 local NodeTypeGoal = {
     type = "Goal",
     colorPrimary = Color:hsla(338, 0.54, 0.48),
-    isTransient = true,
+    isConnectable = true,
     isGoal = true,
-    isPathable = true
+    isPathable = true,
+    isTransient = true,
 }
 
 --- @param fields NodeTypeGoal

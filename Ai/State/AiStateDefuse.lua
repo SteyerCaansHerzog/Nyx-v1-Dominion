@@ -181,7 +181,7 @@ function AiStateDefuse:think(cmd)
     if self.isDefusing then
         self.activity = "Defusing the bomb"
 
-        self.ai.canReload = false
+        self.ai.routines.manageWeaponReload:block()
         cmd.in_use = true
 
         Pathfinder.duck()

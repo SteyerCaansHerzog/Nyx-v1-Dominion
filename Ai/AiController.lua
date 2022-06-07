@@ -465,31 +465,6 @@ function AiController:renderUi()
 	uiPos:clone():offset(-5, 5):drawSurfaceRectangle(spacerDimensions, spacerColor)
 	uiPos:offset(0, 10)
 
-	if Pathfinder.path then
-		local node = Pathfinder.path.node
-
-		if node then
-			uiPos:drawSurfaceText(Font.SMALL, Node.typesColor[node.type], "l", string.format(
-				"Next node: %s [%i]",
-				Node.typesName[node.type],
-				node.id
-			))
-
-			uiPos:offset(0, offset)
-		end
-
-		local goalNode = Pathfinder.path.endGoal
-
-		if goalNode then
-			uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
-				"Distance to goal: %iu",
-				LocalPlayer:getOrigin():getDistance(goalNode.origin)
-			))
-
-			uiPos:offset(0, offset)
-		end
-	end
-
 	if MenuGroup.enableAi:get() and AiUtility.clientThreatenedFromOrigin then
 		Client.draw(Vector3.drawCircleOutline, AiUtility.clientThreatenedFromOrigin, 30, 3, Color:hsla(0, 1, 1, 75))
 	end
@@ -555,7 +530,7 @@ function AiController:think(cmd)
 	if repeats >= 10 then
 		local highest = a.priority > b.priority and a or b
 
-		highest.abuseLockTimer:restart()
+		--highest.abuseLockTimer:restart()
 
 		Logger.console(1, "AI state '%s' was locked due to dithering. Please check assessment logic for faults.", highest.name)
 
@@ -637,6 +612,10 @@ function AiController:think(cmd)
 			end
 
 			if isActivatable then
+				Logger.console(3, "Changed AI state to '%s' [%i].", currentState.name, highestPriority)
+
+				View.lookSpeedDelayMin = currentState.delayedMouseMin
+				View.lookSpeedDelayMax = currentState.delayedMouseMax
 				View.lookSpeedDelay = Math.getRandomFloat(currentState.delayedMouseMin, currentState.delayedMouseMax)
 				View.lookState = currentState.name
 
@@ -646,12 +625,14 @@ function AiController:think(cmd)
 				currentState:activate()
 
 				table.insert(ditherLog, currentState)
-
-				Logger.console(3, "Changed AI state to '%s' [%i].", currentState.name, highestPriority)
 			end
 		end
 
 		if currentState ~= self.currentState then
+			if self.currentState and self.currentState.deactivate then
+				self.currentState:deactivate()
+			end
+
 			self.lockStateTimer:restart()
 		end
 
@@ -678,8 +659,10 @@ function AiController:think(cmd)
 	until true end
 
 	-- This is here to control when it is executed.
-	View.setViewAngles()
-	View.think(cmd)
+	if MenuGroup.enableMouseControl:get() then
+		View.setViewAngles()
+		View.think(cmd)
+	end
 end
 
 return Nyx.class("AiController", AiController)

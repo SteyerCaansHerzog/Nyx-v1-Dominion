@@ -108,23 +108,28 @@ end
 
 --- @return void
 function View.initMenu()
-	MenuGroup.enableView = MenuGroup.group:addCheckbox(" > Enable Mouse Control"):setParent(MenuGroup.master)
+	MenuGroup.enableMouseControl = MenuGroup.group:addCheckbox(" > Enable Mouse Control"):addCallback(function(item)
+		View.isEnabled = item:get()
+	end):setParent(MenuGroup.master)
 end
 
 --- @return void
 function View.setViewAngles()
+	if not View.isEnabled then
+		return
+	end
+
 	-- Match camera angles to AI view angles.
 	if View.viewAngles then
 		Client.setCameraAngles(View.lookAtAngles)
 	end
 
 	if View.lookState ~= View.lookStateCached then
-
 		if Debug.isLoggingLookState then
 			Logger.console(-1, "New mouse control '%s'.", View.lookState)
 		end
 
-		View.delayMovement()
+		--View.delayMovement()
 
 		View.lookStateCached = View.lookState
 	end
@@ -186,6 +191,10 @@ end
 
 --- @return void
 function View.delayMovement()
+	if View.lookSpeedDelayMax == 0 then
+		return
+	end
+
 	View.lookSpeedDelayTimer:restart()
 	View.lookSpeedDelayed = 0
 	View.lookSpeedDelay = Math.getRandomFloat(View.lookSpeedDelayMin, View.lookSpeedDelayMax)
@@ -361,7 +370,7 @@ function View.setIdealLookAhead(idealViewAngles)
 	if Pathfinder.isAscendingLadder then
 		idealViewAngles:setFromAngle(currentNode.direction:clone():set(-45))
 
-		View.lookState = "View climb ladder"
+		View.lookState = "View generic"
 		View.lookSpeedIdeal = 6
 		View.lookSpeedDelayMin = 0
 		View.lookSpeedDelayMax = 0
@@ -370,7 +379,7 @@ function View.setIdealLookAhead(idealViewAngles)
 	elseif Pathfinder.isDescendingLadder then
 		idealViewAngles:setFromAngle(currentNode.direction:clone():set(45))
 
-		View.lookState = "View climb ladder"
+		View.lookState = "View generic"
 		View.lookSpeedIdeal = 6
 		View.lookSpeedDelayMin = 0
 		View.lookSpeedDelayMax = 0
@@ -409,6 +418,27 @@ function View.setIdealLookAhead(idealViewAngles)
 		return
 	end
 
+	local isLookingDirectlyAhead = false
+
+	if Pathfinder.path.node.isJump then
+		isLookingDirectlyAhead = true
+	end
+
+	local previousNode = Pathfinder.path.nodes[Pathfinder.path.idx - 1]
+
+	if previousNode and previousNode.isJump then
+		isLookingDirectlyAhead = true
+	end
+
+	-- Look in direction of jumps to increase accuracy.
+	if isLookingDirectlyAhead then
+		local nextNode = Pathfinder.path.nodes[Pathfinder.path.idx + 1]
+
+		if nextNode then
+			lookAheadNode = nextNode
+		end
+	end
+
 	local lookOrigin = lookAheadNode.origin:clone()
 
 	-- We want to look roughly head height of the goal.
@@ -420,7 +450,7 @@ function View.setIdealLookAhead(idealViewAngles)
 	-- Shake the mouse movement.
 	View.setNoiseType(ViewNoiseType.moving)
 
-	View.lookState = "View look ahead of path"
+	View.lookState = "View generic"
 	View.lookSpeedIdeal = 6
 	View.lookSpeedDelayMin = 0.25
 	View.lookSpeedDelayMax = 0.5
@@ -445,7 +475,7 @@ function View.setIdealWatchCorner(idealViewAngles)
 
 	View.setNoiseType(ViewNoiseType.moving)
 
-	View.lookState = "View watch corner"
+	View.lookState = "View generic"
 	View.lookSpeedIdeal = 6.5
 	View.lookSpeedDelayMin = 0.25
 	View.lookSpeedDelayMax = 0.5
@@ -454,6 +484,10 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function View.think(cmd)
+	if not View.isEnabled then
+		return
+	end
+
 	if not View.viewAngles then
 		return
 	end
@@ -536,7 +570,7 @@ function View.lookAlongAngle(angle, speed, noise, note)
 		return
 	end
 
-	View.overrideViewAngles = angle
+	View.overrideViewAngles = angle:clone()
 	View.lookSpeedIdeal = speed
 	View.lastLookAtLocationOrigin = nil
 	View.lookState = note

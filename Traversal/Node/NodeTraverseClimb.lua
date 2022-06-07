@@ -17,6 +17,7 @@ local NodeTraverseClimb = {
     },
     colorSecondary = Color:hsla(100, 0.8, 0.6),
     isJump = true,
+    traversalCost = 100,
     isCollisionTestWeak = true
 }
 

@@ -147,6 +147,8 @@ function AiStatePatrol:think(cmd)
             Pathfinder.walk()
 
             self.ai.routines.manageGear:block()
+
+            LocalPlayer.equipAvailableWeapon()
         end
     end
 end

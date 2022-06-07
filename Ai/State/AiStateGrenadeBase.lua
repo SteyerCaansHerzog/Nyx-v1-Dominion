@@ -4,6 +4,7 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
@@ -15,33 +16,36 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
-local Pathfinder = require "gamesense/Nyx/v1/Dominion/PT/Pathfinder"
 --}}}
 
 --{{{ AiStateGrenadeBase
 --- @class AiStateGrenadeBase : AiStateBase
---- @field priority number
 --- @field cooldown number
---- @field defendNode string
---- @field executeNode string
---- @field holdNode string
---- @field retakeNode string
---- @field weapons string[]
 --- @field equipFunction fun(): nil
---- @field rangeThreshold number
 --- @field isCheckingEnemiesRequired boolean
+--- @field nodeDefendCt string
+--- @field nodeDefendT string
+--- @field nodeExecuteT string
+--- @field nodeRetakeCt string
+--- @field priority number
+--- @field rangeThreshold number
+--- @field weapons string[]
 ---
---- @field isInThrow boolean
---- @field node Node
---- @field throwTimer Timer
---- @field throwTime number
---- @field reachedDestination boolean
 --- @field cooldownTimer Timer
 --- @field inBehaviorTimer Timer
---- @field usedNodes Timer[]
+--- @field isInThrow boolean
+--- @field node NodeTypeGrenade
+--- @field isAtDestination boolean
 --- @field threatCooldownTimer Timer
+--- @field throwTime number
+--- @field startThrowTimer Timer
+--- @field usedNodes Timer[]
+--- @field throwHoldTimer Timer
+--- @field isThrown boolean
 local AiStateGrenadeBase = {
     name = "GrenadeBase",
     delayedMouseMin = 0,
@@ -60,10 +64,11 @@ end
 --- @return void
 function AiStateGrenadeBase:__init()
     self.inBehaviorTimer = Timer:new()
-    self.throwTimer = Timer:new()
-    self.throwTime = 0.1
+    self.startThrowTimer = Timer:new()
+    self.throwTime = 0.5
     self.threatCooldownTimer = Timer:new():startThenElapse()
     self.cooldownTimer = Timer:new():startThenElapse()
+    self.throwHoldTimer = Timer:new()
 
     Callbacks.roundStart(function()
         self:reset()
@@ -105,6 +110,11 @@ function AiStateGrenadeBase:assess()
         return AiPriority.IGNORE
     end
 
+    -- Hold a throw. Used for making run line-ups work correctly.
+    if self.throwHoldTimer:isNotElapsed(0.5) then
+        return AiPriority.THROWING_GRENADE
+    end
+
     -- We don't have the type of grenade in question.
     if not LocalPlayer:hasWeapons(self.weapons) then
         return AiPriority.IGNORE
@@ -120,11 +130,6 @@ function AiStateGrenadeBase:assess()
     -- Prevent dithering with enemy presence.
     if not self.threatCooldownTimer:isElapsed(3) then
         return AiPriority.IGNORE
-    end
-
-    -- Prevent dithering with plant behaviour.
-    if self.inBehaviorTimer:isStarted() then
-        return AiPriority.GOING_TO_THROW_GRENADE
     end
 
     -- We already have a line-up.
@@ -165,7 +170,7 @@ function AiStateGrenadeBase:getBestLineup(nodes)
     -- Should we check if enemies could be affected by the line-up?
     local isCheckingEnemies = true
 
-    if LocalPlayer:isTerrorist() and not AiUtility.timeData.roundtime < 20 and not self.isCheckingEnemiesRequired then
+    if LocalPlayer:isTerrorist() and (AiUtility.timeData.roundtime_elapsed < 20) and not self.isCheckingEnemiesRequired then
         isCheckingEnemies = false
     end
 
@@ -281,45 +286,47 @@ end
 
 --- @return void
 function AiStateGrenadeBase:activate()
-    if not self.node then
-        return
-    end
-
     self.inBehaviorTimer:start()
 
-    self.reachedDestination = false
+    self.isAtDestination = false
 
-   self.ai.nodegraph:pathfind(self.node.origin, {
-        objective = Node.types.GOAL,
-        task = string.format("Throw %s", self.name:lower()),
-        onComplete = function()
-           self.ai.nodegraph:log(string.format("Throwing %s", self.name:lower()))
-
-            self.reachedDestination = true
-        end
-    })
+   Pathfinder.moveToNode(self.node, {
+       task = string.format("Throw %s", self.name:lower()),
+       onReachedGoal = function()
+           self.isAtDestination = true
+       end,
+       goalReachedRadius = 16,
+       isCounterStrafingOnGoal = true,
+       isPathfindingToNearestNodeIfNoConnections = false,
+       isPathfindingToNearestNodeOnFailure = false,
+   })
 end
 
 --- @return void
 function AiStateGrenadeBase:reset()
     self.node = nil
+    self.isInThrow = false
+    self.isThrown = false
+
+    self.startThrowTimer:stop()
+    self.throwHoldTimer:stop()
+    self.inBehaviorTimer:stop()
 end
 
 --- @return void
 function AiStateGrenadeBase:deactivate()
-    self.node = nil
-    self.inBehaviorTimer:stop()
-
-    if LocalPlayer:hasPrimary() then
-        LocalPlayer.equipPrimary()
-    else
-        LocalPlayer.equipPistol()
-    end
+    self:reset()
 end
 
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateGrenadeBase:think(cmd)
+    if self.throwHoldTimer:isNotElapsedThenStop(0.4) then
+        if self.node.isRun then
+            Pathfinder.moveAtAngle(self.node.direction)
+        end
+    end
+
     if AiUtility.gameRules:m_bFreezePeriod() == 1 then
         self:deactivate()
 
@@ -341,7 +348,7 @@ function AiStateGrenadeBase:think(cmd)
 
     -- We haven't thrown the grenade within this time.
     -- We're probably stuck. Abort the throw.
-    if self.inBehaviorTimer:isElapsedThenStop(6) then
+    if self.inBehaviorTimer:isElapsedThenStop(8) then
         self.cooldownTimer:start()
 
         self:deactivate()
@@ -350,25 +357,15 @@ function AiStateGrenadeBase:think(cmd)
     end
 
     self.activity = string.format("Going to throw %s", self.name)
-
-    self.ai.states.evade.isBlocked = true
-
-    local playerOrigin = LocalPlayer:getOrigin()
-
     self.isInThrow = false
 
-    if not self.reachedDestination and self.ai.nodegraph:isIdle() then
-        self:activate()
-    end
+    self.ai.states.evade:block()
 
-    local distance = playerOrigin:getDistance(self.node.origin)
-
-    if distance < 20 then
-       self.ai.nodegraph.isAllowedToMove = false
-    end
+    local clientOrigin = LocalPlayer:getOrigin()
+    local distance = clientOrigin:getDistance(self.node.origin)
 
     if distance < 46 then
-        self.throwTimer:ifPausedThenStart()
+        self.startThrowTimer:ifPausedThenStart()
     end
 
     if distance < 250 then
@@ -377,59 +374,84 @@ function AiStateGrenadeBase:think(cmd)
         self.ai.routines.manageGear:block()
         self.ai.routines.lookAwayFromFlashbangs:block()
 
-
         Pathfinder.counterStrafe()
+        View.lookAlongAngle(self.node.direction, 8, View.noise.none, "Grenade look at line-up")
 
         self.equipFunction()
     end
 
-    if distance < 150 then
-       self.ai.nodegraph.moveAngle = playerOrigin:getAngle(self.node.origin)
-       self.ai.nodegraph.isAllowedToAvoidTeammates = false
+    if distance < 180 then
         View.isCrosshairUsingVelocity = false
         View.isCrosshairSmoothed = true
 
-       View.lookAlongAngle(self.node.direction, 5, View.noise.none, "GrenadeBase look at line-up")
+        Pathfinder.blockTeammateAvoidance()
 
-        local deltaAngles = self.node.direction:getAbsDiff(Client.getCameraAngles())
+        local delta = self.node.direction:getMaxDiff(Client.getCameraAngles())
 
-        if deltaAngles.p < 15 and deltaAngles.y < 15 then
+        if delta < 15 then
             self.isInThrow = true
         end
 
-        local speed = LocalPlayer:m_vecVelocity():getMagnitude()
-
-        if deltaAngles.p < 1.5
-            and deltaAngles.y < 1.5
-            and distance < 32
-            and self.throwTimer:isElapsedThenRestart(self.throwTime)
+        if delta < 1.5
+            and self.startThrowTimer:isElapsed(self.throwTime)
             and LocalPlayer:isHoldingWeapons(self.weapons)
             and LocalPlayer:isAbleToAttack()
-            and speed < 5
         then
-            cmd.in_attack = true
+            local isThrowable = true
+            local isOnGround = LocalPlayer:getFlag(Player.flags.FL_ONGROUND)
+            local velocity = LocalPlayer:m_vecVelocity()
+            local speed = velocity:getMagnitude()
+
+            if self.node.isRun then
+                if speed < 160 then
+                    isThrowable = false
+                end
+
+                Pathfinder.moveAtAngle(self.node.direction)
+            end
+
+            if self.node.isJump then
+                if isOnGround then
+                    isThrowable = false
+                end
+
+                if self.node.isRun then
+                    if speed > 180 then
+                        cmd.in_jump = true
+                    end
+                else
+                    cmd.in_jump = true
+                end
+            end
+
+            if isThrowable and not self.isThrown then
+                self.throwHoldTimer:ifPausedThenStart()
+
+                cmd.in_attack = true
+                self.isThrown = true
+            end
         end
     else
-        self.throwTimer:stop()
+        self.startThrowTimer:stop()
     end
 end
 
---- @return Node[]
+--- @return NodeTypeGrenade[]
 function AiStateGrenadeBase:getNodes()
     if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
         if LocalPlayer:isCounterTerrorist() then
-            return self.ai.nodegraph[self.retakeNode]
+            return Nodegraph.get(self.nodeRetakeCt)
         elseif LocalPlayer:isTerrorist() then
-            return self.ai.nodegraph[self.holdNode]
+            return Nodegraph.get(self.nodeDefendT)
         end
     end
 
     if LocalPlayer:isCounterTerrorist() then
         if AiUtility.plantedBomb then
-            return self.ai.nodegraph[self.retakeNode]
+            return Nodegraph.get(self.nodeRetakeCt)
         end
 
-        return self.ai.nodegraph[self.defendNode]
+        return Nodegraph.get(self.nodeDefendCt)
     elseif LocalPlayer:isTerrorist() then
         local isSiteTaken = false
 
@@ -439,15 +461,15 @@ function AiStateGrenadeBase:getNodes()
             local bombCarrierOrigin = AiUtility.bombCarrier:m_vecOrigin()
 
             if bombCarrierOrigin then
-                if bombCarrierOrigin:getDistance(self.ai.nodegraph:getSiteNode("a").origin) < 750 then
+                if bombCarrierOrigin:getDistance(Nodegraph.getBombsite("A").origin) < 750 then
                     isSiteTaken = true
-                elseif bombCarrierOrigin:getDistance(self.ai.nodegraph:getSiteNode("b").origin) < 750 then
+                elseif bombCarrierOrigin:getDistance(Nodegraph.getBombsite("B").origin) < 750 then
                     isSiteTaken = true
                 end
             end
         end
 
-        return isSiteTaken and self.ai.nodegraph[self.holdNode] or self.ai.nodegraph[self.executeNode]
+        return isSiteTaken and Nodegraph.get(self.nodeDefendT) or Nodegraph.get(self.nodeExecuteT)
     end
 end
 

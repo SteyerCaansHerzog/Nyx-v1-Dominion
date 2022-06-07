@@ -7,7 +7,8 @@ local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBaseGrenadeBase"
+local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGrenadeBase"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 --}}}
 --{{{ AiStateMolotov
 --- @class AiStateMolotov : AiStateGrenadeBase
@@ -15,13 +16,13 @@ local AiStateMolotov = {
     name = "Molotov",
     priority = AiPriority.MOLOTOV_LINEUP,
     cooldown = 6,
-    defendNode = "objectiveMolotovDefend",
-    executeNode = "objectiveMolotovExecute",
-    retakeNode = "objectiveMolotovRetake",
-    holdNode = "objectiveMolotovHold",
+    nodeDefendCt = Node.grenadeInfernoDefendCt,
+    nodeDefendT = Node.grenadeInfernoDefendT,
+    nodeExecuteT = Node.grenadeInfernoExecuteT,
+    nodeRetakeCt = Node.grenadeInfernoRetakeCt,
     weapons = {Weapons.MOLOTOV, Weapons.INCENDIARY},
     equipFunction = LocalPlayer.equipMolotov,
-    rangeThreshold = 1200,
+    rangeThreshold = 2100,
     isCheckingEnemiesRequired = true,
 }
 

@@ -16,7 +16,8 @@ local NodeTraverseLadderTop = {
     },
     colorSecondary = Color:hsla(40, 0.8, 0.6),
     isPlanar = false,
-    isDirectional = true
+    isDirectional = true,
+    traversalCost = 150,
 }
 
 --- @param fields NodeTraverseLadderTop

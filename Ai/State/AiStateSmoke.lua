@@ -7,7 +7,8 @@ local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBaseGrenadeBase"
+local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGrenadeBase"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 --}}}
 
 --{{{ AiStateSmoke
@@ -16,10 +17,10 @@ local AiStateSmoke = {
     name = "Smoke",
     priority = AiPriority.SMOKE_LINEUP,
     cooldown = 4,
-    defendNode = "objectiveSmokeDefend",
-    executeNode = "objectiveSmokeExecute",
-    retakeNode = "objectiveSmokeRetake",
-    holdNode = "objectiveSmokeHold",
+    nodeDefendCt = Node.grenadeSmokeDefendCt,
+    nodeDefendT = Node.grenadeSmokeDefendT,
+    nodeExecuteT = Node.grenadeSmokeExecuteT,
+    nodeRetakeCt = Node.grenadeSmokeRetakeCt,
     weapons = {Weapons.SMOKE},
     equipFunction = LocalPlayer.equipSmoke,
     rangeThreshold = 2000,

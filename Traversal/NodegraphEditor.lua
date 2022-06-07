@@ -20,6 +20,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
+local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
@@ -54,6 +55,7 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field nodes NodeTypeBase[]
 --- @field selectedNode NodeTypeBase
 --- @field spawnError string|nil
+--- @field spawnNode NodeTypeBase
 --- @field visibleGroups boolean[]
 local NodegraphEditor = {}
 
@@ -67,6 +69,8 @@ end
 function NodegraphEditor:__init()
     self:initFields()
     self:initEvents()
+
+    Logger.console(0, "Nodegraph Editor is ready.")
 end
 
 --- @return void
@@ -117,6 +121,7 @@ function NodegraphEditor:initFields()
     MenuGroup.nodeHeight = MenuGroup.group:addSlider("    > Node Spawn Height", 18, 32, {}):setParent(MenuGroup.enableEditor)
 
     MenuGroup.group:addLabel("------------------------------------------------"):setParent(MenuGroup.enableEditor)
+    MenuGroup.group:addLabel("Node Custom Metadata"):setParent(MenuGroup.enableEditor)
 
     for field, cachedItem in pairs(NodeTypeBase.customizerItems) do
         NodeTypeBase.customizerItems[field] = cachedItem()
@@ -141,6 +146,26 @@ function NodegraphEditor:initFields()
     MenuGroup.visibleGroups = MenuGroup.group:addMultiDropdown("    > Visible Groups", nodeGroupNames):addCallback(function(item)
         self.visibleGroups = Table.getMap(item:get())
     end):setParent(MenuGroup.enableEditor):set(nodeGroupNames)
+
+    MenuGroup.debugMode = MenuGroup.group:addDropdown("    > Debug Mode", {"None", "Collisions", "Gaps"}):addCallback(function(item)
+        local modeToggle = item:get()
+
+        if modeToggle == "Collisions" then
+            Debug.isDisplayingConnectionCollisions = true
+            Debug.isDisplayingGapCollisions = false
+        elseif modeToggle == "Gaps" then
+            Debug.isDisplayingConnectionCollisions = false
+            Debug.isDisplayingGapCollisions = true
+        else
+            Debug.isDisplayingConnectionCollisions = false
+            Debug.isDisplayingGapCollisions = false
+
+            Pathfinder.clearActivePathAndLastRequest()
+        end
+    end):setParent(MenuGroup.enableEditor)
+
+    MenuGroup.group:addLabel("    > Find Node by ID"):setParent(MenuGroup.enableEditor)
+    MenuGroup.findNode = MenuGroup.group:addTextBox("DominionNodegraphEditorFindNode"):setParent(MenuGroup.enableEditor)
 
     MenuGroup.group:addButton("Load nodegraph", function()
         Nodegraph.load(Nodegraph.getFilename())
@@ -271,6 +296,8 @@ function NodegraphEditor:processAdd()
     local selectedNode = self:getSelectedNode()
     local nodeBounds = Vector3:newBounds(Vector3.align.CENTER, 18)
 
+    self.spawnNode = nil
+
     if Menu.isOpen() then
         return
     end
@@ -373,6 +400,8 @@ function NodegraphEditor:processAdd()
 
     node:render(Nodegraph, true)
 
+    self.spawnNode = node
+
     -- Spawn the node or highlight it.
     if not self.spawnError then
         self.highlightNode, self.highlightNodeColor = node, Color:hsla(120, 0.8, 0.6, 50)
@@ -380,7 +409,7 @@ function NodegraphEditor:processAdd()
         if self.keyAdd:wasPressed() then
             node:onCreatePre(Nodegraph)
 
-            Nodegraph.add(node)
+            Nodegraph.add(node, true)
         end
     else
         self.keyAdd:reset()
@@ -534,7 +563,26 @@ function NodegraphEditor:render()
         iNodes = iNodes + 1
     end
 
-    if Debug.isDisplayingConnectionCollisions then
+    if self.keySetConnections:isToggled() and self.selectedNode then
+        for _, connection in pairs(self.selectedNode.connections) do
+            connection.origin:drawScaledCircle(50, self.highlightNodeColor:setAlpha(75))
+        end
+    end
+
+    --- @type NodeTypeBase
+    local findNode
+    local findNodeId = tonumber(MenuGroup.findNode:get())
+
+    if findNodeId then
+        findNode = Nodegraph.getById(findNodeId)
+    end
+
+    if findNode then
+        findNode:renderTopText(ColorList.ERROR, "FIND %i", findNodeId)
+        findNode.origin:drawScaledCircleOutline(90, 10, ColorList.ERROR)
+    end
+
+    if Debug.isDisplayingConnectionCollisions or Debug.isDisplayingGapCollisions then
         Pathfinder.isEnabled =  true
 
         Pathfinder.moveToNode(Nodegraph.getRandom(Node.traverseGeneric), {
@@ -550,17 +598,37 @@ function NodegraphEditor:render()
             end
         })
 
-        for _, collisions in pairs(Pathfinder.goalCollisions) do
-            for _, collision in pairs(collisions) do
-                local color
+        if Debug.isDisplayingConnectionCollisions then
+            for _, collisions in pairs(Pathfinder.goalConnectionCollisions) do
+                for _, collision in pairs(collisions) do
+                    local color
 
-                if collision.isIntersectingGeometry then
-                    color = Color:rgba(255, 0, 0)
-                else
-                    color = Color:rgba(0, 255, 0)
+                    if collision.isOutOfReach then
+                        color = Color:rgba(200, 200, 200)
+                    elseif collision.isIntersectingGeometry then
+                        color = Color:rgba(255, 0, 0)
+                    else
+                        color = Color:rgba(0, 255, 0)
+                    end
+
+                    collision.origin:clone():offset(0, 0, -18):drawCube(collision.bounds, color)
                 end
+            end
+        end
 
-                collision.origin:drawCube(collision.bounds, color)
+        if Debug.isDisplayingGapCollisions then
+            for _, collisions in pairs(Pathfinder.goalGapCollisions) do
+                for _, collision in pairs(collisions) do
+                    local color
+
+                    if not collision.isIntersectingGeometry then
+                        color = Color:rgba(255, 150, 0)
+                    else
+                        color = Color:rgba(0, 255, 150)
+                    end
+
+                    collision.origin:clone():offset(0, 0, -18):drawCube(collision.bounds, color)
+                end
             end
         end
     end
@@ -718,8 +786,23 @@ function NodegraphEditor:render()
         drawListPos:clone():offset(20, 17):drawCircle(6, node.colorPrimary):drawCircleOutline(10, 2, node.colorSecondary)
         drawListPos:clone():offset(34, 5):drawSurfaceText(Font.SMALL, color, "l", string.format("%s | %s", node.type, node.name))
 
-        drawListPos:offset(0, 30)
+        drawListPos:offset(0, height)
     until true end
+
+    if self.spawnNode and self.spawnNode.customizers then
+        local drawMetaPos = Client.getScreenDimensionsCenter():offset(-(tabWidth / 2), 300)
+        drawListPos:offset(0, 5)
+
+        for _, name in pairs(self.spawnNode.customizers) do
+            local metadata = NodeTypeBase.customizerItems[name]:get()
+
+            drawMetaPos:clone():offset(-2, 0):drawBlur(Vector2:new(tabWidth + 22, 30))
+            drawMetaPos:clone():offset(-2, 0):drawSurfaceRectangle(Vector2:new(tabWidth + 22, 30), ColorList.BACKGROUND_1)
+            drawMetaPos:clone():offset(tabWidth / 2, 5):drawSurfaceText(Font.SMALL_BOLD, ColorList.FONT_NORMAL, "c", string.format("%s:    %s", name, metadata))
+            drawMetaPos:offset(0, 30)
+
+        end
+    end
 end
 
 return Nyx.class("NodegraphEditor", NodegraphEditor)

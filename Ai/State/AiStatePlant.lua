@@ -244,8 +244,6 @@ function AiStatePlant:setPlantNode(site)
 
     self.node = closestNode
     self.bombsite = site
-
-    print(self.bombsite)
 end
 
 return Nyx.class("AiStatePlant", AiStatePlant, AiStateBase)

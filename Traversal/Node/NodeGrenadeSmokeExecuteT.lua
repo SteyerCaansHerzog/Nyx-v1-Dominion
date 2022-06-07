@@ -16,7 +16,7 @@ local NodeGrenadeSmokeExecuteT = {
         "Smoke spot for the T AI when defending the bombsite."
     },
     colorPrimary = Color:hsla(200, 0, 0.85),
-    colorSecondary = ColorList.COUNTER_TERRORIST
+    colorSecondary = ColorList.TERRORIST
 }
 
 --- @param fields NodeGrenadeSmokeExecuteT

@@ -42,6 +42,8 @@ local LoggerCode = {
 
 --{{{ Logger
 --- @class Logger : Class
+--- @field benchmarkName string
+--- @field benchmarkStartedAt number
 local Logger = {}
 
 --- @return void
@@ -52,6 +54,24 @@ function Logger.__setup()
 	else
 		cvar.con_filter_enable:set_int(0)
 	end
+end
+
+--- @param name string
+--- @return void
+function Logger.startBenchmark(name)
+	Logger.benchmarkStartedAt = client.timestamp()
+	Logger.benchmarkName = name
+end
+
+--- @return void
+function Logger.stopBenchmark()
+	local delta = (client.timestamp() - Logger.benchmarkStartedAt) / 1000
+	local ticks = delta / globals.tickinterval()
+
+	Logger.console(0, "Benchmark '%s' finished. Time: %.4fs (%.1f ticks).", Logger.benchmarkName, delta, ticks)
+
+	Logger.benchmarkName = nil
+	Logger.benchmarkStartedAt = nil
 end
 
 --- @vararg string

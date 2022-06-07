@@ -11,7 +11,7 @@ local NodeTypeGrenade = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTy
 --{{{ NodeGrenadeExplosiveDefendT
 --- @class NodeGrenadeExplosiveDefendT : NodeTypeGrenade
 local NodeGrenadeExplosiveDefendT = {
-    name = "Defensive HE Grenade (T)",
+    name = "Hold HE Grenade (T)",
     description = {
         "HE spot for the T AI when defending the bombsite."
     },

@@ -228,7 +228,7 @@ function AiStateFlashbangDynamic:think(cmd)
         return
     end
 
-    self.ai.states.evade.isBlocked = true
+    self.ai.states.evade:block()
     self.ai.routines.manageGear:block()
     self.ai.routines.lookAwayFromFlashbangs:block()
 

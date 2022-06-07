@@ -21,6 +21,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local GamemodeInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/GamemodeInfo"
 local MapInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/MapInfo"
+local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --}}}
 
 --{{{ AiUtility
@@ -341,6 +342,8 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.setupCommand(function()
+        Logger.startBenchmark("BENCHMARK")
+
         if not AiUtility.isPerformingCalculations then
             return
         end
@@ -350,6 +353,7 @@ function AiUtility:initEvents()
         AiUtility.updateThreats()
         AiUtility.updateEnemies()
         AiUtility.updateAllPlayers()
+        Logger.stopBenchmark()
     end)
 end
 
@@ -365,6 +369,7 @@ end
 --- @return void
 function AiUtility.updateAllPlayers()
     AiUtility.teammates = {}
+    AiUtility.enemiesAlive = 0
     -- Very funny Valve.
     AiUtility.teammatesAlive = -1
     AiUtility.isHostageCarriedByEnemy = false

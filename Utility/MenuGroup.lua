@@ -25,6 +25,8 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --- @field nodeHeight MenuItem
 --- @field nodeType MenuItem
 --- @field visibleGroups MenuItem
+--- @field debugMode MenuItem
+--- @field findNode MenuItem
 --- @field selectedNode MenuItem
 ---
 --- @field enableAi MenuItem
@@ -32,6 +34,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --- @field enableAimbot MenuItem
 --- @field aimSkillLevel MenuItem
 --- @field visualiseAimbot MenuItem
+--- @field enableMouseControl MenuItem
 ---
 --- @field enableMicrophone MenuItem
 --- @field voicePack MenuItem

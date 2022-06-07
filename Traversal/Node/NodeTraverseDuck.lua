@@ -15,7 +15,8 @@ local NodeTraverseDuck = {
         "Informs the AI of how to traverse the map by ducking."
     },
     colorSecondary = Color:hsla(320, 0.8, 0.66),
-    isDuck = true
+    isDuck = true,
+    traversalCost = 75,
 }
 
 --- @param fields NodeTraverseDuck

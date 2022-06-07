@@ -53,7 +53,7 @@ function AiStatePushHostage:assess()
         return AiPriority.IGNORE
     end
 
-    if AiUtility.timeData.roundtime > 30 then
+    if AiUtility.timeData.roundtime_elapsed > 30 then
         return AiPriority.IGNORE
     end
 

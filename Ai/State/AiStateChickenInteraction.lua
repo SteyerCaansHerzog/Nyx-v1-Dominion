@@ -182,7 +182,7 @@ function AiStateChickenInteraction:think(cmd)
     if distance < 64 and fov < 22 then
         self.ai.routines.lookAwayFromFlashbangs:block()
         self.ai.routines.manageGear:block()
-        self.ai.canReload = false
+        self.ai.routines.manageWeaponReload:block()
 
         if self.interaction == "kill" then
             cmd.in_attack = true

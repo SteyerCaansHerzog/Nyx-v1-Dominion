@@ -7,7 +7,8 @@ local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBaseGrenadeBase"
+local AiStateGrenadeBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGrenadeBase"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 --}}}
 
 --{{{ AiStateHeGrenade
@@ -16,13 +17,13 @@ local AiStateHeGrenade = {
     name = "HE Grenade",
     priority = AiPriority.HE_GRENADE_LINEUP,
     cooldown = 6,
-    defendNode = "objectiveHeGrenadeDefend",
-    executeNode = "objectivHeGrenadevExecute",
-    holdNode = "objectiveHeGrenadeHold",
-    retakeNode = "objectiveHeGrenadeRetake",
+    nodeDefendCt = Node.grenadeExplosiveDefendCt,
+    nodeDefendT = Node.grenadeExplosiveDefendT,
+    nodeExecuteT = Node.grenadeExplosiveExecuteT,
+    nodeRetakeCt = Node.grenadeExplosiveRetakeCt,
     weapons = {Weapons.HE_GRENADE},
     equipFunction = LocalPlayer.equipHeGrenade,
-    rangeThreshold = 1500,
+    rangeThreshold = 2000,
     isCheckingEnemiesRequired = true,
 }
 

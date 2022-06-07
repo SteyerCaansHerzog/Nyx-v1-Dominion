@@ -93,11 +93,12 @@ local function getPath(start, goal, nodes, valid_node_func)
         removeNode(openset, current)
         table.insert(closedset, current)
 
+        --- @type NodeTypeBase[]
         local neighbors = getNeighborNodes(current, nodes)
 
         for _, neighbor in pairs(neighbors) do
             if isNotIn(closedset, neighbor) then
-                local tentativeGScore = gScore[current] + current.origin:getDistance(neighbor.origin)
+                local tentativeGScore = gScore[current] + current.origin:getDistance(neighbor.origin) + neighbor.traversalCost
 
                 if isNotIn(openset, neighbor) or tentativeGScore < gScore[neighbor] then
                     cameFrom[neighbor] = current

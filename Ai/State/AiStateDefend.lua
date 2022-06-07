@@ -161,7 +161,7 @@ function AiStateDefend:assessDemolition()
             local bombsite = Nodegraph.getClosestBombsite(bombCarrierOrigin)
             local distance = bombCarrierOrigin:getDistance(bombsite.origin)
 
-            if AiUtility.isBombBeingPlantedByTeammate or distance < 250 then
+            if AiUtility.isBombBeingPlantedByTeammate or distance < 400 then
                 return AiPriority.DEFEND_PLANTER
             end
 
@@ -215,10 +215,12 @@ function AiStateDefend:isEnemyHoldable()
 
     local cameraAngles = Client.getCameraAngles()
     local eyeOrigin = Client.getEyeOrigin()
+    local clientOrigin = Client.getEyeOrigin()
     local isEnemyInFoV = false
 
     for _, enemy in pairs(AiUtility.enemies) do
-        if cameraAngles:getFov(eyeOrigin, enemy:getOrigin():offset(0, 0, 64)) < 85 then
+        local enemyOrigin = enemy:getOrigin()
+        if clientOrigin:getDistance(enemyOrigin) < 1000 and cameraAngles:getFov(eyeOrigin, enemyOrigin:offset(0, 0, 64)) < 85 then
             isEnemyInFoV = true
 
             break
@@ -279,8 +281,9 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateDefend:think(cmd)
-    if self.priority ~= self.lastPriority then
-        self:invoke(self.node.bombsite)
+    if not self.node then
+        self:reset()
+        return
     end
 
     local distance = AiUtility.clientNodeOrigin:getDistance(self.node.origin)
@@ -290,7 +293,6 @@ function AiStateDefend:think(cmd)
 
         self.ai.routines.manageGear:block()
         self.ai.routines.manageWeaponScope:block()
-
         self.defendTimer:ifPausedThenStart()
 
         local nodeVisibleTrace = Trace.getLineToPosition(Client.getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateDefend.think<FindSpotVisible>")
@@ -328,9 +330,9 @@ function AiStateDefend:think(cmd)
         self.activity = "Defending hostages"
     else
         if distance < 750 then
-            self.activity = string.format("Going %s", self.node.bombsite)
-        else
             self.activity = string.format("Defending %s", self.node.bombsite)
+        else
+            self.activity = string.format("Going %s", self.node.bombsite)
         end
     end
 
