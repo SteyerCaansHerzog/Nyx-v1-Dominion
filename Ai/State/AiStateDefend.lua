@@ -286,6 +286,22 @@ function AiStateDefend:think(cmd)
         return
     end
 
+    if self.priority ~= self.lastPriority then
+        self.lastPriority = self.priority
+
+        if self.priority == AiPriority.DEFEND_DEFUSER or self.priority == AiPriority.DEFEND_PLANTER then
+            local origin
+
+            if AiUtility.plantedBomb then
+                origin = AiUtility.plantedBomb:m_vecOrigin()
+            elseif AiUtility.bombCarrier then
+                origin = AiUtility.bombCarrier:getOrigin()
+            end
+
+            self:invoke(Nodegraph.getClosestBombsiteName(origin))
+        end
+    end
+
     local distance = AiUtility.clientNodeOrigin:getDistance(self.node.origin)
 
     if distance < 300 then

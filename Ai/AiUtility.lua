@@ -342,8 +342,6 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.setupCommand(function()
-        Logger.startBenchmark("BENCHMARK")
-
         if not AiUtility.isPerformingCalculations then
             return
         end
@@ -353,7 +351,6 @@ function AiUtility:initEvents()
         AiUtility.updateThreats()
         AiUtility.updateEnemies()
         AiUtility.updateAllPlayers()
-        Logger.stopBenchmark()
     end)
 end
 
