@@ -583,6 +583,16 @@ function NodegraphEditor:render()
     end
 
     if Debug.isDisplayingConnectionCollisions or Debug.isDisplayingGapCollisions then
+        if MenuGroup.enableAi:get() then
+            local drawErrPos = Client.getScreenDimensionsCenter():set(nil, 200)
+            local bgDims = Vector2:new(500, 50)
+
+            drawErrPos:drawBlur(bgDims, true)
+            drawErrPos:drawSurfaceRectangleOutline(4, 2, bgDims, ColorList.ERROR, true)
+            drawErrPos:drawSurfaceRectangle(bgDims, ColorList.BACKGROUND_1, true)
+            drawErrPos:clone():offset(0, -20):drawSurfaceText(Font.LARGE, ColorList.ERROR, "c", "Debug mode is enabled")
+        end
+
         Pathfinder.isEnabled =  true
 
         Pathfinder.moveToNode(Nodegraph.getRandom(Node.traverseGeneric), {
@@ -603,7 +613,9 @@ function NodegraphEditor:render()
                 for _, collision in pairs(collisions) do
                     local color
 
-                    if collision.isOutOfReach then
+                    if collision.isClose then
+                        color = Color:rgba(0, 0, 255)
+                    elseif collision.isOutOfReach then
                         color = Color:rgba(200, 200, 200)
                     elseif collision.isIntersectingGeometry then
                         color = Color:rgba(255, 0, 0)

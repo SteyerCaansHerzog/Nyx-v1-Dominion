@@ -32,7 +32,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 
 --{{{ Definitions
 --- @class PathfinderOptions
---- @field goalReachedRadius boolean
+--- @field goalReachedRadius number
 --- @field isAllowedToTraverseInactives boolean
 --- @field isAllowedToTraverseInfernos boolean
 --- @field isAllowedToTraverseJumps boolean
@@ -451,15 +451,20 @@ function Pathfinder.cleanupLastRequest()
 	Nodegraph.clearType(NodeType.goal)
 end
 
+--- @param isReleasingHandleLock boolean
 --- @return void
-function Pathfinder.clearActivePathAndLastRequest()
+function Pathfinder.clearActivePathAndLastRequest(isReleasingHandleLock)
 	Pathfinder.clearActivePath()
 	Pathfinder.clearLastRequest()
+
+	if isReleasingHandleLock then
+		Pathfinder.pathfindIntervalTimer:elapse()
+	end
 end
 
 --- @return void
-function Pathfinder.flush()
-	Pathfinder.clearActivePathAndLastRequest()
+function Pathfinder.flushRequest()
+	Pathfinder.clearActivePathAndLastRequest(true)
 
 	Pathfinder.cachedLastRequest = nil
 end
@@ -484,6 +489,7 @@ function Pathfinder.handleLastRequest()
 	if not LocalPlayer:getFlag(Player.flags.FL_ONGROUND) then
 		return
 	end
+	Logger.startBenchmark("pathfind")
 
 	-- Get pathfind request options.
 	local pathfinderOptions = Pathfinder.lastRequest.options or {}
@@ -707,6 +713,7 @@ function Pathfinder.handleLastRequest()
 	end
 
 	Pathfinder.clearLastRequest()
+	Logger.stopBenchmark()
 
 	Logger.console(-1, "New pathfind task: %s.", pathfinderOptions.task)
 end
@@ -1112,8 +1119,14 @@ function Pathfinder.traverseActivePath(cmd)
 		end
 
 		if Pathfinder.moveObstructedTimer:isElapsedThenStop(0.66) then
-			Logger.console(2, "Pathfinder obstructed. Retrying.")
-			Pathfinder.retryLastRequest()
+			if MenuGroup.enableMovement:get()  then
+				Logger.console(2, "Pathfinder is obstructed. Retrying current path.")
+
+				Pathfinder.retryLastRequest()
+			else
+				Logger.console(2, "Pathfinder movement is not enabled. Consider enabling movement.")
+			end
+
 		end
 	end
 

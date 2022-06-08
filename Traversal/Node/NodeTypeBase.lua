@@ -33,6 +33,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @class NodeTypeBaseConnectionCollision
 --- @field origin Vector3
 --- @field bounds Vector3[]
+--- @field isClose boolean
 --- @field isIntersectingGeometry boolean
 --- @field isOutOfReach boolean
 
@@ -49,6 +50,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field collisionHullHumanDucking Vector3[]
 --- @field collisionHullHumanStanding Vector3[]
 --- @field collisionHullNode Vector3[]
+--- @field collisionHullNodeSmall Vector3[]
 --- @field colorPrimary Color
 --- @field colorSecondary Color
 --- @field connectionCollisions NodeTypeBaseConnectionCollision[]
@@ -126,6 +128,7 @@ function NodeTypeBase:__setup()
     NodeTypeBase.collisionHullHumanStanding = Vector3:newBounds(Vector3.align.UP, 15, 15, 32)
     NodeTypeBase.collisionHullHumanDucking = Vector3:newBounds(Vector3.align.UP, 15, 15, 23)
     NodeTypeBase.collisionHullNode = Vector3:newBounds(Vector3.align.CENTER, 15, 15, 8)
+    NodeTypeBase.collisionHullNodeSmall = Vector3:newBounds(Vector3.align.CENTER, 6)
     NodeTypeBase.collisionHullGap = Vector3:newBounds(Vector3.align.BOTTOM, 15, 15, 32)
 end
 
@@ -512,8 +515,10 @@ function NodeTypeBase:setConnections(nodegraph, options)
 
             isCollisionOk = not trace.isIntersectingGeometry
         elseif node.isCollisionTestWeak and options.isUsingHumanCollisionTest then
-            if distance < 150 then
-                local collisionTrace = Trace.getHullToPosition(self.origin, node.origin, Vector3:newBounds(Vector3.align.CENTER, 6), AiUtility.traceOptionsPathfinding)
+            local distance2 = self.origin:getDistance2(node.origin)
+
+            if distance < 150 and distance2 > 50 then
+                local collisionTrace = Trace.getHullToPosition(self.origin, node.origin, self.collisionHullNodeSmall, AiUtility.traceOptionsPathfinding) -- todo
 
                 if options.isCollisionInfoSaved then
                     self.connectionCollisions[node.id] = {
@@ -525,21 +530,43 @@ function NodeTypeBase:setConnections(nodegraph, options)
 
                 isCollisionOk = not collisionTrace.isIntersectingGeometry
             else
-                isCollisionOk = false
+                if distance2 > 50 then
+                    isCollisionOk = false
+                else
+                    if options.isCollisionInfoSaved then
+                        self.connectionCollisions[node.id] = {
+                            origin = node.origin,
+                            bounds = hullBounds,
+                            isClose = true
+                        }
+                    end
+                end
             end
         else
-            local targetCollisionOrigin = node.origin:clone():offset(0, 0, hullOffset)
-            local collisionTrace = Trace.getHullToPosition(selfCollisionOrigin, targetCollisionOrigin, hullBounds, AiUtility.traceOptionsPathfinding)
+            local distance2 = self.origin:getDistance2(node.origin)
 
-            if options.isCollisionInfoSaved then
-                self.connectionCollisions[node.id] = {
-                    origin = node.origin,
-                    bounds = hullBounds,
-                    isIntersectingGeometry = collisionTrace.isIntersectingGeometry
-                }
+            if distance2 > 32 then
+                local targetCollisionOrigin = node.origin:clone():offset(0, 0, hullOffset)
+                local collisionTrace = Trace.getHullToPosition(selfCollisionOrigin, targetCollisionOrigin, hullBounds, AiUtility.traceOptionsPathfinding)
+
+                if options.isCollisionInfoSaved then
+                    self.connectionCollisions[node.id] = {
+                        origin = node.origin,
+                        bounds = hullBounds,
+                        isIntersectingGeometry = collisionTrace.isIntersectingGeometry
+                    }
+                end
+
+                isCollisionOk = not collisionTrace.isIntersectingGeometry
+            else
+                if options.isCollisionInfoSaved then
+                    self.connectionCollisions[node.id] = {
+                        origin = node.origin,
+                        bounds = hullBounds,
+                        isClose = true
+                    }
+                end
             end
-
-            isCollisionOk = not  collisionTrace.isIntersectingGeometry
         end
 
         if not isCollisionOk then

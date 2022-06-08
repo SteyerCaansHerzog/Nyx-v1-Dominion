@@ -68,6 +68,8 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --- @field viewPitchOffset number
 --- @field yawFine number
 --- @field yawSoft number
+--- @field watchCornerTimer Timer
+--- @field watchCornerOrigin Vector3
 local View = {
 	noise = ViewNoiseType
 }
@@ -102,6 +104,7 @@ function View.initFields()
 	View.yawFine = 0
 	View.yawSoft = 0
 	View.lookSpeedIdeal = 0
+	View.watchCornerTimer = Timer:new():startThenElapse()
 
 	View.setNoiseType(ViewNoiseType.none)
 end
@@ -129,7 +132,7 @@ function View.setViewAngles()
 			Logger.console(-1, "New mouse control '%s'.", View.lookState)
 		end
 
-		--View.delayMovement()
+		View.delayMovement()
 
 		View.lookStateCached = View.lookState
 	end
@@ -196,7 +199,7 @@ function View.delayMovement()
 	end
 
 	View.lookSpeedDelayTimer:restart()
-	View.lookSpeedDelayed = 0
+	View.lookSpeedDelayed = Math.getClamped(View.lookSpeedDelayed - 30 * Time.getDelta(), 0, View.lookSpeedIdeal)
 	View.lookSpeedDelay = Math.getRandomFloat(View.lookSpeedDelayMin, View.lookSpeedDelayMax)
 end
 
@@ -465,13 +468,19 @@ function View.setIdealWatchCorner(idealViewAngles)
 		return
 	end
 
-	-- I actually refactored something for once, instead of doing it in 4 places in slightly different ways.
-	-- No, don't open AiStateEvade. Don't look in there.
-	if not AiUtility.clientThreatenedFromOrigin then
+	-- Force the AI to look at the corner for 1.5 seconds to prevent dithering,
+	-- as AiUtility.clientThreatenedFromOrigin is rapidly set and unset.
+	if AiUtility.clientThreatenedFromOrigin then
+		View.watchCornerOrigin = AiUtility.clientThreatenedFromOrigin
+
+		View.watchCornerTimer:restart()
+	end
+
+	if View.watchCornerTimer:isElapsed(1.5) then
 		return
 	end
 
-	idealViewAngles:setFromAngle(Client.getEyeOrigin():getAngle(AiUtility.clientThreatenedFromOrigin))
+	idealViewAngles:setFromAngle(Client.getEyeOrigin():getAngle(View.watchCornerOrigin))
 
 	View.setNoiseType(ViewNoiseType.moving)
 

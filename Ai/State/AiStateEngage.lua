@@ -215,9 +215,6 @@ function AiStateEngage:initFields()
         self.lastSeenTimers[i] = Timer:new()
     end
 
-    MenuGroup.enableAimbot = MenuGroup.group:addCheckbox(" > Enable Aimbot"):setParent(MenuGroup.enableAi)
-    MenuGroup.visualiseAimbot = MenuGroup.group:addCheckbox("    > Visualise Aimbot"):setParent(MenuGroup.enableAimbot)
-
     self:setAimSkill(Config.defaultSkillLevel)
 end
 

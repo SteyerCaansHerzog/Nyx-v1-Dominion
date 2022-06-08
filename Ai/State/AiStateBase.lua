@@ -85,8 +85,8 @@ function AiStateBase:getError()
 
         if not isValidGamemode then
             return string.format(
-                "Only the following gamemodes are supported: '%s'",
-                Table.getImploded(self.requiredGamemodes)
+                "The following gamemodes are required: '%s'",
+                Table.getImploded(self.requiredGamemodes, ", ")
             )
         end
     end

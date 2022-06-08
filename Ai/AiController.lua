@@ -34,6 +34,7 @@ local DominionClient = require "gamesense/Nyx/v1/Dominion/Client/Client"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
+local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
@@ -144,13 +145,17 @@ function AiController:initMenu()
 		self.routines.buyGear.isEnabled = item:get()
 	end):setParent(MenuGroup.enableAi)
 
-	MenuGroup.visualisePathfinding = MenuGroup.group:addCheckbox("    | Visualise AI"):setParent(MenuGroup.enableAi)
+	MenuGroup.visualiseAi = MenuGroup.group:addCheckbox("    | Visualise AI"):setParent(MenuGroup.enableAi)
+	MenuGroup.enableAimbot = MenuGroup.group:addCheckbox("    | Enable Aim System"):setParent(MenuGroup.enableAi)
+	MenuGroup.visualiseAimbot = MenuGroup.group:addCheckbox("        | Visualise Aimbot"):setParent(MenuGroup.enableAimbot)
 end
 
 --- @return void
 function AiController:initEvents()
 	Callbacks.init(function()
 		if not Server.isIngame() then
+			Logger.console(2, "Not in-game. Waiting to join a server before initialising AI states.")
+
 			return
 		end
 
@@ -272,7 +277,7 @@ end
 
 --- @return void
 function AiController:renderUi()
-	if not MenuGroup.visualisePathfinding:get() then
+	if not MenuGroup.visualiseAi:get() then
 		return
 	end
 
@@ -281,8 +286,8 @@ function AiController:renderUi()
 	end
 
 	local uiPos = Vector2:new(20, 20)
-	local fontColor = Color:hsla(0, 0, 0.95)
-	local spacerColor = Color:hsla(0, 0, 0.66)
+	local fontColor = ColorList.FONT_NORMAL
+	local spacerColor = ColorList.FONT_MUTED
 	local spacerDimensions = Vector2:new(200, 1)
 	local offset = 25
 
@@ -291,7 +296,7 @@ function AiController:renderUi()
 		[3] = Color:hsla(200, 0.8, 0.6)
 	}
 
-	local nameBgColor = Color:rgba(0, 0, 0, 255)
+	local nameBgColor = ColorList.FONT_MUTED
 	local teamNames = {
 		[2] = "T",
 		[3] = "CT"
@@ -619,8 +624,7 @@ function AiController:think(cmd)
 				View.lookSpeedDelay = Math.getRandomFloat(currentState.delayedMouseMin, currentState.delayedMouseMax)
 				View.lookState = currentState.name
 
-				Pathfinder.clearActivePathAndLastRequest()
-				Pathfinder.flush()
+				Pathfinder.flushRequest()
 
 				currentState:activate()
 
