@@ -93,7 +93,7 @@ end
 --- @return boolean
 function AiStateEvacuate:isRoundWinProbabilityLow()
     -- Prevent sitting in a corner and being murdered.
-    if self.isAtDestination and AiUtility.isClientThreatened then
+    if self.isAtDestination and AiUtility.isClientThreatenedMinor then
         return false
     end
 

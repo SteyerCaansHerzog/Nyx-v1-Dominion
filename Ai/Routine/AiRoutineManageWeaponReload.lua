@@ -36,7 +36,7 @@ function AiRoutineManageWeaponReload:think(cmd)
 	-- Ratio at which the AI should reload its weapon.
 	local ratio = 0.9
 
-	if AiUtility.isClientThreatened then
+	if AiUtility.isClientThreatenedMinor then
 		ratio = 0.1
 	elseif AiUtility.closestEnemy then
 		local distance = LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin())

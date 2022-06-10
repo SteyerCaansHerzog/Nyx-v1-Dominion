@@ -20,12 +20,12 @@ local LoggerCode = {
 	[0] = {
 		color = ColorList.OK,
 		chatColor = Chat.GREEN,
-		text = "[OK] ",
+		text = "[SUCCESS] ",
 	},
 	[1] = {
 		color = ColorList.ERROR,
 		chatColor = Chat.RED,
-		text = "[ERROR] "
+		text = "[ISSUE] "
 	},
 	[2] = {
 		color = ColorList.WARNING,

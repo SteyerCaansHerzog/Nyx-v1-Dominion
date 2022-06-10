@@ -16,7 +16,8 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiChatCommandGo = {
     cmd = "go",
     requiredArgs = 1,
-    isAdminOnly = false
+    isAdminOnly = false,
+    isValidIfSelfInvoked = true
 }
 
 --- @param ai AiController
@@ -44,16 +45,25 @@ function AiChatCommandGo:invoke(ai, sender, args)
         return "no valid bombsite or spawn name"
     end
 
+    ai.states.engage.tellGoTimer:restart()
+
     Client.fireAfterRandom(1, 2, function()
         if objective == "CT" or objective == "T" then
             ai.states.check:invoke(objective)
             ai.voice.pack:speakAgreement()
+
         elseif objective == "A" or objective == "B" then
-            ai.states.pushDemolition:invoke(objective)
-            ai.states.defend:invoke(objective)
-            ai.states.plant:invoke(objective)
-            ai.states.pushDemolition:invoke(objective)
-            ai.voice.pack:speakAgreement()
+            if sender:isClient() then
+                ai.states.defend.bombsite = objective
+                ai.states.plant.bombsite = objective
+                ai.states.lurkWithBomb.bombsite = objective
+            else
+                ai.states.defend:invoke(objective)
+                ai.states.plant:invoke(objective)
+                ai.states.pushDemolition:invoke(objective)
+
+                ai.voice.pack:speakAgreement()
+            end
         end
     end)
 end

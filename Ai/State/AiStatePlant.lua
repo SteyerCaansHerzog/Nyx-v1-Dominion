@@ -36,7 +36,8 @@ local AiStatePlant = {
     requiredGamemodes = {
         AiUtility.gamemodes.DEMOLITION,
         AiUtility.gamemodes.WINGMAN,
-    }
+    },
+    isLockable = false
 }
 
 --- @param fields AiStatePlant
@@ -56,6 +57,7 @@ function AiStatePlant:__init()
         self.isPlanting = false
 
         self.pickRandomSiteTimer:start()
+        self.tellSiteTimer:elapse()
         self:setPlantNode()
     end)
 
@@ -78,6 +80,10 @@ end
 
 --- @return void
 function AiStatePlant:assess()
+    if AiUtility.gameRules:m_bFreezePeriod() == 1 then
+        return AiPriority.IGNORE
+    end
+
     if not LocalPlayer.hasBomb() then
         return AiPriority.IGNORE
     end
@@ -108,7 +114,7 @@ function AiStatePlant:assess()
     end
 
     -- Not much time left in the round.
-    if AiUtility.timeData.roundtime_remaining < 35 then
+    if AiUtility.timeData.roundtime_remaining < 20 then
         return AiPriority.PLANT_EXPEDITE
     end
 
@@ -123,12 +129,12 @@ function AiStatePlant:assess()
     end
 
     -- Near site and not threatened.
-    if isNearSite and not AiUtility.isClientThreatened then
+    if isNearSite and not AiUtility.isClientThreatenedMinor then
         return AiPriority.PLANT_PASSIVE
     end
 
     -- Covered and not threatened.
-    if isCovered and not AiUtility.isClientThreatened then
+    if isCovered and not AiUtility.isClientThreatenedMajor then
         return AiPriority.PLANT_PASSIVE
     end
 
@@ -152,9 +158,11 @@ function AiStatePlant:activate()
 
         local distanceToSite = origin:getDistance(Nodegraph.getClosestBombsite(origin).origin)
 
-        if not AiUtility.isLastAlive and distanceToSite > 800 then
-           self.ai.voice.pack:speakRequestTeammatesToPush(self.bombsite)
-        end
+        Client.fireAfter(1, function()
+            if not AiUtility.isLastAlive and distanceToSite > 800 then
+                self.ai.voice.pack:speakRequestTeammatesToPush(self.bombsite)
+            end
+        end)
     end
 end
 
@@ -219,6 +227,8 @@ function AiStatePlant:setPlantNode(site)
         site = site or AiUtility.randomBombsite
     end
 
+    self.bombsite = site
+
     local nodes = Nodegraph.getForBombsite(Node.spotPlant, site)
 
     if not nodes then
@@ -243,7 +253,6 @@ function AiStatePlant:setPlantNode(site)
     end
 
     self.node = closestNode
-    self.bombsite = site
 end
 
 return Nyx.class("AiStatePlant", AiStatePlant, AiStateBase)

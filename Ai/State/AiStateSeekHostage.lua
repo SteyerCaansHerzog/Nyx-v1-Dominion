@@ -61,7 +61,7 @@ function AiStateSeekHostage:assess()
         return AiPriority.IGNORE
     end
 
-    if AiUtility.isClientThreatened then
+    if AiUtility.isClientThreatenedMinor then
         return AiPriority.IGNORE
     end
 

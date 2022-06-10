@@ -518,7 +518,7 @@ function NodeTypeBase:setConnections(nodegraph, options)
             local distance2 = self.origin:getDistance2(node.origin)
 
             if distance < 150 and distance2 > 50 then
-                local collisionTrace = Trace.getHullToPosition(self.origin, node.origin, self.collisionHullNodeSmall, AiUtility.traceOptionsPathfinding) -- todo
+                local collisionTrace = Trace.getHullToPosition(self.origin, node.origin, self.collisionHullNodeSmall, AiUtility.traceOptionsPathfinding)
 
                 if options.isCollisionInfoSaved then
                     self.connectionCollisions[node.id] = {

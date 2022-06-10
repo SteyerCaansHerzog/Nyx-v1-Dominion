@@ -70,7 +70,7 @@ function AiStateGraffiti:assess()
         self.killCount = 0
     end
 
-    if AiUtility.isClientThreatened then
+    if AiUtility.isClientThreatenedMinor then
         return AiPriority.IGNORE
     end
 

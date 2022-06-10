@@ -41,6 +41,12 @@ local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
+--{{{ Definitions
+--- @class AiStateDitherHistory
+--- @field state AiStateBase
+--- @field timer Timer
+--}}}
+
 --{{{ AiController
 --- @class AiController : Class
 --- @field chatbots AiChatbot
@@ -53,6 +59,8 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field routines AiRoutine
 --- @field states AiStateList
 --- @field voice AiVoice
+--- @field ditherHistories AiStateDitherHistory[]
+--- @field ditherHistoryMax number
 local AiController = {}
 
 --- @param fields AiController
@@ -73,6 +81,8 @@ end
 function AiController:initFields()
 	self.isAntiAfkEnabled = false
 	self.lockStateTimer = Timer:new():startThenElapse()
+	self.ditherHistories = {}
+	self.ditherHistoryMax = 8
 
 	if Config.isLiveClient and not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
 		self.client = DominionClient:new()
@@ -289,14 +299,14 @@ function AiController:renderUi()
 	local fontColor = ColorList.FONT_NORMAL
 	local spacerColor = ColorList.FONT_MUTED
 	local spacerDimensions = Vector2:new(200, 1)
-	local offset = 25
+	local offset = 18
 
 	local teamColors = {
 		[2] = Color:hsla(35, 0.8, 0.6),
 		[3] = Color:hsla(200, 0.8, 0.6)
 	}
 
-	local nameBgColor = ColorList.FONT_MUTED
+	local nameBgColor = ColorList.BACKGROUND_3
 	local teamNames = {
 		[2] = "T",
 		[3] = "CT"
@@ -322,18 +332,18 @@ function AiController:renderUi()
 
 	self.states.engage:render()
 
-	local nameWidth = ISurface.getTextSize(Font.MEDIUM_BOLD, name)
+	local nameWidth = ISurface.getTextSize(Font.SMALL_BOLD, name)
 
 	uiPos:clone():offset(-5):drawSurfaceRectangle(Vector2:new(nameWidth + 10, 25), nameBgColor)
-	uiPos:drawSurfaceText(Font.MEDIUM_BOLD, teamColors[LocalPlayer:m_iTeamNum()], "l", name)
+	uiPos:drawSurfaceText(Font.SMALL_BOLD, teamColors[LocalPlayer:m_iTeamNum()], "l", name)
 	uiPos:offset(0, offset)
 
 	uiPos:clone():offset(-5, 5):drawSurfaceRectangle(spacerDimensions, spacerColor)
 	uiPos:offset(0, 10)
 
 	if self.client and self.client.allocation then
-		uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
-			"Session with %s",
+		uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(
+			"Assigned to %s",
 			self.client.allocation.host
 		))
 
@@ -363,8 +373,8 @@ function AiController:renderUi()
 		enemyWins = tWins
 	end
 
-	uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
-		"%s Match: Score %i : %i | KD %i/%i (%.2f)",
+	uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(
+		"%s: %i:%i | KD %i/%i (%.2f)",
 		roundType,
 		teamWins,
 		enemyWins,
@@ -377,10 +387,10 @@ function AiController:renderUi()
 
 	local fps = Client.getFpsDelayed()
 	local tickErrorPct = math.max(0, (1 - (fps / (1 / globals.tickinterval())))) * 100
-	local hue = Math.getFloat(Math.getClamped(fps, 0, 70), 70) * 120
+	local hue = Math.getFloat(Math.getClamped(fps, 0, 70), 70) * 100
 	local fpsColor = Color:hsla(hue, 0.8, 0.6)
 
-	uiPos:drawSurfaceText(Font.SMALL, fpsColor, "l", string.format(
+	uiPos:drawSurfaceText(Font.TINY, fpsColor, "l", string.format(
 		"FPS: %i (ERR %.1f%%)",
 		fps,
 		tickErrorPct
@@ -399,8 +409,8 @@ function AiController:renderUi()
 			svrColor = Color:hsla(50, 0.8, 0.6, 255)
 		end
 
-		uiPos:drawSurfaceText(Font.SMALL, svrColor, "l", string.format(
-			"SVR: %ims / %.2f%% loss",
+		uiPos:drawSurfaceText(Font.TINY, svrColor, "l", string.format(
+			"SVR: %ims | %.2f%% loss",
 			ping,
 			loss
 		))
@@ -408,8 +418,8 @@ function AiController:renderUi()
 		uiPos:offset(0, offset)
 	end
 
-	uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
-		"Skill Level: %i",
+	uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(
+		"Skill: %i",
 		self.states.engage.skill
 	))
 
@@ -431,14 +441,14 @@ function AiController:renderUi()
 	uiPos:offset(0, 10)
 
 	if self.currentState then
-		uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
-			"Behaviour: %s",
+		uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(
+			"State: %s",
 			self.currentState.name
 		))
 
 		uiPos:offset(0, offset)
 
-		uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
+		uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(
 			"Priority: %s [%i]",
 			AiStateBase.priorityMap[self.lastPriority],
 			self.lastPriority
@@ -447,24 +457,41 @@ function AiController:renderUi()
 		uiPos:offset(0, offset)
 	end
 
-	if Pathfinder.path then
-		uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
-			"Path Task: %s",
-			Pathfinder.path.task
+	if self.currentState then
+		local activity = self.currentState.activity and self.currentState.activity or "Unknown"
+
+		uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(
+			"Activity: %s",
+			activity
 		))
 
 		uiPos:offset(0, offset)
 	end
 
-	if self.currentState then
-		local activity = self.currentState.activity and self.currentState.activity or "Unknown"
+	if Pathfinder.path then
+		if Pathfinder.path.isOk then
+			uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(
+				"Task: %s",
+				Pathfinder.path.task
+			))
 
-		uiPos:drawSurfaceText(Font.SMALL, fontColor, "l", string.format(
-			"AI Activity: %s",
-			activity
-		))
+			uiPos:offset(0, offset)
 
-		uiPos:offset(0, offset)
+			uiPos:drawSurfaceText(Font.TINY, Pathfinder.path.node.colorPrimary, "l", string.format(
+				"Next Node: [%i] %s",
+				Pathfinder.path.node.id,
+				Pathfinder.path.node.name
+			))
+
+			uiPos:offset(0, offset)
+		else
+			uiPos:drawSurfaceText(Font.TINY, ColorList.ERROR, "l", string.format(
+				string.format("Error: %s", Pathfinder.path.errorMessage),
+				Pathfinder.path.task
+			))
+
+			uiPos:offset(0, offset)
+		end
 	end
 
 	uiPos:clone():offset(-5, 5):drawSurfaceRectangle(spacerDimensions, spacerColor)
@@ -474,9 +501,6 @@ function AiController:renderUi()
 		Client.draw(Vector3.drawCircleOutline, AiUtility.clientThreatenedFromOrigin, 30, 3, Color:hsla(0, 1, 1, 75))
 	end
 end
-
---- @type AiStateBase[]
-local ditherLog = {}
 
 --- @param cmd SetupCommandEvent
 --- @return void
@@ -490,7 +514,6 @@ function AiController:think(cmd)
 		return
 	end
 
-	-- Possible fix for bug where logic loop still executes in spite of being out of a server.
 	if not Server.isIngame() then
 		return
 	end
@@ -503,45 +526,63 @@ function AiController:think(cmd)
 		return
 	end
 
-	if #ditherLog > 32 then
-		table.remove(ditherLog, 1)
+	self:preventDithering()
+	self:setCurrentState(cmd)
+end
+
+--- @return void
+function AiController:preventDithering()
+	if #self.ditherHistories >= self.ditherHistoryMax then
+		table.remove(self.ditherHistories, 1)
+	end
+
+	local logA = self.ditherHistories[1]
+	local logB = self.ditherHistories[2]
+
+	if not logA or not logB or not self.ditherHistories[3] then
+		return
 	end
 
 	local repeats = 0
-	--- @type AiStateBase
-	local a = ditherLog[1]
-	--- @type AiStateBase
-	local b = ditherLog[2]
 
-	if a and b and ditherLog[3] then
-		a = ditherLog[1]
-		b = ditherLog[2]
+	for i = 3, #self.ditherHistories do repeat
+		local logC = self.ditherHistories[i]
 
-		for i = 3, #ditherLog do
-			local id = ditherLog[i].__classid
+		if logC.timer:isElapsed(8) then
+			break
+		end
 
-			if i % 2 == 0 then
-				if id == b.__classid then
-					repeats = repeats + 1
-				end
-			else
-				if id == a.__classid then
-					repeats = repeats + 1
-				end
+		local classid = logC.state.__classid
+
+		if i % 2 == 0 then
+			if classid == logB.state.__classid then
+				repeats = repeats + 1
+			elseif classid == logA.state.__classid then
+				repeats = repeats + 1
 			end
 		end
+	until true end
+
+	if repeats < 6 then
+		return
 	end
 
-	if repeats >= 10 then
-		local highest = a.priority > b.priority and a or b
+	local highestPriority = logA.state.priority > logB.state.priority and logA.state or logB.state
 
-		--highest.abuseLockTimer:restart()
-
-		Logger.console(1, "AI state '%s' was locked due to dithering. Please check assessment logic for faults.", highest.name)
-
-		ditherLog = {}
+	if not highestPriority.isLockable then
+		return
 	end
 
+	highestPriority.abuseLockTimer:restart()
+
+	self.ditherHistories = {}
+
+	Logger.console(1, "AI state '%s' is locked due to dithering.", highestPriority.name)
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function AiController:setCurrentState(cmd)
 	--- @type AiStateBase
 	local currentState
 	local highestPriority = -1
@@ -589,7 +630,7 @@ function AiController:think(cmd)
 		end
 	end
 
-	if currentState and ((self.lastPriority and self.lastPriority > highestPriority) or self.lockStateTimer:isElapsed(0.0))then
+	if currentState and ((self.lastPriority and self.lastPriority > highestPriority) or self.lockStateTimer:isElapsed(0.15))then
 		local isReactivated = false
 
 		if currentState.isQueuedForReactivation then
@@ -628,7 +669,10 @@ function AiController:think(cmd)
 
 				currentState:activate()
 
-				table.insert(ditherLog, currentState)
+				table.insert(self.ditherHistories, {
+					state = currentState,
+					timer = Timer:new():start()
+				})
 			end
 		end
 
@@ -661,12 +705,6 @@ function AiController:think(cmd)
 			routine:think(cmd)
 		end
 	until true end
-
-	-- This is here to control when it is executed.
-	if MenuGroup.enableMouseControl:get() then
-		View.setViewAngles()
-		View.think(cmd)
-	end
 end
 
 return Nyx.class("AiController", AiController)

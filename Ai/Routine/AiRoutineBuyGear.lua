@@ -85,6 +85,12 @@ end
 function AiRoutineBuyGear:__init()
 	self.isBuyingThisRound = true
 
+	Callbacks.init(function()
+		if AiUtility.gameRules:m_bFreezePeriod() == 1 then
+			self:buyGear()
+		end
+	end)
+
 	Callbacks.roundStart(function()
 		if not self.isEnabled then
 			return
@@ -151,15 +157,15 @@ function AiRoutineBuyGear:buyGear()
 
 	local roundsPlayed = Entity.getGameRules():m_totalRoundsPlayed()
 	local halftimeRounds = math.floor(cvar.mp_maxrounds:get_int() / 2)
+	local balance = LocalPlayer:m_iAccount()
 
 	-- 2nd-round buy.
-	if roundsPlayed == 1 or roundsPlayed == halftimeRounds + 1 then
+	if roundsPlayed == 1 or roundsPlayed == halftimeRounds + 1 and balance < 3100 then
 		self:buyForceRound()
 
 		return
 	end
 
-	local balance = LocalPlayer:m_iAccount()
 	local isPistolRound = balance < 1000 and (roundsPlayed == 0 or roundsPlayed == halftimeRounds)
 
 	if LocalPlayer:isTerrorist() then
@@ -174,6 +180,34 @@ function AiRoutineBuyGear:buyGear()
 		else
 			self:buyRoundCounterTerrorist()
 		end
+	end
+end
+
+--- Will not be executed if the AI has enough money for a normal buy ($3100).
+---
+--- Automatically invoked on the 2nd round of a half.
+---
+--- @return void
+function AiRoutineBuyGear:buyForceRound()
+	local balance = LocalPlayer:m_iAccount()
+
+	if balance < 1500 then
+		self:equipRandomWeapon({
+			WeaponBuyCode.FN57,
+			WeaponBuyCode.DEAGLE,
+			LocalPlayer:isTerrorist() and WeaponBuyCode.MAC10 or WeaponBuyCode.MP9
+		})
+
+		self:equipRandomGrenades(1)
+	else
+		self:equipRandomWeapon({
+			WeaponBuyCode.MP7,
+			WeaponBuyCode.UMP45,
+			WeaponBuyCode.NEGEV
+		})
+
+		self:equipBodyArmor()
+		self:equipRandomGrenades(2)
 	end
 end
 
@@ -313,40 +347,6 @@ function AiRoutineBuyGear:buyRoundCounterTerrorist()
 	self:equipRandomGrenades(Math.getRandomInt(2, 3))
 end
 
---- Will not be executed if the AI has enough money for a normal buy ($3100).
----
---- Automatically invoked on the 2nd round of a half.
----
---- @return void
-function AiRoutineBuyGear:buyForceRound()
-	local balance = LocalPlayer:m_iAccount()
-
-	-- No point in force-buying.
-	if balance >= 3100 then
-		return
-	end
-
-	if balance < 1500 then
-		self:equipRandomWeapon({
-			WeaponBuyCode.FN57,
-			WeaponBuyCode.DEAGLE,
-			LocalPlayer:isTerrorist() and WeaponBuyCode.MAC10 or WeaponBuyCode.MP9
-		})
-
-		self:equipBodyArmor()
-		self:equipRandomGrenades(1)
-	else
-		self:equipRandomWeapon({
-			WeaponBuyCode.MP7,
-			WeaponBuyCode.UMP45,
-			WeaponBuyCode.NEGEV
-		})
-
-		self:equipBodyArmor()
-		self:equipRandomGrenades(2)
-	end
-end
-
 --- @param buys AiRoutineBuyGearSet[]
 --- @return void
 function AiRoutineBuyGear:buySet(buys)
@@ -402,7 +402,7 @@ end
 
 --- @return void
 function AiRoutineBuyGear:equipFullArmor()
-	Client.fireAfterRandom(0, 2, function()
+	Client.fireAfterRandom(1, 2, function()
 		if LocalPlayer:m_iArmor() > 33 then
 			return
 		end
@@ -414,7 +414,7 @@ end
 
 --- @return void
 function AiRoutineBuyGear:equipDefuser()
-	Client.fireAfterRandom(0, 2, function()
+	Client.fireAfterRandom(1, 2, function()
 		Client.execute("buy defuser")
 		Logger.console(-1, "Equipped defuser.")
 	end)
@@ -423,7 +423,7 @@ end
 --- @param maxGrenades number
 --- @return void
 function AiRoutineBuyGear:equipRandomGrenades(maxGrenades)
-	Client.fireAfterRandom(0, 2, function()
+	Client.fireAfterRandom(1, 2, function()
 		local grenades = {
 			WeaponBuyCode.FLASHBANG,
 			WeaponBuyCode.SMOKEGRENADE,
@@ -441,7 +441,7 @@ function AiRoutineBuyGear:equipRandomGrenades(maxGrenades)
 			end
 
 			Client.execute(string.format("buy %s", grenade))
-			Logger.console(3, "Equipped %s.", grenade)
+			Logger.console(-1, "Equipped %s.", grenade)
 
 			iGrenade = iGrenade + 1
 		end
@@ -455,7 +455,7 @@ end
 function AiRoutineBuyGear:equipGrenades(grenades, isRandomized, maxGrenades)
 	maxGrenades = maxGrenades or 4
 
-	Client.fireAfterRandom(0, 2, function()
+	Client.fireAfterRandom(1, 2, function()
 		if isRandomized then
 			grenades = Table.getShuffled(grenades)
 		end
@@ -478,7 +478,7 @@ end
 --- @param weapon string
 --- @return void
 function AiRoutineBuyGear:equipWeapon(weapon)
-	Client.fireAfterRandom(0, 2, function()
+	Client.fireAfterRandom(0, 1, function()
 		Client.execute(string.format("buy %s", weapon))
 		Logger.console(-1, "Equipped %s.", weapon)
 	end)
@@ -487,7 +487,7 @@ end
 --- @param weapons string[]
 --- @return void
 function AiRoutineBuyGear:equipRandomWeapon(weapons)
-	Client.fireAfterRandom(0, 2, function()
+	Client.fireAfterRandom(0, 1, function()
 		local weapon = Table.getRandom(weapons)
 
 		Client.execute(string.format("buy %s", weapon))

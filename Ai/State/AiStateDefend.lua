@@ -40,6 +40,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field jiggleTimer Timer
 --- @field node NodeTypeDefend
 --- @field priority number
+--- @field teammateInTroubleTimer Timer
 local AiStateDefend = {
     name = "Defend",
     requiredNodes = {
@@ -66,8 +67,9 @@ function AiStateDefend:__init()
     self.defendTimer = Timer:new()
     self.getToSiteTimer = Timer:new()
     self.jiggleDirection = "Left"
-    self.jiggleTime = Math.getRandomFloat(0.25, 0.5)
+    self.jiggleTime = Math.getRandomFloat(0.25, 0.6)
     self.jiggleTimer = Timer:new():start()
+    self.teammateInTroubleTimer = Timer:new():startThenElapse()
 
     Callbacks.roundPrestart(function()
         self.getToSiteTimer:stop()
@@ -98,12 +100,30 @@ function AiStateDefend:__init()
 
     Callbacks.bombSpawned(function(e)
     	Client.fireAfter(1, function()
-            if e.bomb and LocalPlayer.origin:getDistance(e.bomb:m_vecOrigin()) > 1000 then
+            if e.bomb and LocalPlayer:getOrigin():getDistance(e.bomb:m_vecOrigin()) > 1000 then
                 self.getToSiteTimer:start()
             end
 
             self:invoke(Nodegraph.getClosestBombsiteName(e.bomb:m_vecOrigin()))
     	end)
+    end)
+
+    Callbacks.playerHurt(function(e)
+        if not e.victim:isTeammate() or e.victim:isClient() then
+            return
+        end
+
+        local clientOrigin = LocalPlayer:getOrigin()
+
+        if clientOrigin:getDistance(e.victim:getOrigin()) > 800 then
+            return
+        end
+
+        if clientOrigin:getDistance(e.attacker:getOrigin()) > 800 then
+            return
+        end
+
+        self.teammateInTroubleTimer:restart()
     end)
 end
 
@@ -210,6 +230,10 @@ end
 --- @return boolean
 function AiStateDefend:isEnemyHoldable()
     if AiUtility.isBombBeingPlantedByEnemy then
+        return false
+    end
+
+    if not self.teammateInTroubleTimer:isElapsed(3.5) then
         return false
     end
 

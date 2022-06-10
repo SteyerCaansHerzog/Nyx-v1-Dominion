@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Process = require "gamesense/Nyx/v1/Api/Process"
@@ -13,7 +14,6 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 local AiProcessBase = require "gamesense/Nyx/v1/Dominion/Ai/Process/AiProcessBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
-local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --}}}
 
 --{{{ AiProcessClient
@@ -32,6 +32,7 @@ end
 function AiProcessClient:__init()
 	self:setClientLoaderLock()
 	self:setMisc()
+	self:setCvars()
 
 	if not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
 		self:purgeSteamFriendsList()
@@ -63,7 +64,9 @@ function AiProcessClient:setMisc()
 
 	-- Prevent loading configuration on master accounts.
 	if not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
-		config.load("Nyx-v1-Dominion")
+		Client.fireAfter(1, function()
+			config.load("Nyx-v1-Dominion")
+		end)
 
 		local materials = {
 			"vgui_white",
@@ -101,11 +104,7 @@ function AiProcessClient:setClientLoaderLock()
 end
 
 --- @return void
-function AiProcessClient:setMenuStates()
-	-- Force dormancy to be disabled.
-	-- This feature is currently extremely broken and completely ruins the AI.
-	MenuGroup.dormantRef:set(false)
-end
+function AiProcessClient:setMenuStates() end
 
 --- @return void
 function AiProcessClient:setAppFocusedFps()
@@ -124,6 +123,7 @@ function AiProcessClient:setAppFocusedFps()
 
 		if isAppFocused then
 			cvar.fps_max_menu:set_int(30)
+			cvar.fps_max:set_int(64)
 		else
 			cvar.fps_max_menu:set_int(2)
 		end
@@ -175,6 +175,14 @@ function AiProcessClient:setCrosshair()
 	for option, values in pairs(options) do
 		Client.execute("%s %s", option, Table.getRandom(values))
 	end
+end
+
+--- @return void
+function AiProcessClient:setCvars()
+	cvar.voice_mute:set_int(0)
+	cvar.voice_enable:set_int(1)
+	cvar.cl_mute_all_but_friends_and_party:set_int(0)
+	cvar.cl_mute_enemy_team:set_int(0)
 end
 
 return Nyx.class("AiProcessClient", AiProcessClient, AiProcessBase)

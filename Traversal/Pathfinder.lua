@@ -489,7 +489,6 @@ function Pathfinder.handleLastRequest()
 	if not LocalPlayer:getFlag(Player.flags.FL_ONGROUND) then
 		return
 	end
-	Logger.startBenchmark("pathfind")
 
 	-- Get pathfind request options.
 	local pathfinderOptions = Pathfinder.lastRequest.options or {}
@@ -713,7 +712,6 @@ function Pathfinder.handleLastRequest()
 	end
 
 	Pathfinder.clearLastRequest()
-	Logger.stopBenchmark()
 
 	Logger.console(-1, "New pathfind task: %s.", pathfinderOptions.task)
 end
@@ -873,6 +871,7 @@ function Pathfinder.traverseActivePath(cmd)
 
 	local pathfinderOptions = Pathfinder.cachedLastRequest.options
 	local currentNode = Pathfinder.path.node
+	local previousNode = Pathfinder.path.nodes[Pathfinder.path.idx - 1]
 
 	if not pathfinderOptions.isAllowedToTraverseInactives and not currentNode.isActive then
 		Pathfinder.retryLastRequest()
@@ -896,13 +895,16 @@ function Pathfinder.traverseActivePath(cmd)
 	local isClientOnGround = LocalPlayer:getFlag(Player.flags.FL_ONGROUND)
 	local clientSpeed = LocalPlayer:m_vecVelocity():getMagnitude()
 	local angleToNode = clientOrigin:getAngle(currentNode.pathOrigin)
-
 	local distance3d = clientOrigin:getDistance(currentNode.pathOrigin)
 	local distance2d = clientOrigin:getDistance2(currentNode.pathOrigin)
 	local isGoal = currentNode:is(Pathfinder.path.endGoal)
 
-	if currentNode.isDuck and distance3d < 45 then
-		Pathfinder.moveDuckTimer:restart()
+	if currentNode.isDuck then
+		if previousNode and previousNode.isDuck then
+			Pathfinder.moveDuckTimer:restart()
+		elseif distance2d < 35 then
+			Pathfinder.moveDuckTimer:restart()
+		end
 	end
 
 	if Pathfinder.moveDuckTimer:isNotElapsedThenStop(1) then
@@ -971,8 +973,6 @@ function Pathfinder.traverseActivePath(cmd)
 					return
 				end
 
-				isAllowedToCreateMove = false
-
 				Pathfinder.jump()
 				Pathfinder.incrementPath()
 			end,
@@ -1009,8 +1009,6 @@ function Pathfinder.traverseActivePath(cmd)
 					return
 				end
 
-				isAllowedToCreateMove = false
-
 				Pathfinder.incrementPath()
 			end
 		}
@@ -1032,6 +1030,8 @@ function Pathfinder.traverseActivePath(cmd)
 		end
 	elseif currentNode:is(Node.traverseLadderBottom) then
 		if distance2d < 20 then
+			isAllowedToCreateMove = false
+
 			if not LocalPlayer:isMoveType(Player.moveType.LADDER) then
 				Pathfinder.createMove(cmd, currentNode.direction)
 
@@ -1061,6 +1061,8 @@ function Pathfinder.traverseActivePath(cmd)
 		end
 	elseif currentNode:is(Node.traverseLadderTop) then
 		if distance2d < 20 then
+			isAllowedToCreateMove = false
+
 			if not LocalPlayer:isMoveType(Player.moveType.LADDER) then
 				Pathfinder.createMove(cmd, currentNode.direction)
 			else
@@ -1175,6 +1177,18 @@ end
 function Pathfinder.handleMovementOptions(cmd)
 	local clientOrigin = LocalPlayer:getOrigin()
 
+	if Pathfinder.isAllowedToDuck and Pathfinder.isDucking then
+		Pathfinder.isDucking = false
+
+		cmd.in_duck = true
+	end
+
+	if Pathfinder.isAllowedToJump and Pathfinder.isJumping then
+		Pathfinder.isJumping = false
+
+		cmd.in_jump = true
+	end
+
 	for _, inferno in Entity.find("CInferno") do
 		if clientOrigin:getDistance(inferno:m_vecOrigin()) < 300 then
 			return
@@ -1191,18 +1205,6 @@ function Pathfinder.handleMovementOptions(cmd)
 		Pathfinder.isWalking = false
 
 		cmd.in_speed = true
-	end
-
-	if Pathfinder.isAllowedToDuck and Pathfinder.isDucking then
-		Pathfinder.isDucking = false
-
-		cmd.in_duck = true
-	end
-
-	if Pathfinder.isAllowedToJump and Pathfinder.isJumping then
-		Pathfinder.isJumping = false
-
-		cmd.in_jump = true
 	end
 
 	Pathfinder.isAllowedToWalk = true

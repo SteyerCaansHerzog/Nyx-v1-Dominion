@@ -22,7 +22,7 @@ local AiStateMolotov = {
     nodeRetakeCt = Node.grenadeInfernoRetakeCt,
     weapons = {Weapons.MOLOTOV, Weapons.INCENDIARY},
     equipFunction = LocalPlayer.equipMolotov,
-    rangeThreshold = 2100,
+    rangeThreshold = 2400,
     isCheckingEnemiesRequired = true,
 }
 

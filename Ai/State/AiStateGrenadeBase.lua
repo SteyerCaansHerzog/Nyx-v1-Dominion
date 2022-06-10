@@ -65,7 +65,7 @@ end
 function AiStateGrenadeBase:__init()
     self.inBehaviorTimer = Timer:new()
     self.startThrowTimer = Timer:new()
-    self.throwTime = 0.5
+    self.throwTime = 0.2
     self.threatCooldownTimer = Timer:new():startThenElapse()
     self.cooldownTimer = Timer:new():startThenElapse()
     self.throwHoldTimer = Timer:new()
@@ -121,7 +121,7 @@ function AiStateGrenadeBase:assess()
     end
 
     -- We're threatened by an enemy.
-    if AiUtility.isClientThreatened then
+    if AiUtility.isClientThreatenedMajor then
         self.threatCooldownTimer:restart()
 
         return AiPriority.IGNORE
@@ -136,6 +136,12 @@ function AiStateGrenadeBase:assess()
     -- Only exit here if we're in throw, because we need to ensure teammates don't occupy our line-up
     -- after we've picked it.
     if self.node then
+        if AiStateGrenadeBase.usedNodes[self.node.id] and not AiStateGrenadeBase.usedNodes[self.node.id]:isElapsed(15) then
+            self:reset()
+
+            return AiPriority.IGNORE
+        end
+
         -- We're about to throw a grenade.
         if self.isInThrow then
             return AiPriority.THROWING_GRENADE
@@ -227,9 +233,10 @@ function AiStateGrenadeBase:isEnemyThreatenedByNode(node)
     for _, enemy in pairs(AiUtility.enemies) do repeat
         local enemyOrigin = enemy:getOrigin()
         local enemyDistance = node.origin:getDistance(enemyOrigin)
+        local range = (node.isRun or node.isJump) and self.rangeThreshold or self.rangeThreshold * 0.65
 
         -- Enemy is too far away.
-        if enemyDistance > self.rangeThreshold then
+        if enemyDistance > range then
             break
         end
 
@@ -271,7 +278,7 @@ function AiStateGrenadeBase:watchForOccupiedNodes()
         local isOccupied = false
 
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance2(node.origin) < 45 then
+            if teammate:getOrigin():getDistance2(node.origin) < 40 and teammate:isHoldingWeapons(self.weapons) then
                 isOccupied = true
 
                 break
@@ -286,16 +293,15 @@ end
 
 --- @return void
 function AiStateGrenadeBase:activate()
-    self.inBehaviorTimer:start()
-
     self.isAtDestination = false
 
    Pathfinder.moveToNode(self.node, {
        task = string.format("Throw %s", self.name:lower()),
        onReachedGoal = function()
            self.isAtDestination = true
+           self.startThrowTimer:start()
        end,
-       goalReachedRadius = 16,
+       goalReachedRadius = 5,
        isCounterStrafingOnGoal = true,
        isPathfindingToNearestNodeIfNoConnections = false,
        isPathfindingToNearestNodeOnFailure = false,
@@ -304,8 +310,9 @@ end
 
 --- @return void
 function AiStateGrenadeBase:reset()
-    self.node = nil
     self.isInThrow = false
+    self.node = nil
+    self.isAtDestination = false
     self.isThrown = false
 
     self.startThrowTimer:stop()
@@ -327,12 +334,6 @@ function AiStateGrenadeBase:think(cmd)
         end
     end
 
-    if AiUtility.gameRules:m_bFreezePeriod() == 1 then
-        self:deactivate()
-
-        return
-    end
-
     -- Don't know why we are running with a nil node.
     if not self.node then
         self:deactivate()
@@ -340,15 +341,17 @@ function AiStateGrenadeBase:think(cmd)
         return
     end
 
-    if AiStateGrenadeBase.usedNodes[self.node.id] and not AiStateGrenadeBase.usedNodes[self.node.id]:isElapsed(15) then
-        self:deactivate()
+    local clientOrigin = LocalPlayer:getOrigin()
+    local distance = clientOrigin:getDistance(self.node.origin)
+    local distance2 = clientOrigin:getDistance2(self.node.origin)
 
-        return
+    if distance2 < 45 then
+        self.inBehaviorTimer:ifPausedThenStart()
     end
 
     -- We haven't thrown the grenade within this time.
     -- We're probably stuck. Abort the throw.
-    if self.inBehaviorTimer:isElapsedThenStop(8) then
+    if self.inBehaviorTimer:isElapsedThenStop(4) then
         self.cooldownTimer:start()
 
         self:deactivate()
@@ -361,21 +364,13 @@ function AiStateGrenadeBase:think(cmd)
 
     self.ai.states.evade:block()
 
-    local clientOrigin = LocalPlayer:getOrigin()
-    local distance = clientOrigin:getDistance(self.node.origin)
-
-    if distance < 46 then
-        self.startThrowTimer:ifPausedThenStart()
-    end
-
     if distance < 250 then
         self.activity = string.format("Throwing %s", self.name)
 
         self.ai.routines.manageGear:block()
         self.ai.routines.lookAwayFromFlashbangs:block()
 
-        Pathfinder.counterStrafe()
-        View.lookAlongAngle(self.node.direction, 8, View.noise.none, "Grenade look at line-up")
+        View.lookAlongAngle(self.node.direction, 15, View.noise.none, "Grenade look at line-up")
 
         self.equipFunction()
     end
@@ -396,6 +391,7 @@ function AiStateGrenadeBase:think(cmd)
             and self.startThrowTimer:isElapsed(self.throwTime)
             and LocalPlayer:isHoldingWeapons(self.weapons)
             and LocalPlayer:isAbleToAttack()
+            and ((not self.startThrowTimer:isStarted() and distance2 < 28) or self.startThrowTimer:isStarted())
         then
             local isThrowable = true
             local isOnGround = LocalPlayer:getFlag(Player.flags.FL_ONGROUND)
@@ -431,8 +427,6 @@ function AiStateGrenadeBase:think(cmd)
                 self.isThrown = true
             end
         end
-    else
-        self.startThrowTimer:stop()
     end
 end
 

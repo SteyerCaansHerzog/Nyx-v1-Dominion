@@ -71,7 +71,7 @@ function AiStateDefendHostageCarrier:assess()
             return AiPriority.DEFEND_HOSTAGE_CARRIER_ACTIVE
         end
 
-        if AiUtility.isClientThreatened then
+        if AiUtility.isClientThreatenedMinor then
             return AiPriority.IGNORE
         end
 

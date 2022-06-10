@@ -44,6 +44,8 @@ function AiChatCommandRotate:invoke(ai, sender, args)
 
     local node = Nodegraph.getBombsite(site)
 
+    ai.states.engage.tellRotateTimer:restart()
+
     -- We're already near the site. It would be pointless to activate the rotation.
     if LocalPlayer:getOrigin():getDistance(node.origin) < 1000 then
         return "the client is already near the bombsite"

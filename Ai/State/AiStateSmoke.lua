@@ -1,5 +1,4 @@
 --{{{ Dependencies
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
@@ -23,7 +22,7 @@ local AiStateSmoke = {
     nodeRetakeCt = Node.grenadeSmokeRetakeCt,
     weapons = {Weapons.SMOKE},
     equipFunction = LocalPlayer.equipSmoke,
-    rangeThreshold = 2000,
+    rangeThreshold = 3000,
     isCheckingEnemiesRequired = false,
 }
 

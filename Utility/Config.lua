@@ -21,8 +21,8 @@ local Config = {
         "76561198138748363", -- Adrian
         -- Main accounts
         "76561198339559079", -- Data
-        "76561198373386496", -- Bropp
-        "76561198816968549", -- Kirsty
+        --"76561198373386496", -- Bropp
+        --"76561198816968549", -- Kirsty
         "76561198866118626" -- Michael
     },
     clientFocusVolume = 0.15, -- The volume of a Reaper client that is focused.

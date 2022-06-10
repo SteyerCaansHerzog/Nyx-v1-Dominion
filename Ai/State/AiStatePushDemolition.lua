@@ -89,6 +89,7 @@ end
 --- @return NodeSpotPushT
 function AiStatePushDemolition:setActivityNode(bombsite)
     bombsite = bombsite or AiUtility.randomBombsite
+
     self.node = Nodegraph.getRandomForBombsite(Node.spotPushT, bombsite)
 end
 

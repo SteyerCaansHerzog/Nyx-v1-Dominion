@@ -110,7 +110,7 @@ end
 --- @param chance number
 --- @return NodeSpotWatch
 function AiStateWatch:getWatchNode(weapons, chance)
-    local clientOrigin = LocalPlayer.origin
+    local clientOrigin = LocalPlayer:getOrigin()
 
     for _, node in pairs(Nodegraph.get(Node.spotWatch)) do repeat
         if self.blacklist[node.id] then
@@ -173,7 +173,7 @@ function AiStateWatch:think(cmd)
         return
     end
 
-    local clientOrigin = LocalPlayer.origin
+    local clientOrigin = LocalPlayer:getOrigin()
     local distance = clientOrigin:getDistance(self.node.origin)
 
     if not self.isWatching then
@@ -189,8 +189,6 @@ function AiStateWatch:think(cmd)
     if not self.node then
         return
     end
-
-    Pathfinder.ifIdleThenRetryLastRequest()
 
     if distance < 32 then
         self.watchTimer:ifPausedThenStart()

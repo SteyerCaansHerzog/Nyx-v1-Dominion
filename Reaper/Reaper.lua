@@ -656,7 +656,7 @@ function Reaper:think()
 			isInGame = Server.isIngame(),
 			isLobbyHost = isLobbyHost,
 			isLobbyQueuing = isLobbyQueuing,
-			isThreatened = AiUtility.isClientThreatened,
+			isThreatened = AiUtility.isClientThreatenedMinor,
 			isWarmup = isWarmup,
 			lastKeepAliveAt = Time.getUnixTimestamp(),
 			lobbyMemberCount = lobbyMemberCount,

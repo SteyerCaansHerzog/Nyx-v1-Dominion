@@ -8,7 +8,6 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local PerlinNoise = require "gamesense/Nyx/v1/Api/PerlinNoise"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
-local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
@@ -16,15 +15,10 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
-local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
-local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
-local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
 local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --}}}
 
@@ -78,6 +72,7 @@ local View = {
 function View.__setup()
 	View.initFields()
 	View.initMenu()
+	View.initEvents()
 end
 
 --- @return void
@@ -110,6 +105,18 @@ function View.initFields()
 end
 
 --- @return void
+function View.initEvents()
+	Callbacks.setupCommand(function(cmd)
+		if not MenuGroup.master:get() or not MenuGroup.enableMouseControl:get() or not MenuGroup.enableAi:get() then
+			return
+		end
+
+		View.setViewAngles()
+		View.think(cmd)
+	end, true)
+end
+
+--- @return void
 function View.initMenu()
 	MenuGroup.enableMouseControl = MenuGroup.group:addCheckbox(" > Enable Mouse Control"):addCallback(function(item)
 		View.isEnabled = item:get()
@@ -132,12 +139,15 @@ function View.setViewAngles()
 			Logger.console(-1, "New mouse control '%s'.", View.lookState)
 		end
 
-		View.delayMovement()
+		--View.delayMovement()
 
 		View.lookStateCached = View.lookState
 	end
 
-	View.setDelayedLookSpeed()
+	--View.setDelayedLookSpeed()
+	-- todo
+
+	View.lookSpeed = View.lookSpeedIdeal
 
 	-- View angles we want to look at.
 	-- It's overriden by AI behaviours, look ahead of the active path, or rest.
@@ -524,31 +534,33 @@ function View.think(cmd)
 
 	local clientOrigin = LocalPlayer:getOrigin()
 
-	-- Shoot out cover.
-	if Pathfinder.isObstructedByObstacle then
-		local node = Pathfinder.path.node
-		local maxDiff = correctedViewAngles:getMaxDiff(node.direction)
+	if Pathfinder.isOk() then
+		-- Shoot out cover.
+		if Pathfinder.isObstructedByObstacle then
+			local node = Pathfinder.path.node
+			local maxDiff = correctedViewAngles:getMaxDiff(node.direction)
 
-		View.overrideViewAngles = node.direction
-		View.lookSpeedIdeal = 4
-		View.isViewLocked =  true
+			View.overrideViewAngles = node.direction
+			View.lookSpeedIdeal = 4
+			View.isViewLocked =  true
 
-		if clientOrigin:getDistance2(node.origin) < 20 and maxDiff < 20 and View.useCooldown:isElapsedThenRestart(0.5) then
-			cmd.in_attack = true
+			if clientOrigin:getDistance2(node.origin) < 20 and maxDiff < 20 and View.useCooldown:isElapsedThenRestart(0.5) then
+				cmd.in_attack = true
+			end
 		end
-	end
 
-	-- Use doors.
-	if Pathfinder.isObstructedByDoor then
-		local node = Pathfinder.path.node
-		local maxDiff = correctedViewAngles:getMaxDiff(node.direction)
+		-- Use doors.
+		if Pathfinder.isObstructedByDoor then
+			local node = Pathfinder.path.node
+			local maxDiff = correctedViewAngles:getMaxDiff(node.direction)
 
-		View.overrideViewAngles = node.direction
-		View.lookSpeedIdeal = 4
-		View.isViewLocked =  true
+			View.overrideViewAngles = node.direction
+			View.lookSpeedIdeal = 4
+			View.isViewLocked =  true
 
-		if clientOrigin:getDistance2(node.origin) < 20 and maxDiff < 20 and View.useCooldown:isElapsedThenRestart(0.5) then
-			cmd.in_use = true
+			if clientOrigin:getDistance2(node.origin) < 20 and maxDiff < 20 and View.useCooldown:isElapsedThenRestart(0.5) then
+				cmd.in_use = true
+			end
 		end
 	end
 end

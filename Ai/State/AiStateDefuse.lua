@@ -35,7 +35,8 @@ local AiStateDefuse = {
     requiredGamemodes = {
         AiUtility.gamemodes.DEMOLITION,
         AiUtility.gamemodes.WINGMAN,
-    }
+    },
+    isLockable = false
 }
 
 --- @param fields AiStateDefuse
@@ -124,7 +125,7 @@ function AiStateDefuse:assess()
     end
 
     -- We're not threatened, but time is running out.
-    if not AiUtility.isClientThreatened and AiUtility.bombDetonationTime < 15 then
+    if not AiUtility.isClientThreatenedMinor and AiUtility.bombDetonationTime < 15 then
         return AiPriority.DEFUSE_ACTIVE
     end
 

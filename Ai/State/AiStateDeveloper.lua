@@ -49,7 +49,6 @@ end
 
 --- @return void
 function AiStateDeveloper:activate()
-    Pathfinder.moveToNode(Nodegraph.getById(519))
 end
 
 --- @return void

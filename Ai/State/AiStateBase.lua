@@ -33,10 +33,12 @@ local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --- @field requiredNodes NodeTypeBase[]
 --- @field think fun(self: AiStateBase, cmd: SetupCommandEvent): void
 --- @field abuseLockTimer Timer
+--- @field isLockable boolean
 local AiStateBase = {
     priorityMap = Table.getInverted(AiPriority),
     delayedMouseMin = 0.25,
-    delayedMouseMax = 0.55
+    delayedMouseMax = 0.55,
+    isLockable = true
 }
 
 --- @param fields AiStateBase

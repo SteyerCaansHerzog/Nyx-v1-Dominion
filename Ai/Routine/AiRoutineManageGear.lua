@@ -42,7 +42,7 @@ end
 function AiRoutineManageGear:manageKnife()
 	local isKnifeEquippable = true
 
-	if AiUtility.isClientThreatened then
+	if AiUtility.isClientThreatenedMinor then
 		isKnifeEquippable = false
 	end
 

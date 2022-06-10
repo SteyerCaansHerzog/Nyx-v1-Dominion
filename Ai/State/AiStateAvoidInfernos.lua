@@ -16,7 +16,8 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --- @field inferno Entity
 --- @field isInsideInferno boolean
 local AiStateAvoidInfernos = {
-    name = "Avoid Infernos"
+    name = "Avoid Infernos",
+    isLockable = false
 }
 
 --- @param fields AiStateAvoidInfernos

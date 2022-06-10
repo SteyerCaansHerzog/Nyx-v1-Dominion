@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
+local Trace = require "gamesense/Nyx/v1/Api/Trace"
 --}}}
 
 --{{{ Modules
@@ -79,14 +80,22 @@ function AiStateTrafficControl:assess()
     local closestDistance = math.huge
 
     -- Find closest queue node.
-    for _, node in pairs(trafficControl.queueNodes) do
+    for _, node in pairs(trafficControl.queueNodes) do repeat
         local distance = clientOrigin:getDistance(node.origin)
 
-        if distance < closestDistance then
-            closestDistance = distance
-            closestQueueNode = node
+        if distance >= closestDistance then
+            break
         end
-    end
+
+        local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), node.origin, AiUtility.traceOptionsPathfinding)
+
+        if trace.isIntersectingGeometry then
+            break
+        end
+
+        closestDistance = distance
+        closestQueueNode = node
+    until true end
 
     -- No queue nodes.
     if not closestQueueNode then

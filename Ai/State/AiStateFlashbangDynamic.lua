@@ -72,7 +72,7 @@ function AiStateFlashbangDynamic:assess()
     end
 
     -- AI is threatened. Don't try to, or abort trying to, throw a flashbang.
-    if AiUtility.isClientThreatened then
+    if AiUtility.isClientThreatenedMinor then
         self.threatCooldownTimer:start()
 
         return AiPriority.IGNORE

@@ -23,7 +23,7 @@ local AiStateFlashbang = {
     nodeRetakeCt = Node.grenadeFlashbangRetakeCt,
     weapons = {Weapons.FLASHBANG},
     equipFunction = LocalPlayer.equipFlashbang,
-    rangeThreshold = 1500,
+    rangeThreshold = 2000,
     isCheckingEnemiesRequired = true
 }
 

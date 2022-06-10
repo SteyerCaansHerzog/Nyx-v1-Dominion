@@ -134,7 +134,8 @@ local AiStateEngage = {
     delayedMouseMin = 0,
     delayedMouseMax = 0,
     skillLevelMin = 0,
-    skillLevelMax = 10
+    skillLevelMax = 10,
+    isLockable = false
 }
 
 --- @param fields AiStateEngage
@@ -511,11 +512,11 @@ function AiStateEngage:requestRotations()
         return
     end
 
-    if self.tellRotateTimer:isElapsed(15) then
+    if self.tellRotateTimer:isElapsed(20) then
         self:callRotateToSite()
     end
 
-    if self.tellGoTimer:isElapsed(15) then
+    if self.tellGoTimer:isElapsed(20) then
         self:callGoToSite()
     end
 end
@@ -533,7 +534,7 @@ function AiStateEngage:callRotateToSite()
         return
     end
 
-    self.ai.commands.rot:bark(nearestSite.bombsite)
+    self.ai.commands.rot:bark(nearestSite.bombsite:lower())
     self.ai.voice.pack:speakRequestTeammatesToRotate(nearestSite.bombsite)
 
     self.tellRotateTimer:restart()
@@ -562,7 +563,7 @@ function AiStateEngage:callGoToSite()
         return
     end
 
-    self.ai.commands.go:bark(nearestSite.bombsite)
+    self.ai.commands.go:bark(nearestSite.bombsite:lower())
     self.ai.voice.pack:speakRequestTeammatesToRotate(nearestSite.bombsite)
 
     self.tellGoTimer:restart()
@@ -1006,14 +1007,14 @@ function AiStateEngage:setWeaponStats(enemy)
             name = "Pistol",
             weaponMode = WeaponMode.PISTOL,
             ranges = {
-                long = 1300,
-                medium = 750,
+                long = 1850,
+                medium = 1200,
                 short = 0
             },
             firerates = {
-                long = 0.36,
-                medium = 0.14,
-                short = 0.04
+                long = 0.45,
+                medium = 0.24,
+                short = 0
             },
             isRcsEnabled = {
                 long = true,
@@ -1527,11 +1528,11 @@ function AiStateEngage:attackBestTarget(cmd)
     local ammoRatio = ammo / maxAmmo
 
     if LocalPlayer:isHoldingPrimary() then
-        if ammoRatio == 0 and AiUtility.isClientThreatened then
+        if ammoRatio == 0 and AiUtility.isClientThreatenedMajor then
             LocalPlayer.equipPistol()
         end
     else
-        if not AiUtility.isClientThreatened then
+        if not AiUtility.isClientThreatenedMinor then
             LocalPlayer.equipPrimary()
         end
     end
@@ -1600,7 +1601,7 @@ function AiStateEngage:attackBestTarget(cmd)
 
     -- Wallbang and smokebang.
     if not AiUtility.visibleEnemies[enemy.eid] then
-        local lastNoticedAgo = self.noticedPlayerTimers[enemy.eid]:get()
+        local lastNoticedAgo = self.noticedLoudPlayerTimers[enemy.eid]:get()
 
         if AiUtility.isBombBeingDefusedByEnemy or (lastNoticedAgo >= 0 and lastNoticedAgo < 1) then
             local bangOrigin = enemy:getOrigin():offset(0, 0, 46)
@@ -1806,7 +1807,7 @@ function AiStateEngage:canHoldAngle()
     end
 
     -- Don't hold if the enemy is planting or has planted the bomb.
-    if LocalPlayer:isCounterTerrorist() and AiUtility.gamemode ~= "hostage" and not AiUtility.plantedBomb and not AiUtility.isBombBeingPlantedByEnemy then
+    if LocalPlayer:isCounterTerrorist() and AiUtility.gamemode ~= AiUtility.gamemodes.HOSTAGE and not AiUtility.plantedBomb and not AiUtility.isBombBeingPlantedByEnemy then
         -- If we're the closest to enemy, maybe don't permanently hold the angle.
         if self.bestTarget then
             local isClosestToEnemy = true
@@ -1838,32 +1839,31 @@ function AiStateEngage:canHoldAngle()
             return true
         end
 
-        if not AiUtility.plantedBomb then
+        local distanceToSite = Nodegraph.getClosestBombsite(clientOrigin).origin:getDistance(clientOrigin)
+
+        if AiUtility.plantedBomb then
+            local isNearPlantedBomb = LocalPlayer:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 1000
+
+            -- Good enough situation to hold as a T.
+            -- We don't do it outside of sites because we should really be pushing the enemy at this stage.
+            if isNearPlantedBomb then
+                return true
+            end
+        else
+            -- Push the site before CTs can rotate.
+            if distanceToSite < 1250 then
+                return false
+            end
+
             -- We don't have much time remaining in the round, so we ought not to stand around.
-            if AiUtility.timeData.roundtime_remaining < 30 then
+            if AiUtility.timeData.roundtime_remaining < 35 then
                 return false
             end
 
             -- Don't hold the angle forever.
-            if self.patienceTimer:isElapsed(6) then
-                self.patienceCooldownTimer:restart()
-
+            if self.patienceTimer:isElapsedThenRestart(5) then
                 return false
             end
-        end
-
-        local distanceToSite = Nodegraph.getClosestBombsite(clientOrigin).origin:getDistance(clientOrigin)
-        local isNearPlantedBomb = AiUtility.plantedBomb and LocalPlayer:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 512
-
-        -- Please don't hold angles if we have to plant.
-        if AiUtility.bombCarrier and not AiUtility.bombCarrier:is(LocalPlayer) then
-            return true
-        end
-
-        -- Good enough situation to hold as a T.
-        -- We don't do it outside of sites because we should really be pushing the enemy at this stage.
-        if isNearPlantedBomb or distanceToSite < 700 then
-            return true
         end
     end
 
@@ -2725,8 +2725,8 @@ function AiStateEngage:setAimSkill(skill)
         reactionTime = 0.4,
         anticipateTime = 0.1,
         sprayTime = 0.5,
-        aimSpeed = 5,
-        slowAimSpeed = 3,
+        aimSpeed = 8.5,
+        slowAimSpeed = 6.5,
         recoilControl = 2.5,
         aimOffset = 48,
         aimInaccurateOffset = 144,
@@ -2737,8 +2737,8 @@ function AiStateEngage:setAimSkill(skill)
         reactionTime = 0.025,
         anticipateTime = 0.01,
         sprayTime = 0.33,
-        aimSpeed = 10,
-        slowAimSpeed = 5,
+        aimSpeed = 15,
+        slowAimSpeed = 9.5,
         recoilControl = 2,
         aimOffset = 0,
         aimInaccurateOffset = 80,

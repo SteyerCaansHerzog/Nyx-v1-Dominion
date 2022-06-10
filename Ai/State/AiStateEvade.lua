@@ -28,7 +28,8 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field hurtTimer Timer
 --- @field isLookingAtPathfindingDirection boolean
 local AiStateEvade = {
-    name = "Evade"
+    name = "Evade",
+    isLockable = false
 }
 
 --- @param fields AiStateEvade
@@ -75,7 +76,7 @@ function AiStateEvade:assess()
     end
 
     -- We can be peeked by an enemy.
-    if not AiUtility.isClientThreatened then
+    if not AiUtility.isClientThreatenedMinor then
         return AiPriority.IGNORE
     end
 
