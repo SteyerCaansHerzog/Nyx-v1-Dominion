@@ -4,7 +4,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ AiRoutineBase
 --- @class AiRoutineBase : Class
---- @field ai AiController
+--- @field ai Ai
 --- @field isBlocked boolean
 --- @field think fun(self: AiRoutineBase, cmd: SetupCommandEvent): void
 local AiRoutineBase = {}

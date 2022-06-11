@@ -28,7 +28,8 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 local AiStateEvacuate = {
     name = "Evacuate",
     requiredNodes = {
-        Node.spotHide
+        Node.spotHideCt,
+        Node.spotHideT,
     }
 }
 
@@ -225,13 +226,19 @@ end
 
 --- @return NodeSpotHide
 function AiStateEvacuate:getHideNode()
-    --- @type NodeSpotHide
+    --- @type NodeSpotHide[]
     local nodes = {}
-
     local clientOrigin = LocalPlayer:getOrigin()
     local bombOrigin = AiUtility.plantedBomb and AiUtility.plantedBomb:m_vecOrigin()
+    local nodeClass
 
-    for _, node in pairs(Nodegraph.get(Node.spotHide)) do repeat
+    if LocalPlayer:isTerrorist() then
+        nodeClass = Nodegraph.get(Node.spotHideT)
+    elseif LocalPlayer:isCounterTerrorist() then
+        nodeClass = Nodegraph.get(Node.spotHideCt)
+    end
+
+    for _, node in pairs(nodeClass) do repeat
         if clientOrigin:getDistance(node.origin) < 1000 then
             break
         end

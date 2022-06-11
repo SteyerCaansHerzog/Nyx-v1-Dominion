@@ -14,7 +14,7 @@ local AiChatCommandChat = {
     isAdminOnly = true
 }
 
---- @param ai AiController
+--- @param ai Ai
 --- @param sender PlayerChatEvent
 --- @param args string[]
 --- @return void

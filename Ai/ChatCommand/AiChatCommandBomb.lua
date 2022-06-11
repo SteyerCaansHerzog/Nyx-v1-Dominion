@@ -17,7 +17,7 @@ local AiChatCommandBomb = {
     isAdminOnly = false
 }
 
---- @param ai AiController
+--- @param ai Ai
 --- @param sender Player
 --- @param args string[]
 --- @return void

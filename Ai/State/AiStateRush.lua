@@ -11,14 +11,20 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStateRush
 --- @class AiStateRush : AiStateBase
---- @field canRushThisRound boolean
+--- @field isRushing boolean
 local AiStateRush = {
-    name = "Rush"
+    name = "Rush",
+    requiredNodes = {
+        Node.spotPushCt
+    }
 }
 
 --- @param fields AiStateRush
@@ -30,7 +36,7 @@ end
 --- @return void
 function AiStateRush:__init()
     Callbacks.roundStart(function()
-        self.canRushThisRound = Math.getChance(8)
+        self.isRushing = Math.getChance(8)
     end)
 end
 
@@ -50,44 +56,30 @@ function AiStateRush:assess()
         return AiPriority.IGNORE
     end
 
-    return self.canRushThisRound and AiPriority.RUSH or AiPriority.IGNORE
+    return self.isRushing and AiPriority.RUSH or AiPriority.IGNORE
 end
 
 --- @return void
 function AiStateRush:activate()
-    local nodes = Table.new(self.ai.nodegraph.objectiveRush)
-    local node = Table.getRandom(nodes, Node)
+    local node = Nodegraph.getRandom(Node.spotPushCt)
 
-    if not node then
-        self.canRushThisRound = false
-
-        return
-    end
-
-   self.ai.nodegraph:pathfind(node.origin, {
-        objective = Node.types.GOAL,
-        task = "Rushing map zone",
-        onComplete = function()
-            self.canRushThisRound = false
-
-           self.ai.nodegraph:log("Finished rushing")
+    Pathfinder.moveToNode(node, {
+        task = "Rush the map",
+        onReachedGoal = function()
+        	self.isRushing = false
         end
     })
 end
 
 --- @return void
 function AiStateRush:deactivate()
-    self.canRushThisRound = false
+    self.isRushing = false
 end
 
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateRush:think(cmd)
     self.activity = "Rushing"
-
-    if self.ai.nodegraph:isIdle() then
-        self.canRushThisRound = false
-    end
 end
 
 return Nyx.class("AiStateRush", AiStateRush, AiStateBase)

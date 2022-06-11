@@ -12,7 +12,8 @@ local NodeTypeGoal = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeG
 local NodeGoalEnd = {
     name = "End",
     description = {},
-    colorSecondary = Color:hsla(338, 0.9, 0.65)
+    colorSecondary = Color:hsla(338, 0.9, 0.65),
+    isHiddenFromEditor = true
 }
 
 --- @param fields NodeGoalEnd

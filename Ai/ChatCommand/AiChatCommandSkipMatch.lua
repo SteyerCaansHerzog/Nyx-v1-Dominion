@@ -14,7 +14,7 @@ local AiChatCommandSkipMatch = {
     isAdminOnly = false
 }
 
---- @param ai AiController
+--- @param ai Ai
 --- @param sender PlayerChatEvent
 --- @param args string[]
 --- @return void

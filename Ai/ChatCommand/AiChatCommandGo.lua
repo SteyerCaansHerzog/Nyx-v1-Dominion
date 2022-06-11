@@ -20,7 +20,7 @@ local AiChatCommandGo = {
     isValidIfSelfInvoked = true
 }
 
---- @param ai AiController
+--- @param ai Ai
 --- @param sender Player
 --- @param args string[]
 --- @return void
@@ -61,6 +61,7 @@ function AiChatCommandGo:invoke(ai, sender, args)
                 ai.states.defend:invoke(objective)
                 ai.states.plant:invoke(objective)
                 ai.states.pushDemolition:invoke(objective)
+                ai.states.lurkWithBomb:invoke(objective)
 
                 ai.voice.pack:speakAgreement()
             end

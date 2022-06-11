@@ -52,7 +52,6 @@ local WeaponMode = {
 --- @field bestTarget Player
 --- @field blockTime number
 --- @field blockTimer Timer
---- @field canRunAndShoot boolean
 --- @field canWallbang boolean
 --- @field currentReactionTime number
 --- @field enemySpottedCooldown Timer
@@ -71,6 +70,7 @@ local WeaponMode = {
 --- @field isIgnoringDormancy boolean
 --- @field isPreAimViableForHoldingAngle boolean
 --- @field isRcsEnabled boolean
+--- @field isRunAndShootAllowed boolean
 --- @field isSneaking boolean
 --- @field isStrafePeeking boolean
 --- @field isTargetEasilyShot boolean
@@ -105,6 +105,7 @@ local WeaponMode = {
 --- @field seekCoverTimer Timer
 --- @field setBestTargetTimer Timer
 --- @field shootAtOrigin Vector3
+--- @field shootWithinFov number
 --- @field skill number
 --- @field skillLevelMax number
 --- @field skillLevelMin number
@@ -745,6 +746,7 @@ end
 --- @field isRcsEnabled table
 --- @field weaponMode number
 --- @field evaluate fun(): boolean
+--- @field fov number
 ---
 --- @param enemy Player
 --- @return void
@@ -760,6 +762,7 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "Auto-Sniper",
             weaponMode = WeaponMode.SNIPER,
+            fov = 6,
             ranges = {
                 long = 2000,
                 medium = 1500,
@@ -787,6 +790,7 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "AWP",
             weaponMode = WeaponMode.SNIPER,
+            fov = 3.5,
             ranges = {
                 long = 2000,
                 medium = 1000,
@@ -812,6 +816,7 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "Scout",
             weaponMode = WeaponMode.SNIPER,
+            fov = 3,
             ranges = {
                 long = 2000,
                 medium = 1000,
@@ -837,6 +842,7 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "LMG",
             weaponMode = WeaponMode.HEAVY,
+            fov = 15,
             ranges = {
                 long = 2,
                 medium = 1,
@@ -861,6 +867,7 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "Rifle",
             weaponMode = WeaponMode.HEAVY,
+            fov = 12,
             ranges = {
                 long = 1500,
                 medium = 1000,
@@ -885,6 +892,7 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "Shotgun",
             weaponMode = WeaponMode.SHOTGUN,
+            fov = 10,
             ranges = {
                 long = 0,
                 medium = 0,
@@ -909,6 +917,7 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "SMG",
             weaponMode = WeaponMode.LIGHT,
+            fov = 10,
             ranges = {
                 long = 1600,
                 medium = 1400,
@@ -934,6 +943,7 @@ function AiStateEngage:setWeaponStats(enemy)
             name = "Desert Eagle",
             -- The Deagle really cannot use pistol shooting/movement logic.
             weaponMode = WeaponMode.HEAVY,
+            fov = 3,
             ranges = {
                 long = 750,
                 medium = 300,
@@ -958,6 +968,7 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "Revolver",
             weaponMode = WeaponMode.HEAVY,
+            fov = 5,
             ranges = {
                 long = 2000,
                 medium = 1000,
@@ -982,15 +993,16 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "CZ-75",
             weaponMode = WeaponMode.LIGHT,
+            fov = 9,
             ranges = {
-                long = 900,
+                long = 1200,
                 medium = 450,
                 short = 0
             },
             firerates = {
-                long = 0.45,
-                medium = 0.2,
-                short = 0.05
+                long = 0.26,
+                medium = 0.1,
+                short = 0
             },
             isRcsEnabled = {
                 long = true,
@@ -1006,9 +1018,10 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "Pistol",
             weaponMode = WeaponMode.PISTOL,
+            fov = 7,
             ranges = {
                 long = 1850,
-                medium = 1200,
+                medium = 600,
                 short = 0
             },
             firerates = {
@@ -1063,11 +1076,16 @@ function AiStateEngage:setWeaponStats(enemy)
     self.weaponMode = selectedWeaponType.weaponMode
     self.activeWeapon = selectedWeaponType.name
     self.priorityHitbox = selectedWeaponType.priorityHitbox
+    self.shootWithinFov = selectedWeaponType.fov
+
+    if not self.shootWithinFov then
+        self.shootWithinFov = 10
+    end
 
     if selectedWeaponType.runAtCloseRange then
-        self.canRunAndShoot = distance < selectedWeaponType.ranges.medium
+        self.isRunAndShootAllowed = distance < selectedWeaponType.ranges.medium
     else
-        self.canRunAndShoot = false
+        self.isRunAndShootAllowed = false
     end
 end
 
@@ -1291,6 +1309,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
                 Pathfinder.moveToNode(cover, {
                     task = "Back up from threats",
                     isAllowedToTraverseLadders = false,
+                    isAllowedToTraverseRecorders = false,
                     goalReachedRadius = 64
                 })
             else
@@ -1339,6 +1358,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
                     Pathfinder.moveToNode(cover, {
                         task = "Back up from threats",
                         isAllowedToTraverseLadders = false,
+                        isAllowedToTraverseRecorders = false,
                         goalReachedRadius = 64
                     })
                 else
@@ -1437,6 +1457,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
         if not Table.isEmpty(selectedNodes) then
             Pathfinder.moveToNode(Table.getRandom(selectedNodes), {
                 task = "Engage enemy via random position",
+                isAllowedToTraverseRecorders = false,
                 isPathfindingToNearestNodeIfNoConnections = true,
                 isPathfindingToNearestNodeOnFailure = true
             })
@@ -1451,6 +1472,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
         if closestNode then
             Pathfinder.moveToNode(closestNode, {
                 task = "Engage enemy via nearest position",
+                isAllowedToTraverseRecorders = false,
                 isPathfindingToNearestNodeIfNoConnections = true,
                 isPathfindingToNearestNodeOnFailure = true
             })
@@ -2112,7 +2134,7 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
 
     if distance > 600 then
         cmd.in_duck = true
-    elseif not self.canRunAndShoot then
+    elseif not self.isRunAndShootAllowed then
         self:actionJiggle(self.jiggleTime * 0.33)
 
         isVelocityOk = LocalPlayer:m_vecVelocity():getMagnitude() < 100
@@ -2128,7 +2150,7 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
 
    View.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
 
-    if fov < 7
+    if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
         and isVelocityOk
     then
@@ -2151,13 +2173,13 @@ function AiStateEngage:shootLight(cmd, aimAtOrigin, fov, weapon)
 
    View.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
 
-    if not self.canRunAndShoot then
+    if not self.isRunAndShootAllowed then
         self:actionCounterStrafe(cmd)
     elseif AiUtility.totalThreats > 1 then
         self:actionBackUp()
     end
 
-    if fov < 9
+    if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
     then
         self:fireWeapon(cmd)
@@ -2187,7 +2209,7 @@ function AiStateEngage:shootShotgun(cmd, aimAtOrigin, fov, weapon)
         self:actionBackUp()
     end
 
-    if fov < 10
+    if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
     then
         self:fireWeapon(cmd)
@@ -2210,7 +2232,7 @@ function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
 
     local isVelocityOk = LocalPlayer:m_vecVelocity():getMagnitude() < 100
 
-    if fov < 14
+    if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
         and isVelocityOk
     then
@@ -2243,7 +2265,7 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
        View.lookAtLocation(aimAtOrigin, self.aimSpeed * 3, self.aimNoise, "Engage look-at target")
     end
 
-    if fov < 12 then
+    if fov < self.shootWithinFov then
         LocalPlayer.scope()
     end
 
@@ -2253,7 +2275,7 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
     -- We can shoot when we're this slow.
     local fireUnderVelocity = weapon.max_player_speed / 5
 
-    if fov < 4
+    if fov < self.shootWithinFov
         and self.scopedTimer:isElapsedThenStop(fireDelay)
         and LocalPlayer:m_bIsScoped() == 1
         and LocalPlayer:m_vecVelocity():getMagnitude() < fireUnderVelocity
@@ -2503,6 +2525,10 @@ function AiStateEngage:preAimThroughCorners()
     end
 
     if self.isBestTargetVisible then
+        return
+    end
+
+    if Pathfinder.isAscendingLadder or Pathfinder.isDescendingLadder then
         return
     end
 

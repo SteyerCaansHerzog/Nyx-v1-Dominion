@@ -134,6 +134,16 @@ function View.setViewAngles()
 		Client.setCameraAngles(View.lookAtAngles)
 	end
 
+	-- Apply movement recorder angles.
+	-- Immediately exit this logic, so that only the raw recorded angles are applied.
+	if Pathfinder.isReplayingMovementRecording then
+		View.lookState = "View recorded"
+
+		View.viewAngles:setFromAngle(Pathfinder.movementRecorderAngle)
+
+		return
+	end
+
 	if View.lookState ~= View.lookStateCached then
 		if Debug.isLoggingLookState then
 			Logger.console(-1, "New mouse control '%s'.", View.lookState)
@@ -145,7 +155,6 @@ function View.setViewAngles()
 	end
 
 	--View.setDelayedLookSpeed()
-	-- todo
 
 	View.lookSpeed = View.lookSpeedIdeal
 
@@ -155,7 +164,12 @@ function View.setViewAngles()
 	local idealViewAngles = Client.getCameraAngles()
 	local smoothingCutoffThreshold = 0
 
-	if View.overrideViewAngles then
+	if Pathfinder.movementRecorderAngle then
+		-- If Pathfinder "is replaying" is not true, but this value is set,
+		-- then the Pathfinder is about to execute a recorded movement,
+		-- and the angle is the starting direction for the movement.
+		View.setIdealRecorded(idealViewAngles)
+	elseif View.overrideViewAngles then
 		-- AI wants to look at something particular.
 		View.setIdealOverride(idealViewAngles)
 
@@ -371,6 +385,15 @@ end
 
 --- @param idealViewAngles Angle
 --- @return void
+function View.setIdealRecorded(idealViewAngles)
+	View.lookState = "View recorded pre-execute"
+	View.lookSpeedIdeal = 4.6
+
+	idealViewAngles:setFromAngle(Pathfinder.movementRecorderAngle)
+end
+
+--- @param idealViewAngles Angle
+--- @return void
 function View.setIdealOverride(idealViewAngles)
 	idealViewAngles:setFromAngle(View.overrideViewAngles)
 end
@@ -457,8 +480,14 @@ function View.setIdealLookAhead(idealViewAngles)
 	-- We want to look roughly head height of the goal.
 	lookOrigin:offset(0, 0, 46)
 
+	local lookAngle = Client.getEyeOrigin():getAngle(lookOrigin)
+
+	if currentNode.isJump then
+		lookAngle.p = 0
+	end
+
 	-- Generate our look ahead view angles.
-	idealViewAngles:setFromAngle(Client.getEyeOrigin():getAngle(lookOrigin))
+	idealViewAngles:setFromAngle(lookAngle)
 
 	-- Shake the mouse movement.
 	View.setNoiseType(ViewNoiseType.moving)

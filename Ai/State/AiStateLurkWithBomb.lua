@@ -1,13 +1,16 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
+local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
@@ -19,6 +22,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field node NodeSpotLurkWithBomb
 --- @field bombsite string
 --- @field isSpotted boolean
+--- @field tellSiteTimer Timer
 local AiStateLurkWithBomb = {
 	name = "Lurk with Bomb"
 }
@@ -31,6 +35,8 @@ end
 
 --- @return void
 function AiStateLurkWithBomb:__init()
+	self.tellSiteTimer = Timer:new():startThenElapse()
+
 	Callbacks.roundPrestart(function()
 		self:reset()
 	end)
@@ -46,11 +52,19 @@ function AiStateLurkWithBomb:assess()
 		return AiPriority.IGNORE
 	end
 
+	if AiUtility.gameRules:m_bFreezePeriod() == 1 then
+		return AiPriority.IGNORE
+	end
+
 	if not LocalPlayer:isTerrorist() then
 		return AiPriority.IGNORE
 	end
 
-	if AiUtility.bombCarrier and not AiUtility.bombCarrier:isClient() then
+	if not AiUtility.bombCarrier then
+		return AiPriority.IGNORE
+	end
+
+	if not AiUtility.bombCarrier:isClient() then
 		return AiPriority.IGNORE
 	end
 
@@ -80,12 +94,32 @@ function AiStateLurkWithBomb:activate()
 	Pathfinder.moveToNode(self.node, {
 		task = string.format("Lurk with bomb near %s", self.bombsite)
 	})
+
+	if self.tellSiteTimer:isElapsedThenRestart(25) and MenuGroup.useChatCommands:get() then
+		self.ai.commands.go:bark(self.bombsite:lower())
+
+		Client.fireAfter(1, function()
+			if not AiUtility.isLastAlive then
+				self.ai.voice.pack:speakRequestTeammatesToPush(self.bombsite)
+			end
+		end)
+	end
+end
+
+--- @param bombsite string
+--- @return void
+function AiStateLurkWithBomb:invoke(bombsite)
+	self.bombsite = bombsite
+
+	self:queueForReactivation()
 end
 
 --- @return void
 function AiStateLurkWithBomb:reset()
 	self.isSpotted = false
 	self.node = nil
+
+	self.tellSiteTimer:elapse()
 end
 
 --- @param cmd SetupCommandEvent

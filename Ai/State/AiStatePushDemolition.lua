@@ -55,7 +55,7 @@ function AiStatePushDemolition:assess()
         return AiPriority.IGNORE
     end
 
-    if self.isDeactivated or AiUtility.isBombPlanted() or AiUtility.timeData.roundtime_elapsed > 30 then
+    if self.isDeactivated or AiUtility.isBombPlanted() or AiUtility.timeData.roundtime_elapsed > 35 then
         return AiPriority.IGNORE
     end
 

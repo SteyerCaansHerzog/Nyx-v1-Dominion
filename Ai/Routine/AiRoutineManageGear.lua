@@ -11,6 +11,7 @@ local UserInput = require "gamesense/Nyx/v1/Api/UserInput"
 --{{{ Modules
 local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --}}}
 
 --{{{ AiRoutineManageGear
@@ -56,6 +57,10 @@ function AiRoutineManageGear:manageKnife()
 
 			break
 		end
+	end
+
+	if Pathfinder.isReplayingMovementRecording then
+		isKnifeEquippable = true
 	end
 
 	if isKnifeEquippable then

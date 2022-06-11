@@ -6,6 +6,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --{{{ Modules
 local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --}}}
 
@@ -17,7 +18,7 @@ local AiChatCommandRotate = {
     isAdminOnly = false
 }
 
---- @param ai AiController
+--- @param ai Ai
 --- @param sender Player
 --- @param args string[]
 --- @return void
@@ -53,6 +54,8 @@ function AiChatCommandRotate:invoke(ai, sender, args)
 
     ai.states.rotate:rotate(site)
     ai.states.defend.defendingSite = site
+
+    Node.hintBlockRotate.block(Nodegraph, site)
 end
 
 return Nyx.class("AiChatCommandRotate", AiChatCommandRotate, AiChatCommandBase)

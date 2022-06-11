@@ -18,7 +18,7 @@ local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --- @class AiStateBase : Class
 --- @field activate fun(self: AiStateBase): void
 --- @field activity string
---- @field ai AiController
+--- @field ai Ai
 --- @field assess fun(self: AiStateBase): number
 --- @field deactivate fun(self: AiStateBase): void
 --- @field delayedMouseMax number

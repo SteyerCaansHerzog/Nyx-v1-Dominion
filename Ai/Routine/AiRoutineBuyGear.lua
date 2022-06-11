@@ -5,6 +5,7 @@ local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Server = require "gamesense/Nyx/v1/Api/Server"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
 
@@ -86,6 +87,10 @@ function AiRoutineBuyGear:__init()
 	self.isBuyingThisRound = true
 
 	Callbacks.init(function()
+		if not Server.isIngame() then
+			return
+		end
+
 		if AiUtility.gameRules:m_bFreezePeriod() == 1 then
 			self:buyGear()
 		end
@@ -99,8 +104,8 @@ function AiRoutineBuyGear:__init()
 		self.isInterrupted = false
 
 		local freezeTime = cvar.mp_freezetime:get_int()
-		local minDelay = freezeTime * 0.65
-		local maxDelay = freezeTime * 0.85
+		local minDelay = freezeTime * 0.6
+		local maxDelay = freezeTime * 0.8
 
 		Client.fireAfterRandom(minDelay, maxDelay, function()
 			if not self.isInterrupted then
@@ -299,7 +304,11 @@ function AiRoutineBuyGear:buyRoundTerrorist()
 	end
 
 	self:equipFullArmor()
-	self:equipRandomGrenades(Math.getRandomInt(2, 4))
+
+	local balance = LocalPlayer:m_iAccount()
+	local grenades = balance > 5000 and 4 or Math.getRandomInt(2, 4)
+
+	self:equipRandomGrenades(grenades)
 end
 
 --- @return void
@@ -344,7 +353,11 @@ function AiRoutineBuyGear:buyRoundCounterTerrorist()
 	end
 
 	self:equipFullArmor()
-	self:equipRandomGrenades(Math.getRandomInt(2, 3))
+
+	local balance = LocalPlayer:m_iAccount()
+	local grenades = balance > 5000 and 4 or Math.getRandomInt(2, 4)
+
+	self:equipRandomGrenades(grenades)
 end
 
 --- @param buys AiRoutineBuyGearSet[]

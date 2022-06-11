@@ -37,7 +37,7 @@ local AiStatePlant = {
         AiUtility.gamemodes.DEMOLITION,
         AiUtility.gamemodes.WINGMAN,
     },
-    isLockable = false
+    isLockable = true -- todo
 }
 
 --- @param fields AiStatePlant

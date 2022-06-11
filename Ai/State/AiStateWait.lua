@@ -62,7 +62,7 @@ function AiStateWait:wait(player, origin)
     self.waitingOnPlayer = player
     self.waitingOrigin = origin
 
-    self:move()
+    self:queueForReactivation()
 end
 
 --- @return void
@@ -101,7 +101,8 @@ end
 
 --- @return void
 function AiStateWait:move()
-    local node = Nodegraph.getRandom(Node.traverseGeneric, self.waitingOrigin, 300)
+    --local node = Nodegraph.getRandom(Node.traverseGeneric, self.waitingOrigin, 300)
+    local node = Nodegraph.getClosest(self.waitingOrigin, Node.traverseGeneric)
 
     if not node then
         self.isWaiting = false

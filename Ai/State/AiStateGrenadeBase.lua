@@ -112,7 +112,7 @@ function AiStateGrenadeBase:assess()
 
     -- Hold a throw. Used for making run line-ups work correctly.
     if self.throwHoldTimer:isNotElapsed(0.5) then
-        return AiPriority.THROWING_GRENADE
+        --return AiPriority.THROWING_GRENADE
     end
 
     -- We don't have the type of grenade in question.
@@ -144,7 +144,7 @@ function AiStateGrenadeBase:assess()
 
         -- We're about to throw a grenade.
         if self.isInThrow then
-            return AiPriority.THROWING_GRENADE
+            --return AiPriority.THROWING_GRENADE
         end
     end
 
@@ -296,10 +296,11 @@ function AiStateGrenadeBase:activate()
     self.isAtDestination = false
 
    Pathfinder.moveToNode(self.node, {
-       task = string.format("Throw %s", self.name:lower()),
+       task = string.format("Throw %s [%i]", self.name:lower(), self.node.id),
        onReachedGoal = function()
            self.isAtDestination = true
            self.startThrowTimer:start()
+           print("AT DESTINATION")
        end,
        goalReachedRadius = 5,
        isCounterStrafingOnGoal = true,
@@ -328,12 +329,6 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateGrenadeBase:think(cmd)
-    if self.throwHoldTimer:isNotElapsedThenStop(0.4) then
-        if self.node.isRun then
-            Pathfinder.moveAtAngle(self.node.direction)
-        end
-    end
-
     -- Don't know why we are running with a nil node.
     if not self.node then
         self:deactivate()
@@ -341,11 +336,17 @@ function AiStateGrenadeBase:think(cmd)
         return
     end
 
+    if self.throwHoldTimer:isNotElapsedThenStop(0.4) then
+        if self.node.isRun then
+            Pathfinder.moveAtAngle(self.node.direction)
+        end
+    end
+
     local clientOrigin = LocalPlayer:getOrigin()
     local distance = clientOrigin:getDistance(self.node.origin)
     local distance2 = clientOrigin:getDistance2(self.node.origin)
 
-    if distance2 < 45 then
+    if distance2 < 60 then
         self.inBehaviorTimer:ifPausedThenStart()
     end
 
@@ -375,11 +376,12 @@ function AiStateGrenadeBase:think(cmd)
         self.equipFunction()
     end
 
-    if distance < 180 then
+    if distance < 200 then
         View.isCrosshairUsingVelocity = false
         View.isCrosshairSmoothed = true
 
         Pathfinder.blockTeammateAvoidance()
+        Pathfinder.counterStrafe()
 
         local delta = self.node.direction:getMaxDiff(Client.getCameraAngles())
 
@@ -391,7 +393,7 @@ function AiStateGrenadeBase:think(cmd)
             and self.startThrowTimer:isElapsed(self.throwTime)
             and LocalPlayer:isHoldingWeapons(self.weapons)
             and LocalPlayer:isAbleToAttack()
-            and ((not self.startThrowTimer:isStarted() and distance2 < 28) or self.startThrowTimer:isStarted())
+            and ((not self.startThrowTimer:isStarted() and distance2 < 5) or self.startThrowTimer:isStarted())
         then
             local isThrowable = true
             local isOnGround = LocalPlayer:getFlag(Player.flags.FL_ONGROUND)

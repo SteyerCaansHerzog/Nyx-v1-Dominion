@@ -4,7 +4,6 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local NodeTypeSpot = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeSpot"
 --}}}
 
@@ -15,7 +14,7 @@ local NodeSpotHostage = {
     description = {
         "This node represents a potential hostage location.",
     },
-    colorSecondary = ColorList.TERRORIST
+    colorSecondary = Color:hsla(100, 0.8, 0.7)
 }
 
 --- @param fields NodeSpotHostage

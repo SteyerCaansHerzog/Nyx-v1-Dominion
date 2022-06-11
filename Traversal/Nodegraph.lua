@@ -709,6 +709,10 @@ function Nodegraph.load(filename)
             end
         end
 
+        if datum.userdata then
+            node.userdata = datum.userdata
+        end
+
         nodes[node.id] = node
     end
 
@@ -750,6 +754,12 @@ function Nodegraph.load(filename)
 
     -- Must be done last.
     for _, node in pairs(nodes) do
+        if node.userdata then
+            node:deserialize(Nodegraph, node.userdata)
+
+            node.userdata = nil
+        end
+
         node:onSetup(Nodegraph)
     end
 
@@ -799,6 +809,18 @@ function Nodegraph.save(filename)
             for _, field in pairs(node.customizers) do
                 datum[field] = node[field]
             end
+        end
+
+        local serialized = node:serialize()
+
+        if serialized then
+            local userdata = {}
+
+            for field, value in pairs(serialized) do
+                userdata[field] = value
+            end
+
+            datum.userdata = userdata
         end
 
         iDataNodes = iDataNodes + 1

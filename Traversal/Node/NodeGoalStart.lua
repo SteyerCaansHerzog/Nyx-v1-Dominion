@@ -13,6 +13,7 @@ local NodeGoalStart = {
     name = "Start",
     description = {},
     colorSecondary = Color:hsla(338, 0.9, 0.65),
+    isHiddenFromEditor = true
 }
 
 --- @param fields NodeGoalStart

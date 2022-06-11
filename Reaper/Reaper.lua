@@ -223,7 +223,7 @@ Nyx.class("ReaperManifest", ReaperManifest)
 
 --{{{ Reaper
 --- @class Reaper : Class
---- @field ai AiController
+--- @field ai Ai
 --- @field gameConfig string
 --- @field isActive boolean
 --- @field isAiEnabled boolean

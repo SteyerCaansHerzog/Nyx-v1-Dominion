@@ -31,7 +31,7 @@ local AiChatCommandBacktrack = {
     refAccuracyBoostRange = MenuGroup.group.reference("legit", "other", "accuracy boost range")
 }
 
---- @param ai AiController
+--- @param ai Ai
 --- @param sender PlayerChatEvent
 --- @param args string[]
 --- @return string

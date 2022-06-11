@@ -37,6 +37,7 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field highlightNode NodeTypeBase
 --- @field highlightNodeColor Color
 --- @field iNode number
+--- @field isRecordingMovement boolean
 --- @field keyAdd VKey
 --- @field keyEnableEditing VKey
 --- @field keyIgnoreSelection VKey
@@ -45,8 +46,14 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field keyRemove VKey
 --- @field keySaveNodegraph VKey
 --- @field keySetConnections VKey
+--- @field keyStartMovementRecorder VKey
 --- @field keyTestLineOfSight VKey
 --- @field keyUnsetConnections VKey
+--- @field movementRecorderEndOrigin Vector3
+--- @field movementRecorderParams string[]
+--- @field movementRecorderStartOrigin Vector3
+--- @field movementRecorderStartAngles Angle
+--- @field movementRecording SetupCommandEvent[]
 --- @field moveNode NodeTypeBase
 --- @field moveNodeDelay Timer
 --- @field moveNodeResetDelay Timer
@@ -57,7 +64,30 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field spawnError string|nil
 --- @field spawnNode NodeTypeBase
 --- @field visibleGroups boolean[]
-local NodegraphEditor = {}
+local NodegraphEditor = {
+    movementRecorderParams = {
+        "forwardmove",
+        "in_attack",
+        "in_attack",
+        "in_attack2",
+        "in_back",
+        "in_cancel",
+        "in_duck",
+        "in_forward",
+        "in_jump",
+        "in_left",
+        "in_moveleft",
+        "in_moveright",
+        "in_right",
+        "in_run",
+        "in_speed",
+        "in_use",
+        "move_yaw",
+        "pitch",
+        "sidemove",
+        "yaw",
+    }
+}
 
 --- @param fields NodegraphEditor
 --- @return NodegraphEditor
@@ -79,13 +109,18 @@ function NodegraphEditor:initFields()
 
     local iNodes = 0
 
-    for _, nodeClasses in Table.sortedPairs(Node, function(a, b)
+    --- @param node NodeTypeBase
+    for _, node in Table.sortedPairs(Node, function(a, b)
         return string.format("%s%s", a.type:lower(), a.name:lower()) < string.format("%s%s", b.type:lower(), b.name:lower())
     end) do
         repeat
+            if node.isHiddenFromEditor then
+                break
+            end
+
             iNodes = iNodes + 1
 
-            self.nodes[iNodes] = nodeClasses
+            self.nodes[iNodes] = node
         until true
     end
 
@@ -101,6 +136,7 @@ function NodegraphEditor:initFields()
     self.keySetConnections = VKey:new(VKey.F)
     self.keyTestLineOfSight  = VKey:new(VKey.G):activate()
     self.keyUnsetConnections = VKey:new(VKey.MIDDLE_MOUSE)
+    self.keyStartMovementRecorder = VKey:new(VKey.Z)
     self.moveNodeDelay = Timer:new()
     self.moveNodeResetDelay = Timer:new():startThenElapse()
     self.nextNodeTimer = Timer:new():startThenElapse()
@@ -200,6 +236,8 @@ function NodegraphEditor:initEvents()
             cmd.in_attack = false
             cmd.in_attack2 = false
         end
+
+        self:processMovementRecorder(cmd)
     end)
 end
 
@@ -240,6 +278,95 @@ function NodegraphEditor:processKeys()
 
     self:processSwitchNodeType()
     self:renderHighlight()
+end
+
+--- @param recording SetupCommandEvent[]
+--- @return void
+function NodegraphEditor:getTrimmedRecording(recording)
+    local beginForward = recording[1].forwardmove
+    local beginSide = recording[1].sidemove
+
+    -- Trim the start.
+    for k, v in pairs(recording) do
+        if v.forwardmove == beginForward and v.sidemove == beginSide then
+            recording[k] = nil
+        else
+            break
+        end
+    end
+
+    -- Fix missing keys.
+    recording = Table.getArray(recording)
+
+    local j = #recording
+    local endForward = recording[j].forwardmove
+    local endSide = recording[j].sidemove
+
+    -- Trim the end.
+    for k = j, 1, -1 do
+        local v = recording[k]
+
+        if v and v.forwardmove == endForward and v.sidemove == endSide then
+            recording[k] = nil
+        else
+            break
+        end
+    end
+
+    return recording
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function NodegraphEditor:processMovementRecorder(cmd)
+    if self.keyStartMovementRecorder:wasPressed() then
+        if self.isRecordingMovement then
+            self.movementRecorderEndOrigin = LocalPlayer:getOrigin():offset(0, 0, 18)
+
+            local recorderStart = Node.traverseRecorderStart:new({
+                origin = self.movementRecorderStartOrigin,
+                direction = self.movementRecorderStartAngles,
+                recording = self:getTrimmedRecording(self.movementRecording)
+            })
+
+            local recorderEnd = Node.traverseRecorderEnd:new({
+                origin = self.movementRecorderEndOrigin
+            })
+
+            recorderStart.endPoint = recorderEnd
+            recorderEnd.startPoint = recorderStart
+
+            Nodegraph.addMany({
+                recorderStart,
+                recorderEnd
+            }, true)
+
+            recorderStart:setConnections(Nodegraph)
+            recorderEnd:setConnections(Nodegraph)
+            recorderStart:setConnection(recorderEnd)
+
+            self.movementRecording = {}
+            self.isRecordingMovement = false
+            self.movementRecorderStartOrigin = nil
+            self.movementRecorderStartAngles = nil
+            self.movementRecorderEndOrigin = nil
+        else
+            self.movementRecording = {}
+            self.isRecordingMovement = true
+            self.movementRecorderStartAngles = LocalPlayer.getCameraAngles()
+            self.movementRecorderStartOrigin = LocalPlayer:getOrigin():offset(0, 0, 18)
+        end
+    end
+
+    if self.isRecordingMovement then
+        local tick = {}
+
+        for _, field in pairs(self.movementRecorderParams) do
+            tick[field] = cmd[field]
+        end
+
+        table.insert(self.movementRecording, tick)
+    end
 end
 
 --- @return void
@@ -303,7 +430,7 @@ function NodegraphEditor:processAdd()
     end
 
     -- Test drag-move.
-    if self.keyAdd:isHeld() then
+    if selectedNode and selectedNode.isDragMovable and self.keyAdd:isHeld() then
         self.moveNodeDelay:ifPausedThenStart()
 
         if not self.moveNode and selectedNode and self.moveNodeDelay:isElapsed(0.15) then
@@ -395,7 +522,8 @@ function NodegraphEditor:processAdd()
     node:executeCustomizers()
 
     node:setConnections(Nodegraph, {
-        maxConnections = MenuGroup.maxNodeConnections:get()
+        maxConnections = MenuGroup.maxNodeConnections:get(),
+        isInversingConnections = false
     })
 
     node:render(Nodegraph, true)
@@ -690,6 +818,20 @@ function NodegraphEditor:render()
     if self.keySetConnections:isToggled() then
         text = "[F] Edit Node Connections"
         color = ColorList.WARNING
+    end
+
+    UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)
+    UserInterface.drawText(drawPos, Font.SMALL, color, text)
+
+    drawPos:offset(0, height)
+
+
+    local text = "[Z] Begin Movement Recorder"
+    local color = ColorList.INFO
+
+    if self.keyStartMovementRecorder:isToggled() then
+        text = "[Z] STOP MOVEMENT RECORDER"
+        color = ColorList.ERROR
     end
 
     UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)

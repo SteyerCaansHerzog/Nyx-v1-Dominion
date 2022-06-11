@@ -49,6 +49,9 @@ end
 
 --- @return void
 function AiStateDeveloper:activate()
+    Pathfinder.moveToNode(Nodegraph.getById(507), {
+        task = "Test"
+    })
 end
 
 --- @return void

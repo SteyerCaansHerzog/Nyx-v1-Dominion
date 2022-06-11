@@ -37,6 +37,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field isAllowedToTraverseInfernos boolean
 --- @field isAllowedToTraverseJumps boolean
 --- @field isAllowedToTraverseLadders boolean
+--- @field isAllowedToTraverseRecorders boolean
 --- @field isAllowedToTraverseSmokes boolean
 --- @field isCachingRequest boolean
 --- @field isClearingActivePath boolean
@@ -99,16 +100,20 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field isObstructedByDoor boolean
 --- @field isObstructedByObstacle boolean
 --- @field isObstructedByTeammate boolean
+--- @field isReplayingMovementRecording boolean
 --- @field isWalking boolean
 --- @field lastMovementAngle Angle
 --- @field lastRequest PathfinderRequest
 --- @field moveDuckTimer Timer
+--- @field movementRecorderAngle Angle
 --- @field moveObstructedTimer Timer
 --- @field moveOnGroundTimer Timer
 --- @field nodeClassesInTentativePath NodeTypeBase[]
 --- @field path PathfinderPath
 --- @field pathfindInterval number
 --- @field pathfindIntervalTimer Timer
+--- @field isReadyToReplayMovementRecording boolean
+--- @field movementRecorderTimer Timer
 local Pathfinder = {}
 
 --- @return void
@@ -136,6 +141,7 @@ function Pathfinder.initFields()
 	Pathfinder.pathfindIntervalTimer = Timer:new():startThenElapse()
 	Pathfinder.goalConnectionCollisions = {}
 	Pathfinder.goalGapCollisions = {}
+	Pathfinder.movementRecorderTimer = Timer:new()
 end
 
 --- @return void
@@ -147,7 +153,8 @@ function Pathfinder.initEvents()
 
 		Pathfinder.handleLastRequest()
 		Pathfinder.traverseActivePath(cmd)
-	end)
+		Pathfinder.handleRecorders()
+	end, true)
 
 	Callbacks.frame(function()
 		Pathfinder.render()
@@ -172,13 +179,7 @@ function Pathfinder.initEvents()
 		local site = Nodegraph.getClosestBombsiteName(e.bomb:m_vecOrigin())
 
 		-- Execute all retake blocks for the planted-at bombsite.
-		for _, node in pairs(Nodegraph.get(Node.hintBlockRetake)) do repeat
-			if node.bombsite ~= site then
-				break
-			end
-
-			node:block(Nodegraph)
-		until true end
+		Node.hintBlockRotate.block(Nodegraph, site)
 	end)
 
 	Callbacks.smokeGrenadeDetonate(function(e)
@@ -199,6 +200,10 @@ function Pathfinder.initEvents()
 			for _, node in pairs(pool) do
 				node.isOccludedBySmoke = false
 			end
+
+			if Pathfinder.isOk() then
+				Pathfinder.retryLastRequest()
+			end
 		end)
 	end)
 
@@ -216,9 +221,13 @@ function Pathfinder.initEvents()
 			table.insert(pool, node)
 		until true end
 
-		Client.fireAfter(6.5, function()
+		Client.fireAfter(7, function()
 			for _, node in pairs(pool) do
 				node.isOccludedByInferno = false
+			end
+
+			if Pathfinder.isOk() then
+				Pathfinder.retryLastRequest()
 			end
 		end)
 	end)
@@ -386,6 +395,33 @@ function Pathfinder.moveToNode(node, options)
 end
 
 --- @return void
+function Pathfinder.handleRecorders()
+	local teammateOrigins = {}
+
+	for _, teammate in pairs(AiUtility.teammates) do
+		table.insert(teammateOrigins, teammate:getOrigin())
+	end
+
+	for _, node in pairs(Nodegraph.get(Node.traverseRecorderStart)) do
+		local isOccupied = false
+
+		for _, origin in pairs(teammateOrigins) do
+			if node.origin:getDistance(origin) < 145 then
+				isOccupied = true
+
+				break
+			end
+		end
+
+		if isOccupied then
+			node:deactivate()
+		elseif not node.isActive then
+			node:activate()
+		end
+	end
+end
+
+--- @return void
 function Pathfinder.retryLastRequest()
 	if not Pathfinder.cachedLastRequest then
 		return
@@ -500,6 +536,7 @@ function Pathfinder.handleLastRequest()
 		isAllowedToTraverseInfernos = false,
 		isAllowedToTraverseJumps = true,
 		isAllowedToTraverseLadders = true,
+		isAllowedToTraverseRecorders = true,
 		isAllowedToTraverseSmokes = true,
 		isCachingRequest = true,
 		isClearingActivePath = false,
@@ -787,6 +824,10 @@ function Pathfinder.getPath(start, goal, options)
 			end
 		end
 
+		if not node.isRecorder and (neighbor.isRecorder and neighbor:is(Node.traverseRecorderEnd)) then
+			return false
+		end
+
 		Pathfinder.nodeClassesInTentativePath[neighbor.__classid] = true
 
 		return true
@@ -832,6 +873,8 @@ function Pathfinder.traverseActivePath(cmd)
 	Pathfinder.isObstructedByTeammate = false
 	Pathfinder.isAscendingLadder = false
 	Pathfinder.isDescendingLadder = false
+	Pathfinder.isReplayingMovementRecording = false
+	Pathfinder.movementRecorderAngle = nil
 
 	if not Pathfinder.isAllowedToMove then
 		Pathfinder.isAllowedToMove = true
@@ -1090,13 +1133,58 @@ function Pathfinder.traverseActivePath(cmd)
 				end
 			end
 		end
+	elseif currentNode:is(Node.traverseRecorderStart) then
+		if not Pathfinder.isReadyToReplayMovementRecording and distance2d > 20 then
+			Pathfinder.movementRecorderTimer:stop()
+		end
+
+		if not Pathfinder.isReadyToReplayMovementRecording and distance2d < 10 then
+			Pathfinder.counterStrafe()
+			Pathfinder.walk()
+		end
+
+		if distance2d < 2 then
+			Pathfinder.movementRecorderTimer:ifPausedThenStart()
+
+			if Pathfinder.movementRecorderTimer:isElapsed(0.2) then
+				Pathfinder.isReadyToReplayMovementRecording = true
+			end
+		else
+			Pathfinder.movementRecorderTimer:stop()
+		end
+
+		if distance2d < 70 then
+			Pathfinder.movementRecorderAngle = currentNode.direction
+		end
+
+		if Pathfinder.isReadyToReplayMovementRecording then
+			--- @type NodeTraverseRecorderStart
+			local node = currentNode
+			local tick = node:getNextTick()
+
+			if tick then
+				Pathfinder.isReplayingMovementRecording = true
+				Pathfinder.movementRecorderAngle = Angle:new(tick.pitch, tick.yaw)
+
+				for field, value in pairs(tick) do
+					cmd[field] = value
+				end
+			else
+				Pathfinder.isReadyToReplayMovementRecording = false
+
+				Pathfinder.incrementPath()
+				Pathfinder.incrementPath()
+			end
+
+			return
+		end
 	else
 		local clearDistance
 
 		if currentNode:is(NodeType.goal) then
 			clearDistance = pathfinderOptions.goalReachedRadius
 		else
-			clearDistance = isClientOnGround and 15 or 75
+			clearDistance = isClientOnGround and 15 or 35
 		end
 
 		if distance2d < clearDistance then
@@ -1199,6 +1287,8 @@ function Pathfinder.handleMovementOptions(cmd)
 		Pathfinder.isCounterStrafing = false
 
 		MenuGroup.standaloneQuickStopRef:set(true)
+	else
+		MenuGroup.standaloneQuickStopRef:set(false)
 	end
 
 	if Pathfinder.isAllowedToWalk and Pathfinder.isWalking then

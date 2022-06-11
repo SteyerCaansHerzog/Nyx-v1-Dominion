@@ -14,9 +14,9 @@ Logger.credits("2.0.0-beta")
 
 require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 
-local AiController = require "gamesense/Nyx/v1/Dominion/Ai/AiController"
+local Ai = require "gamesense/Nyx/v1/Dominion/Ai/Ai"
 local NodegraphEditor = require "gamesense/Nyx/v1/Dominion/Traversal/NodegraphEditor"
 --}}}
 
-AiController:new()
+Ai:new()
 NodegraphEditor:new()

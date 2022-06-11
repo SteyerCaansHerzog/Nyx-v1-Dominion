@@ -68,8 +68,10 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field isCollisionTestWeak boolean
 --- @field isConnectable boolean
 --- @field isDirectional boolean
+--- @field isDragMovable boolean
 --- @field isDuck boolean
 --- @field isGoal boolean
+--- @field isHiddenFromEditor boolean
 --- @field isJump boolean
 --- @field isLinkedToBombsite boolean
 --- @field isNameHidden boolean
@@ -77,6 +79,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field isOccludedBySmoke boolean
 --- @field isPathable boolean
 --- @field isPlanar boolean
+--- @field isRecorder boolean
 --- @field isTransient boolean
 --- @field isTraversal boolean
 --- @field lookAtOrigin Vector3
@@ -95,8 +98,9 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field renderColorSecondary Color
 --- @field traversalCost number
 --- @field type string
---- @field zDeltaThreshold number
+--- @field userdata table<string, any>
 --- @field zDeltaGoalThreshold number
+--- @field zDeltaThreshold number
 local NodeTypeBase = {
     name = "Unnamed Node Type",
     description = {"No description given."},
@@ -105,12 +109,13 @@ local NodeTypeBase = {
     isActive = true,
     isConnectable = false,
     isDirectional = false,
+    isDragMovable = true,
     isLinkedToBombsite = false,
     lookDistanceThreshold = 200,
     lookZOffset = 46,
     traversalCost = 0,
-    zDeltaThreshold = 64,
     zDeltaGoalThreshold = 64,
+    zDeltaThreshold = 64,
 }
 
 --- @param fields NodeTypeBase
@@ -165,6 +170,14 @@ end
 function NodeTypeBase:isOf(node)
     return self.type == node.type
 end
+
+--- @return void
+function NodeTypeBase:serialize() end
+
+--- @param nodegraph Nodegraph
+--- @param userdata NodeTypeBase
+--- @return void
+function NodeTypeBase:deserialize(nodegraph, userdata) end
 
 --- Renders the node.
 ---
@@ -439,7 +452,7 @@ function NodeTypeBase:setConnections(nodegraph, options)
 
     Table.setMissing(options, {
         maxConnections = 3,
-        isInversingConnections = false
+        isInversingConnections = true
     })
 
     local iConnections = 0

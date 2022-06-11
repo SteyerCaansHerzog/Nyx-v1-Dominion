@@ -47,8 +47,8 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field timer Timer
 --}}}
 
---{{{ AiController
---- @class AiController : Class
+--{{{ Ai
+--- @class Ai : Class
 --- @field chatbots AiChatbot
 --- @field client DominionClient
 --- @field commands AiChatCommand
@@ -61,16 +61,16 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field voice AiVoice
 --- @field ditherHistories AiStateDitherHistory[]
 --- @field ditherHistoryMax number
-local AiController = {}
+local Ai = {}
 
---- @param fields AiController
---- @return AiController
-function AiController:new(fields)
+--- @param fields Ai
+--- @return Ai
+function Ai:new(fields)
 	return Nyx.new(self, fields)
 end
 
 --- @return void
-function AiController:__init()
+function Ai:__init()
 	self:initFields()
 	self:initEvents()
 
@@ -78,11 +78,11 @@ function AiController:__init()
 end
 
 --- @return void
-function AiController:initFields()
+function Ai:initFields()
 	self.isAntiAfkEnabled = false
 	self.lockStateTimer = Timer:new():startThenElapse()
 	self.ditherHistories = {}
-	self.ditherHistoryMax = 8
+	self.ditherHistoryMax = 24
 
 	if Config.isLiveClient and not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
 		self.client = DominionClient:new()
@@ -142,7 +142,7 @@ function AiController:initFields()
 end
 
 --- @return void
-function AiController:initMenu()
+function Ai:initMenu()
 	MenuGroup.enableAi = MenuGroup.group:addCheckbox("> Enable AI"):setParent(MenuGroup.master):addCallback(function(item)
 		Pathfinder.isEnabled = item:get()
 		self.lastPriority = nil
@@ -161,7 +161,7 @@ function AiController:initMenu()
 end
 
 --- @return void
-function AiController:initEvents()
+function Ai:initEvents()
 	Callbacks.init(function()
 		if not Server.isIngame() then
 			Logger.console(2, "Not in-game. Waiting to join a server before initialising AI states.")
@@ -247,7 +247,7 @@ end
 
 --- @param e PlayerChatEvent
 --- @return void
-function AiController:handleChatCommands(e)
+function Ai:handleChatCommands(e)
 	if not e.text:sub(1, 1) == "/" then
 		return
 	end
@@ -286,7 +286,7 @@ function AiController:handleChatCommands(e)
 end
 
 --- @return void
-function AiController:renderUi()
+function Ai:renderUi()
 	if not MenuGroup.visualiseAi:get() then
 		return
 	end
@@ -504,7 +504,7 @@ end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function AiController:think(cmd)
+function Ai:think(cmd)
 	if not MenuGroup.master:get() or not MenuGroup.enableAi:get() or self.reaper.isActive then
 		-- Fix issue with AI trying to equip the last gear forever.
 		if LocalPlayer.isEquipping() then
@@ -531,7 +531,7 @@ function AiController:think(cmd)
 end
 
 --- @return void
-function AiController:preventDithering()
+function Ai:preventDithering()
 	if #self.ditherHistories >= self.ditherHistoryMax then
 		table.remove(self.ditherHistories, 1)
 	end
@@ -548,7 +548,7 @@ function AiController:preventDithering()
 	for i = 3, #self.ditherHistories do repeat
 		local logC = self.ditherHistories[i]
 
-		if logC.timer:isElapsed(8) then
+		if logC.timer:isElapsed(12) then
 			break
 		end
 
@@ -563,7 +563,7 @@ function AiController:preventDithering()
 		end
 	until true end
 
-	if repeats < 6 then
+	if repeats <= 4 then
 		return
 	end
 
@@ -582,7 +582,7 @@ end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function AiController:setCurrentState(cmd)
+function Ai:setCurrentState(cmd)
 	--- @type AiStateBase
 	local currentState
 	local highestPriority = -1
@@ -707,5 +707,5 @@ function AiController:setCurrentState(cmd)
 	until true end
 end
 
-return Nyx.class("AiController", AiController)
+return Nyx.class("Ai", Ai)
 --}}}

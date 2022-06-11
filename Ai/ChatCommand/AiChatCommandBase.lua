@@ -40,7 +40,7 @@ local AiChatCommandBase = {
     SENDER_IS_OUT_OF_RANGE = "the invoker is too far away",
 }
 
---- @param ai AiController
+--- @param ai Ai
 --- @param sender Player
 --- @param args string[]
 --- @return string
@@ -59,7 +59,7 @@ function AiChatCommandBase:bark(...)
     Messenger.send(string.format(" %s %s", self.cmd, argsFormatted), true)
 end
 
---- @param ai AiController
+--- @param ai Ai
 --- @param sender Player
 --- @param args string[]
 --- @return boolean

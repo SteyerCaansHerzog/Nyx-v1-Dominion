@@ -15,7 +15,7 @@ local NodeTraverseDrop = {
         "Informs the AI of how to traverse the map",
         "by dropping down a ledge."
     },
-    colorSecondary = Color:hsla(250, 0.8, 0.66),
+    colorSecondary = Color:hsla(250, 0.8, 0.72),
     isJump = true,
     traversalCost = 0,
     zDeltaThreshold = 32,

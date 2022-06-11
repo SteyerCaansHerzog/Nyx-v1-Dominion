@@ -12,7 +12,9 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local Node = require "gamesense/Nyx/v1/Dominion/Pathfinding/Node"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
@@ -29,6 +31,9 @@ local AiStateSeekHostage = {
     delayedMouseMax = 0.2,
     requiredGamemodes = {
         AiUtility.gamemodes.HOSTAGE
+    },
+    requiredNodes = {
+        Node.spotHostage
     }
 }
 
@@ -110,9 +115,8 @@ end
 --- @return void
 function AiStateSeekHostage:activate()
     if self.activeHostage then
-        self.ai.nodegraph:pathfind(self.hostageOrigin, {
-            objective = Node.types.GOAL,
-            task = string.format("Pick up hostage")
+        Pathfinder.moveToLocation(self.hostageOrigin, {
+            task = "Pick up hostage"
         })
     else
         local node = self:getActivityNode()
@@ -123,9 +127,8 @@ function AiStateSeekHostage:activate()
 
         self.node = node
 
-        self.ai.nodegraph:pathfind(node.origin, {
-            objective = Node.types.GOAL,
-            task = string.format("Seek hostage")
+        Pathfinder.moveToNode(node, {
+            task = "Find hostage"
         })
     end
 end
@@ -178,17 +181,11 @@ function AiStateSeekHostage:think(cmd)
     else
         self.activity = "Seeking hostages"
     end
-
-    if self.ai.nodegraph:isIdle() then
-        self.ai.nodegraph:rePathfind()
-    end
 end
 
 --- @return Node
 function AiStateSeekHostage:getActivityNode()
-    local nodes = self.ai.nodegraph.objectiveHostage
-
-    return nodes[Math.getRandomInt(1, #nodes)]
+    return Nodegraph.getRandom(Node.spotHostage)
 end
 
 return Nyx.class("AiStateSeekHostage", AiStateSeekHostage, AiStateBase)

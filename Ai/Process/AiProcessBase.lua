@@ -4,7 +4,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ AiProcessBase
 --- @class AiProcessBase : Class
---- @field ai AiController
+--- @field ai Ai
 local AiProcessBase = {}
 
 --- @param fields AiProcessBase

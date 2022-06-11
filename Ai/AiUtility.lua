@@ -360,16 +360,16 @@ function AiUtility.updateAllPlayers()
         local isAlive = entity.get_prop(playerResource, "m_bAlive", eid)
 
         if isAlive == 1 then
+            if entity.get_prop(playerResource, "m_iPlayerC4") == eid then
+                AiUtility.bombCarrier = Player:new(eid)
+            end
+
             if isEnemy then
                 AiUtility.enemiesAlive = AiUtility.enemiesAlive + 1
 
                 if entity.get_prop(eid, "m_hCarriedHostage") ~= nil then
                     AiUtility.isHostageCarriedByEnemy = true
                     AiUtility.hostageCarriers[eid] = Player:new(eid)
-                end
-
-                if entity.get_prop(playerResource, "m_iPlayerC4") == eid then
-                    AiUtility.bombCarrier = Player:new(eid)
                 end
             else
                 AiUtility.teammatesAlive = AiUtility.teammatesAlive + 1

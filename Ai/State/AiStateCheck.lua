@@ -47,8 +47,6 @@ end
 
 --- @return void
 function AiStateCheck:activate()
-    self.isChecking = true
-
     Pathfinder.moveToNode(self.node, {
         task = string.format("Check %s spawn", self.spawn),
         goalReachedRadius = 200,
@@ -71,6 +69,8 @@ end
 --- @param spawn string
 --- @return void
 function AiStateCheck:invoke(spawn)
+    self.isChecking = true
+
     self:setActivityNode(spawn)
     self:queueForReactivation()
 end

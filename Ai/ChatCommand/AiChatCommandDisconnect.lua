@@ -15,7 +15,7 @@ local AiChatCommandDisconnect = {
     isAdminOnly = true
 }
 
---- @param ai AiController
+--- @param ai Ai
 --- @param sender Player
 --- @param args string[]
 --- @return void
