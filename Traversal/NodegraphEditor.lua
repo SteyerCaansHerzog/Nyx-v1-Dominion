@@ -31,6 +31,12 @@ local NodeTypeBase = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeB
 local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --}}}
 
+--{{{ Definitions
+--- @class NodePathfindTest
+--- @field node NodeTypeBase
+--- @field isOk boolean
+--}}}
+
 --{{{ NodegraphEditor
 --- @class NodegraphEditor : Class
 --- @field blockInputs boolean
@@ -64,6 +70,7 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field spawnError string|nil
 --- @field spawnNode NodeTypeBase
 --- @field visibleGroups boolean[]
+--- @field pathfindTestNodes NodePathfindTest[]
 local NodegraphEditor = {
     movementRecorderParams = {
         "forwardmove",
@@ -140,6 +147,7 @@ function NodegraphEditor:initFields()
     self.moveNodeDelay = Timer:new()
     self.moveNodeResetDelay = Timer:new():startThenElapse()
     self.nextNodeTimer = Timer:new():startThenElapse()
+    self.pathfindTestNodes = {}
 
     MenuGroup.group:addLabel("----------------------------------------"):setParent(MenuGroup.master)
     MenuGroup.enableEditor = MenuGroup.group:addCheckbox("> Enable Nodegraph Editor"):setParent(MenuGroup.master)
@@ -214,6 +222,10 @@ function NodegraphEditor:initFields()
     MenuGroup.group:addButton("Create nodegraph", function()
     	Nodegraph.create(Nodegraph.getFilename())
     end):setParent(MenuGroup.enableEditor)
+
+    MenuGroup.group:addButton("Run Graph Integrity Test", function()
+    	self:testPathfinding()
+    end):setParent(MenuGroup.enableEditor)
 end
 
 --- @return void
@@ -239,6 +251,43 @@ function NodegraphEditor:initEvents()
 
         self:processMovementRecorder(cmd)
     end)
+end
+
+--- @return void
+function NodegraphEditor:testPathfinding()
+    self.pathfindTestNodes = {}
+
+    local i = 0
+
+    local origin = Nodegraph.getSpawn("CT").origin:clone()
+
+    for _, node in pairs(Nodegraph.nodes) do
+        i = i + 0.02
+
+        Client.fireAfter(i, function()
+            Pathfinder.moveToNode(node, {
+                task = "Test Pathfinder",
+                isIgnoringRequestInterval = true,
+                isPathfindingFromNearestNodeIfNoConnections = false,
+                isAllowedToTraverseInactives = true,
+                startOriginOverride = origin,
+                onFoundPath = function()
+                    self.pathfindTestNodes[node.id] = {
+                        node = node,
+                        isOk = true
+                    }
+                end,
+                onFailedToFindPath = function()
+                    self.pathfindTestNodes[node.id] = {
+                        node = node,
+                        isOk = false
+                    }
+                end
+            })
+
+            Pathfinder.handleCurrentRequest()
+        end)
+    end
 end
 
 --- @return void
@@ -601,6 +650,10 @@ end
 
 --- @return NodeTypeBase
 function NodegraphEditor:getSelectedNode()
+    if self.keyIgnoreSelection:isToggled() then
+        return
+    end
+
     local cameraOrigin = Client.getCameraOrigin()
     local cameraAngles = Client.getCameraAngles()
     local isTestingLos = self.keyTestLineOfSight:isToggled()
@@ -686,6 +739,18 @@ function NodegraphEditor:render()
 
         if self.visibleGroups[node.type] then
             node:render(Nodegraph, true)
+        end
+
+        if self.pathfindTestNodes[node.id] then
+            local color
+
+            if self.pathfindTestNodes[node.id].isOk then
+                color = ColorList.INFO:clone():setAlpha(100)
+            else
+                color = ColorList.ERROR
+            end
+
+            node.origin:drawScaledCircleOutline(80, 15, color)
         end
 
         iNodes = iNodes + 1
@@ -790,6 +855,20 @@ function NodegraphEditor:render()
     if not self.keyEnableEditing:isToggled() then
         text = "[R] Nodegraph Editing (DISABLED)"
         color = ColorList.FONT_MUTED
+    end
+
+    UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)
+    UserInterface.drawText(drawPos, Font.SMALL, color, text)
+
+    drawPos:offset(0, height)
+
+
+    local text = "[E] Node Selection (DISABLED)"
+    local color = ColorList.FONT_MUTED
+
+    if not self.keyIgnoreSelection:isToggled() then
+        text = "[E] Node Selection (ENABLED)"
+        color = ColorList.INFO
     end
 
     UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)

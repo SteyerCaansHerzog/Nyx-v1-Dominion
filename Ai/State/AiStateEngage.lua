@@ -65,6 +65,7 @@ local WeaponMode = {
 --- @field isAimEnabled boolean
 --- @field isBackingUp boolean
 --- @field isBestTargetVisible boolean
+--- @field isDefending boolean
 --- @field isHoldingAngle boolean
 --- @field isHoldingAngleDucked boolean
 --- @field isIgnoringDormancy boolean
@@ -460,7 +461,9 @@ function AiStateEngage:activate()
 end
 
 --- @return void
-function AiStateEngage:deactivate() end
+function AiStateEngage:deactivate()
+    self.isDefending = false
+end
 
 --- @return void
 function AiStateEngage:reset()
@@ -1245,6 +1248,69 @@ function AiStateEngage:moveOnBestTarget(cmd)
         return
     end
 
+    local clientOrigin = LocalPlayer:getOrigin()
+    local isAbleToDefend = true
+    --- @type NodeTypeDefend
+    local defendNode
+
+    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+        if LocalPlayer:isTerrorist() then
+            defendNode = Node.defendHostageT
+
+            if AiUtility.isHostageCarriedByEnemy then
+                isAbleToDefend = false
+            end
+        else
+            isAbleToDefend = false
+        end
+    else
+        if LocalPlayer:isTerrorist() then
+            isAbleToDefend = false
+        else
+            defendNode = Node.defendSiteCt
+
+            if AiUtility.isBombBeingPlantedByEnemy then
+                isAbleToDefend = false
+            elseif AiUtility.plantedBomb then
+                isAbleToDefend = false
+            elseif AiUtility.bombCarrier then
+                local bombOrigin = AiUtility.bombCarrier:getOrigin()
+
+                if bombOrigin:getDistance(Nodegraph.getClosestBombsite(bombOrigin).origin) < 650 then
+                    isAbleToDefend = false
+                end
+            end
+        end
+    end
+
+    if isAbleToDefend and Pathfinder.isIdle() then
+        local node = Nodegraph.getRandom(Node.defendSiteCt, clientOrigin, 1000)
+
+        if node then
+            self.isDefending = true
+            self.ai.states.defend.isSpecificNodeSet = true
+            self.ai.states.defend.node = node
+
+            Pathfinder.moveToNode(node, {
+                task = "Engage enemy via defensive position",
+                isAllowedToTraverseInactives = true,
+                isAllowedToTraverseRecorders = false,
+                isPathfindingToNearestNodeIfNoConnections = true,
+                isPathfindingToNearestNodeOnFailure = true
+            })
+        end
+    end
+
+    if not isAbleToDefend then
+        self.isDefending = false
+    end
+
+    if self.isDefending then
+        self.activity = "Defending against enemy"
+
+        return
+    end
+
     if self.seekCoverTimer:isElapsed(1.5) and Table.isEmpty(AiUtility.visibleEnemies) then
         self.lookAtOccludedOrigin = nil
 
@@ -1308,6 +1374,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
 
                 Pathfinder.moveToNode(cover, {
                     task = "Back up from threats",
+                    isAllowedToTraverseInactives = true,
                     isAllowedToTraverseLadders = false,
                     isAllowedToTraverseRecorders = false,
                     goalReachedRadius = 64
@@ -1357,6 +1424,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
 
                     Pathfinder.moveToNode(cover, {
                         task = "Back up from threats",
+                        isAllowedToTraverseInactives = true,
                         isAllowedToTraverseLadders = false,
                         isAllowedToTraverseRecorders = false,
                         goalReachedRadius = 64
@@ -1384,12 +1452,12 @@ function AiStateEngage:moveOnBestTarget(cmd)
     if self:canHoldAngle() then
         self.activity = "Holding enemy"
 
-        if Pathfinder.isOk() then
+        if Pathfinder.isOnValidPath() then
             self.isHoldingAngle = Math.getChance(1)
             self.isHoldingAngleDucked = LocalPlayer:hasSniper() or Math.getChance(4)
 
             if self.isHoldingAngle then
-               Pathfinder.clearActivePathAndLastRequest()
+                Pathfinder.clearActivePathAndLastRequest()
             end
         end
 
@@ -1457,6 +1525,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
         if not Table.isEmpty(selectedNodes) then
             Pathfinder.moveToNode(Table.getRandom(selectedNodes), {
                 task = "Engage enemy via random position",
+                isAllowedToTraverseInactives = true,
                 isAllowedToTraverseRecorders = false,
                 isPathfindingToNearestNodeIfNoConnections = true,
                 isPathfindingToNearestNodeOnFailure = true
@@ -1472,6 +1541,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
         if closestNode then
             Pathfinder.moveToNode(closestNode, {
                 task = "Engage enemy via nearest position",
+                isAllowedToTraverseInactives = true,
                 isAllowedToTraverseRecorders = false,
                 isPathfindingToNearestNodeIfNoConnections = true,
                 isPathfindingToNearestNodeOnFailure = true

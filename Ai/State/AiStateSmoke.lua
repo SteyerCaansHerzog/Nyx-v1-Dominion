@@ -14,7 +14,8 @@ local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 --- @class AiStateSmoke : AiStateGrenadeBase
 local AiStateSmoke = {
     name = "Smoke",
-    priority = AiPriority.SMOKE_LINEUP,
+    priorityLineup = AiPriority.SMOKE_LINEUP,
+    priorityThrow = AiPriority.SMOKE_THROW,
     cooldown = 4,
     nodeDefendCt = Node.grenadeSmokeDefendCt,
     nodeDefendT = Node.grenadeSmokeDefendT,
@@ -24,6 +25,12 @@ local AiStateSmoke = {
     equipFunction = LocalPlayer.equipSmoke,
     rangeThreshold = 3000,
     isCheckingEnemiesRequired = false,
+    requiredNodes = {
+        Node.grenadeSmokeDefendCt,
+        Node.grenadeSmokeDefendT,
+        Node.grenadeSmokeExecuteT,
+        Node.grenadeSmokeRetakeCt,
+    }
 }
 
 --- @param fields AiStateSmoke

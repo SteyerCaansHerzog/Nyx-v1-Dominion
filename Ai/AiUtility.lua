@@ -35,6 +35,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field clientThreatenedBy Player
 --- @field clientThreatenedFromOrigin Vector3
 --- @field closestEnemy Player
+--- @field closestTeammate Player
 --- @field defuseTimer Timer
 --- @field dormantAt number[]
 --- @field enemies Player[]
@@ -352,40 +353,60 @@ function AiUtility.updateAllPlayers()
     AiUtility.isHostageCarriedByTeammate = false
     AiUtility.hostageCarriers = {}
     AiUtility.bombCarrier = nil
+    AiUtility.closestTeammate = nil
+
+    local clientOrigin = LocalPlayer:getOrigin()
+    local closestTeammate
+    local closestTeammateDistance = math.huge
 
     local playerResource = entity.get_player_resource()
 
-    for eid = 1, globals.maxplayers() do
-        local isEnemy = entity.is_enemy(eid)
-        local isAlive = entity.get_prop(playerResource, "m_bAlive", eid)
+    for eid = 1, globals.maxplayers() do repeat
+        local player = Player:new(eid)
+        local isEnemy = player:isEnemy()
+        local isAlive = player:isAlive()
 
-        if isAlive == 1 then
+        if isAlive then
             if entity.get_prop(playerResource, "m_iPlayerC4") == eid then
-                AiUtility.bombCarrier = Player:new(eid)
+                AiUtility.bombCarrier = player
             end
 
             if isEnemy then
                 AiUtility.enemiesAlive = AiUtility.enemiesAlive + 1
 
-                if entity.get_prop(eid, "m_hCarriedHostage") ~= nil then
+                if Player:m_hCarriedHostage() ~= nil then
                     AiUtility.isHostageCarriedByEnemy = true
-                    AiUtility.hostageCarriers[eid] = Player:new(eid)
+                    AiUtility.hostageCarriers[eid] = player
                 end
             else
                 AiUtility.teammatesAlive = AiUtility.teammatesAlive + 1
 
-                if entity.get_prop(eid, "m_hCarriedHostage") ~= nil then
-                    AiUtility.isHostageCarriedByTeammate = true
-                    AiUtility.hostageCarriers[eid] = Player:new(eid)
+                if player:isClient() then
+                    break
                 end
+
+                if Player:m_hCarriedHostage() ~= nil then
+                    AiUtility.isHostageCarriedByTeammate = true
+                    AiUtility.hostageCarriers[eid] = player
+                end
+
+                local distance = player:getOrigin():getDistance(clientOrigin)
+
+                if distance < closestTeammateDistance then
+                    closestTeammateDistance = distance
+                    closestTeammate = player
+                end
+
+                AiUtility.teammates[player.eid] = player
             end
         end
+    until true end
+
+    if closestTeammate then
+        AiUtility.closestTeammate = closestTeammate
     end
 
-    for _, teammate in Player.find(function(p)
-        return p:isTeammate() and p:isAlive() and not p:isClient()
-    end) do
-        AiUtility.teammates[teammate.eid] = teammate
+    if AiUtility.teammatesAlive > 0 then
         AiUtility.isLastAlive = false
     end
 end

@@ -159,7 +159,9 @@ function AiStateEvade:moveToCover()
 
     Pathfinder.moveToNode(cover, {
         task = "Move to cover",
-        isAllowedToTraverseInactives = true
+        isAllowedToTraverseInactives = true,
+        isAllowedToTraverseRecorders = false,
+        isAllowedToTraverseSmokes = true,
     })
 end
 

@@ -74,6 +74,7 @@ local WeaponBuyCode = {
 --- @field isBuyingThisRound boolean
 --- @field isInterrupted boolean
 --- @field isEnabled boolean
+--- @field accountBalance number
 local AiRoutineBuyGear = {}
 
 --- @param fields AiRoutineBuyGear
@@ -112,6 +113,8 @@ function AiRoutineBuyGear:__init()
 				self:buyGear()
 			end
 		end)
+
+		self.accountBalance = LocalPlayer:m_iAccount()
 	end)
 
 	Callbacks.itemEquip(function(e)
@@ -162,16 +165,15 @@ function AiRoutineBuyGear:buyGear()
 
 	local roundsPlayed = Entity.getGameRules():m_totalRoundsPlayed()
 	local halftimeRounds = math.floor(cvar.mp_maxrounds:get_int() / 2)
-	local balance = LocalPlayer:m_iAccount()
 
 	-- 2nd-round buy.
-	if roundsPlayed == 1 or roundsPlayed == halftimeRounds + 1 and balance < 3100 then
+	if roundsPlayed == 1 or roundsPlayed == halftimeRounds + 1 and self.accountBalance < 3100 then
 		self:buyForceRound()
 
 		return
 	end
 
-	local isPistolRound = balance < 1000 and (roundsPlayed == 0 or roundsPlayed == halftimeRounds)
+	local isPistolRound = roundsPlayed == 0 or roundsPlayed == halftimeRounds
 
 	if LocalPlayer:isTerrorist() then
 		if isPistolRound then
@@ -196,20 +198,36 @@ end
 function AiRoutineBuyGear:buyForceRound()
 	local balance = LocalPlayer:m_iAccount()
 
+	if balance > 3500 then
+		if LocalPlayer:isTerrorist() then
+			self:buyRoundTerrorist()
+		else
+			self:buyRoundCounterTerrorist()
+		end
+
+		return
+	end
+
 	if balance < 1500 then
 		self:equipRandomWeapon({
 			WeaponBuyCode.FN57,
-			WeaponBuyCode.DEAGLE,
-			LocalPlayer:isTerrorist() and WeaponBuyCode.MAC10 or WeaponBuyCode.MP9
+			WeaponBuyCode.DEAGLE
 		})
 
 		self:equipRandomGrenades(1)
 	else
-		self:equipRandomWeapon({
-			WeaponBuyCode.MP7,
-			WeaponBuyCode.UMP45,
-			WeaponBuyCode.NEGEV
-		})
+		if Math.getChance(3) then
+			self:equipRandomWeapon({
+				WeaponBuyCode.NEGEV
+			})
+		else
+			self:equipRandomWeapon({
+				WeaponBuyCode.MP7,
+				WeaponBuyCode.UMP45,
+				LocalPlayer:isTerrorist() and WeaponBuyCode.MAC10 or WeaponBuyCode.MP9,
+				WeaponBuyCode.NOVA
+			})
+		end
 
 		self:equipBodyArmor()
 		self:equipRandomGrenades(2)
@@ -267,25 +285,29 @@ end
 
 --- @return void
 function AiRoutineBuyGear:buyRoundTerrorist()
+	if self.accountBalance < 3100 then
+		return
+	end
+
 	--- @type AiRoutineBuyGearSet[]
 	local buys = {
 		{
 			chance = 2,
-			balance = 6000,
+			balance = 5750,
 			callback = function()
 				self:equipWeapon(WeaponBuyCode.AWP)
 			end
 		},
 		{
 			chance = 4,
-			balance = 5000,
+			balance = 4500,
 			callback = function()
 				self:equipWeapon(WeaponBuyCode.SG556)
 			end
 		},
 		{
 			chance = 1,
-			balance = 4000,
+			balance = 3700,
 			callback = function()
 				self:equipWeapon(WeaponBuyCode.AK47)
 			end
@@ -305,14 +327,17 @@ function AiRoutineBuyGear:buyRoundTerrorist()
 
 	self:equipFullArmor()
 
-	local balance = LocalPlayer:m_iAccount()
-	local grenades = balance > 5000 and 4 or Math.getRandomInt(2, 4)
+	local grenades = self.accountBalance > 5000 and 4 or Math.getRandomInt(2, 4)
 
 	self:equipRandomGrenades(grenades)
 end
 
 --- @return void
 function AiRoutineBuyGear:buyRoundCounterTerrorist()
+	if self.accountBalance < 3100 then
+		return
+	end
+
 	--- @type AiRoutineBuyGearSet[]
 	local buys = {
 		{
@@ -354,8 +379,7 @@ function AiRoutineBuyGear:buyRoundCounterTerrorist()
 
 	self:equipFullArmor()
 
-	local balance = LocalPlayer:m_iAccount()
-	local grenades = balance > 5000 and 4 or Math.getRandomInt(2, 4)
+	local grenades = self.accountBalance > 5000 and 4 or Math.getRandomInt(2, 4)
 
 	self:equipRandomGrenades(grenades)
 end
@@ -363,15 +387,13 @@ end
 --- @param buys AiRoutineBuyGearSet[]
 --- @return void
 function AiRoutineBuyGear:buySet(buys)
-	local balance = LocalPlayer:m_iAccount()
-
 	--- @type AiRoutineBuyGearSet
 	local uncertainBuys = {}
 	--- @type AiRoutineBuyGearSet
 	local certainBuys = {}
 
 	for _, buy in pairs(buys) do
-		if balance >= buy.balance and Math.getChance(buy.chance) then
+		if self.accountBalance >= buy.balance and Math.getChance(buy.chance) then
 			if buy.chance == 1 then
 				table.insert(certainBuys, buy)
 			else

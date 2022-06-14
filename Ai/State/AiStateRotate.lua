@@ -81,11 +81,13 @@ end
 
 --- @param site string
 --- @return void
-function AiStateRotate:rotate(site)
+function AiStateRotate:invoke(site)
     self.isActive = true
     self.site = site
     self.node = Nodegraph.getBombsite(site)
     self.bounds = self.node.origin:getBounds(Vector3.align.CENTER, 800, 800, 128)
+
+    self:queueForReactivation()
 end
 
 --- @return void

@@ -187,12 +187,10 @@ function AiStateEvacuate:think(cmd)
 
     if not self.isBombPlanted and AiUtility.isBombPlanted() then
         self:activate()
-
-        return
     end
 
     for _, teammate in pairs(AiUtility.teammates) do
-        if teammate:getOrigin():getDistance(self.node.origin) < 32 then
+        if teammate:getOrigin():getDistance(self.node.origin) < 40 then
             self:activate()
         end
     end

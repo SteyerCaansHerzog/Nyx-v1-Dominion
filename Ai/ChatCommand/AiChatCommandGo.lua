@@ -55,6 +55,7 @@ function AiChatCommandGo:invoke(ai, sender, args)
         elseif objective == "A" or objective == "B" then
             if sender:isClient() then
                 ai.states.defend.bombsite = objective
+                ai.states.defend.isSpecificNodeSet = false
                 ai.states.plant.bombsite = objective
                 ai.states.lurkWithBomb.bombsite = objective
             else

@@ -23,7 +23,7 @@ function AiChatCommandForce:invoke(ai, sender, args)
         return
     end
 
-    ai:forceBuy()
+    ai.routines.buyGear:buyForceRound()
 end
 
 return Nyx.class("AiChatCommandForce", AiChatCommandForce, AiChatCommandBase)

@@ -36,8 +36,7 @@ local AiStatePlant = {
     requiredGamemodes = {
         AiUtility.gamemodes.DEMOLITION,
         AiUtility.gamemodes.WINGMAN,
-    },
-    isLockable = true -- todo
+    }
 }
 
 --- @param fields AiStatePlant
@@ -88,24 +87,29 @@ function AiStatePlant:assess()
         return AiPriority.IGNORE
     end
 
-    local playerOrigin = LocalPlayer:getOrigin()
-    local bombsite = Nodegraph.getClosestBombsite(playerOrigin)
-    local closestPlantNode = Nodegraph.getClosest(playerOrigin, Node.spotPlant)
+    local clientOrigin = LocalPlayer:getOrigin()
+    local bombsite = Nodegraph.getClosestBombsite(clientOrigin)
+    local closestPlantNode = Nodegraph.getClosest(clientOrigin, Node.spotPlant)
     local isCovered = false
-    local distanceToSite = playerOrigin:getDistance(bombsite.origin)
+    local distanceToSite = clientOrigin:getDistance(bombsite.origin)
     local isNearSite = distanceToSite < 1400
-    local isOnPlant = playerOrigin:getDistance(closestPlantNode.origin) < 200
+    local isOnPlant = clientOrigin:getDistance(closestPlantNode.origin) < 200
 
     for _, teammate in pairs(AiUtility.teammates) do
         local teammateOrigin = teammate:getOrigin()
 
         local distance = 500
 
-        if playerOrigin:getDistance(teammateOrigin) < distance then
+        if clientOrigin:getDistance(teammateOrigin) < distance then
             isCovered = true
 
             break
         end
+    end
+
+    -- Do not try to plant if the enemy is in top of us.
+    if AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin()) < 400 then
+        return AiPriority.IGNORE
     end
 
     -- On plant-spot and covered.

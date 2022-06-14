@@ -79,7 +79,7 @@ function AiStateZombie:think(cmd)
     if not AiUtility.closestEnemy then
         self.activity = "Hunting for prey"
 
-        if not Pathfinder.isOk() then
+        if not Pathfinder.isOnValidPath() then
             self:pathfindSweepMap()
         end
 

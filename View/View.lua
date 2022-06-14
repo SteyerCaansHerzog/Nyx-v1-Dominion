@@ -174,7 +174,7 @@ function View.setViewAngles()
 		View.setIdealOverride(idealViewAngles)
 
 		smoothingCutoffThreshold = 0.6
-	elseif Pathfinder.isOk() then
+	elseif Pathfinder.isOnValidPath() then
 		-- Perform generic look behaviour.
 		View.setIdealLookAhead(idealViewAngles)
 		-- Watch corners enemies are actually occluded by.
@@ -563,7 +563,7 @@ function View.think(cmd)
 
 	local clientOrigin = LocalPlayer:getOrigin()
 
-	if Pathfinder.isOk() then
+	if Pathfinder.isOnValidPath() then
 		-- Shoot out cover.
 		if Pathfinder.isObstructedByObstacle then
 			local node = Pathfinder.path.node

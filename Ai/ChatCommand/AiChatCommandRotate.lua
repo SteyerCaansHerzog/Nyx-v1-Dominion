@@ -52,8 +52,9 @@ function AiChatCommandRotate:invoke(ai, sender, args)
         return "the client is already near the bombsite"
     end
 
-    ai.states.rotate:rotate(site)
+    ai.states.rotate:invoke(site)
     ai.states.defend.defendingSite = site
+    ai.states.defend.isSpecificNodeSet = false
 
     Node.hintBlockRotate.block(Nodegraph, site)
 end

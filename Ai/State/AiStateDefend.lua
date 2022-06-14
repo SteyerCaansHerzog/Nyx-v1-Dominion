@@ -41,6 +41,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field node NodeTypeDefend
 --- @field priority number
 --- @field teammateInTroubleTimer Timer
+--- @field isSpecificNodeSet boolean
 local AiStateDefend = {
     name = "Defend",
     requiredNodes = {
@@ -115,11 +116,11 @@ function AiStateDefend:__init()
 
         local clientOrigin = LocalPlayer:getOrigin()
 
-        if clientOrigin:getDistance(e.victim:getOrigin()) > 800 then
+        if clientOrigin:getDistance(e.victim:getOrigin()) > 500 then
             return
         end
 
-        if clientOrigin:getDistance(e.attacker:getOrigin()) > 800 then
+        if clientOrigin:getDistance(e.attacker:getOrigin()) > 650 then
             return
         end
 
@@ -146,7 +147,28 @@ end
 function AiStateDefend:assessDemolition()
     local bomb = AiUtility.plantedBomb
 
+    if AiUtility.isBombBeingDefusedByEnemy or AiUtility.isBombBeingPlantedByEnemy then
+        return AiPriority.IGNORE
+    end
+
     if LocalPlayer:isCounterTerrorist() then
+        -- Hold specific angle.
+        if not bomb and self.isSpecificNodeSet and self:isEnemyHoldable() then
+            local isAbleToDefend = true
+
+            if AiUtility.bombCarrier then
+                local bombOrigin = AiUtility.bombCarrier:getOrigin()
+
+                if bombOrigin:getDistance(Nodegraph.getClosestBombsite(bombOrigin).origin) < 650 then
+                    isAbleToDefend = false
+                end
+            end
+
+            if isAbleToDefend then
+                return AiPriority.DEFEND_EXPEDITE
+            end
+        end
+
         if bomb then
             -- Defend our teammate who is defusing.
             if AiUtility.isBombBeingDefusedByTeammate then
@@ -164,6 +186,11 @@ function AiStateDefend:assessDemolition()
     end
 
     if LocalPlayer:isTerrorist() then
+        -- Hold specific angle.
+        if bomb and self.isSpecificNodeSet and self:isEnemyHoldable() then
+            return AiPriority.DEFEND_EXPEDITE
+        end
+
         -- We're not near the site.
         -- This will practically force the AI to go to the site.
         if self.getToSiteTimer:isStarted() and not self.getToSiteTimer:isElapsed(12) then
@@ -222,6 +249,7 @@ function AiStateDefend:reset()
     self.isDefending = false
     self.isAtDestination = false
     self.isOnDefendSpot = false
+    self.isSpecificNodeSet = false
     self.node = nil
 
     self.defendTimer:stop()
@@ -229,11 +257,15 @@ end
 
 --- @return boolean
 function AiStateDefend:isEnemyHoldable()
-    if AiUtility.isBombBeingPlantedByEnemy then
+    if AiUtility.isBombBeingPlantedByEnemy or AiUtility.isBombBeingDefusedByEnemy or AiUtility.isHostageCarriedByEnemy then
         return false
     end
 
-    if not self.teammateInTroubleTimer:isElapsed(3.5) then
+    if not self.teammateInTroubleTimer:isElapsed(4) then
+        return false
+    end
+
+    if AiUtility.isClientThreatenedMajor then
         return false
     end
 
@@ -256,13 +288,20 @@ end
 
 --- @return void
 function AiStateDefend:activate()
-    self:setActivityNode(self.bombsite)
+    if not self.isSpecificNodeSet then
+        self:setActivityNode(self.bombsite)
+    end
 
     if not self.node then
         self:invoke()
     end
 
     self:move()
+end
+
+--- @return void
+function AiStateDefend:deactivate()
+    self:reset()
 end
 
 --- @return void
@@ -307,6 +346,7 @@ end
 function AiStateDefend:think(cmd)
     if not self.node then
         self:reset()
+
         return
     end
 

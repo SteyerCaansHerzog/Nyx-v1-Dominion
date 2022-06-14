@@ -268,10 +268,6 @@ function AiStateFlashbangDynamic:think(cmd)
     if self.throwTimer:isElapsedThenRestart(0.1) then
         cmd.in_attack = false
 
-        if self.canJumpThrow then
-            cmd.in_jump = true
-        end
-
         Client.fireAfter(0.15, function()
             self.throwCooldownTimer:restart()
 

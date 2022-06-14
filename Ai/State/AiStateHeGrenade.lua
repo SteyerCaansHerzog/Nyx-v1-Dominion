@@ -15,7 +15,8 @@ local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 --- @class AiStateHeGrenade : AiStateGrenadeBase
 local AiStateHeGrenade = {
     name = "HE Grenade",
-    priority = AiPriority.HE_GRENADE_LINEUP,
+    priorityLineup = AiPriority.HE_GRENADE_LINEUP,
+    priorityThrow = AiPriority.HE_GRENADE_THROW,
     cooldown = 6,
     nodeDefendCt = Node.grenadeExplosiveDefendCt,
     nodeDefendT = Node.grenadeExplosiveDefendT,
@@ -25,6 +26,12 @@ local AiStateHeGrenade = {
     equipFunction = LocalPlayer.equipHeGrenade,
     rangeThreshold = 2000,
     isCheckingEnemiesRequired = true,
+    requiredNodes = {
+        Node.grenadeExplosiveDefendCt,
+        Node.grenadeExplosiveDefendT,
+        Node.grenadeExplosiveExecuteT,
+        Node.grenadeExplosiveRetakeCt,
+    }
 }
 
 --- @param fields AiStateHeGrenade

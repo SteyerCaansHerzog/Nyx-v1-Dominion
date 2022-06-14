@@ -15,7 +15,8 @@ local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 --- @class AiStateFlashbang : AiStateGrenadeBase
 local AiStateFlashbang = {
     name = "Flashbang",
-    priority = AiPriority.FLASHBANG_LINEUP,
+    priorityLineup = AiPriority.FLASHBANG_LINEUP,
+    priorityThrow = AiPriority.FLASHBANG_THROW,
     cooldown = 4,
     nodeDefendCt = Node.grenadeFlashbangDefendCt,
     nodeDefendT = Node.grenadeFlashbangDefendT,
@@ -24,7 +25,13 @@ local AiStateFlashbang = {
     weapons = {Weapons.FLASHBANG},
     equipFunction = LocalPlayer.equipFlashbang,
     rangeThreshold = 2000,
-    isCheckingEnemiesRequired = true
+    isCheckingEnemiesRequired = true,
+    requiredNodes = {
+        Node.grenadeFlashbangDefendCt,
+        Node.grenadeFlashbangDefendT,
+        Node.grenadeFlashbangExecuteT,
+        Node.grenadeFlashbangRetakeCt,
+    }
 }
 
 --- @param fields AiStateFlashbang

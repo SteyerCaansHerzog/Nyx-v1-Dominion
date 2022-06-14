@@ -31,7 +31,8 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field nodeDefendT string
 --- @field nodeExecuteT string
 --- @field nodeRetakeCt string
---- @field priority number
+--- @field priorityLineup number
+--- @field priorityThrow number
 --- @field rangeThreshold number
 --- @field weapons string[]
 ---
@@ -110,11 +111,6 @@ function AiStateGrenadeBase:assess()
         return AiPriority.IGNORE
     end
 
-    -- Hold a throw. Used for making run line-ups work correctly.
-    if self.throwHoldTimer:isNotElapsed(0.5) then
-        --return AiPriority.THROWING_GRENADE
-    end
-
     -- We don't have the type of grenade in question.
     if not LocalPlayer:hasWeapons(self.weapons) then
         return AiPriority.IGNORE
@@ -142,9 +138,14 @@ function AiStateGrenadeBase:assess()
             return AiPriority.IGNORE
         end
 
+        -- Hold a throw. Used for making run line-ups work correctly.
+        if self.throwHoldTimer:isNotElapsed(0.5) then
+            return self.priorityThrow
+        end
+
         -- We're about to throw a grenade.
         if self.isInThrow then
-            --return AiPriority.THROWING_GRENADE
+            return self.priorityThrow
         end
     end
 
@@ -167,7 +168,7 @@ function AiStateGrenadeBase:assess()
     self.node = node
 
     -- We've got a line-up to use.
-    return self.priority
+    return self.priorityLineup
 end
 
 --- @param nodes NodeTypeGrenade[]
@@ -300,7 +301,6 @@ function AiStateGrenadeBase:activate()
        onReachedGoal = function()
            self.isAtDestination = true
            self.startThrowTimer:start()
-           print("AT DESTINATION")
        end,
        goalReachedRadius = 5,
        isCounterStrafingOnGoal = true,

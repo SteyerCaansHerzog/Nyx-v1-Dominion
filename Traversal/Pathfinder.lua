@@ -50,6 +50,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field onFailedToFindPath fun(): void
 --- @field onFoundPath fun(): void
 --- @field onReachedGoal fun(): void
+--- @field startOriginOverride Vector3
 --- @field task string
 
 --- @class PathfinderPath
@@ -72,6 +73,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field endOrigin Vector3
 --- @field options PathfinderOptions
 --- @field startOrigin Vector3
+--- @field targetNode NodeTypeBase
 --}}}
 
 --{{{ Pathfinder
@@ -97,23 +99,24 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field isDucking boolean
 --- @field isEnabled boolean
 --- @field isJumping boolean
+--- @field isLoggingEnabled boolean
 --- @field isObstructedByDoor boolean
 --- @field isObstructedByObstacle boolean
 --- @field isObstructedByTeammate boolean
+--- @field isReadyToReplayMovementRecording boolean
 --- @field isReplayingMovementRecording boolean
 --- @field isWalking boolean
 --- @field lastMovementAngle Angle
 --- @field lastRequest PathfinderRequest
 --- @field moveDuckTimer Timer
 --- @field movementRecorderAngle Angle
+--- @field movementRecorderTimer Timer
 --- @field moveObstructedTimer Timer
 --- @field moveOnGroundTimer Timer
 --- @field nodeClassesInTentativePath NodeTypeBase[]
 --- @field path PathfinderPath
 --- @field pathfindInterval number
 --- @field pathfindIntervalTimer Timer
---- @field isReadyToReplayMovementRecording boolean
---- @field movementRecorderTimer Timer
 local Pathfinder = {}
 
 --- @return void
@@ -127,6 +130,7 @@ end
 
 --- @return void
 function Pathfinder.initFields()
+	Pathfinder.isLoggingEnabled = true
 	Pathfinder.avoidTeammatesDirection = "Left"
 	Pathfinder.avoidTeammatesDuration = 0.6
 	Pathfinder.avoidTeammatesTimer = Timer:new()
@@ -201,7 +205,7 @@ function Pathfinder.initEvents()
 				node.isOccludedBySmoke = false
 			end
 
-			if Pathfinder.isOk() then
+			if Pathfinder.isOnValidPath() then
 				Pathfinder.retryLastRequest()
 			end
 		end)
@@ -226,7 +230,7 @@ function Pathfinder.initEvents()
 				node.isOccludedByInferno = false
 			end
 
-			if Pathfinder.isOk() then
+			if Pathfinder.isOnValidPath() then
 				Pathfinder.retryLastRequest()
 			end
 		end)
@@ -390,7 +394,8 @@ function Pathfinder.moveToNode(node, options)
 
 	Pathfinder.lastRequest = {
 		endOrigin = node.origin,
-		options = options
+		options = options,
+		targetNode = node
 	}
 end
 
@@ -432,8 +437,12 @@ function Pathfinder.retryLastRequest()
 end
 
 --- @return boolean
-function Pathfinder.isOk()
-	if not Pathfinder.path or not Pathfinder.path.isOk then
+function Pathfinder.isOnValidPath()
+	if not Pathfinder.path then
+		return false
+	end
+
+	if not Pathfinder.path.isOk then
 		return false
 	end
 
@@ -506,6 +515,11 @@ function Pathfinder.flushRequest()
 end
 
 --- @return void
+function Pathfinder.handleCurrentRequest()
+	Pathfinder.createPath()
+end
+
+--- @return void
 function Pathfinder.handleLastRequest()
 	-- Pathfinding is not enabled.
 	if not MenuGroup.enablePathfinder:get() then
@@ -522,10 +536,16 @@ function Pathfinder.handleLastRequest()
 		return
 	end
 
+	-- Don't path while the player is in-air.
 	if not LocalPlayer:getFlag(Player.flags.FL_ONGROUND) then
 		return
 	end
 
+	Pathfinder.createPath()
+end
+
+--- @return void
+function Pathfinder.createPath()
 	-- Get pathfind request options.
 	local pathfinderOptions = Pathfinder.lastRequest.options or {}
 
@@ -554,7 +574,7 @@ function Pathfinder.handleLastRequest()
 
 	-- Path start.
 	local startGoal = Node.goalStart:new({
-		origin = Pathfinder.lastRequest.startOrigin:clone():offset(0, 0, 18)
+		origin = pathfinderOptions.startOriginOverride and pathfinderOptions.startOriginOverride or Pathfinder.lastRequest.startOrigin:clone():offset(0, 0, 18)
 	})
 
 	-- Path end.
@@ -647,7 +667,7 @@ function Pathfinder.handleLastRequest()
 				maxConnections = 8,
 			})
 		else
-			Pathfinder.failPath(pathfinderOptions, nil, "Start is out of bounds")
+			Pathfinder.failPath(pathfinderOptions, nil, "Start is out of bounds", 1)
 
 			return
 		end
@@ -679,7 +699,7 @@ function Pathfinder.handleLastRequest()
 				maxConnections = 8,
 			})
 		else
-			Pathfinder.failPath(pathfinderOptions, endGoal, "Goal is unreachable")
+			Pathfinder.failPath(pathfinderOptions, endGoal, "Goal is unreachable", 1)
 
 			return
 		end
@@ -698,7 +718,7 @@ function Pathfinder.handleLastRequest()
 
 		-- Still no path.
 		if not tentativePath then
-			Pathfinder.failPath(pathfinderOptions, endGoal, "No path available")
+			Pathfinder.failPath(pathfinderOptions, endGoal, "No path available", 2)
 
 			return
 		end
@@ -750,14 +770,16 @@ function Pathfinder.handleLastRequest()
 
 	Pathfinder.clearLastRequest()
 
-	Logger.console(-1, "New pathfind task: %s.", pathfinderOptions.task)
+	if Pathfinder.isLoggingEnabled then
+		Logger.console(-1, "New pathfind task: %s.", pathfinderOptions.task)
+	end
 end
 
 --- @param options PathfinderOptions
 --- @param goal NodeTypeGoal|nil
 --- @param error string
 --- @return void
-function Pathfinder.failPath(options, goal, error)
+function Pathfinder.failPath(options, goal, error, code)
 	Pathfinder.path = {
 		isOk = false,
 		errorMessage = error
@@ -769,12 +791,24 @@ function Pathfinder.failPath(options, goal, error)
 
 	Pathfinder.cleanupLastRequest()
 
-	if goal then
-		local node = Nodegraph.getClosest(goal.origin)
+	if not Pathfinder.isLoggingEnabled then
+		return
+	end
 
-		Logger.console(1, "Pathfind task '%s' failed: %s. Assumed target node: [%i] %s.", Pathfinder.lastRequest.options.task, error, node.id, node.name)
+	if goal then
+		local node = Pathfinder.lastRequest.targetNode
+
+		if node then
+			Logger.console(code, "Pathfind task '%s' failed: %s. Target node: [%i] %s.", Pathfinder.lastRequest.options.task, error, node.id, node.name)
+		else
+			node = Nodegraph.getClosest(goal.origin)
+
+			Logger.console(code, "Pathfind task '%s' failed: %s. Assumed closest target node: [%i] %s (%s).", Pathfinder.lastRequest.options.task, error, node.id, node.name, node.origin:__tostring())
+
+		end
+
 	else
-		Logger.console(1, "Pathfind task '%s' failed: %s.", Pathfinder.lastRequest.options.task, error)
+		Logger.console(code, "Pathfind task '%s' failed: %s.", Pathfinder.lastRequest.options.task, error)
 	end
 end
 
@@ -840,7 +874,7 @@ function Pathfinder.correctGoalZ(node)
 	local trace = Trace.getHullInDirection(
 		node.origin,
 		Vector3.align.DOWN,
-		Vector3:newBounds(Vector3.align.CENTER, 16, 16, 18),
+		Vector3:newBounds(Vector3.align.CENTER, 15, 15, 18),
 		AiUtility.traceOptionsPathfinding
 	)
 
@@ -854,7 +888,7 @@ function Pathfinder.correctGoalOrigin(node)
 
 	local trace = Trace.getHullInPlace(
 		node.origin,
-		Vector3:newBounds(Vector3.align.CENTER, 16, 16, 18),
+		Vector3:newBounds(Vector3.align.CENTER, 15, 15, 18),
 		AiUtility.traceOptionsPathfinding
 	)
 
@@ -900,7 +934,7 @@ function Pathfinder.traverseActivePath(cmd)
 		return
 	end
 
-	if not Pathfinder.isOk() then
+	if not Pathfinder.isOnValidPath() then
 		Pathfinder.ejectFromLadder(cmd)
 
 		return

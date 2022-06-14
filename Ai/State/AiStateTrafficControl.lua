@@ -43,7 +43,7 @@ function AiStateTrafficControl:assess()
     end
 
     -- No path to assess.
-    if not Pathfinder.isOk() then
+    if not Pathfinder.isOnValidPath() then
         return AiPriority.IGNORE
     end
 

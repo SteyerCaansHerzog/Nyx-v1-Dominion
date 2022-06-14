@@ -132,7 +132,7 @@ function NodeTypeBase:__setup()
 
     NodeTypeBase.collisionHullHumanStanding = Vector3:newBounds(Vector3.align.UP, 15, 15, 32)
     NodeTypeBase.collisionHullHumanDucking = Vector3:newBounds(Vector3.align.UP, 15, 15, 23)
-    NodeTypeBase.collisionHullNode = Vector3:newBounds(Vector3.align.CENTER, 15, 15, 8)
+    NodeTypeBase.collisionHullNode = Vector3:newBounds(Vector3.align.CENTER, 15, 15, 6)
     NodeTypeBase.collisionHullNodeSmall = Vector3:newBounds(Vector3.align.CENTER, 6)
     NodeTypeBase.collisionHullGap = Vector3:newBounds(Vector3.align.BOTTOM, 15, 15, 32)
 end
@@ -543,7 +543,7 @@ function NodeTypeBase:setConnections(nodegraph, options)
 
                 isCollisionOk = not collisionTrace.isIntersectingGeometry
             else
-                if distance2 > 50 then
+                if distance > 50 then
                     isCollisionOk = false
                 else
                     if options.isCollisionInfoSaved then
@@ -556,9 +556,7 @@ function NodeTypeBase:setConnections(nodegraph, options)
                 end
             end
         else
-            local distance2 = self.origin:getDistance2(node.origin)
-
-            if distance2 > 32 then
+            if distance > 50 then
                 local targetCollisionOrigin = node.origin:clone():offset(0, 0, hullOffset)
                 local collisionTrace = Trace.getHullToPosition(selfCollisionOrigin, targetCollisionOrigin, hullBounds, AiUtility.traceOptionsPathfinding)
 

@@ -254,7 +254,7 @@ function Nodegraph.getSpawn(spawn)
 
     if spawn == "T" then
         return Nodegraph.getOne(Node.objectiveTSpawn)
-    elseif spawn == "C" then
+    elseif spawn == "CT" then
         return Nodegraph.getOne(Node.objectiveCtSpawn)
     end
 end
