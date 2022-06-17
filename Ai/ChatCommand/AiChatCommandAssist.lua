@@ -37,7 +37,7 @@ function AiChatCommandAssist:invoke(ai, sender, args)
     origin = origin:getTraceLine(origin + Vector3:new(0, 0, -Vector3.MAX_DISTANCE), sender.eid)
 
     Client.fireAfterRandom(1, 2, function()
-        ai.states.patrol:beginPatrol(origin, sender)
+        ai.states.patrol:invoke(origin, sender)
     end)
 end
 

@@ -191,7 +191,14 @@ function NodeTypeBase:render(nodegraph, isRenderingMetaData)
     local alphaModDistance = Math.getClamped(Math.getInversedFloat(origin:getDistance(self.origin), 400), 0, 1) * 255
     local alphaModFoV = Math.getClamped(Math.getInversedFloat(cameraAngles:getFov(cameraOrigin, self.origin), 30), 0.1, 1) * 255
 
-    self.renderAlpha = Math.getClamped(Math.getInversedFloat(origin:getDistance(self.origin), NodeTypeBase.drawDistance), 0, 1) * 255
+    local err = self:getError(nodegraph)
+
+    if err then
+        self.renderAlpha = 255
+    else
+        self.renderAlpha = Math.getClamped(Math.getInversedFloat(origin:getDistance(self.origin), NodeTypeBase.drawDistance), 0, 1) * 255
+    end
+
     self.renderColorPrimary = self.colorPrimary:clone():setAlpha(self.renderAlpha)
     self.renderColorSecondary = self.colorSecondary:clone():setAlpha(self.renderAlpha)
     self.renderColorFovPrimary = self.renderColorPrimary:clone():setAlpha(math.min(alphaModDistance, alphaModFoV))
@@ -235,8 +242,6 @@ function NodeTypeBase:render(nodegraph, isRenderingMetaData)
     if not isRenderingMetaData then
         return
     end
-
-    local err = self:getError(nodegraph)
 
     if err then
         local errColor = ColorList.WARNING:clone():setAlpha(self.renderColorPrimary.a)

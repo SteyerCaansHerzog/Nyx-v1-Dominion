@@ -19,7 +19,7 @@ local AiChatCommandEco = {
 --- @param args string[]
 --- @return void
 function AiChatCommandEco:invoke(ai, sender, args)
-    ai.routines.buyGear:blockThisRound()
+    ai.routines.buyGear:save()
 end
 
 return Nyx.class("AiChatCommandEco", AiChatCommandEco, AiChatCommandBase)

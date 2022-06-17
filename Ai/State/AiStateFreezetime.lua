@@ -97,7 +97,7 @@ function AiStateFreezetime:think(cmd)
 
         if Math.getChance(10) then
             self.currentBehavior = AiStateFreezetime.actionSpinAround
-        elseif Math.getChance(1) then
+        elseif Math.getChance(4) then
             self.currentBehavior = AiStateFreezetime.actionLookAtTeammate
         else
             self.currentBehavior = self.actionIdle

@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -23,7 +24,10 @@ function AiChatCommandForce:invoke(ai, sender, args)
         return
     end
 
-    ai.routines.buyGear:buyForceRound()
+    Client.fireAfterRandom(0, 1, function()
+        ai.routines.buyGear:buyForceRound()
+        ai.routines.buyGear:processQueue()
+    end)
 end
 
 return Nyx.class("AiChatCommandForce", AiChatCommandForce, AiChatCommandBase)

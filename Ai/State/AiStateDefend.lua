@@ -71,8 +71,13 @@ function AiStateDefend:__init()
     self.jiggleTime = Math.getRandomFloat(0.25, 0.6)
     self.jiggleTimer = Timer:new():start()
     self.teammateInTroubleTimer = Timer:new():startThenElapse()
+    self.bombsite = AiUtility.randomBombsite
+
+    local isActivated = false
 
     Callbacks.roundPrestart(function()
+        isActivated = false
+
         self.getToSiteTimer:stop()
 
         local slot = 0
@@ -125,6 +130,35 @@ function AiStateDefend:__init()
         end
 
         self.teammateInTroubleTimer:restart()
+    end)
+
+
+    Callbacks.setupCommand(function()
+        if not AiUtility.bombCarrier then
+            return
+        end
+
+        if AiUtility.bombCarrier:isClient() then
+            return
+        end
+
+        if isActivated then
+            return
+        end
+
+        local nearestBombsite = Nodegraph.getClosestBombsite(AiUtility.bombCarrier:getOrigin())
+
+        if AiUtility.bombCarrier:getOrigin():getDistance(nearestBombsite.origin) > 1400 then
+            return
+        end
+
+        if LocalPlayer:getOrigin():getDistance(nearestBombsite.origin) < 750 then
+            return
+        end
+
+        self.getToSiteTimer:start()
+
+        isActivated = true
     end)
 end
 
@@ -273,14 +307,22 @@ function AiStateDefend:isEnemyHoldable()
     local eyeOrigin = Client.getEyeOrigin()
     local clientOrigin = Client.getEyeOrigin()
     local isEnemyInFoV = false
+    local isEnemies = false
 
     for _, enemy in pairs(AiUtility.enemies) do
+        isEnemies = true
+
         local enemyOrigin = enemy:getOrigin()
+
         if clientOrigin:getDistance(enemyOrigin) < 1000 and cameraAngles:getFov(eyeOrigin, enemyOrigin:offset(0, 0, 64)) < 85 then
             isEnemyInFoV = true
 
             break
         end
+    end
+
+    if not isEnemies then
+        return true
     end
 
     return isEnemyInFoV

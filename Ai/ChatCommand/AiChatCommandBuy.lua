@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
@@ -33,7 +34,10 @@ function AiChatCommandBuy:invoke(ai, sender, args)
             MenuGroup.enableAutoBuy:set(false)
         end
     else
-        ai.routines.buyGear:buyGear()
+        Client.fireAfterRandom(0, 1, function()
+            ai.routines.buyGear:buyGear()
+            ai.routines.buyGear:processQueue()
+        end)
     end
 end
 

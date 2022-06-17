@@ -870,7 +870,7 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "Rifle",
             weaponMode = WeaponMode.HEAVY,
-            fov = 12,
+            fov = 4.5,
             ranges = {
                 long = 1500,
                 medium = 1000,
@@ -895,7 +895,7 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "Shotgun",
             weaponMode = WeaponMode.SHOTGUN,
-            fov = 10,
+            fov = 5,
             ranges = {
                 long = 0,
                 medium = 0,
@@ -920,7 +920,7 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "SMG",
             weaponMode = WeaponMode.LIGHT,
-            fov = 10,
+            fov = 5,
             ranges = {
                 long = 1600,
                 medium = 1400,
@@ -1021,7 +1021,7 @@ function AiStateEngage:setWeaponStats(enemy)
         {
             name = "Pistol",
             weaponMode = WeaponMode.PISTOL,
-            fov = 7,
+            fov = 4.5,
             ranges = {
                 long = 1850,
                 medium = 600,
@@ -1082,7 +1082,7 @@ function AiStateEngage:setWeaponStats(enemy)
     self.shootWithinFov = selectedWeaponType.fov
 
     if not self.shootWithinFov then
-        self.shootWithinFov = 10
+        self.shootWithinFov = 4
     end
 
     if selectedWeaponType.runAtCloseRange then
@@ -1264,8 +1264,16 @@ function AiStateEngage:moveOnBestTarget(cmd)
             isAbleToDefend = false
         end
     else
-        if LocalPlayer:isTerrorist() then
+        local bombsite = Nodegraph.getBombsite(self.ai.states.defend.bombsite)
+
+        defendNode = Node.defendSiteT
+
+        if clientOrigin:getDistance(bombsite.origin) > 1450 then
             isAbleToDefend = false
+        elseif LocalPlayer:isTerrorist() then
+            if not AiUtility.plantedBomb or AiUtility.isBombBeingDefusedByEnemy or AiUtility.bombDetonationTime <= 15 then
+                isAbleToDefend = false
+            end
         else
             defendNode = Node.defendSiteCt
 
@@ -1284,7 +1292,13 @@ function AiStateEngage:moveOnBestTarget(cmd)
     end
 
     if isAbleToDefend and Pathfinder.isIdle() then
-        local node = Nodegraph.getRandom(Node.defendSiteCt, clientOrigin, 1000)
+        local node
+
+        if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+            node = Nodegraph.getRandomForBombsite(defendNode, self.ai.states.defend.bombsite)
+        else
+            node = Nodegraph.getRandom(defendNode, clientOrigin, 1450)
+        end
 
         if node then
             self.isDefending = true
@@ -1303,6 +1317,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
 
     if not isAbleToDefend then
         self.isDefending = false
+        self.ai.states.defend.isSpecificNodeSet = false
     end
 
     if self.isDefending then

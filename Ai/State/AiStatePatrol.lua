@@ -60,12 +60,14 @@ end
 --- @param origin Vector3
 --- @param player Player
 --- @return void
-function AiStatePatrol:beginPatrol(origin, player)
+function AiStatePatrol:invoke(origin, player)
     self:reset()
 
     self.patrolOrigin = origin
     self.isBeginningPatrol = true
     self.patrollingOnBehalfOf = player
+
+    self:queueForReactivation()
 end
 
 --- @return void
@@ -82,7 +84,7 @@ function AiStatePatrol:assess()
         local trace = Trace.getLineToPosition(eyeOrigin, bombOrigin, AiUtility.traceOptionsAttacking)
 
         if not trace.isIntersectingGeometry then
-            self:beginPatrol(bombOrigin, LocalPlayer)
+            self:invoke(bombOrigin, LocalPlayer)
 
             return AiPriority.PATROL_BOMB
         end

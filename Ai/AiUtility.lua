@@ -35,7 +35,9 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field clientThreatenedBy Player
 --- @field clientThreatenedFromOrigin Vector3
 --- @field closestEnemy Player
+--- @field closestEnemyDistance number
 --- @field closestTeammate Player
+--- @field closestTeammateDistance number
 --- @field defuseTimer Timer
 --- @field dormantAt number[]
 --- @field enemies Player[]
@@ -65,6 +67,8 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field lastPresenceTimers Timer[]
 --- @field lastVisibleEnemyTimer Timer
 --- @field plantedBomb Entity
+--- @field position number
+--- @field randomBombsite string
 --- @field teammates Player[]
 --- @field teammatesAlive number
 --- @field threats boolean[]
@@ -74,7 +78,6 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field traceOptionsAttacking TraceOptions
 --- @field traceOptionsPathfinding TraceOptions
 --- @field visibleEnemies Player[]
---- @field randomBombsite string
 local AiUtility = {
     gamemodes = GamemodeInfo
 }
@@ -341,6 +344,22 @@ function AiUtility.updateMisc()
     AiUtility.plantedBomb = Entity.findOne("CPlantedC4")
     AiUtility.gameRules = Entity.getGameRules()
     AiUtility.timeData = Table.fromPanorama(Panorama.GameStateAPI.GetTimeDataJSO())
+
+    local i = 0
+
+    for _, player in Table.sortedPairs(Player.get(function(p)
+        return p:isTeammate()
+    end), function(a, b)
+        return a.eid < b.eid
+    end) do
+        i = i + 1
+
+        if player:isClient() then
+            AiUtility.position = i
+
+            break
+        end
+    end
 end
 
 --- @return void
@@ -354,6 +373,7 @@ function AiUtility.updateAllPlayers()
     AiUtility.hostageCarriers = {}
     AiUtility.bombCarrier = nil
     AiUtility.closestTeammate = nil
+    AiUtility.closestTeammateDistance = nil
 
     local clientOrigin = LocalPlayer:getOrigin()
     local closestTeammate
@@ -404,6 +424,7 @@ function AiUtility.updateAllPlayers()
 
     if closestTeammate then
         AiUtility.closestTeammate = closestTeammate
+        AiUtility.closestTeammateDistance = closestTeammateDistance
     end
 
     if AiUtility.teammatesAlive > 0 then
@@ -416,6 +437,7 @@ function AiUtility.updateEnemies()
     AiUtility.enemies = {}
     AiUtility.visibleEnemies = {}
     AiUtility.closestEnemy = nil
+    AiUtility.closestEnemyDistance = nil
     AiUtility.isLastAlive = true
     AiUtility.isEnemyVisible = false
 
@@ -495,6 +517,7 @@ function AiUtility.updateEnemies()
 
     if closestEnemy then
         AiUtility.closestEnemy = closestEnemy
+        AiUtility.closestEnemyDistance = closestDistance
     end
 
     if next(AiUtility.visibleEnemies) then
@@ -593,7 +616,10 @@ function AiUtility.updateThreats()
                     -- Set the closest point to the enemy as the best point to look at.
                     if not findCollidedPointVisibleToEnemyTrace.isIntersectingGeometry then
                         isClientThreatenedMinor = true
-                        isClientThreatenedMajor = true
+
+                        if not eyeOrigin:isRayIntersectingSmoke(findCollidedPointVisibleToEnemyTrace.endPosition) then
+                            isClientThreatenedMajor = true
+                        end
 
                         if canSetThreatenedFromOrigin and fov < lowestFov and fov < 20 then
                             lowestFov = fov

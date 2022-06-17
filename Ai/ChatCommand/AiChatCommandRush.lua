@@ -33,8 +33,9 @@ function AiChatCommandRush:invoke(ai, sender, args)
 
     ai.routines.buyGear:blockThisRound()
 
-    Client.fireAfterRandom(0.5, 2, function()
+    Client.fireAfterRandom(0, 1, function()
         ai.routines.buyGear:buyEcoRush()
+        ai.routines.buyGear:processQueue()
         ai.states.check:invoke("T")
     end)
 end

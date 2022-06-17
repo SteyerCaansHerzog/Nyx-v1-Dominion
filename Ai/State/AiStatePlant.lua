@@ -57,7 +57,7 @@ function AiStatePlant:__init()
 
         self.pickRandomSiteTimer:start()
         self.tellSiteTimer:elapse()
-        self:setPlantNode()
+        self:setPlantNode(AiUtility.randomBombsite)
     end)
 
     Callbacks.bombBeginPlant(function(e)
@@ -95,20 +95,12 @@ function AiStatePlant:assess()
     local isNearSite = distanceToSite < 1400
     local isOnPlant = clientOrigin:getDistance(closestPlantNode.origin) < 200
 
-    for _, teammate in pairs(AiUtility.teammates) do
-        local teammateOrigin = teammate:getOrigin()
-
-        local distance = 500
-
-        if clientOrigin:getDistance(teammateOrigin) < distance then
-            isCovered = true
-
-            break
-        end
+    if AiUtility.closestTeammate and AiUtility.closestTeammateDistance < 400 then
+        isCovered = true
     end
 
     -- Do not try to plant if the enemy is in top of us.
-    if AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin()) < 400 then
+    if AiUtility.closestEnemy and AiUtility.closestEnemyDistance < 400 then
         return AiPriority.IGNORE
     end
 

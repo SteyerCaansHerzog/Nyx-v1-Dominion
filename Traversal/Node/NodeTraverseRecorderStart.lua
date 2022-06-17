@@ -1,5 +1,4 @@
 --{{{ Dependencies
-local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Color = require "gamesense/Nyx/v1/Api/Color"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"

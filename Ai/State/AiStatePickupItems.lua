@@ -240,6 +240,7 @@ end
 function AiStatePickupItems:think(cmd)
     -- Why are we here?
     if not self.item then
+        -- It's one of life's greatest mysteries.
         return
     end
 
@@ -272,8 +273,6 @@ function AiStatePickupItems:think(cmd)
     local floorTrace = Trace.getLineInDirection(itemOrigin, Vector3.align.DOWN, AiUtility.traceOptionsPathfinding)
 
     if itemOrigin:getDistance(floorTrace.endPosition) < 10 and Pathfinder.isIdle() then
-        Pathfinder.clearActivePathAndLastRequest()
-
         Pathfinder.moveToLocation(self.item:m_vecOrigin(), {
             task = "Pick up item",
             isConnectingGoalByCollisionLine = true,
@@ -296,8 +295,6 @@ function AiStatePickupItems:think(cmd)
     if distance < 128 and self.useCooldown:isElapsedThenRestart(0.1) then
         cmd.in_use = true
     end
-
-    Pathfinder.ifIdleThenRetryLastRequest()
 end
 
 return Nyx.class("AiStatePickupItems", AiStatePickupItems, AiStateBase)

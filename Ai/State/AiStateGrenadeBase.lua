@@ -91,6 +91,11 @@ end
 
 --- @return void
 function AiStateGrenadeBase:assess()
+    -- Hold a throw. Used for making run line-ups work correctly.
+    if self.throwHoldTimer:isNotElapsed(0.5) then
+        return self.priorityThrow
+    end
+
     -- No need to use grenades.
     if AiUtility.isRoundOver or AiUtility.enemiesAlive == 0 then
         return AiPriority.IGNORE
@@ -136,11 +141,6 @@ function AiStateGrenadeBase:assess()
             self:reset()
 
             return AiPriority.IGNORE
-        end
-
-        -- Hold a throw. Used for making run line-ups work correctly.
-        if self.throwHoldTimer:isNotElapsed(0.5) then
-            return self.priorityThrow
         end
 
         -- We're about to throw a grenade.

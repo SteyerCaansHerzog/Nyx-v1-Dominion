@@ -112,21 +112,13 @@ end
 
 --- @return void
 function AiStateChickenInteraction:activate()
-    local task
+    if not self.targetChicken then
+        self:reset()
 
-    if self.interaction == "kill" then
-        task = "Intercept hostile poultry"
-    elseif self.interaction == "collect" then
-        task = "Pick up birds"
+        return
     end
 
-    Pathfinder.moveToLocation(self.targetChicken:m_vecOrigin(), {
-        task = task,
-        onFailedToFindPath = function()
-        	self.blacklist[self.targetChicken.eid] = true
-            self.targetChicken = nil
-        end
-    })
+    self:move()
 end
 
 --- @return void
@@ -195,7 +187,28 @@ function AiStateChickenInteraction:think(cmd)
         self:reset()
     end
 
-    Pathfinder.ifIdleThenRetryLastRequest()
+    if Pathfinder.isIdle() then
+        self:move()
+    end
+end
+
+--- @return void
+function AiStateChickenInteraction:move()
+    local task
+
+    if self.interaction == "kill" then
+        task = "Intercept hostile poultry"
+    elseif self.interaction == "collect" then
+        task = "Pick up birds"
+    end
+
+    Pathfinder.moveToLocation(self.targetChicken:m_vecOrigin():clone():offset(0, 0, 30), {
+        task = task,
+        onFailedToFindPath = function()
+            self.blacklist[self.targetChicken.eid] = true
+            self.targetChicken = nil
+        end
+    })
 end
 
 return Nyx.class("AiStateChickenInteraction", AiStateChickenInteraction, AiStateBase)

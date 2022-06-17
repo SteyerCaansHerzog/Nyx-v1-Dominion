@@ -17,6 +17,7 @@ local AiChatCommand = {
 	follow = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandFollow",
 	force = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandForce",
 	go = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandGo",
+	kill = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandKill",
 	knife = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandKnife",
 	know = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandKnow",
 	log = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandLog",

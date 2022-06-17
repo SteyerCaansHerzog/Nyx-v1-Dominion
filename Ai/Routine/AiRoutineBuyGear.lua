@@ -1,7 +1,6 @@
 --{{{ Dependencies
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -16,8 +15,8 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --}}}
 
---{{{ Enums
-local WeaponBuyCode = {
+--{{{ Definitions
+local Buy = {
 	GLOCK = "glock",
 	HKP2000 = "hkp2000",
 	USP_SILENCER = "usp_silencer",
@@ -60,21 +59,27 @@ local WeaponBuyCode = {
 	HEGRENADE = "hegrenade",
 	SMOKEGRENADE = "smokegrenade",
 }
---}}}
 
---{{{ Definitions
---- @class AiRoutineBuyGearSet
+local BuyCriteria = {
+	COUNTER_TERRORIST_FULL_BUY = 3100,
+	COUNTER_TERRORIST_SMG_BUY = 2000,
+	TERRORIST_FULL_BUY = 2800,
+	TERRORIST_SMG_BUY = 2000,
+}
+
+--- @class GearSet
 --- @field chance number
 --- @field balance number
---- @field callback fun(): nil
+--- @field queue fun(): void
 --}}}
 
 --{{{ AiRoutineBuyGear
 --- @class AiRoutineBuyGear : AiRoutineBase
---- @field isBuyingThisRound boolean
---- @field isInterrupted boolean
+--- @field balance number
+--- @field buyQueue string[]
 --- @field isEnabled boolean
---- @field accountBalance number
+--- @field isQueued boolean
+--- @field isSaving boolean
 local AiRoutineBuyGear = {}
 
 --- @param fields AiRoutineBuyGear
@@ -85,449 +90,667 @@ end
 
 --- @return void
 function AiRoutineBuyGear:__init()
-	self.isBuyingThisRound = true
+	self.buyQueue = {}
 
 	Callbacks.init(function()
 		if not Server.isIngame() then
 			return
 		end
 
-		if AiUtility.gameRules:m_bFreezePeriod() == 1 then
-			self:buyGear()
+		if AiUtility.gameRules:m_bFreezePeriod() == 0 then
+			return
 		end
+
+		self.balance = LocalPlayer:m_iAccount()
+
+		self:buyRoundStart()
+		self:processQueue()
 	end)
 
 	Callbacks.roundStart(function()
 		if not self.isEnabled then
 			return
 		end
-		
-		self.isInterrupted = false
 
-		local freezeTime = cvar.mp_freezetime:get_int()
-		local minDelay = freezeTime * 0.6
-		local maxDelay = freezeTime * 0.8
+		self.buyQueue = {}
+		self.isQueued = false
+		self.balance = LocalPlayer:m_iAccount()
+
+		local freezetime = cvar.mp_freezetime:get_int()
+		local minDelay = freezetime * 0.5
+		local maxDelay = freezetime * 0.9
 
 		Client.fireAfterRandom(minDelay, maxDelay, function()
-			if not self.isInterrupted then
-				self:buyGear()
-			end
+			self:buyRoundStart()
+			self:processQueue()
+		end)
+	end)
+
+	Callbacks.roundEnd(function()
+		-- Reset saving if given randomly during the previous round.
+		-- The AI should only respond to /eco for the oncoming round.
+		self.isSaving = false
+	end)
+end
+
+--- @return boolean
+function AiRoutineBuyGear:isAlreadyGearedUpAndBuyMisc()
+	local isGearedUp = LocalPlayer:hasWeapons(WeaponInfo.primaries)
+
+	if isGearedUp then
+		self:equipFullArmor()
+		self:equipRandomGrenades(nil, self.balance > 6500 and 4 or 3)
+	end
+
+	return isGearedUp
+end
+
+--- @return void
+function AiRoutineBuyGear:save()
+	self.isSaving = true
+end
+
+--- @return void
+function AiRoutineBuyGear:processQueue()
+	if not LocalPlayer:isAlive() then
+		return
+	end
+
+	local i = 0
+
+	for j, item in pairs(self.buyQueue) do
+		local interval = i * 0.15
+		local rng = Math.getRandomFloat(0, 0.09)
+
+		Client.fireAfterRandom(interval, interval + rng, function()
+			Client.execute("buy %s", item)
+			Logger.console(-1, "Purchased [%i] '%s'.", j, item)
 		end)
 
-		self.accountBalance = LocalPlayer:m_iAccount()
-	end)
+		i = i + 1
+	end
 
-	Callbacks.itemEquip(function(e)
-		if not self.isEnabled then
-			return
+	self.buyQueue = {}
+end
+
+--- @param item string
+function AiRoutineBuyGear:queue(item)
+	if not item then
+		return
+	end
+
+	table.insert(self.buyQueue, item)
+
+	self.isQueued = true
+end
+
+--- @param gearSets GearSet[]
+--- @return void
+function AiRoutineBuyGear:activateHighestChanceFrom(gearSets)
+	for _, set in Table.sortedPairs(gearSets, function(a, b)
+		return a.chance > b.chance
+	end) do repeat
+		if self.balance < set.balance then
+			break
 		end
 
-		if self.isArmorBuyBlocked then
-			return
+		if not Math.getChance(set.chance) then
+			break
 		end
 
-		if not e.player:isClient() then
-			return
+		set.queue()
+
+		return
+	until true end
+end
+
+--- @param gearSets GearSet[]
+--- @return void
+function AiRoutineBuyGear:activateAnyPassingFrom(gearSets)
+	--- @type GearSet[]
+	local passingSets = {}
+	--- @type GearSet
+	local bestOneInOneSet
+	local bestOneInOnePrice = -1
+
+	for _, set in pairs(gearSets) do repeat
+		if self.balance < set.balance then
+			break
 		end
 
-		if not LocalPlayer:hasWeapons(WeaponInfo.primaries) then
-			return
+		if not Math.getChance(set.chance) then
+			break
 		end
 
-		if AiUtility.timeData.roundtime_elapsed > cvar.mp_buytime:get_int() then
-			return
+		if set.chance == 1 then
+			if set.balance > bestOneInOnePrice then
+				bestOneInOneSet = set
+				bestOneInOnePrice = set.balance
+			end
+		else
+			table.insert(passingSets, set)
 		end
+	until true end
 
-		self:equipBodyArmor()
-	end)
+	local randomSet = not Table.isEmpty(passingSets) and Table.getRandom(passingSets) or bestOneInOneSet
+
+	randomSet.queue()
 end
 
 --- @return void
-function AiRoutineBuyGear:blockThisRound()
-	self.isBuyingThisRound = false
-end
-
---- @return void
-function AiRoutineBuyGear:buyGear()
-	if AiUtility.timeData.roundtime_elapsed > cvar.mp_buytime:get_int() then
+function AiRoutineBuyGear:buyRoundStart()
+	if self.isQueued then
 		return
 	end
 
-	self.isInterrupted = true
-
-	-- Place this here to allow telling the AI to eco this round.
-	if not self.isBuyingThisRound then
-		-- Buy next round.
-		self.isBuyingThisRound = true
-
+	-- AI was told to save this round.
+	if self.isSaving then
+		self.isSaving = false
 		return
 	end
 
-	local roundsPlayed = Entity.getGameRules():m_totalRoundsPlayed()
-	local halftimeRounds = math.floor(cvar.mp_maxrounds:get_int() / 2)
+	self.balance = LocalPlayer:m_iAccount()
 
-	-- 2nd-round buy.
-	if roundsPlayed == 1 or roundsPlayed == halftimeRounds + 1 and self.accountBalance < 3100 then
-		self:buyForceRound()
-
-		return
-	end
-
-	local isPistolRound = roundsPlayed == 0 or roundsPlayed == halftimeRounds
+	local rounds = AiUtility.gameRules:m_totalRoundsPlayed()
+	local halftime = math.floor(cvar.mp_maxrounds:get_int() / 2)
+	local isPistolRound = rounds == 0 or rounds == halftime
+	local isPostPistolRound = rounds == 1 or rounds == halftime + 1
 
 	if LocalPlayer:isTerrorist() then
 		if isPistolRound then
-			self:buyPistolRoundTerrorist()
+			self:buyTerroristPistolRound()
+		elseif isPostPistolRound then
+			self:buyTerroristPostPistolRound()
 		else
-			self:buyRoundTerrorist()
+			self:buyTerroristFullBuyRound()
 		end
 	elseif LocalPlayer:isCounterTerrorist() then
 		if isPistolRound then
-			self:buyPistolRoundCounterTerrorist()
+			self:buyCounterTerroristPistolRound()
+		elseif isPostPistolRound then
+			self:buyCounterTerroristPostPistolRound()
 		else
-			self:buyRoundCounterTerrorist()
+			self:buyCounterTerroristFullBuyRound()
 		end
 	end
 end
 
---- Will not be executed if the AI has enough money for a normal buy ($3100).
----
---- Automatically invoked on the 2nd round of a half.
----
 --- @return void
 function AiRoutineBuyGear:buyForceRound()
-	local balance = LocalPlayer:m_iAccount()
-
-	if balance > 3500 then
-		if LocalPlayer:isTerrorist() then
-			self:buyRoundTerrorist()
-		else
-			self:buyRoundCounterTerrorist()
-		end
-
+	if self.isQueued then
 		return
 	end
 
-	if balance < 1500 then
-		self:equipRandomWeapon({
-			WeaponBuyCode.FN57,
-			WeaponBuyCode.DEAGLE
-		})
-
-		self:equipRandomGrenades(1)
-	else
-		if Math.getChance(3) then
-			self:equipRandomWeapon({
-				WeaponBuyCode.NEGEV
-			})
-		else
-			self:equipRandomWeapon({
-				WeaponBuyCode.MP7,
-				WeaponBuyCode.UMP45,
-				LocalPlayer:isTerrorist() and WeaponBuyCode.MAC10 or WeaponBuyCode.MP9,
-				WeaponBuyCode.NOVA
-			})
-		end
-
-		self:equipBodyArmor()
-		self:equipRandomGrenades(2)
+	if LocalPlayer:isTerrorist() then
+		self:buyTerroristForceRound()
+	elseif LocalPlayer:isCounterTerrorist() then
+		self:buyCounterTerroristForceRound()
 	end
 end
 
 --- @return void
-function AiRoutineBuyGear:buyEcoRush()
-	local buys = {
-		function()
-			self:equipRandomWeapon({ WeaponBuyCode.P250, WeaponBuyCode.ELITE, WeaponBuyCode.FN57 })
-		end,
-		function()
-			self:equipWeapon(WeaponBuyCode.P250)
-			self:equipGrenades({WeaponBuyCode.FLASHBANG})
-		end
-	}
-
-	Table.getRandom(buys)()
-end
-
---- @return void
-function AiRoutineBuyGear:buyPistolRoundTerrorist()
-	local buys = {
-		function()
-			self:equipRandomWeapon({ WeaponBuyCode.P250, WeaponBuyCode.TEC9})
-			self:equipGrenades({ WeaponBuyCode.FLASHBANG, WeaponBuyCode.SMOKEGRENADE, WeaponBuyCode.MOLOTOV}, true)
-		end,
-		function()
-			self:equipBodyArmor()
-		end
-	}
-
-	Table.getRandom(buys)()
-end
-
---- @return void
-function AiRoutineBuyGear:buyPistolRoundCounterTerrorist()
-	local buys = {
-		function()
-			self:equipDefuser()
-			self:equipRandomGrenades(1)
-		end,
-		function()
-			self:equipRandomWeapon({WeaponBuyCode.P250, WeaponBuyCode.FN57})
-			self:equipGrenades({WeaponBuyCode.FLASHBANG, WeaponBuyCode.SMOKEGRENADE}, true)
-		end,
-		function()
-			self:equipBodyArmor()
-		end
-	}
-
-	Table.getRandom(buys)()
-end
-
---- @return void
-function AiRoutineBuyGear:buyRoundTerrorist()
-	if self.accountBalance < 3100 then
+function AiRoutineBuyGear:buyEcoRushRound()
+	if self.isQueued then
 		return
 	end
 
-	--- @type AiRoutineBuyGearSet[]
-	local buys = {
+	if LocalPlayer:isTerrorist() then
+		self:buyTerroristEcoRushRound()
+	elseif LocalPlayer:isCounterTerrorist() then
+		self:buyCounterTerroristEcoRushRound()
+	end
+end
+
+--- @return void
+function AiRoutineBuyGear:buyTerroristPistolRound()
+	self:activateHighestChanceFrom({
 		{
-			chance = 2,
-			balance = 5750,
-			callback = function()
-				self:equipWeapon(WeaponBuyCode.AWP)
+			balance = 0,
+			chance = 20,
+			queue = function()
+				self:equipWeapon(Buy.DEAGLE)
 			end
 		},
 		{
+			balance = 0,
+			chance = 8,
+			queue = function()
+				self:equipWeapon(Buy.TEC9)
+				self:equipRandomGrenades({Buy.FLASHBANG, Buy.SMOKEGRENADE}, 1)
+			end
+		},
+		{
+			balance = 0,
+			chance = 2,
+			queue = function()
+				self:equipWeapon(Buy.P250)
+				self:equipRandomGrenades({Buy.FLASHBANG, Buy.SMOKEGRENADE})
+			end
+		},
+		{
+			balance = 0,
+			chance = 1,
+			queue = function()
+				self:equipBodyArmor()
+			end
+		},
+	})
+end
+
+--- @return void
+function AiRoutineBuyGear:buyTerroristPostPistolRound()
+	if self.balance > BuyCriteria.TERRORIST_FULL_BUY then
+		self:buyTerroristFullBuyRound()
+
+		return
+	end
+
+	self:activateHighestChanceFrom({
+		{
+			balance = BuyCriteria.TERRORIST_SMG_BUY,
+			chance = 1,
+			queue = function()
+				self:equipRandomWeapon({
+					Buy.MAC10,
+					Buy.UMP45,
+					Buy.MP7,
+				})
+
+				self:equipFullArmor()
+				self:equipRandomGrenades()
+
+			end
+		},
+		{
+			balance = 0,
+			chance = 3,
+			queue = function()
+				self:equipWeapon(Buy.DEAGLE)
+				self:equipFullArmor()
+				self:equipRandomGrenades()
+			end
+		},
+		{
+			balance = 0,
+			chance = 1,
+			queue = function()
+				self:equipWeapon(Buy.TEC9)
+				self:equipFullArmor()
+				self:equipRandomGrenades()
+			end
+		}
+	})
+end
+
+--- @return void
+function AiRoutineBuyGear:buyTerroristForceRound()
+	if self:isAlreadyGearedUpAndBuyMisc() then
+		return
+	end
+
+	self:buyTerroristPostPistolRound()
+end
+
+--- @return void
+function AiRoutineBuyGear:buyTerroristEcoRushRound()
+	if self:isAlreadyGearedUpAndBuyMisc() then
+		return
+	end
+
+	self:activateHighestChanceFrom({
+		{
+			balance = 0,
+			chance = 3,
+			queue = function()
+				self:equipWeapon(Buy.TEC9)
+			end
+		},
+		{
+			balance = 0,
+			chance = 2,
+			queue = function()
+				self:equipWeapon(Buy.P250)
+				self:equipGrenades({
+					Buy.FLASHBANG
+				})
+			end
+		},
+		{
+			balance = 0,
+			chance = 1,
+			queue = function()
+				self:equipWeapon(Buy.P250)
+			end
+		},
+	})
+end
+
+--- @return void
+function AiRoutineBuyGear:buyTerroristFullBuyRound()
+	if self:isAlreadyGearedUpAndBuyMisc() then
+		return
+	end
+
+	if self.balance < BuyCriteria.TERRORIST_FULL_BUY then
+		return
+	end
+
+	self:activateAnyPassingFrom({
+		{
+			balance = 6000,
 			chance = 4,
-			balance = 4500,
-			callback = function()
-				self:equipWeapon(WeaponBuyCode.SG556)
+			queue = function()
+				self:equipWeapon(Buy.AWP)
 			end
 		},
 		{
-			chance = 1,
+			balance = 4000,
+			chance = 10,
+			queue = function()
+				self:equipWeapon(Buy.SG556)
+			end
+		},
+		{
 			balance = 3700,
-			callback = function()
-				self:equipWeapon(WeaponBuyCode.AK47)
+			chance = 1,
+			queue = function()
+				self:equipWeapon(Buy.AK47)
 			end
 		},
 		{
+			balance = BuyCriteria.TERRORIST_FULL_BUY,
 			chance = 1,
-			balance = 3100,
-			callback = function()
-				self:equipWeapon(WeaponBuyCode.GALILAR)
+			queue = function()
+				self:equipWeapon(Buy.GALILAR)
 			end
 		}
-	}
-
-	if not LocalPlayer:hasWeapons(WeaponInfo.primaries) then
-		self:buySet(buys)
-	end
+	})
 
 	self:equipFullArmor()
-
-	local grenades = self.accountBalance > 5000 and 4 or Math.getRandomInt(2, 4)
-
-	self:equipRandomGrenades(grenades)
+	self:equipRandomGrenades(nil, self.balance > 6500 and 4 or 3)
 end
 
 --- @return void
-function AiRoutineBuyGear:buyRoundCounterTerrorist()
-	if self.accountBalance < 3100 then
+function AiRoutineBuyGear:buyCounterTerroristPistolRound()
+	self:activateHighestChanceFrom({
+		{
+			balance = 0,
+			chance = 20,
+			queue = function()
+				self:equipWeapon(Buy.DEAGLE)
+			end
+		},
+		{
+			balance = 0,
+			chance = 4,
+			queue = function()
+				self:equipWeapon(Buy.ELITE)
+				self:equipRandomGrenades({Buy.FLASHBANG, Buy.SMOKEGRENADE})
+			end
+		},
+		{
+			balance = 0,
+			chance = 3,
+			queue = function()
+				self:equipWeapon(Buy.ELITE)
+				self:equipDefuseKit()
+			end
+		},
+		{
+			balance = 0,
+			chance = 3,
+			queue = function()
+				self:equipWeapon(Buy.P250)
+				self:equipDefuseKit()
+			end
+		},
+		{
+			balance = 0,
+			chance = 2,
+			queue = function()
+				self:equipWeapon(Buy.P250)
+				self:equipRandomGrenades({Buy.FLASHBANG, Buy.SMOKEGRENADE})
+			end
+		},
+		{
+			balance = 0,
+			chance = 1,
+			queue = function()
+				self:equipBodyArmor()
+			end
+		},
+	})
+end
+
+--- @return void
+function AiRoutineBuyGear:buyCounterTerroristPostPistolRound()
+	if self.balance > BuyCriteria.COUNTER_TERRORIST_FULL_BUY then
+		self:buyCounterTerroristFullBuyRound()
+
 		return
 	end
 
-	--- @type AiRoutineBuyGearSet[]
-	local buys = {
+	self:activateHighestChanceFrom({
 		{
-			chance = 2,
-			balance = 6200,
-			callback = function()
-				self:equipWeapon(WeaponBuyCode.AWP)
-			end
-		},
-		{
-			chance = 2,
-			balance = 5000,
-			callback = function()
-				self:equipWeapon(WeaponBuyCode.AUG)
-			end
-		},
-		{
+			balance = BuyCriteria.COUNTER_TERRORIST_SMG_BUY,
 			chance = 1,
-			balance = 4500,
-			callback = function()
-				self:equipWeapon(WeaponBuyCode.M4A1)
+			queue = function()
+				self:equipRandomWeapon({
+					Buy.MP9,
+					Buy.UMP45,
+					Buy.MP7,
+				})
+
+				self:equipFullArmor()
+				self:equipRandomGrenades()
+
 			end
 		},
 		{
+			balance = 0,
+			chance = 3,
+			queue = function()
+				self:equipWeapon(Buy.DEAGLE)
+				self:equipFullArmor()
+				self:equipRandomGrenades()
+			end
+		},
+		{
+			balance = 0,
 			chance = 1,
-			balance = 3100,
-			callback = function()
-				self:equipWeapon(WeaponBuyCode.FAMAS)
+			queue = function()
+				self:equipWeapon(Buy.FN57)
+				self:equipFullArmor()
+				self:equipRandomGrenades()
 			end
 		}
-	}
+	})
+end
 
-	self:equipBodyArmor()
-
-	if not LocalPlayer:hasWeapons(WeaponInfo.primaries) then
-		self:buySet(buys)
-		self:equipDefuser()
+--- @return void
+function AiRoutineBuyGear:buyCounterTerroristForceRound()
+	if self:isAlreadyGearedUpAndBuyMisc() then
+		return
 	end
+
+	self:buyCounterTerroristPostPistolRound()
+end
+
+--- @return void
+function AiRoutineBuyGear:buyCounterTerroristEcoRushRound()
+	if self:isAlreadyGearedUpAndBuyMisc() then
+		return
+	end
+
+	self:activateHighestChanceFrom({
+		{
+			balance = 0,
+			chance = 2,
+			queue = function()
+				self:equipWeapon(Buy.P250)
+				self:equipGrenades({
+					Buy.FLASHBANG
+				})
+			end
+		},
+		{
+			balance = 0,
+			chance = 1,
+			queue = function()
+				self:equipWeapon(Buy.P250)
+			end
+		},
+	})
+end
+
+--- @return void
+function AiRoutineBuyGear:buyCounterTerroristFullBuyRound()
+	if self:isAlreadyGearedUpAndBuyMisc() then
+		return
+	end
+
+	if self.balance < BuyCriteria.COUNTER_TERRORIST_FULL_BUY then
+		return
+	end
+
+	self:activateAnyPassingFrom({
+		{
+			balance = 6000,
+			chance = 4,
+			queue = function()
+				self:equipWeapon(Buy.AWP)
+			end
+		},
+		{
+			balance = 4600,
+			chance = 2,
+			queue = function()
+				self:equipWeapon(Buy.AUG)
+			end
+		},
+		{
+			balance = 4100,
+			chance = 1,
+			queue = function()
+				self:equipWeapon(string.format("%s;%s", Buy.M4A1, Buy.M4A1_SILENCER))
+			end
+		},
+		{
+			balance = BuyCriteria.COUNTER_TERRORIST_FULL_BUY,
+			chance = 1,
+			queue = function()
+				self:equipWeapon(Buy.FAMAS)
+			end
+		}
+	})
 
 	self:equipFullArmor()
 
-	local grenades = self.accountBalance > 5000 and 4 or Math.getRandomInt(2, 4)
+	self:equipRandomGrenades({
+		Buy.FLASHBANG, Buy.SMOKEGRENADE
+	}, 2)
 
-	self:equipRandomGrenades(grenades)
+	self:equipDefuseKit()
+
+	self:equipRandomGrenades({
+		Buy.HEGRENADE,
+		Buy.INCGRENADE
+	}, 2)
 end
 
---- @param buys AiRoutineBuyGearSet[]
 --- @return void
-function AiRoutineBuyGear:buySet(buys)
-	--- @type AiRoutineBuyGearSet
-	local uncertainBuys = {}
-	--- @type AiRoutineBuyGearSet
-	local certainBuys = {}
+function AiRoutineBuyGear:equipWeapon(item)
+	self:queue(item)
+end
 
-	for _, buy in pairs(buys) do
-		if self.accountBalance >= buy.balance and Math.getChance(buy.chance) then
-			if buy.chance == 1 then
-				table.insert(certainBuys, buy)
-			else
-				table.insert(uncertainBuys, buy)
-			end
+--- @return void
+function AiRoutineBuyGear:equipWeapons(item)
+	self:queue(item)
+end
+
+--- @return void
+function AiRoutineBuyGear:equipRandomWeapon(items)
+	self:queue(Table.getRandom(items))
+end
+
+--- @param items string[]
+--- @return void
+function AiRoutineBuyGear:equipGrenades(items)
+	items = self:getCleanGrenades(items)
+
+	for _, item in pairs(items) do
+		self:queue(item)
+	end
+end
+
+--- @param items string[]
+--- @return void
+function AiRoutineBuyGear:equipRandomGrenades(items, max)
+	max = max or 4
+	items = self:getCleanGrenades(items)
+	items = Table.getShuffled(items)
+
+	local i = 0
+
+	for _, item in pairs(items) do
+		if i == max then
+			break
 		end
+
+		self:queue(item)
+
+		i = i + 1
+	end
+end
+
+--- @param items string[]
+--- @return string[]
+function AiRoutineBuyGear:getCleanGrenades(items)
+	if not items then
+		items = {
+			Buy.SMOKEGRENADE,
+			Buy.FLASHBANG,
+			Buy.MOLOTOV,
+			Buy.HEGRENADE
+		}
 	end
 
-	--- @type AiRoutineBuyGearSet
-	local highestCertainBuy
-	local highestBalance = -1
+	local map = Table.getMap(items)
 
-	for _, buy in pairs(certainBuys) do
-		if buy.balance > highestBalance then
-			highestBalance = buy.balance
-			highestCertainBuy = buy
-		end
+	if LocalPlayer:isTerrorist() and map[Buy.INCGRENADE] then
+		items[map[Buy.INCGRENADE]] = Buy.MOLOTOV
+	elseif LocalPlayer:isCounterTerrorist() and map[Buy.MOLOTOV] then
+		items[map[Buy.MOLOTOV]] = Buy.INCGRENADE
 	end
 
-	if not Table.isEmpty(uncertainBuys) then
-		--- @type AiRoutineBuyGearSet
-		local mergedBuys = Table.new(uncertainBuys, {highestCertainBuy})
-
-		Table.getRandom(mergedBuys).callback()
-	elseif highestCertainBuy then
-		highestCertainBuy.callback()
-	end
+	return items
 end
 
 --- @return void
 function AiRoutineBuyGear:equipBodyArmor()
-	Client.fireAfterRandom(0, 2, function()
-		if LocalPlayer:m_iArmor() > 33 then
-			return
-		end
+	if LocalPlayer:m_iArmor() > 33 then
+		return
+	end
 
-		Client.execute("buy vest")
-		Logger.console(-1, "Equipped vest.")
-	end)
+	self:queue(Buy.VEST)
 end
 
 --- @return void
 function AiRoutineBuyGear:equipFullArmor()
-	Client.fireAfterRandom(1, 2, function()
-		if LocalPlayer:m_iArmor() > 33 then
-			return
-		end
+	if LocalPlayer:m_iArmor() > 33 then
+		return
+	end
 
-		Client.execute("buy vesthelm")
-		Logger.console(-1, "Equipped vesthelm.")
-	end)
+	self:queue(Buy.VESTHELM)
 end
 
 --- @return void
-function AiRoutineBuyGear:equipDefuser()
-	Client.fireAfterRandom(1, 2, function()
-		Client.execute("buy defuser")
-		Logger.console(-1, "Equipped defuser.")
-	end)
-end
+function AiRoutineBuyGear:equipDefuseKit()
+	if LocalPlayer:m_bHasDefuser() == 1 then
+		return
+	end
 
---- @param maxGrenades number
---- @return void
-function AiRoutineBuyGear:equipRandomGrenades(maxGrenades)
-	Client.fireAfterRandom(1, 2, function()
-		local grenades = {
-			WeaponBuyCode.FLASHBANG,
-			WeaponBuyCode.SMOKEGRENADE,
-			WeaponBuyCode.HEGRENADE,
-			LocalPlayer:isTerrorist() and WeaponBuyCode.MOLOTOV or WeaponBuyCode.INCGRENADE
-		}
-
-		grenades = Table.getShuffled(grenades)
-
-		local iGrenade = 0
-
-		for _, grenade in pairs(grenades) do
-			if iGrenade == maxGrenades then
-				break
-			end
-
-			Client.execute(string.format("buy %s", grenade))
-			Logger.console(-1, "Equipped %s.", grenade)
-
-			iGrenade = iGrenade + 1
-		end
-	end)
-end
-
---- @param grenades string[]
---- @param isRandomized boolean
---- @param maxGrenades number
---- @return void
-function AiRoutineBuyGear:equipGrenades(grenades, isRandomized, maxGrenades)
-	maxGrenades = maxGrenades or 4
-
-	Client.fireAfterRandom(1, 2, function()
-		if isRandomized then
-			grenades = Table.getShuffled(grenades)
-		end
-
-		local iGrenade = 0
-
-		for _, grenade in pairs(grenades) do
-			if iGrenade == maxGrenades then
-				break
-			end
-
-			Client.execute(string.format("buy %s", grenade))
-			Logger.console(-1, "Equipped %s.", grenade)
-
-			iGrenade = iGrenade + 1
-		end
-	end)
-end
-
---- @param weapon string
---- @return void
-function AiRoutineBuyGear:equipWeapon(weapon)
-	Client.fireAfterRandom(0, 1, function()
-		Client.execute(string.format("buy %s", weapon))
-		Logger.console(-1, "Equipped %s.", weapon)
-	end)
-end
-
---- @param weapons string[]
---- @return void
-function AiRoutineBuyGear:equipRandomWeapon(weapons)
-	Client.fireAfterRandom(0, 1, function()
-		local weapon = Table.getRandom(weapons)
-
-		Client.execute(string.format("buy %s", weapon))
-		Logger.console(-1, "Equipped %s.", weapon)
-	end)
+	self:queue(Buy.DEFUSER)
 end
 
 return Nyx.class("AiRoutineBuyGear", AiRoutineBuyGear, AiRoutineBase)

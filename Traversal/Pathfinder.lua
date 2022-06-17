@@ -947,6 +947,15 @@ function Pathfinder.traverseActivePath(cmd)
 	end
 
 	local pathfinderOptions = Pathfinder.cachedLastRequest.options
+
+	-- Not sure why this is necessary. Don't know how the path is getting to the end
+	-- but the Path itself still exists.
+	if not Pathfinder.path or not Pathfinder.path.node then
+		Pathfinder.clearActivePath()
+
+		return
+	end
+
 	local currentNode = Pathfinder.path.node
 	local previousNode = Pathfinder.path.nodes[Pathfinder.path.idx - 1]
 
