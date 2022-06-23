@@ -25,8 +25,7 @@ function AiChatCommandForce:invoke(ai, sender, args)
     end
 
     Client.fireAfterRandom(0, 1, function()
-        ai.routines.buyGear:buyForceRound()
-        ai.routines.buyGear:processQueue()
+        ai.routines.buyGear:force()
     end)
 end
 

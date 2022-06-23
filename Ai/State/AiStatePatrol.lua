@@ -79,14 +79,18 @@ function AiStatePatrol:assess()
     local bomb = AiUtility.bomb
 
     if LocalPlayer:isCounterTerrorist() and bomb and not self.hasNotifiedTeamOfBomb then
-        local eyeOrigin = LocalPlayer:getEyeOrigin()
         local bombOrigin = bomb:m_vecOrigin()
-        local trace = Trace.getLineToPosition(eyeOrigin, bombOrigin, AiUtility.traceOptionsAttacking)
+        local nearestBombsite = Nodegraph.getClosestBombsite(bombOrigin)
 
-        if not trace.isIntersectingGeometry then
-            self:invoke(bombOrigin, LocalPlayer)
+        if bombOrigin:getDistance(nearestBombsite.origin) > 1500 then
+            local eyeOrigin = LocalPlayer:getEyeOrigin()
+            local trace = Trace.getLineToPosition(eyeOrigin, bombOrigin, AiUtility.traceOptionsAttacking)
 
-            return AiPriority.PATROL_BOMB
+            if not trace.isIntersectingGeometry then
+                self:invoke(bombOrigin, LocalPlayer)
+
+                return AiPriority.PATROL_BOMB
+            end
         end
     end
 

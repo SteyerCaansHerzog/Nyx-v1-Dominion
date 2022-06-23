@@ -340,6 +340,7 @@ function Nodegraph.getRandomForBombsite(node, bombsite)
     if type(bombsite) ~= "string" then
         error("no bombsite", 2)
     end
+
     return Table.getRandom(Nodegraph.getForBombsite(node, bombsite:upper()))
 end
 

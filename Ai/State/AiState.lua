@@ -20,6 +20,7 @@ local AiStateList = {
 	heGrenade = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateHeGrenade",
 	idle = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateIdle",
 	knife = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateKnife",
+	lurkT = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateLurkT",
 	lurkWithBomb = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateLurkWithBomb",
 	molotov = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateMolotov",
 	patrol = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStatePatrol",

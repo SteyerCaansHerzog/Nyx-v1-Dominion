@@ -1,49 +1,56 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
---{{{ AiStateLurkWithBomb
---- @class AiStateLurkWithBomb : AiStateBase
---- @field node NodeSpotLurkWithBomb
+--{{{ AiStateLurkT
+--- @class AiStateLurkT : AiStateBase
+--- @field node NodeSpotLurkT
 --- @field bombsite string
 --- @field isSpotted boolean
-local AiStateLurkWithBomb = {
-	name = "Lurk with Bomb",
+--- @field isActive boolean
+local AiStateLurkT = {
+	name = "Lurk",
 	requiredNodes = {
-		Node.spotLurkWithBomb
+		Node.spotLurkT
 	}
 }
 
---- @param fields AiStateLurkWithBomb
---- @return AiStateLurkWithBomb
-function AiStateLurkWithBomb:new(fields)
+--- @param fields AiStateLurkT
+--- @return AiStateLurkT
+function AiStateLurkT:new(fields)
 	return Nyx.new(self, fields)
 end
 
 --- @return void
-function AiStateLurkWithBomb:__init()
+function AiStateLurkT:__init()
 	Callbacks.roundPrestart(function()
 		self:reset()
+
+		self.isActive = Math.getChance(10)
+
+		self:invokeAndSetOppositeBombsite(AiUtility.randomBombsite)
 	end)
 end
 
 --- @return void
-function AiStateLurkWithBomb:assess()
+function AiStateLurkT:assess()
+	if not self.isActive then
+		return AiPriority.IGNORE
+	end
+
 	if not self.bombsite then
 		return AiPriority.IGNORE
 	end
@@ -64,60 +71,52 @@ function AiStateLurkWithBomb:assess()
 		return AiPriority.IGNORE
 	end
 
-	if not AiUtility.bombCarrier then
+	if AiUtility.plantedBomb or AiUtility.isBombBeingPlantedByTeammate then
+		self.isActive = false
+
 		return AiPriority.IGNORE
 	end
 
-	if not AiUtility.bombCarrier:isClient() then
+	if AiUtility.timeData.roundtime_elapsed > 45 then
 		return AiPriority.IGNORE
 	end
 
-	if AiUtility.timeData.roundtime_elapsed > 60 then
-		return AiPriority.IGNORE
-	end
-
-	local bombsiteNode = Nodegraph.getBombsite(self.bombsite)
-
-	if LocalPlayer:getOrigin():getDistance(bombsiteNode.origin) < 1000 then
-		return AiPriority.IGNORE
-	end
-
-	for _, teammate in pairs(AiUtility.teammates) do
-		if teammate:getOrigin():getDistance(bombsiteNode.origin) < 800 then
-			return AiPriority.IGNORE
-		end
-	end
-
-	return AiPriority.LURK_WITH_BOMB
+	return AiPriority.LURK
 end
 
 --- @return void
-function AiStateLurkWithBomb:activate()
-	self.node = Nodegraph.getRandomForBombsite(Node.spotLurkWithBomb, self.bombsite)
+function AiStateLurkT:activate()
+	self.node = Nodegraph.getRandomForBombsite(Node.spotLurkT, self.bombsite)
 
 	Pathfinder.moveToNode(self.node, {
-		task = string.format("Lurk with bomb near %s", self.bombsite)
+		task = string.format("Lurk near %s", self.bombsite)
 	})
 end
 
 --- @param bombsite string
 --- @return void
-function AiStateLurkWithBomb:invoke(bombsite)
+function AiStateLurkT:invokeAndSetOppositeBombsite(bombsite)
+	if bombsite == "A" then
+		bombsite = "B"
+	elseif bombsite == "B" then
+		bombsite = "A"
+	end
+
 	self.bombsite = bombsite
 
 	self:queueForReactivation()
 end
 
 --- @return void
-function AiStateLurkWithBomb:reset()
+function AiStateLurkT:reset()
 	self.isSpotted = false
 	self.node = nil
 end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function AiStateLurkWithBomb:think(cmd)
-	self.activity = string.format("Lurking with bomb near %s", self.bombsite)
+function AiStateLurkT:think(cmd)
+	self.activity = string.format("Lurking near %s", self.bombsite)
 
 	if AiUtility.isClientThreatenedMajor then
 		self.isSpotted = true
@@ -130,9 +129,9 @@ function AiStateLurkWithBomb:think(cmd)
 		self.ai.routines.manageGear:block()
 
 		LocalPlayer.equipAvailableWeapon()
-		View.lookAtLocation(self.node.lookAtOrigin, 3, View.noise.idle, "Lurk with bomb look at angle")
+		View.lookAtLocation(self.node.lookAtOrigin, 3, View.noise.idle, "Lurk look at angle")
 	end
 end
 
-return Nyx.class("AiStateLurkWithBomb", AiStateLurkWithBomb, AiStateBase)
+return Nyx.class("AiStateLurkT", AiStateLurkT, AiStateBase)
 --}}}

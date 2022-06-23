@@ -63,6 +63,7 @@ function AiChatCommandGo:invoke(ai, sender, args)
                 ai.states.plant:invoke(objective)
                 ai.states.pushDemolition:invoke(objective)
                 ai.states.lurkWithBomb:invoke(objective)
+                ai.states.lurkT:invokeAndSetOppositeBombsite(objective)
 
                 ai.voice.pack:speakAgreement()
             end

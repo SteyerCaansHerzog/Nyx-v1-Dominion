@@ -52,12 +52,12 @@ function AiStatePlant:__init()
     self.tellSiteTimer = Timer:new():startThenElapse()
     self.pickRandomSiteTimer = Timer:new()
 
-    Callbacks.roundStart(function()
+    Callbacks.roundPrestart(function()
+        self.bombsite = AiUtility.randomBombsite
         self.isPlanting = false
 
         self.pickRandomSiteTimer:start()
         self.tellSiteTimer:elapse()
-        self:setPlantNode(AiUtility.randomBombsite)
     end)
 
     Callbacks.bombBeginPlant(function(e)
@@ -74,6 +74,30 @@ function AiStatePlant:__init()
         end
 
         self.isPlanting = false
+    end)
+
+    Callbacks.setupCommand(function()
+        if not LocalPlayer.hasBomb() then
+            return
+        end
+
+        if not self.bombsite then
+            return
+        end
+
+        local origin = LocalPlayer:getOrigin()
+
+        if self.tellSiteTimer:isElapsedThenRestart(50) and MenuGroup.useChatCommands:get() then
+            self.ai.commands.go:bark(self.bombsite:lower())
+
+            local distanceToSite = origin:getDistance(Nodegraph.getClosestBombsite(origin).origin)
+
+            Client.fireAfter(1, function()
+                if not AiUtility.isLastAlive and distanceToSite > 800 then
+                    self.ai.voice.pack:speakRequestTeammatesToPush(self.bombsite)
+                end
+            end)
+        end
     end)
 end
 
@@ -142,24 +166,10 @@ end
 function AiStatePlant:activate()
     self:setPlantNode(self.bombsite)
 
-    local origin = LocalPlayer:getOrigin()
-
     Pathfinder.moveToNode(self.node, {
         task = string.format("Plant the bomb at bombsite %s", self.bombsite),
         isCounterStrafingOnGoal = true
     })
-
-    if self.tellSiteTimer:isElapsedThenRestart(25) and MenuGroup.useChatCommands:get() then
-        self.ai.commands.go:bark(self.bombsite:lower())
-
-        local distanceToSite = origin:getDistance(Nodegraph.getClosestBombsite(origin).origin)
-
-        Client.fireAfter(1, function()
-            if not AiUtility.isLastAlive and distanceToSite > 800 then
-                self.ai.voice.pack:speakRequestTeammatesToPush(self.bombsite)
-            end
-        end)
-    end
 end
 
 --- @return void
@@ -220,7 +230,7 @@ function AiStatePlant:setPlantNode(site)
     elseif clientOrigin:getDistance(Nodegraph.getOne(Node.objectiveBombsiteB).origin) < 1024 then
         site = "B"
     else
-        site = site or AiUtility.randomBombsite
+        site = AiUtility.randomBombsite
     end
 
     self.bombsite = site

@@ -35,6 +35,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field clientThreatenedBy Player
 --- @field clientThreatenedFromOrigin Vector3
 --- @field closestEnemy Player
+--- @field closestThreat Player
 --- @field closestEnemyDistance number
 --- @field closestTeammate Player
 --- @field closestTeammateDistance number
@@ -70,6 +71,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field position number
 --- @field randomBombsite string
 --- @field teammates Player[]
+--- @field teammatesAndClient Player[]
 --- @field teammatesAlive number
 --- @field threats boolean[]
 --- @field threatUpdateTimer Timer
@@ -119,11 +121,12 @@ function AiUtility:initFields()
     AiUtility.dormantAt = {}
     AiUtility.enemies = {}
     AiUtility.teammates = {}
+    AiUtility.teammatesAndClient = {}
     AiUtility.enemiesAlive = 0
     AiUtility.teammatesAlive = 0
     AiUtility.totalThreats = 0
     AiUtility.threatUpdateTimer = Timer:new():startThenElapse()
-    AiUtility.gameRules = Server.isIngame() and Entity.getGameRules()
+    AiUtility.gameRules = Entity.getGameRules()
     AiUtility.randomBombsite = Math.getChance(2) and "A" or "B"
 
     if Server.isIngame() then
@@ -365,6 +368,7 @@ end
 --- @return void
 function AiUtility.updateAllPlayers()
     AiUtility.teammates = {}
+    AiUtility.teammatesAndClient = {}
     AiUtility.enemiesAlive = 0
     -- Very funny Valve.
     AiUtility.teammatesAlive = -1
@@ -400,6 +404,7 @@ function AiUtility.updateAllPlayers()
                 end
             else
                 AiUtility.teammatesAlive = AiUtility.teammatesAlive + 1
+                AiUtility.teammatesAndClient[player.eid] = player
 
                 if player:isClient() then
                     break
@@ -551,99 +556,108 @@ end
 
 --- @return void
 function AiUtility.updateThreats()
-    AiUtility.threats = {}
-
-    -- Update threats.
-    local eyeOrigin = Client.getEyeOrigin() + LocalPlayer:m_vecVelocity():set(nil, nil, 0) * 0.33
-    local clientOrigin = LocalPlayer:getOrigin()
-    local threatUpdateTime = 0.15
-    local threats = 0
-
     -- Don't update the threat origin too often, or it'll be obvious this is effectively wallhacking.
-    if AiUtility.threatUpdateTimer:isElapsedThenRestart(threatUpdateTime) then
-        AiUtility.clientThreatenedFromOrigin = nil
-        AiUtility.isClientThreatenedMinor = false
-        AiUtility.isClientThreatenedMajor = false
+    if not AiUtility.threatUpdateTimer:isElapsedThenRestart(0.15) then
+        return
+    end
 
-        local clientPlane = eyeOrigin:getPlane(Vector3.align.CENTER, 120)
+    AiUtility.threats = {}
+    AiUtility.clientThreatenedFromOrigin = nil
+    AiUtility.isClientThreatenedMinor = false
+    AiUtility.isClientThreatenedMajor = false
 
-        -- Prevent our own plane from clipping thin walls.
-        -- It can look very wrong when pre-aiming through certain geometry.
-        for id, vertex in pairs(clientPlane) do
-            local trace = Trace.getLineToPosition(eyeOrigin, vertex, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindClientPlaneWallCollidePoint>")
+    local eyeOrigin = Client.getEyeOrigin() + LocalPlayer:m_vecVelocity():set(nil, nil, 0) * 0.33
+    local threats = 0
+    local clientPlane = eyeOrigin:getPlane(Vector3.align.CENTER, 120)
+    local clientOrigin = LocalPlayer:getOrigin()
+    --- @type Player
+    local closestThreat
+    local closestThreatDistance = math.huge
 
-            clientPlane[id] = trace.endPosition
+    -- Prevent our own plane from clipping thin walls.
+    -- It can look very wrong when pre-aiming through certain geometry.
+    for id, vertex in pairs(clientPlane) do
+        local trace = Trace.getLineToPosition(eyeOrigin, vertex, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindClientPlaneWallCollidePoint>")
+
+        clientPlane[id] = trace.endPosition
+    end
+
+    for _, enemy in pairs(AiUtility.enemies) do repeat
+        local enemyOrigin = enemy:getOrigin()
+        local canSetThreatenedFromOrigin = false
+
+        if not AiUtility.lastPresenceTimers[enemy.eid]:isElapsed(AiUtility.ignorePresenceAfter) then
+            canSetThreatenedFromOrigin = true
+        elseif clientOrigin:getDistance(enemyOrigin) > 700 then
+            canSetThreatenedFromOrigin = true
         end
 
-        for _, enemy in pairs(AiUtility.enemies) do repeat
-            local enemyOrigin = enemy:getOrigin()
-            local canSetThreatenedFromOrigin = false
+        local enemyOffset = enemy:getOrigin():offset(0, 0, 72)
+        local bandAngle = eyeOrigin:getAngle(enemyOffset):set(0):offset(0, 90)
+        local enemyAngle = eyeOrigin:getAngle(enemyOffset)
+        local steps = 6
+        local stepDistance = 180 / steps
+        local isClientThreatenedMinor = false
+        local isClientThreatenedMajor = false
+        local absPitch = math.abs(enemyAngle.p)
+        local traceExtension = 1 - Math.getFloat(Math.getClamped(absPitch, 0, 75), 90)
+        local traceDistance = 300 * traceExtension
+        local lowestFov = math.huge
 
-            if not AiUtility.lastPresenceTimers[enemy.eid]:isElapsed(AiUtility.ignorePresenceAfter) then
-                canSetThreatenedFromOrigin = true
-            elseif clientOrigin:getDistance(enemyOrigin) > 700 then
-                canSetThreatenedFromOrigin = true
-            end
+        for _ = 1, steps do
+            local collideIdealOrigin = enemyOffset + bandAngle:getForward() * traceDistance * 0.66
+            local uncollideIdealOrigin = enemyOffset + bandAngle:getForward() * traceDistance
+            local findWallCollideTrace = Trace.getLineToPosition(enemyOffset, collideIdealOrigin, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindWallCollidePoint>")
 
-            local enemyOffset = enemy:getOrigin():offset(0, 0, 72)
-            local bandAngle = eyeOrigin:getAngle(enemyOffset):set(0):offset(0, 90)
-            local enemyAngle = eyeOrigin:getAngle(enemyOffset)
-            local steps = 6
-            local stepDistance = 180 / steps
-            local isClientThreatenedMinor = false
-            local isClientThreatenedMajor = false
-            local absPitch = math.abs(enemyAngle.p)
-            local traceExtension = 1 - Math.getFloat(Math.getClamped(absPitch, 0, 75), 90)
-            local traceDistance = 300 * traceExtension
-            local lowestFov = math.huge
+            for _, vertex in pairs(clientPlane) do
+                -- Trace to see if we can see the previous trace.
+                local findCollidedPointVisibleToEnemyTrace = Trace.getLineToPosition(findWallCollideTrace.endPosition, vertex, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindCollidedPointVisibleToEnemy>")
+                local findUncollidedPointVisibleToEnemyTrace = Trace.getLineToPosition(uncollideIdealOrigin, vertex, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindUncollidedPointVisibleToEnemy>")
+                local fov = enemyAngle:getFov(eyeOrigin, findWallCollideTrace.endPosition)
 
-            for _ = 1, steps do
-                local collideIdealOrigin = enemyOffset + bandAngle:getForward() * traceDistance * 0.66
-                local uncollideIdealOrigin = enemyOffset + bandAngle:getForward() * traceDistance
-                local findWallCollideTrace = Trace.getLineToPosition(enemyOffset, collideIdealOrigin, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindWallCollidePoint>")
-
-                for _, vertex in pairs(clientPlane) do
-                    -- Trace to see if we can see the previous trace.
-                    local findCollidedPointVisibleToEnemyTrace = Trace.getLineToPosition(findWallCollideTrace.endPosition, vertex, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindCollidedPointVisibleToEnemy>")
-                    local findUncollidedPointVisibleToEnemyTrace = Trace.getLineToPosition(uncollideIdealOrigin, vertex, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindUncollidedPointVisibleToEnemy>")
-                    local fov = enemyAngle:getFov(eyeOrigin, findWallCollideTrace.endPosition)
-
-                    -- Find if the enemy could potentially peek us.
-                    if not findUncollidedPointVisibleToEnemyTrace.isIntersectingGeometry then
-                        isClientThreatenedMinor = true
-                    end
-
-                    -- Set the closest point to the enemy as the best point to look at.
-                    if not findCollidedPointVisibleToEnemyTrace.isIntersectingGeometry then
-                        isClientThreatenedMinor = true
-
-                        if not eyeOrigin:isRayIntersectingSmoke(findCollidedPointVisibleToEnemyTrace.endPosition) then
-                            isClientThreatenedMajor = true
-                        end
-
-                        if canSetThreatenedFromOrigin and fov < lowestFov and fov < 20 then
-                            lowestFov = fov
-
-                            AiUtility.clientThreatenedFromOrigin = findWallCollideTrace.endPosition
-                        end
-                    end
+                -- Find if the enemy could potentially peek us.
+                if not findUncollidedPointVisibleToEnemyTrace.isIntersectingGeometry then
+                    isClientThreatenedMinor = true
                 end
 
-                bandAngle:offset(0, stepDistance)
+                -- Set the closest point to the enemy as the best point to look at.
+                if not findCollidedPointVisibleToEnemyTrace.isIntersectingGeometry then
+                    isClientThreatenedMinor = true
+
+                    if not eyeOrigin:isRayIntersectingSmoke(findCollidedPointVisibleToEnemyTrace.endPosition) then
+                        isClientThreatenedMajor = true
+                    end
+
+                    if canSetThreatenedFromOrigin and fov < lowestFov and fov < 20 then
+                        lowestFov = fov
+
+                        AiUtility.clientThreatenedFromOrigin = findWallCollideTrace.endPosition
+                    end
+                end
             end
 
-            if isClientThreatenedMinor then
-                AiUtility.isClientThreatenedMinor = true
-                AiUtility.isClientThreatenedMajor = isClientThreatenedMajor
-                AiUtility.clientThreatenedBy = enemy
-                AiUtility.threats[enemy.eid] = true
+            bandAngle:offset(0, stepDistance)
+        end
 
-                threats = threats + 1
+        if isClientThreatenedMinor then
+            AiUtility.isClientThreatenedMinor = true
+            AiUtility.isClientThreatenedMajor = isClientThreatenedMajor
+            AiUtility.clientThreatenedBy = enemy
+            AiUtility.threats[enemy.eid] = true
+
+            local distance = clientOrigin:getDistance(enemyOrigin)
+
+            if distance < closestThreatDistance then
+                closestThreatDistance = distance
+                closestThreat = enemy
             end
-        until true end
 
-        AiUtility.totalThreats = threats
-    end
+            threats = threats + 1
+        end
+    until true end
+
+    AiUtility.closestThreat = closestThreat
+    AiUtility.totalThreats = threats
 end
 
 --- @return boolean

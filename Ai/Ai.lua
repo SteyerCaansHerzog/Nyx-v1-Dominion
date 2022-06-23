@@ -569,6 +569,10 @@ function Ai:preventDithering()
 
 	local highestPriority = logA.state.priority > logB.state.priority and logA.state or logB.state
 
+	if true then
+		return -- todo
+	end
+
 	if not highestPriority.isLockable then
 		return
 	end

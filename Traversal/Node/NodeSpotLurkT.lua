@@ -16,7 +16,7 @@ local NodeSpotLurkT = {
         "",
         "- The AI will use these to wait at opposite sites."
     },
-    colorSecondary = Color:hsla(240, 0.8, 0.7),
+    colorSecondary = Color:hsla(80, 0.8, 0.7),
     isDirectional = true,
     isLinkedToBombsite = true
 }

@@ -40,6 +40,7 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --{{{ NodegraphEditor
 --- @class NodegraphEditor : Class
 --- @field blockInputs boolean
+--- @field groups table<number, NodeTypeBase[]>
 --- @field highlightNode NodeTypeBase
 --- @field highlightNodeColor Color
 --- @field iNode number
@@ -57,8 +58,8 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field keyUnsetConnections VKey
 --- @field movementRecorderEndOrigin Vector3
 --- @field movementRecorderParams string[]
---- @field movementRecorderStartOrigin Vector3
 --- @field movementRecorderStartAngles Angle
+--- @field movementRecorderStartOrigin Vector3
 --- @field movementRecording SetupCommandEvent[]
 --- @field moveNode NodeTypeBase
 --- @field moveNodeDelay Timer
@@ -66,11 +67,11 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field nextNodeTimer Timer
 --- @field node NodeTypeBase
 --- @field nodes NodeTypeBase[]
+--- @field pathfindTestNodes NodePathfindTest[]
 --- @field selectedNode NodeTypeBase
 --- @field spawnError string|nil
 --- @field spawnNode NodeTypeBase
 --- @field visibleGroups boolean[]
---- @field pathfindTestNodes NodePathfindTest[]
 local NodegraphEditor = {
     movementRecorderParams = {
         "forwardmove",
@@ -148,6 +149,7 @@ function NodegraphEditor:initFields()
     self.moveNodeResetDelay = Timer:new():startThenElapse()
     self.nextNodeTimer = Timer:new():startThenElapse()
     self.pathfindTestNodes = {}
+    self.groups = {}
 
     MenuGroup.group:addLabel("----------------------------------------"):setParent(MenuGroup.master)
     MenuGroup.enableEditor = MenuGroup.group:addCheckbox("> Enable Nodegraph Editor"):setParent(MenuGroup.master)
@@ -224,7 +226,7 @@ function NodegraphEditor:initFields()
     end):setParent(MenuGroup.enableEditor)
 
     MenuGroup.group:addButton("Run Graph Integrity Test", function()
-    	self:testPathfinding()
+        self:testPathfinding()
     end):setParent(MenuGroup.enableEditor)
 end
 
@@ -255,10 +257,18 @@ end
 
 --- @return void
 function NodegraphEditor:testPathfinding()
+    Logger.console(2, "Beginning Nodegraph integrity test.")
+
     self.pathfindTestNodes = {}
+    self.groups = {
+        {},
+        {},
+        {},
+        {},
+        {}
+    }
 
     local i = 0
-
     local origin = Nodegraph.getSpawn("CT").origin:clone()
 
     for _, node in pairs(Nodegraph.nodes) do
@@ -266,7 +276,7 @@ function NodegraphEditor:testPathfinding()
 
         Client.fireAfter(i, function()
             Pathfinder.moveToNode(node, {
-                task = "Test Pathfinder",
+                task = "Nodegraph Integrity Test",
                 isIgnoringRequestInterval = true,
                 isPathfindingFromNearestNodeIfNoConnections = false,
                 isAllowedToTraverseInactives = true,
@@ -286,6 +296,32 @@ function NodegraphEditor:testPathfinding()
             })
 
             Pathfinder.handleCurrentRequest()
+
+            local closestDistance = math.huge
+
+            for _, against in pairs(Nodegraph.nodes) do repeat
+                if node.id == against.id then
+                    break
+                end
+
+                local distance = node.origin:getDistance(against.origin)
+
+                if distance < closestDistance then
+                    closestDistance = distance
+                end
+            until true end
+
+            if closestDistance < 50 then
+                table.insert(self.groups[1], node)
+            elseif closestDistance < 100 then
+                table.insert(self.groups[2], node)
+            elseif closestDistance < 150 then
+                table.insert(self.groups[3], node)
+            elseif closestDistance < 200 then
+                table.insert(self.groups[4], node)
+            else
+                table.insert(self.groups[5], node)
+            end
         end)
     end
 end
@@ -728,6 +764,22 @@ function NodegraphEditor:render()
     local height = 0
     local lineHeight = 20
 
+    local groupColors = {
+        Color:hsla(120, 0.8, 0.6, 20),
+        Color:hsla(90, 0.8, 0.6, 40),
+        Color:hsla(60, 0.8, 0.6, 60),
+        Color:hsla(30, 0.8, 0.6, 80),
+        Color:hsla(0, 0.8, 0.6, 150),
+    }
+
+    for idx, group in pairs(self.groups) do
+        local groupColor = groupColors[idx]
+
+        for _, node in pairs(group) do
+            node.origin:drawScaledCircle(150, groupColor)
+        end
+    end
+
     -- Nodes
     local iProblems = 0
     local iNodes = 0
@@ -742,18 +794,16 @@ function NodegraphEditor:render()
         end
 
         if self.pathfindTestNodes[node.id] then
-            local color
-
-            if self.pathfindTestNodes[node.id].isOk then
-                color = ColorList.INFO:clone():setAlpha(100)
-            else
-                color = ColorList.ERROR
+            if not self.pathfindTestNodes[node.id].isOk then
+                node.origin:drawScaledCircleOutline(220, 40, ColorList.ERROR)
             end
-
-            node.origin:drawScaledCircleOutline(80, 15, color)
         end
 
         iNodes = iNodes + 1
+    end
+
+    if true then
+        return
     end
 
     if self.keySetConnections:isToggled() and self.selectedNode then

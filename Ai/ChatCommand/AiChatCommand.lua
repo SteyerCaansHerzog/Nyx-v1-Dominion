@@ -21,6 +21,7 @@ local AiChatCommand = {
 	knife = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandKnife",
 	know = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandKnow",
 	log = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandLog",
+	mecon = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandManageEconomy",
 	noise = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandNoise",
 	ok = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandOk",
 	assist = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandAssist",

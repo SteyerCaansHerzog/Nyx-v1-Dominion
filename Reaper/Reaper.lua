@@ -26,6 +26,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
+local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 --}}}
@@ -114,7 +115,7 @@ function ReaperManifest:__init()
 	self.isEnabled = manifest.isEnabled
 
 	if not self.isEnabled then
-		print("Reaper is not enabled.")
+		Logger.console(3, "Reaper Mode is not enabled.")
 
 		return
 	end

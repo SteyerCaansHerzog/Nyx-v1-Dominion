@@ -4,6 +4,7 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Server = require "gamesense/Nyx/v1/Api/Server"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
@@ -71,15 +72,24 @@ local BuyCriteria = {
 --- @field chance number
 --- @field balance number
 --- @field queue fun(): void
+
+--- @class BuyQueue
+--- @field buy fun(): void
+--- @field after number
 --}}}
 
 --{{{ AiRoutineBuyGear
 --- @class AiRoutineBuyGear : AiRoutineBase
 --- @field balance number
---- @field buyQueue string[]
+--- @field buyItemList string[]
+--- @field buyQueue BuyQueue[]
 --- @field isEnabled boolean
+--- @field isForcing boolean
 --- @field isQueued boolean
+--- @field isRushing boolean
 --- @field isSaving boolean
+--- @field isProcessingQueue boolean
+--- @field processQueueTimer Timer
 local AiRoutineBuyGear = {}
 
 --- @param fields AiRoutineBuyGear
@@ -90,7 +100,9 @@ end
 
 --- @return void
 function AiRoutineBuyGear:__init()
+	self.buyItemList = {}
 	self.buyQueue = {}
+	self.processQueueTimer = Timer:new()
 
 	Callbacks.init(function()
 		if not Server.isIngame() then
@@ -104,7 +116,7 @@ function AiRoutineBuyGear:__init()
 		self.balance = LocalPlayer:m_iAccount()
 
 		self:buyRoundStart()
-		self:processQueue()
+		self:createBuyQueue()
 	end)
 
 	Callbacks.roundStart(function()
@@ -112,8 +124,9 @@ function AiRoutineBuyGear:__init()
 			return
 		end
 
-		self.buyQueue = {}
+		self.buyItemList = {}
 		self.isQueued = false
+		self.isProcessingQueue = false
 		self.balance = LocalPlayer:m_iAccount()
 
 		local freezetime = cvar.mp_freezetime:get_int()
@@ -122,7 +135,7 @@ function AiRoutineBuyGear:__init()
 
 		Client.fireAfterRandom(minDelay, maxDelay, function()
 			self:buyRoundStart()
-			self:processQueue()
+			self:createBuyQueue()
 		end)
 	end)
 
@@ -130,6 +143,12 @@ function AiRoutineBuyGear:__init()
 		-- Reset saving if given randomly during the previous round.
 		-- The AI should only respond to /eco for the oncoming round.
 		self.isSaving = false
+		self.isRushing = false
+		self.isForcing = false
+	end)
+
+	Callbacks.setupCommand(function()
+		self:processBuyQueue()
 	end)
 end
 
@@ -151,26 +170,78 @@ function AiRoutineBuyGear:save()
 end
 
 --- @return void
-function AiRoutineBuyGear:processQueue()
+function AiRoutineBuyGear:force()
+	self.isForcing = true
+end
+
+--- @return void
+function AiRoutineBuyGear:ecoRush()
+	self.isRushing = true
+end
+
+--- @return void
+function AiRoutineBuyGear:pickup()
+	self:equipFullArmor()
+
+	if LocalPlayer:isTerrorist() then
+		self:equipRandomGrenades(nil, 4)
+	elseif LocalPlayer:isCounterTerrorist() then
+		self:equipRandomGrenades(nil, 2)
+		self:equipDefuseKit()
+	end
+end
+
+--- @return void
+function AiRoutineBuyGear:pauseQueue()
+	self.processQueueTimer:pause()
+end
+
+--- @return void
+function AiRoutineBuyGear:createBuyQueue()
 	if not LocalPlayer:isAlive() then
 		return
 	end
 
+	self.buyQueue = {}
+
 	local i = 0
 
-	for j, item in pairs(self.buyQueue) do
-		local interval = i * 0.15
-		local rng = Math.getRandomFloat(0, 0.09)
+	for j, item in pairs(self.buyItemList) do
+		local intervalMin = i * 0.15
+		local intervalMax = intervalMin + Math.getRandomFloat(0, 0.09)
 
-		Client.fireAfterRandom(interval, interval + rng, function()
-			Client.execute("buy %s", item)
-			Logger.console(-1, "Purchased [%i] '%s'.", j, item)
-		end)
+		table.insert(self.buyQueue, {
+			buy = function()
+				Client.execute("buy %s", item)
+				Logger.console(-1, "Purchased [%i] '%s'.", j, item)
+			end,
+			after = Math.getRandomFloat(intervalMin, intervalMax)
+		})
 
 		i = i + 1
 	end
 
-	self.buyQueue = {}
+	self.isProcessingQueue = true
+	self.buyItemList = {}
+end
+
+--- @return void
+function AiRoutineBuyGear:processBuyQueue()
+	if not self.isProcessingQueue then
+		return
+	end
+
+	for id, item in pairs(self.buyQueue) do repeat
+		if not self.processQueueTimer:isElapsed(item.after) then
+			break
+		end
+
+		item.buy()
+
+		self.buyQueue[id] = nil
+	until true end
+
+	self.processQueueTimer:ifPausedThenStart()
 end
 
 --- @param item string
@@ -179,7 +250,7 @@ function AiRoutineBuyGear:queue(item)
 		return
 	end
 
-	table.insert(self.buyQueue, item)
+	table.insert(self.buyItemList, item)
 
 	self.isQueued = true
 end
@@ -246,6 +317,7 @@ function AiRoutineBuyGear:buyRoundStart()
 	-- AI was told to save this round.
 	if self.isSaving then
 		self.isSaving = false
+
 		return
 	end
 
@@ -261,6 +333,8 @@ function AiRoutineBuyGear:buyRoundStart()
 			self:buyTerroristPistolRound()
 		elseif isPostPistolRound then
 			self:buyTerroristPostPistolRound()
+		elseif self.isRushing then
+			self:buyTerroristEcoRushRound()
 		else
 			self:buyTerroristFullBuyRound()
 		end
@@ -269,6 +343,8 @@ function AiRoutineBuyGear:buyRoundStart()
 			self:buyCounterTerroristPistolRound()
 		elseif isPostPistolRound then
 			self:buyCounterTerroristPostPistolRound()
+		elseif self.isRushing then
+			self:buyTerroristEcoRushRound()
 		else
 			self:buyCounterTerroristFullBuyRound()
 		end
@@ -276,24 +352,7 @@ function AiRoutineBuyGear:buyRoundStart()
 end
 
 --- @return void
-function AiRoutineBuyGear:buyForceRound()
-	if self.isQueued then
-		return
-	end
-
-	if LocalPlayer:isTerrorist() then
-		self:buyTerroristForceRound()
-	elseif LocalPlayer:isCounterTerrorist() then
-		self:buyCounterTerroristForceRound()
-	end
-end
-
---- @return void
 function AiRoutineBuyGear:buyEcoRushRound()
-	if self.isQueued then
-		return
-	end
-
 	if LocalPlayer:isTerrorist() then
 		self:buyTerroristEcoRushRound()
 	elseif LocalPlayer:isCounterTerrorist() then
@@ -432,6 +491,10 @@ function AiRoutineBuyGear:buyTerroristFullBuyRound()
 	end
 
 	if self.balance < BuyCriteria.TERRORIST_FULL_BUY then
+		if self.isForcing then
+			self:buyTerroristForceRound()
+		end
+
 		return
 	end
 
@@ -610,6 +673,10 @@ function AiRoutineBuyGear:buyCounterTerroristFullBuyRound()
 	end
 
 	if self.balance < BuyCriteria.COUNTER_TERRORIST_FULL_BUY then
+		if self.isForcing then
+			self:buyCounterTerroristForceRound()
+		end
+
 		return
 	end
 

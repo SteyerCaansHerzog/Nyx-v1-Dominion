@@ -72,6 +72,11 @@ function AiStateDrop:activate()
     })
 end
 
+--- @return void
+function AiStateDrop:deactivate()
+    self.droppingGearTimer:stop()
+end
+
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateDrop:think(cmd)
@@ -79,6 +84,9 @@ function AiStateDrop:think(cmd)
 
     self.ai.routines.lookAwayFromFlashbangs:block()
     self.ai.routines.manageGear:block()
+    self.ai.routines.buyGear:pauseQueue()
+
+    LocalPlayer.equipPrimary()
 
     local distance = LocalPlayer:getOrigin():getDistance(self.requestingPlayer:getOrigin())
     local hitbox = self.requestingPlayer:getOrigin():offset(0, 0, 64)
@@ -104,7 +112,7 @@ function AiStateDrop:think(cmd)
             end
 
             -- Drop gear.
-            if self.droppingGearTimer:isElapsedThenStop(0.1) then
+            if self.droppingGearTimer:isElapsedThenStop(0.2) then
                 self.ai.voice.pack:speakGifting()
 
                 LocalPlayer.dropGear()

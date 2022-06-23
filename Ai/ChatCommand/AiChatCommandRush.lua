@@ -23,10 +23,6 @@ local AiChatCommandRush = {
 --- @param args string[]
 --- @return void
 function AiChatCommandRush:invoke(ai, sender, args)
-    if not LocalPlayer:isCounterTerrorist() then
-        return self.ONLY_COUNTER_TERRORIST
-    end
-
     if ai.reaper.isActive then
         return self.REAPER_IS_ACTIVE
     end
@@ -34,9 +30,11 @@ function AiChatCommandRush:invoke(ai, sender, args)
     ai.routines.buyGear:blockThisRound()
 
     Client.fireAfterRandom(0, 1, function()
-        ai.routines.buyGear:buyEcoRush()
-        ai.routines.buyGear:processQueue()
-        ai.states.check:invoke("T")
+        ai.routines.buyGear:ecoRush()
+
+        if LocalPlayer:isCounterTerrorist() then
+            ai.states.check:invoke("T")
+        end
     end)
 end
 

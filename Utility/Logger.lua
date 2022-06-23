@@ -2,6 +2,7 @@
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Chat = require "gamesense/Nyx/v1/Api/Chat"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Time = require "gamesense/Nyx/v1/Api/Time"
 --}}}
 
 --{{{ Modules
@@ -215,6 +216,8 @@ function Logger.credits(version)
 		}
 	})
 
+	local time = Time.getDateTime()
+
 	Client.writeManyConsole({
 		{
 			color = ColorList.FONT_MUTED,
@@ -222,7 +225,18 @@ function Logger.credits(version)
 		},
 		{
 			color = ColorList.FONT_MUTED,
-			text = "Copyright ©2021-2022, all rights reserved."
+			text = string.format("Copyright Nyx.to ©2021-%i, all rights reserved.", time.year)
+		},
+	})
+
+	Client.writeManyConsole({
+		{
+			color = ColorList.FONT_MUTED,
+			text = "| "
+		},
+		{
+			color = ColorList.FONT_MUTED,
+			text = string.format("%02d/%02d/%i. Your license to this software does not expire.", time.day, time.month, time.year)
 		},
 	})
 

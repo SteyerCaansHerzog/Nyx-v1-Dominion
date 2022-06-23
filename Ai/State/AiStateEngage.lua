@@ -1223,9 +1223,10 @@ end
 function AiStateEngage:renderTimer(title, uiPos, timer, time, color)
     local offset = 25
     local pct = math.min(1, timer:get() / time)
-    local color = color or Color:hsla(0, 0, 0.9)
     local timerColor = Color:hsla(100 * pct, 0.8, 0.6)
     local timerBgColor = Color:hsla(100 * pct, 0.4, 0.2, 100)
+
+    color = color or Color:hsla(0, 0, 0.9)
 
     uiPos:drawSurfaceText(Font.SMALL, color, "r", string.format(
         "%s - %.2f / %.2f",
@@ -1410,10 +1411,11 @@ function AiStateEngage:moveOnBestTarget(cmd)
             isAvoidingSmokes = false
         elseif AiUtility.isHostageCarriedByTeammate or AiUtility.isHostageCarriedByEnemy then
             isAvoidingSmokes = false
+        elseif AiUtility.totalThreats < 2 then
+            isAvoidingSmokes = false
         end
 
         if isAvoidingSmokes then
-            local clientOrigin = LocalPlayer:getOrigin()
             --- @type Entity
             local nearSmoke
 

@@ -133,7 +133,9 @@ function AiStateBase:getCoverNode(range, target)
     local closestOrigin
     local i = 0
 
-    if AiUtility.closestEnemy then
+    if AiUtility.closestThreat then
+        closestOrigin = AiUtility.closestThreat:getOrigin()
+    elseif AiUtility.closestEnemy then
         closestOrigin = AiUtility.closestEnemy:getOrigin()
     else
         closestOrigin = clientOrigin

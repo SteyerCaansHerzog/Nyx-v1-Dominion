@@ -36,6 +36,7 @@ local Node = {
     spotHideT = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeSpotHideT",
     spotHostage = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeSpotHostage",
     spotLurkWithBomb = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeSpotLurkWithBomb",
+    spotLurkT = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeSpotLurkT",
     spotPlant = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeSpotPlant",
     spotPushCt = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeSpotPushCt",
     spotPushT = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeSpotPushT",

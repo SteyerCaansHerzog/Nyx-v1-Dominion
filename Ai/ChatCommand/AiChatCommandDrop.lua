@@ -38,6 +38,24 @@ function AiChatCommandDrop:invoke(ai, sender, args)
         return self.SENDER_IS_NOT_TEAMMATE
     end
 
+    local eid = args[1]
+
+    -- Handle being asked directly by entity-index to drop a weapon.
+    -- This is used by the Manage Economy routine to handle AI-to-AI economy management.
+    if eid then
+        eid = tonumber(eid)
+
+        if eid == LocalPlayer.eid then
+            ai.states.drop:dropGear(sender, "weapon")
+
+            return
+        else
+            ai.states.pickupItems:temporarilyBlacklistDroppedItemsFrom(Player:new(eid))
+
+            return "the invoker was not asking us"
+        end
+    end
+
     local senderEyeOrigin = sender:getEyeOrigin()
     local senderCameraAngles = sender:getCameraAngles()
     --- @type Player
@@ -56,6 +74,8 @@ function AiChatCommandDrop:invoke(ai, sender, args)
     end
 
     if closestTeammate and closestTeammate.eid ~= LocalPlayer.eid then
+        ai.states.pickupItems:temporarilyBlacklistDroppedItemsFrom(closestTeammate)
+
         return "the invoker was not asking us"
     end
 

@@ -283,7 +283,7 @@ function Pathfinder.render()
 	end
 
 	for i, node in pairs(Pathfinder.path.nodes) do
-		node:render(node, false)
+		node:render(Nodegraph, false)
 
 		local nextNode = Pathfinder.path.nodes[i + 1]
 

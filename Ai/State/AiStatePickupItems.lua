@@ -33,6 +33,8 @@ local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --- @field lookAtItem boolean
 --- @field recalculateItemsTimer Timer
 --- @field useCooldown Timer
+--- @field watchDropsFrom Player[]
+--- @field watchedItems table<number, table<number, Entity>>
 local AiStatePickupItems = {
     name = "Pickup Items",
     delayedMouseMin = 0,
@@ -50,16 +52,43 @@ function AiStatePickupItems:__init()
     self.useCooldown = Timer:new():startThenElapse()
     self.recalculateItemsTimer = Timer:new():startThenElapse()
     self.entityBlacklist = {}
+    self.watchDropsFrom = {}
 
-    Callbacks.runCommand(function()
+    Callbacks.setupCommand(function()
         if self.recalculateItemsTimer:isElapsedThenRestart(2) then
             self.item = nil
         end
+
+        for _, teammate in pairs(self.watchDropsFrom) do
+            local weapons = teammate:getWeapons()
+
+            if not self.watchedItems[teammate.eid] then
+                self.watchedItems[teammate.eid] = {}
+            end
+
+            for _, weapon in pairs(weapons) do
+                self.watchedItems[teammate.eid][weapon.eid] = weapon
+            end
+
+            for _, weapon in pairs(self.watchedItems[teammate.eid]) do
+                if weapon:m_hOwner() ~= teammate.eid and not self.entityBlacklist[weapon.eid] then
+                    self.entityBlacklist[weapon.eid] = true
+
+                    self.watchDropsFrom[teammate.eid] = nil
+
+                    Client.fireAfter(20, function()
+                        self.entityBlacklist[weapon.eid] = nil
+                    end)
+                end
+            end
+        end
     end)
 
-    Callbacks.roundStart(function()
+    Callbacks.roundPrestart(function()
         self.item = nil
         self.entityBlacklist = {}
+        self.watchDropsFrom = {}
+        self.watchedItems = {}
     end)
 
     Callbacks.itemRemove(function(e)
@@ -72,6 +101,12 @@ function AiStatePickupItems:__init()
                 self.item = nil
             end
         end)
+    end)
+
+    Callbacks.itemRemove(function(e)
+        if not self.watchDropsFrom[e.player.eid] then
+            return
+        end
     end)
 end
 
@@ -118,7 +153,7 @@ function AiStatePickupItems:assess()
     local closestDistance = math.huge
 
     for _, weapon in Entity.find(WeaponInfo.classnames) do repeat
-        -- Item is blacklisted due to being out of reach.
+        -- Item is blacklisted.
         if self.entityBlacklist[weapon.eid] then
             break
         end
@@ -191,6 +226,7 @@ end
 --- @return Entity
 function AiStatePickupItems:getNearbyItems(items)
     local origin = LocalPlayer:getOrigin()
+    local isFreezetime = AiUtility.gameRules:m_bFreezePeriod() == 1
 
     for _, item in Entity.find(items) do repeat
         if self.entityBlacklist[item.eid] then
@@ -205,35 +241,39 @@ function AiStatePickupItems:getNearbyItems(items)
             break
         end
 
-        local weaponOrigin = item:m_vecOrigin()
+        if not isFreezetime then
+            local weaponOrigin = item:m_vecOrigin()
 
-        if origin:getDistance(weaponOrigin) > 1024 or item:m_vecVelocity():getMagnitude() > 16 then
-            break
-        end
+            if origin:getDistance(weaponOrigin) > 1024 or item:m_vecVelocity():getMagnitude() > 16 then
+                break
+            end
 
-        local trace = Trace.getLineToPosition(Client.getEyeOrigin(), weaponOrigin, AiUtility.traceOptionsPathfinding, "AiStatePickupItems.getNearbyItems<FindVisibleItems>")
+            local trace = Trace.getLineToPosition(Client.getEyeOrigin(), weaponOrigin, AiUtility.traceOptionsPathfinding, "AiStatePickupItems.getNearbyItems<FindVisibleItems>")
 
-        if trace.isIntersectingGeometry then
-            break
+            if trace.isIntersectingGeometry then
+                break
+            end
         end
 
         return item
     until true end
 end
 
+--- @param player Player
+--- @return void
+function AiStatePickupItems:temporarilyBlacklistDroppedItemsFrom(player)
+    self.watchDropsFrom[player.eid] = player
+
+    Client.fireAfter(20, function()
+    	self.watchDropsFrom[player.eid] = nil
+    end)
+end
+
 --- @return void
 function AiStatePickupItems:activate() end
 
 --- @return void
-function AiStatePickupItems:deactivate()
-    if self.item and self.item:m_hOwnerEntity() == LocalPlayer.eid then
-        if LocalPlayer:hasPrimary() then
-            LocalPlayer.equipPrimary()
-        else
-            LocalPlayer.equipPistol()
-        end
-    end
-end
+function AiStatePickupItems:deactivate() end
 
 --- @param cmd SetupCommandEvent
 --- @return void

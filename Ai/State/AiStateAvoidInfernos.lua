@@ -76,7 +76,7 @@ end
 
 --- @return void
 function AiStateAvoidInfernos:move()
-    Pathfinder.moveToNode(self:getCoverNode(800, AiUtility.closestEnemy), {
+    Pathfinder.moveToNode(self:getCoverNode(800, AiUtility.closestThreat), {
         task = "Get out of inferno",
         isAllowedToTraverseInfernos = true,
         isAllowedToTraverseInactives = true,
