@@ -20,6 +20,7 @@ return {
     -- Font.
     FONT_NORMAL = Color:rgba(255, 255, 255),
     FONT_MUTED = Color:rgba(160, 160, 160),
+    FONT_MUTED_EXTRA = Color:rgba(110, 110, 110),
 
     -- Teams.
     COUNTER_TERRORIST = Color:hsla(195, 0.8, 0.6),

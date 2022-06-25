@@ -203,6 +203,10 @@ function AiUtility:initEvents()
         end
     end)
 
+    Callbacks.roundStart(function()
+        Logger.console(3, string.format("Beginning new round (#%i).", AiUtility.gameRules:m_totalRoundsPlayed() + 1))
+    end)
+
     Callbacks.roundPrestart(function(e)
         AiUtility.isRoundOver = false
         AiUtility.isBombBeingDefusedByEnemy = false

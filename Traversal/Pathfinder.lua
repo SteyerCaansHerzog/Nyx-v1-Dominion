@@ -117,6 +117,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field path PathfinderPath
 --- @field pathfindInterval number
 --- @field pathfindIntervalTimer Timer
+--- @field blockedBombsite NodeTypeObjective
 local Pathfinder = {}
 
 --- @return void
@@ -150,12 +151,20 @@ end
 
 --- @return void
 function Pathfinder.initEvents()
-	Callbacks.setupCommand(function(cmd)
+	Callbacks.setupCommand(function()
 		if not Pathfinder.isEnabled then
 			return
 		end
 
 		Pathfinder.handleLastRequest()
+		Pathfinder.handleBlockRotate()
+	end)
+
+	Callbacks.setupCommand(function(cmd)
+		if not Pathfinder.isEnabled then
+			return
+		end
+
 		Pathfinder.traverseActivePath(cmd)
 		Pathfinder.handleRecorders()
 	end, true)
@@ -177,6 +186,8 @@ function Pathfinder.initEvents()
 		for _, node in pairs(Nodegraph.get(Node.hintBlock)) do
 			node:block(Nodegraph)
 		end
+
+		Pathfinder.blockedBombsite = nil
 	end)
 
 	Callbacks.bombSpawned(function(e)
@@ -242,6 +253,25 @@ function Pathfinder.initMenu()
 	MenuGroup.enablePathfinder = MenuGroup.group:addCheckbox(" > Enable Pathfinder"):setParent(MenuGroup.master)
 	MenuGroup.enableMovement = MenuGroup.group:addCheckbox("    | Enable Movement"):setParent(MenuGroup.enablePathfinder)
 	MenuGroup.visualisePath = MenuGroup.group:addCheckbox("    | Visualise Path"):setParent(MenuGroup.enablePathfinder)
+end
+
+--- @return void
+function Pathfinder.handleBlockRotate()
+	if not Pathfinder.blockedBombsite then
+		return
+	end
+
+	if LocalPlayer:getOrigin():getDistance(Pathfinder.blockedBombsite.origin) > 1500 then
+		return
+	end
+
+	for _, node in pairs(Nodegraph.get(Node.hintBlockRotate)) do
+		for _, blockedNode in pairs(node.blockedNodes) do
+			blockedNode:activate()
+		end
+	end
+
+	Pathfinder.blockedBombsite = nil
 end
 
 --- @param nodes NodeTypeBase[]
@@ -553,13 +583,13 @@ function Pathfinder.createPath()
 	Table.setMissing(pathfinderOptions, {
 		goalReachedRadius = 15,
 		isAllowedToTraverseInactives = false,
-		isAllowedToTraverseInfernos = false,
+		isAllowedToTraverseInfernos = true,
 		isAllowedToTraverseJumps = true,
 		isAllowedToTraverseLadders = true,
 		isAllowedToTraverseRecorders = true,
 		isAllowedToTraverseSmokes = true,
 		isCachingRequest = true,
-		isClearingActivePath = false,
+		isClearingActivePath = true,
 		isCorrectingGoalZ = true,
 		isCounterStrafingOnGoal = false,
 		isPathfindingByCollisionLineOnFailure = false,
@@ -1168,7 +1198,7 @@ function Pathfinder.traverseActivePath(cmd)
 				local ladderBottom = Pathfinder.path.nodes[Pathfinder.path.idx + 1]
 				local zDelta = clientOrigin.z - ladderBottom.origin.z
 
-				if zDelta < 100 then
+				if zDelta < 512 then
 					cmd.in_jump = true
 
 					Pathfinder.incrementPath()

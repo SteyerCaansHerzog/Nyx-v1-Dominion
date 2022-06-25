@@ -16,6 +16,7 @@ local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 
 --{{{ AiStateBase
 --- @class AiStateBase : Class
+--- @field abuseLockTimer Timer
 --- @field activate fun(self: AiStateBase): void
 --- @field activity string
 --- @field ai Ai
@@ -25,6 +26,8 @@ local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --- @field delayedMouseMin number
 --- @field isBlocked boolean
 --- @field isCurrentState boolean
+--- @field isLockable boolean
+--- @field isMouseDelayAllowed boolean
 --- @field isQueuedForReactivation boolean
 --- @field name string
 --- @field priority number
@@ -32,13 +35,12 @@ local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --- @field requiredGamemodes string[]
 --- @field requiredNodes NodeTypeBase[]
 --- @field think fun(self: AiStateBase, cmd: SetupCommandEvent): void
---- @field abuseLockTimer Timer
---- @field isLockable boolean
 local AiStateBase = {
     priorityMap = Table.getInverted(AiPriority),
     delayedMouseMin = 0.25,
     delayedMouseMax = 0.55,
-    isLockable = true
+    isLockable = true,
+    isMouseDelayAllowed = true,
 }
 
 --- @param fields AiStateBase

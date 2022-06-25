@@ -322,7 +322,7 @@ function AiStateDefend:isEnemyHoldable()
     end
 
     if not isEnemies then
-        return true
+        return false
     end
 
     return isEnemyInFoV

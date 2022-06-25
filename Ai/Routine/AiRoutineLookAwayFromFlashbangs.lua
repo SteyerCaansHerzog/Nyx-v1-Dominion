@@ -78,7 +78,7 @@ function AiRoutineLookAwayFromFlashbangs:think(cmd)
 
 		-- Flash isn't a threat to us yet.
 		-- Allows the AI to "time" a flash pop.
-		if self.flashbangsDetonateAt[flashbang.eid] - curtime > 0.4 then
+		if self.flashbangsDetonateAt[flashbang.eid] - curtime > 0.45 then
 			break
 		end
 
@@ -95,17 +95,17 @@ function AiRoutineLookAwayFromFlashbangs:think(cmd)
 		local fov = cameraAngles:getFov(eyeOrigin, findPredictedFuturePositionTrace.endPosition)
 
 		-- Unlikely to be blinded.
-		if distance > 1200 then
+		if distance > 1400 then
 			break
 		end
 
 		-- Check if the flash is likely to blind us or not.
 		if distance > 100 then
-			if fov > 40 then
+			if fov > 65 then
 				break
 			end
 		else
-			if fov > 95 then
+			if fov > 110 then
 				break
 			end
 		end
@@ -129,7 +129,7 @@ function AiRoutineLookAwayFromFlashbangs:think(cmd)
 		return
 	end
 
-	View.lookSpeedDelayMax = 0
+	View.isLookSpeedDelayed = false
 
 	LocalPlayer.unscope(true)
 	View.lookAlongAngle(self.lookAngles, 10, View.noise.moving, "Look away from flashbangs")

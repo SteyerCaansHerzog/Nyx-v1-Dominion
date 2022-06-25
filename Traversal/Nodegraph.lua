@@ -104,21 +104,6 @@ function Nodegraph.initEvents()
     end)
 end
 
---- @vararg string
---- @return void
-function Nodegraph.log(...)
-    local message = string.format(...)
-
-    if not message then
-        return
-    end
-
-    client.color_log(240, 50, 50, "[Dominion] \0")
-    client.color_log(200, 200, 200, message)
-
-    Chat.message(string.format("%s[Dominion]%s %s", Chat.LIGHT_RED, Chat.WHITE, message))
-end
-
 --- @return void
 function Nodegraph.reset()
     Nodegraph.nodes = {}
@@ -661,7 +646,11 @@ end
 
 --- @return string
 function Nodegraph.getFilename()
-    return string.format("lua/gamesense/Nyx/v1/Dominion/Traversal/Nodegraphs/%s.json", Server.getMapName())
+    local map = Server.getMapName()
+
+    map = map:gsub("/", "_")
+
+    return string.format("lua/gamesense/Nyx/v1/Dominion/Traversal/Nodegraphs/%s.json", map)
 end
 
 --- @return void

@@ -90,6 +90,7 @@ local BuyCriteria = {
 --- @field isSaving boolean
 --- @field isProcessingQueue boolean
 --- @field processQueueTimer Timer
+--- @field customItemList string[]
 local AiRoutineBuyGear = {}
 
 --- @param fields AiRoutineBuyGear
@@ -162,6 +163,16 @@ function AiRoutineBuyGear:isAlreadyGearedUpAndBuyMisc()
 	end
 
 	return isGearedUp
+end
+
+--- @param itemNames string
+function AiRoutineBuyGear:setCustomItemList(itemNames)
+	self.customItemList = Table.getExplodedString(itemNames, ",")
+end
+
+--- @return void
+function AiRoutineBuyGear:resetCustomItemList()
+	self.customItemList = nil
 end
 
 --- @return void
@@ -317,6 +328,13 @@ function AiRoutineBuyGear:buyRoundStart()
 	-- AI was told to save this round.
 	if self.isSaving then
 		self.isSaving = false
+
+		return
+	end
+
+	-- Buy from custom items list.
+	if self.customItemList then
+		self:equipWeapons(self.customItemList)
 
 		return
 	end
@@ -725,14 +743,18 @@ function AiRoutineBuyGear:buyCounterTerroristFullBuyRound()
 	}, 2)
 end
 
+--- @param item string
 --- @return void
 function AiRoutineBuyGear:equipWeapon(item)
 	self:queue(item)
 end
 
+--- @param items string[]
 --- @return void
-function AiRoutineBuyGear:equipWeapons(item)
-	self:queue(item)
+function AiRoutineBuyGear:equipWeapons(items)
+	for _, item in pairs(items) do
+		self:queue(item)
+	end
 end
 
 --- @return void

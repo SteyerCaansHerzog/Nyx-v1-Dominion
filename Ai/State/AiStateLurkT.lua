@@ -59,6 +59,10 @@ function AiStateLurkT:assess()
 		return AiPriority.IGNORE
 	end
 
+	if LocalPlayer.hasBomb() then
+		return AiPriority.IGNORE
+	end
+
 	if AiUtility.isLastAlive then
 		return AiPriority.IGNORE
 	end

@@ -257,6 +257,14 @@ end
 
 --- @return void
 function NodegraphEditor:testPathfinding()
+    local originNode = Nodegraph.getSpawn("CT")
+
+    if not originNode then
+        Logger.console(1, "The CT Spawn node is required to run an integrity test.")
+
+        return
+    end
+
     Logger.console(2, "Beginning Nodegraph integrity test.")
 
     self.pathfindTestNodes = {}
@@ -297,30 +305,32 @@ function NodegraphEditor:testPathfinding()
 
             Pathfinder.handleCurrentRequest()
 
-            local closestDistance = math.huge
+            if node:isOf(NodeType.traverse) then
+                local closestDistance = math.huge
 
-            for _, against in pairs(Nodegraph.nodes) do repeat
-                if node.id == against.id then
-                    break
+                for _, against in pairs(Nodegraph.getOfType(NodeType.traverse)) do repeat
+                    if node.id == against.id then
+                        break
+                    end
+
+                    local distance = node.origin:getDistance(against.origin)
+
+                    if distance < closestDistance then
+                        closestDistance = distance
+                    end
+                until true end
+
+                if closestDistance < 50 then
+                    table.insert(self.groups[1], node)
+                elseif closestDistance < 100 then
+                    table.insert(self.groups[2], node)
+                elseif closestDistance < 150 then
+                    table.insert(self.groups[3], node)
+                elseif closestDistance < 200 then
+                    table.insert(self.groups[4], node)
+                else
+                    table.insert(self.groups[5], node)
                 end
-
-                local distance = node.origin:getDistance(against.origin)
-
-                if distance < closestDistance then
-                    closestDistance = distance
-                end
-            until true end
-
-            if closestDistance < 50 then
-                table.insert(self.groups[1], node)
-            elseif closestDistance < 100 then
-                table.insert(self.groups[2], node)
-            elseif closestDistance < 150 then
-                table.insert(self.groups[3], node)
-            elseif closestDistance < 200 then
-                table.insert(self.groups[4], node)
-            else
-                table.insert(self.groups[5], node)
             end
         end)
     end
@@ -800,10 +810,6 @@ function NodegraphEditor:render()
         end
 
         iNodes = iNodes + 1
-    end
-
-    if true then
-        return
     end
 
     if self.keySetConnections:isToggled() and self.selectedNode then

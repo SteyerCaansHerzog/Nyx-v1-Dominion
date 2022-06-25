@@ -133,8 +133,7 @@ local WeaponMode = {
 --- @field weaponMode number
 local AiStateEngage = {
     name = "Engage",
-    delayedMouseMin = 0,
-    delayedMouseMax = 0,
+    isMouseDelayAllowed = false,
     skillLevelMin = 0,
     skillLevelMax = 10,
     isLockable = false
@@ -872,8 +871,8 @@ function AiStateEngage:setWeaponStats(enemy)
             weaponMode = WeaponMode.HEAVY,
             fov = 4.5,
             ranges = {
-                long = 1500,
-                medium = 1000,
+                long = 2000,
+                medium = 1500,
                 short = 0
             },
             firerates = {
@@ -946,20 +945,20 @@ function AiStateEngage:setWeaponStats(enemy)
             name = "Desert Eagle",
             -- The Deagle really cannot use pistol shooting/movement logic.
             weaponMode = WeaponMode.HEAVY,
-            fov = 3,
+            fov = 3.5,
             ranges = {
                 long = 750,
                 medium = 300,
                 short = 0
             },
             firerates = {
-                long = 0.64,
-                medium = 0.45,
-                short = 0.1
+                long = 0.55,
+                medium = 0.33,
+                short = 0.15
             },
             isRcsEnabled = {
-                long = false,
-                medium = false,
+                long = true,
+                medium = true,
                 short = true
             },
             runAtCloseRange = false,
@@ -1538,35 +1537,56 @@ function AiStateEngage:moveOnBestTarget(cmd)
             end
         end
 
+        self.lastBestTargetOrigin = targetOrigin
+
         -- We can pathfind to a node visible to the enemy.
         if not Table.isEmpty(selectedNodes) then
-            Pathfinder.moveToNode(Table.getRandom(selectedNodes), {
-                task = "Engage enemy via random position",
-                isAllowedToTraverseInactives = true,
-                isAllowedToTraverseRecorders = false,
-                isPathfindingToNearestNodeIfNoConnections = true,
-                isPathfindingToNearestNodeOnFailure = true
-            })
-
-            self.lastBestTargetOrigin = targetOrigin
-
-            return
-        end
-
-        -- Move to the closest node to the enemy.
-        -- The alternative to this is soft-crashing the AI.
-        if closestNode then
-            Pathfinder.moveToNode(closestNode, {
-                task = "Engage enemy via nearest position",
-                isAllowedToTraverseInactives = true,
-                isAllowedToTraverseRecorders = false,
-                isPathfindingToNearestNodeIfNoConnections = true,
-                isPathfindingToNearestNodeOnFailure = true
-            })
-
-            self.lastBestTargetOrigin = targetOrigin
+            self:moveToRandomNodeFrom(selectedNodes, closestNode)
+        else
+            -- Move to the closest node to the enemy.
+            -- The alternative to this is soft-crashing the AI.
+            if closestNode then
+                self:moveToClosestNode(closestNode)
+            end
         end
     end
+end
+
+--- @param nodes NodeTypeTraverse[]
+--- @param closest NodeTypeTraverse
+--- @return void
+function AiStateEngage:moveToRandomNodeFrom(nodes, closest)
+    if Table.isEmpty(nodes) then
+        self:moveToClosestNode(closest)
+
+        return
+    end
+
+    local node, idx = Table.getRandom(nodes)
+
+    table.remove(nodes, idx)
+
+    Pathfinder.moveToNode(node, {
+        task = "Engage enemy via random position",
+        isAllowedToTraverseInactives = true,
+        isAllowedToTraverseRecorders = false,
+        isPathfindingToNearestNodeIfNoConnections = true,
+        onFailedToFindPath = function()
+            self:moveToRandomNodeFrom(nodes)
+        end
+    })
+end
+
+--- @param node NodeTypeTraverse
+--- @return void
+function AiStateEngage:moveToClosestNode(node)
+    Pathfinder.moveToNode(node, {
+        task = "Engage enemy via nearest position",
+        isAllowedToTraverseInactives = true,
+        isAllowedToTraverseRecorders = false,
+        isPathfindingToNearestNodeIfNoConnections = true,
+        isPathfindingToNearestNodeOnFailure = true
+    })
 end
 
 --- @param cmd SetupCommandEvent

@@ -526,7 +526,6 @@ function Ai:think(cmd)
 		return
 	end
 
-	self:preventDithering()
 	self:setCurrentState(cmd)
 end
 
@@ -568,10 +567,6 @@ function Ai:preventDithering()
 	end
 
 	local highestPriority = logA.state.priority > logB.state.priority and logA.state or logB.state
-
-	if true then
-		return -- todo
-	end
 
 	if not highestPriority.isLockable then
 		return
@@ -664,10 +659,11 @@ function Ai:setCurrentState(cmd)
 			if isActivatable then
 				Logger.console(3, "Changed AI state to '%s' [%i].", currentState.name, highestPriority)
 
+				View.lookState = currentState.name
+				View.isLookSpeedDelayed = currentState.isMouseDelayAllowed
 				View.lookSpeedDelayMin = currentState.delayedMouseMin
 				View.lookSpeedDelayMax = currentState.delayedMouseMax
 				View.lookSpeedDelay = Math.getRandomFloat(currentState.delayedMouseMin, currentState.delayedMouseMax)
-				View.lookState = currentState.name
 
 				Pathfinder.flushRequest()
 

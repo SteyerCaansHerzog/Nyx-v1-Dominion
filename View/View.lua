@@ -30,12 +30,12 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --- @field isCrosshairSmoothed boolean
 --- @field isCrosshairUsingVelocity boolean
 --- @field isEnabled boolean
+--- @field isLookSpeedDelayed boolean
 --- @field isRcsEnabled boolean
 --- @field isViewLocked boolean
 --- @field lastCameraAngles Angle
 --- @field lastLookAtLocationOrigin Vector3
 --- @field lookAtAngles Angle
---- @field lookState string
 --- @field lookSpeed number
 --- @field lookSpeedDelay Timer
 --- @field lookSpeedDelayed number
@@ -44,6 +44,7 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --- @field lookSpeedDelayTimer Timer
 --- @field lookSpeedIdeal number
 --- @field lookSpeedModifier number
+--- @field lookState string
 --- @field lookState string
 --- @field lookStateCached string
 --- @field nodegraph Nodegraph
@@ -60,10 +61,10 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --- @field velocityResetSpeed number
 --- @field viewAngles Angle
 --- @field viewPitchOffset number
+--- @field watchCornerOrigin Vector3
+--- @field watchCornerTimer Timer
 --- @field yawFine number
 --- @field yawSoft number
---- @field watchCornerTimer Timer
---- @field watchCornerOrigin Vector3
 local View = {
 	noise = ViewNoiseType
 }
@@ -85,7 +86,7 @@ function View.initFields()
 	View.lookSpeedDelay = Math.getRandomFloat(0.25, 0.6)
 	View.lookSpeedDelayTimer = Timer:new():start()
 	View.lookSpeedDelayed = 0
-	View.lookSpeedModifier = 1.2
+	View.lookSpeedModifier = 1.4
 	View.recoilControl = 2
 	View.useCooldown = Timer:new():start()
 	View.velocity = Angle:new()
@@ -149,14 +150,16 @@ function View.setViewAngles()
 			Logger.console(-1, "New mouse control '%s'.", View.lookState)
 		end
 
-		--View.delayMovement()
+		View.delayMovement()
 
 		View.lookStateCached = View.lookState
 	end
 
-	--View.setDelayedLookSpeed()
+	View.setDelayedLookSpeed()
 
-	View.lookSpeed = View.lookSpeedIdeal
+	if not View.isLookSpeedDelayed then
+		View.lookSpeed = View.lookSpeedIdeal
+	end
 
 	-- View angles we want to look at.
 	-- It's overriden by AI behaviours, look ahead of the active path, or rest.
@@ -218,25 +221,16 @@ end
 
 --- @return void
 function View.delayMovement()
-	if View.lookSpeedDelayMax == 0 then
-		return
-	end
-
+	View.lookSpeed = 0
+	View.lookSpeedDelayed = 0
 	View.lookSpeedDelayTimer:restart()
-	View.lookSpeedDelayed = Math.getClamped(View.lookSpeedDelayed - 30 * Time.getDelta(), 0, View.lookSpeedIdeal)
 	View.lookSpeedDelay = Math.getRandomFloat(View.lookSpeedDelayMin, View.lookSpeedDelayMax)
 end
 
 --- @return void
 function View.setDelayedLookSpeed()
-	if View.lookSpeedDelayMax == 0 then
-		View.lookSpeed = View.lookSpeedIdeal
-
-		return
-	end
-
 	if View.lookSpeedDelayTimer:isElapsed(View.lookSpeedDelay) then
-		View.lookSpeedDelayed = Math.getClamped(View.lookSpeedDelayed + 40 * Time.getDelta(), 0, View.lookSpeedIdeal)
+		View.lookSpeedDelayed = Math.getClamped(View.lookSpeedDelayed + 33 * Time.getDelta(), 0, View.lookSpeedIdeal)
 	end
 
 	View.lookSpeed = View.lookSpeedDelayed
@@ -247,7 +241,7 @@ end
 function View.interpolateViewAngles(targetViewAngles)
 	targetViewAngles:normalize()
 
-	View.viewAngles:lerpTickrate(targetViewAngles, math.min(20, View.lookSpeed * View.lookSpeedModifier))
+	View.viewAngles:lerpTickrate(targetViewAngles, View.lookSpeed * View.lookSpeedModifier)
 end
 
 --- @param noise ViewNoise

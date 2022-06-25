@@ -2,7 +2,7 @@
 --- @class AiStateList
 local AiStateList = {
 	avoidInfernos = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateAvoidInfernos",
-	boost = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBoost",
+	boostTeammate = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBoostTeammate",
 	check = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateCheck",
 	chickenInteraction = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateChickenInteraction",
 	defend = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateDefend",

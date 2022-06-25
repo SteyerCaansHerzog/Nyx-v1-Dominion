@@ -15,11 +15,11 @@ local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiCh
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 
---{{{ AiChatCommandBoost
---- @class AiChatCommandBoost : AiChatCommandBase
+--{{{ AiChatCommandRunBoost
+--- @class AiChatCommandRunBoost : AiChatCommandBase
 --- @field isTaken boolean
-local AiChatCommandBoost = {
-    cmd = "boost",
+local AiChatCommandRunBoost = {
+    cmd = "rboost",
     requiredArgs = 0,
     isAdminOnly = false
 }
@@ -28,7 +28,7 @@ local AiChatCommandBoost = {
 --- @param sender Player
 --- @param args string[]
 --- @return void
-function AiChatCommandBoost:invoke(ai, sender, args)
+function AiChatCommandRunBoost:invoke(ai, sender, args)
     self.isTaken = false
 
     local senderOrigin = sender:getOrigin()
@@ -64,7 +64,7 @@ function AiChatCommandBoost:invoke(ai, sender, args)
 
     Client.fireAfter(orderInQueue * 0.6, function()
         if not self.isTaken then
-            ai.states.boostTeammate:boost(sender, traceAim.endPosition)
+            ai.states.boostTeammate:boost(sender, traceAim.endPosition, true)
 
             Messenger.send(" ok", true)
 
@@ -75,5 +75,5 @@ function AiChatCommandBoost:invoke(ai, sender, args)
     end)
 end
 
-return Nyx.class("AiChatCommandBoost", AiChatCommandBoost, AiChatCommandBase)
+return Nyx.class("AiChatCommandRunBoost", AiChatCommandRunBoost, AiChatCommandBase)
 --}}}

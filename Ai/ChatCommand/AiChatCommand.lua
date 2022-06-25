@@ -25,6 +25,7 @@ local AiChatCommand = {
 	noise = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandNoise",
 	ok = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandOk",
 	assist = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandAssist",
+	rboost = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandRunBoost",
 	reload = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandReload",
 	rot = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandRotate",
 	rush = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandRush",

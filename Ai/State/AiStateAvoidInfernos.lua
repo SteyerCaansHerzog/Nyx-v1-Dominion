@@ -8,6 +8,8 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --}}}
 
@@ -43,6 +45,11 @@ function AiStateAvoidInfernos:assess()
             self.inferno = inferno
 
             return AiPriority.AVOID_INFERNO
+        end
+
+        -- This is here because reasons.
+        if distance < 500 then
+            Pathfinder.standStill()
         end
     end
 
@@ -82,7 +89,17 @@ function AiStateAvoidInfernos:move()
         isAllowedToTraverseInactives = true,
         isPathfindingFromNearestNodeIfNoConnections = true,
         isPathfindingToNearestNodeIfNoConnections = true,
-        isPathfindingToNearestNodeOnFailure = true
+        isPathfindingToNearestNodeOnFailure = true,
+        onFailedToFindPath = function()
+        	Pathfinder.moveToNode(Nodegraph.getRandom(Node.traverseGeneric), {
+                task = "Get out of inferno (random node)",
+                isAllowedToTraverseInfernos = true,
+                isAllowedToTraverseInactives = true,
+                isPathfindingFromNearestNodeIfNoConnections = true,
+                isPathfindingToNearestNodeIfNoConnections = true,
+                isPathfindingToNearestNodeOnFailure = true,
+            })
+        end
     })
 end
 

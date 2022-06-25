@@ -1,4 +1,6 @@
 --{{{ Dependencies
+local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
+local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -49,7 +51,7 @@ end
 
 --- @return void
 function AiStateDeveloper:activate()
-    Pathfinder.moveToNode(Nodegraph.getById(628), {
+    Pathfinder.moveToNode(Nodegraph.getRandomOfType(Node.traverseGeneric), {
         task = "Test"
     })
 end

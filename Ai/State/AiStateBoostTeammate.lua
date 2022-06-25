@@ -21,25 +21,26 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
---{{{ AiStateBoost
---- @class AiStateBoost : AiStateBase
+--{{{ AiStateBoostTeammate
+--- @class AiStateBoostTeammate : AiStateBase
+--- @field boostLookAngles Angle
+--- @field boostLookTimer Timer
 --- @field boostOrigin Vector3
 --- @field boostPlayer Player
 --- @field isBoosting boolean
---- @field boostLookTimer Timer
---- @field boostLookAngles Angle
-local AiStateBoost = {
-    name = "Boost"
+--- @field isRunBoosting boolean
+local AiStateBoostTeammate = {
+    name = "Boost Teammate"
 }
 
---- @param fields AiStateBoost
---- @return AiStateBoost
-function AiStateBoost:new(fields)
+--- @param fields AiStateBoostTeammate
+--- @return AiStateBoostTeammate
+function AiStateBoostTeammate:new(fields)
     return Nyx.new(self, fields)
 end
 
 --- @return void
-function AiStateBoost:__init()
+function AiStateBoostTeammate:__init()
     self.boostLookTimer = Timer:new():startThenElapse()
 
     Callbacks.roundStart(function()
@@ -48,7 +49,7 @@ function AiStateBoost:__init()
 end
 
 --- @return number
-function AiStateBoost:assess()
+function AiStateBoostTeammate:assess()
     if self.boostPlayer then
         if LocalPlayer:getOrigin():getDistance2(self.boostPlayer:getOrigin()) < 256 then
             return AiPriority.BOOST_ACTIVE
@@ -63,13 +64,14 @@ end
 --- @param player Player
 --- @param origin Vector3
 --- @return void
-function AiStateBoost:boost(player, origin)
+function AiStateBoostTeammate:boost(player, origin, isRunBoosting)
     self.boostPlayer = player
     self.boostOrigin = origin
+    self.isRunBoosting = isRunBoosting
 end
 
 --- @return void
-function AiStateBoost:activate()
+function AiStateBoostTeammate:activate()
     Pathfinder.moveToLocation(self.boostOrigin, {
         task = string.format("Boost %s", self.boostPlayer:getName()),
         isCounterStrafingOnGoal = true,
@@ -82,12 +84,12 @@ function AiStateBoost:activate()
 end
 
 --- @return void
-function AiStateBoost:deactivate()
+function AiStateBoostTeammate:deactivate()
     self:reset()
 end
 
 --- @return void
-function AiStateBoost:reset()
+function AiStateBoostTeammate:reset()
     self.boostPlayer = nil
     self.boostOrigin = nil
     self.isBoosting = false
@@ -95,7 +97,7 @@ end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function AiStateBoost:think(cmd)
+function AiStateBoostTeammate:think(cmd)
     self.activity = "Going to boost teammate"
 
     if not self.boostPlayer or not self.boostPlayer:isAlive() then
@@ -125,6 +127,8 @@ function AiStateBoost:think(cmd)
         self.activity = "Waiting to boost teammate"
     end
 
+    local isRunBoostReady = true
+
     if senderDistance < 500 and originDistance < 200 then
         Pathfinder.blockTeammateAvoidance()
 
@@ -136,9 +140,21 @@ function AiStateBoost:think(cmd)
         if originDistance < 64 and not self.boostPlayer:getOrigin():offset(0, 0, 48):isInBounds(bounds) then
             if senderDistance < 128 then
                 cmd.in_duck = true
+
+                isRunBoostReady = false
             end
 
             View.lookAtLocation(self.boostPlayer:getHitboxPosition(Player.hitbox.NECK), 5.5, View.noise.idle, "Boost look at booster")
+        end
+    end
+
+    if self.isBoosting and self.isRunBoosting and isRunBoostReady then
+        local origin = self.boostPlayer:getOrigin() + self.boostPlayer:m_vecVelocity()
+
+        if playerOrigin:getDistance2(origin) > 30 then
+            local angle = playerOrigin:getAngle(origin)
+
+            Pathfinder.moveAtAngle(angle, true)
         end
     end
 
@@ -150,5 +166,5 @@ function AiStateBoost:think(cmd)
     Pathfinder.ifIdleThenRetryLastRequest()
 end
 
-return Nyx.class("AiStateBoost", AiStateBoost, AiStateBase)
+return Nyx.class("AiStateBoostTeammate", AiStateBoostTeammate, AiStateBase)
 --}}}

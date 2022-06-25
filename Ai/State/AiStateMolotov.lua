@@ -25,6 +25,7 @@ local AiStateMolotov = {
     equipFunction = LocalPlayer.equipMolotov,
     rangeThreshold = 2400,
     isCheckingEnemiesRequired = true,
+    isDamaging = true,
     requiredNodes = {
         Node.grenadeInfernoDefendCt,
         Node.grenadeInfernoDefendT,

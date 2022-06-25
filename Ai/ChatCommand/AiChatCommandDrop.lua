@@ -5,7 +5,6 @@ local Player = require "gamesense/Nyx/v1/Api/Player"
 --}}}
 
 --{{{ Modules
-local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBase"
 --}}}
 

@@ -26,6 +26,7 @@ local AiStateHeGrenade = {
     equipFunction = LocalPlayer.equipHeGrenade,
     rangeThreshold = 2000,
     isCheckingEnemiesRequired = true,
+    isDamaging = true,
     requiredNodes = {
         Node.grenadeExplosiveDefendCt,
         Node.grenadeExplosiveDefendT,

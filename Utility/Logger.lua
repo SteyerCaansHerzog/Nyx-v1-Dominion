@@ -16,27 +16,27 @@ local LoggerCode = {
 	[-1] = {
 		color = ColorList.FONT_MUTED,
 		chatColor = Chat.WHITE,
-		text = "[INFO] ",
+		text = "[INFO]     ",
 	},
 	[0] = {
 		color = ColorList.OK,
 		chatColor = Chat.GREEN,
-		text = "[SUCCESS] ",
+		text = "[OK]       ",
 	},
 	[1] = {
 		color = ColorList.ERROR,
 		chatColor = Chat.RED,
-		text = "[ISSUE] "
+		text = "[ISSUE]    "
 	},
 	[2] = {
 		color = ColorList.WARNING,
 		chatColor = Chat.GOLD,
-		text = "[WARNING] "
+		text = "[WARNING]  "
 	},
 	[3] = {
 		color = ColorList.INFO,
 		chatColor = Chat.BLUE,
-		text = "[ALERT] "
+		text = "[ALERT]    "
 	}
 }
 --}}}
@@ -84,22 +84,11 @@ function Logger.message(code, ...)
 		return
 	end
 
-	--- @type ClientWriteManyConsoleItem
+	Logger.console(code, ...)
+
 	local codeData = LoggerCode[code]
 
-	Client.writeManyConsole({
-		{
-			color = ColorList.PRIMARY,
-			text = "[Dominion] "
-		},
-		codeData,
-		{
-			color = codeData.color:clone():desaturate(0.7):darken(0.05),
-			text = message
-		}
-	})
-
-	Chat.sendMessage(string.format("%s[Dominion]%s %s%s %s", Chat.LIME, Chat.WHITE, codeData.chatColor, codeData.text, message))
+	Chat.sendMessage(string.format("%s[Nyx]%s %s%s %s", Chat.LIME, Chat.WHITE, codeData.chatColor, codeData.text, message))
 end
 
 --- @param code number
@@ -109,11 +98,12 @@ function Logger.console(code, ...)
 	code = code or -1
 
 	local codeData = LoggerCode[code]
+	local time = Time.getDateTime()
 
 	Client.writeManyConsole({
 		{
-			color = ColorList.PRIMARY,
-			text = "[Dominion] "
+			color = ColorList.FONT_MUTED_EXTRA,
+			text = string.format("[%02d:%02d] ", time.hour, time.minute)
 		},
 		codeData,
 		{
@@ -236,7 +226,15 @@ function Logger.credits(version)
 		},
 		{
 			color = ColorList.FONT_MUTED,
-			text = string.format("%02d/%02d/%i. Your license to this software does not expire.", time.day, time.month, time.year)
+			text = string.format("%02d/%02d/%i. Your license to this software ", time.day, time.month, time.year)
+		},
+		{
+			color = ColorList.WARNING,
+			text = "does not expire"
+		},
+		{
+			color = ColorList.FONT_MUTED,
+			text = "."
 		},
 	})
 

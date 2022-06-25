@@ -199,7 +199,7 @@ function AiStateDefuse:think(cmd)
                 LocalPlayer.equipSmoke()
             end
 
-           View.lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 4.5, View.noise.moving, "Defuse look to drop smoke")
+           View.lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 6, View.noise.moving, "Defuse look to drop smoke")
 
             if LocalPlayer:isAbleToAttack() then
                 if Client.getCameraAngles().p > 22 then

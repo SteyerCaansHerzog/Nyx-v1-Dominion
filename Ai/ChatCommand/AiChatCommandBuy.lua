@@ -25,13 +25,17 @@ function AiChatCommandBuy:invoke(ai, sender, args)
         return self.REAPER_IS_ACTIVE
     end
 
-    local toggle = args[1]
+    local input = args[1]
 
-    if toggle then
-        if toggle == "on" then
+    if input then
+        if input == "on" then
             MenuGroup.enableAutoBuy:set(true)
-        elseif toggle == "off" then
+        elseif input == "off" then
             MenuGroup.enableAutoBuy:set(false)
+        elseif input == "reset" then
+            ai.routines.buyGear:resetCustomItemList()
+        else
+            ai.routines.buyGear:setCustomItemList(input)
         end
     else
         Client.fireAfterRandom(0, 1, function()

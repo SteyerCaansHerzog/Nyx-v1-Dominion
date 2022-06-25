@@ -4,6 +4,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ Modules
 local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBase"
+local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --}}}
 
@@ -39,6 +40,8 @@ function AiChatCommandEnabled:invoke(ai, sender, args)
 
         ai.reaper.isAiEnabled = false
         ai.antiAfkEnabled = false
+
+        Logger.console(2, "The AI has been disabled. To re-enable the AI, use the '/ai on' chat command, or check 'Enable AI' in the menu.")
 
         return
     end

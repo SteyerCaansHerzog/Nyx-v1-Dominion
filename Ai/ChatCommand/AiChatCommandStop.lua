@@ -25,7 +25,7 @@ function AiChatCommandStop:invoke(ai, sender, args)
 
     ai.states.check:reset()
     ai.states.patrol:reset()
-    ai.states.boost:reset()
+    ai.states.boostTeammate:reset()
     ai.states.follow:reset()
     ai.states.wait:reset()
     ai.states.evacuate:reset()
