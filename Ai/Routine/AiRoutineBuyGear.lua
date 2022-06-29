@@ -12,6 +12,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --{{{ Modules
 local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --}}}
@@ -224,7 +225,7 @@ function AiRoutineBuyGear:createBuyQueue()
 		table.insert(self.buyQueue, {
 			buy = function()
 				Client.execute("buy %s", item)
-				Logger.console(-1, "Purchased [%i] '%s'.", j, item)
+				Logger.console(-1, Localization.buyGearPurchased, j, item)
 			end,
 			after = Math.getRandomFloat(intervalMin, intervalMax)
 		})

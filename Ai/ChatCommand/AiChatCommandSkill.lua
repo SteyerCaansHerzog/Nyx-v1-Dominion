@@ -6,6 +6,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ Modules
 local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBase"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --}}}
 
@@ -41,7 +42,7 @@ function AiChatCommandSkill:invoke(ai, sender, args)
 
     ai.states.engage:setAimSkill(skill)
 
-    Logger.console(0, "Updated AI skill level to lvl %i.", skill)
+    Logger.console(0, Localization.cmdSkillSet, skill)
 end
 
 return Nyx.class("AiChatCommandSkill", AiChatCommandSkill, AiChatCommandBase)

@@ -1,12 +1,11 @@
 --{{{ Dependencies
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBase"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 --}}}
 
 --{{{ AiChatCommandBomb
@@ -35,7 +34,7 @@ function AiChatCommandBomb:invoke(ai, sender, args)
     end
 
     if not LocalPlayer.hasBomb() then
-        return "the client does not have the bomb"
+        return Localization.cmdRejectionNoBomb
     end
 
     ai.states.drop:dropGear(sender, "bomb")

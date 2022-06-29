@@ -21,6 +21,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local GamemodeInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/GamemodeInfo"
 local MapInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/MapInfo"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --}}}
 
@@ -35,10 +36,10 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field clientThreatenedBy Player
 --- @field clientThreatenedFromOrigin Vector3
 --- @field closestEnemy Player
---- @field closestThreat Player
 --- @field closestEnemyDistance number
 --- @field closestTeammate Player
 --- @field closestTeammateDistance number
+--- @field closestThreat Player
 --- @field defuseTimer Timer
 --- @field dormantAt number[]
 --- @field enemies Player[]
@@ -62,6 +63,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field isEnemyVisible boolean
 --- @field isHostageCarriedByEnemy boolean
 --- @field isHostageCarriedByTeammate boolean
+--- @field isInsideSmoke boolean
 --- @field isLastAlive boolean
 --- @field isPerformingCalculations boolean
 --- @field isRoundOver boolean
@@ -71,8 +73,8 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field position number
 --- @field randomBombsite string
 --- @field teammates Player[]
---- @field teammatesAndClient Player[]
 --- @field teammatesAlive number
+--- @field teammatesAndClient Player[]
 --- @field threats boolean[]
 --- @field threatUpdateTimer Timer
 --- @field timeData GameStateTimeData
@@ -198,13 +200,21 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.init(function()
-        if globals.mapname() and MapInfo[globals.mapname()] then
-            AiUtility.gamemode = MapInfo[globals.mapname()].gamemode
+        local map = Server.getMapName()
+
+        if not map then
+            return
+        end
+
+        map = map:gsub("/", "_")
+
+        if map and MapInfo[map] then
+            AiUtility.gamemode = MapInfo[map].gamemode
         end
     end)
 
     Callbacks.roundStart(function()
-        Logger.console(3, string.format("Beginning new round (#%i).", AiUtility.gameRules:m_totalRoundsPlayed() + 1))
+        Logger.console(3, string.format(Localization.aiUtilityNewRound, AiUtility.gameRules:m_totalRoundsPlayed() + 1))
     end)
 
     Callbacks.roundPrestart(function(e)
@@ -365,6 +375,16 @@ function AiUtility.updateMisc()
             AiUtility.position = i
 
             break
+        end
+    end
+
+    local clientOrigin = LocalPlayer:getOrigin()
+
+    AiUtility.isInsideSmoke = false
+
+    for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
+        if clientOrigin:getDistance(smoke:m_vecOrigin()) < 150 then
+            AiUtility.isInsideSmoke = true
         end
     end
 end

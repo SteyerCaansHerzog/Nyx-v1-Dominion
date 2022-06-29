@@ -30,7 +30,7 @@ end
 --- @return void
 function AiChatCommandClantag:invoke(ai, sender, args)
     -- Commands are space-delimeted, so we need to get them and re-insert the spaces.
-    local clantag = Table.getImploded(args, " ")
+    local clantag = Table.getImplodedTable(args, " ")
 
     self:setClantag(clantag)
 

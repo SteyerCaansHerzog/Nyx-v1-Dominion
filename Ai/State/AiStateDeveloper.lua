@@ -25,6 +25,8 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field timerA Timer
 --- @field timerB Timer
 --- @field isTrue boolean
+--- @field nodes NodeTypeBase[]
+--- @field idx number
 local AiStateDeveloper = {
     name = "Developer"
 }
@@ -51,9 +53,12 @@ end
 
 --- @return void
 function AiStateDeveloper:activate()
-    Pathfinder.moveToNode(Nodegraph.getRandomOfType(Node.traverseGeneric), {
-        task = "Test"
-    })
+    self.nodes = {
+        Nodegraph.getById(337),
+        Nodegraph.getById(335),
+    }
+
+    self.idx = 1
 end
 
 --- @return void
@@ -62,7 +67,19 @@ function AiStateDeveloper:reset() end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateDeveloper:think(cmd)
-    self.activity = "Testing"
+    self.activity = "Developing"
+
+    if Pathfinder.isIdle() and self.timerA:isElapsedThenRestart(5) then
+        self.idx = self.idx + 1
+
+        if not self.nodes[self.idx] then
+            self.idx = 1
+        end
+
+        Pathfinder.moveToNode(self.nodes[self.idx], {
+            task = "Development test"
+        })
+    end
 end
 
 --- @return void

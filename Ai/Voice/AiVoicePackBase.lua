@@ -6,6 +6,10 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 local Voice = require "gamesense/Nyx/v1/Api/Voice"
 --}}}
 
+--{{{ Modules
+local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
+--}}}
+
 --{{{ Definitions
 --- @class AiVoicePackBaseSpeakOptions
 --- @field chance number
@@ -25,7 +29,7 @@ local Voice = require "gamesense/Nyx/v1/Api/Voice"
 --- @field name string
 --- @field dynamicGroups string[]
 local AiVoicePackBase = {
-    rootPath = "lua/gamesense/Nyx/v1/Dominion/Resource/Audio/Voice/%s/%s.wav",
+    rootPath = Config.getPath("Resource/Audio/Voice/%s/%s.wav"),
     defaultSpeakOptions = {
         chance = 1,
         interrupt = false,

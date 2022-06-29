@@ -75,6 +75,7 @@ function AiStateBoostTeammate:activate()
     Pathfinder.moveToLocation(self.boostOrigin, {
         task = string.format("Boost %s", self.boostPlayer:getName()),
         isCounterStrafingOnGoal = true,
+        goalReachedRadius = 10,
         onFailedToFindPath = function()
         	self:reset()
         end

@@ -16,6 +16,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
@@ -147,7 +148,7 @@ function View.setViewAngles()
 
 	if View.lookState ~= View.lookStateCached then
 		if Debug.isLoggingLookState then
-			Logger.console(-1, "New mouse control '%s'.", View.lookState)
+			Logger.console(-1, Localization.viewNewState, View.lookState)
 		end
 
 		View.delayMovement()
@@ -398,7 +399,7 @@ function View.setIdealLookAhead(idealViewAngles)
 	local currentNode = Pathfinder.path.node
 
 	if Pathfinder.isAscendingLadder then
-		idealViewAngles:setFromAngle(currentNode.direction:clone():set(-45))
+		idealViewAngles:setFromAngle(currentNode.direction:clone():set(-75))
 
 		View.lookState = "View generic"
 		View.lookSpeedIdeal = 6
@@ -407,7 +408,7 @@ function View.setIdealLookAhead(idealViewAngles)
 
 		return
 	elseif Pathfinder.isDescendingLadder then
-		idealViewAngles:setFromAngle(currentNode.direction:clone():set(45))
+		idealViewAngles:setFromAngle(currentNode.direction:clone():set(89))
 
 		View.lookState = "View generic"
 		View.lookSpeedIdeal = 6
@@ -434,7 +435,9 @@ function View.setIdealLookAhead(idealViewAngles)
 		i = i + 1
 
 		if i > 50 then
-			error("Client freeze prevention (View.setIdealLookAhead).")
+			Logger.console(1, Localization.viewFreezePrevention)
+
+			return
 		end
 	end
 

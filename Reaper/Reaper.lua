@@ -26,6 +26,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
+local DominionLocalization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
@@ -87,7 +88,7 @@ Nyx.class("ReaperClient", ReaperClient)
 --- @field steamId64Map boolean[]
 --- @field windowHandleMap boolean[]
 local ReaperManifest = {
-	path = "lua/gamesense/Nyx/v1/Dominion/Resource/Data/ReaperManifest.json"
+	path = Config.getPath("Resource/Data/ReaperManifest.json")
 }
 
 --- @param fields ReaperManifest
@@ -103,7 +104,7 @@ function ReaperManifest:__init()
 	if not fileData then
 		self.isEnabled = false
 
-		error("'ReaperManifest.json' does not exist.")
+		error(DominionLocalization.reaperMissingManifest)
 
 		return
 	end
@@ -114,8 +115,10 @@ function ReaperManifest:__init()
 
 	self.isEnabled = manifest.isEnabled
 
-	if not self.isEnabled then
-		Logger.console(3, "Reaper Mode is not enabled.")
+	if self.isEnabled then
+		Logger.console(3, DominionLocalization.reaperIsEnabled)
+	elseif not self.isEnabled then
+		Logger.console(3, DominionLocalization.reaperIsNotEnabled)
 
 		return
 	end
@@ -175,7 +178,7 @@ function ReaperManifest:verifyManifest()
 	if not fileData then
 		self.isEnabled = false
 
-		error("'ReaperManifest.json' does not exist.")
+		error(Localization.aiReaperManifestMissing)
 
 		return
 	end
@@ -189,7 +192,7 @@ function ReaperManifest:verifyManifest()
 		if not self.steamId64Map[steamId64] then
 			isReaperStale = true
 
-			print("New Reaper account detected.")
+			Logger.console(0, Localization.reaperNewAccount)
 
 			break
 		end
@@ -197,7 +200,7 @@ function ReaperManifest:verifyManifest()
 		if not self.windowHandleMap[windowHandle] then
 			isReaperStale = true
 
-			print("A Reaper account has been restarted.")
+			Logger.console(0, Localization.reaperAccountRestarted)
 
 			break
 		end
@@ -245,8 +248,8 @@ Nyx.class("ReaperManifest", ReaperManifest)
 local Reaper = {
 	gameConfig = "reaper",
 	clientConfig = "Nyx-v1-Dominion-Reaper",
-	infoPath = "lua/gamesense/Nyx/v1/Dominion/Resource/Data/ReaperClientInfo_%s.json",
-	sharedPath = "lua/gamesense/Nyx/v1/Dominion/Resource/Data/ReaperClientShared.json",
+	infoPath = Config.getPath("Resource/Data/ReaperClientInfo_%s.json"),
+	sharedPath = Config.getPath("Resource/Data/ReaperClientShared.json"),
 }
 
 --- @param fields Reaper

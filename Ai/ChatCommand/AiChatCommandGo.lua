@@ -9,6 +9,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --{{{ Modules
 local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 --}}}
 
 --{{{ AiChatCommandGo
@@ -42,7 +43,7 @@ function AiChatCommandGo:invoke(ai, sender, args)
     objective = objective:upper()
 
     if not Table.contains({"CT", "T", "A", "B"}, objective) then
-        return "no valid bombsite or spawn name"
+        return Localization.cmdRejectionNoValidSpawnOrBombsite
     end
 
     ai.states.engage.tellGoTimer:restart()

@@ -10,7 +10,7 @@
 --{{{ Modules
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 
-Logger.credits("2.0.0-beta")
+Logger.credits("2.0.0-beta", "26/06/2022")
 
 require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 

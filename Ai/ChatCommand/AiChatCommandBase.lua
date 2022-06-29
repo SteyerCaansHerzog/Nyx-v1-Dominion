@@ -8,6 +8,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --}}}
@@ -23,21 +24,21 @@ local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --- @field CLIENT_IS_DEAD string
 --- @field SENDER_IS_OUT_OF_RANGE string
 local AiChatCommandBase = {
-    BOMB_IS_PLANTED = "the bomb is currently planted",
-    CLIENT_IS_DEAD = "the client is not currently alive",
-    COMMAND_IS_DEPRECATED = "the chat command is deprecated",
-    FREEZETIME = "the round has not started yet",
-    GAMEMODE_IS_NOT_DEMOLITION = "the gamemode is not demolition",
-    GAMEMODE_IS_NOT_HOSTAGE = "the gamemode is not hostage",
-    LIVE_CLIENT_REQUIRED = "this command is only available for live clients",
-    NO_ENEMIES_ALIVE = "no enemies are alive",
-    NO_VALID_ARGUMENTS = "no valid arguments were given",
-    ONLY_COUNTER_TERRORIST = "the command only applies to counter-terrorists",
-    ONLY_TERRORIST = "the command only applies to terrorists",
-    REAPER_IS_ACTIVE = "Reaper is currently active",
-    SENDER_IS_DEAD = "the invoker is not currently alive",
-    SENDER_IS_NOT_TEAMMATE = "the invoker is not a teammate",
-    SENDER_IS_OUT_OF_RANGE = "the invoker is too far away",
+    BOMB_IS_PLANTED = Localization.cmdRejectionBombIsPlanted,
+    CLIENT_IS_DEAD = Localization.cmdRejectionClientIsDead,
+    COMMAND_IS_DEPRECATED = Localization.cmdRejectionCommandIsDeprecated,
+    FREEZETIME = Localization.cmdRejectionFreezetime,
+    GAMEMODE_IS_NOT_DEMOLITION = Localization.cmdRejectionGamemodeIsNotDemolition,
+    GAMEMODE_IS_NOT_HOSTAGE = Localization.cmdRejectionGamemodeIsNotHostage,
+    LIVE_CLIENT_REQUIRED = Localization.cmdRejectionLiveClientRequired,
+    NO_ENEMIES_ALIVE = Localization.cmdRejectionNoEnemiesAlive,
+    NO_VALID_ARGUMENTS = Localization.cmdRejectionNoValidArguments,
+    ONLY_COUNTER_TERRORIST = Localization.cmdRejectionOnlyCounterTerrorist,
+    ONLY_TERRORIST = Localization.cmdRejectionOnlyTerrorist,
+    REAPER_IS_ACTIVE = Localization.cmdRejectionReaperIsActive,
+    SENDER_IS_DEAD = Localization.cmdRejectionSenderIsDead,
+    SENDER_IS_NOT_TEAMMATE = Localization.cmdRejectionSenderIsNotTeammate,
+    SENDER_IS_OUT_OF_RANGE = Localization.cmdRejectionSenderIsOutOfRange,
 }
 
 --- @param ai Ai
@@ -54,7 +55,7 @@ function AiChatCommandBase:bark(...)
     end
 
     local args = {...}
-    local argsFormatted = Table.getImploded(args, " ")
+    local argsFormatted = Table.getImplodedTable(args, " ")
 
     Messenger.send(string.format(" %s %s", self.cmd, argsFormatted), true)
 end
@@ -65,7 +66,7 @@ end
 --- @return boolean
 function AiChatCommandBase:getRejectionError(ai, sender, args)
     if self.requiredArgs and #args < self.requiredArgs then
-        return string.format("requires %i arguments, but only %i were given", self.requiredArgs, #args)
+        return string.format(Localization.cmdRejectionArgsMissing, self.requiredArgs, #args)
     end
 
     local steamId64 = sender:getSteamId64()
@@ -80,11 +81,11 @@ function AiChatCommandBase:getRejectionError(ai, sender, args)
     end
 
     if sender:is(LocalPlayer) then
-        return "it cannot be self-invoked"
+        return Localization.cmdRejectionSelfInvoked
     end
 
     if self.isAdminOnly and not isSenderAdmin then
-        return "the invoker is not an administrator"
+        return Localization.cmdRejectionNotAdmin
     end
 
     if not sender:isTeammate() and not isSenderAdmin then

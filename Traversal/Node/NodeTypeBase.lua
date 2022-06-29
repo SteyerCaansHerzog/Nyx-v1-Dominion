@@ -50,6 +50,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field collisionHullHumanDucking Vector3[]
 --- @field collisionHullHumanStanding Vector3[]
 --- @field collisionHullNode Vector3[]
+--- @field collisionHullNodeSpawn Vector3[]
 --- @field collisionHullNodeSmall Vector3[]
 --- @field colorPrimary Color
 --- @field colorSecondary Color
@@ -91,6 +92,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field pathOffset number
 --- @field pathOrigin Vector3
 --- @field renderAlpha number
+--- @field renderAlphaFov number
 --- @field renderColorFovPrimary Color
 --- @field renderColorFovPrimaryMuted Color
 --- @field renderColorFovSecondary Color
@@ -134,6 +136,7 @@ function NodeTypeBase:__setup()
     NodeTypeBase.collisionHullHumanDucking = Vector3:newBounds(Vector3.align.UP, 15, 15, 23)
     NodeTypeBase.collisionHullNode = Vector3:newBounds(Vector3.align.CENTER, 15, 15, 6)
     NodeTypeBase.collisionHullNodeSmall = Vector3:newBounds(Vector3.align.CENTER, 6)
+    NodeTypeBase.collisionHullNodeSpawn = Vector3:newBounds(Vector3.align.CENTER, 15, 15, 18)
     NodeTypeBase.collisionHullGap = Vector3:newBounds(Vector3.align.BOTTOM, 15, 15, 32)
 end
 
@@ -188,7 +191,7 @@ function NodeTypeBase:render(nodegraph, isRenderingMetaData)
     local cameraOrigin = Client.getCameraOrigin()
     local origin = Client.getOrigin()
     local cameraAngles = Client.getCameraAngles()
-    local alphaModDistance = Math.getClamped(Math.getInversedFloat(origin:getDistance(self.origin), 400), 0, 1) * 255
+    local alphaModDistance = Math.getClamped(Math.getInversedFloat(origin:getDistance(self.origin), Math.getClamped(NodeTypeBase.drawDistance / 2, 0, 1000)), 0, 1) * 255
     local alphaModFoV = Math.getClamped(Math.getInversedFloat(cameraAngles:getFov(cameraOrigin, self.origin), 30), 0.1, 1) * 255
 
     local err = self:getError(nodegraph)
@@ -199,11 +202,12 @@ function NodeTypeBase:render(nodegraph, isRenderingMetaData)
         self.renderAlpha = Math.getClamped(Math.getInversedFloat(origin:getDistance(self.origin), NodeTypeBase.drawDistance), 0, 1) * 255
     end
 
+    self.renderAlphaFov = math.min(alphaModDistance, alphaModFoV)
     self.renderColorPrimary = self.colorPrimary:clone():setAlpha(self.renderAlpha)
     self.renderColorSecondary = self.colorSecondary:clone():setAlpha(self.renderAlpha)
-    self.renderColorFovPrimary = self.renderColorPrimary:clone():setAlpha(math.min(alphaModDistance, alphaModFoV))
-    self.renderColorFovPrimaryMuted = self.renderColorPrimary:clone():setAlpha(math.min(alphaModDistance, alphaModFoV) * 0.4)
-    self.renderColorFovSecondary = self.renderColorSecondary:clone():setAlpha(math.min(alphaModDistance, alphaModFoV))
+    self.renderColorFovPrimary = self.renderColorPrimary:clone():setAlpha(self.renderAlphaFov)
+    self.renderColorFovPrimaryMuted = self.renderColorPrimary:clone():setAlpha(self.renderAlphaFov * 0.4)
+    self.renderColorFovSecondary = self.renderColorSecondary:clone():setAlpha(self.renderAlphaFov)
 
     self.iRenderTopLines = 0
     self.iRenderBottomLines = 0
@@ -749,8 +753,9 @@ function NodeTypeBase:onIsInPath(nodegraph) end
 --- @return void
 function NodeTypeBase:onIsNext(nodegraph, path)
     -- Don't make the first node in a path offset.
+    -- Also don't make the last offset.
     -- If the AI keeps remaking the path, it's likely to zig-zag on the spot.
-    if self.isPlanar and path.idx > 1 then
+    if self.isPlanar and path.idx > 1 and path.idx ~= path.finalIdx then
         local nextNode = path.nodes[path.idx + 1]
 
         -- Never offset the path if the next node is a jump or duck,
@@ -782,6 +787,8 @@ function NodeTypeBase:onIsNext(nodegraph, path)
 
         -- Randomly offset the path origin so that the AI moves along a path in a slightly random fashion.
         self.pathOrigin = trace.endPosition
+    else
+        self.pathOrigin = self.origin
     end
 end
 

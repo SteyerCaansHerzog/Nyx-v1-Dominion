@@ -41,14 +41,14 @@ function AiStateAvoidInfernos:assess()
 
         -- We're doing a cheap way of detecting if we're inside a molotov.
         -- May require tweaking.
-        if distance < 300 then
+        if distance < 280 then
             self.inferno = inferno
 
             return AiPriority.AVOID_INFERNO
         end
 
         -- This is here because reasons.
-        if distance < 500 then
+        if distance < 360 then
             Pathfinder.standStill()
         end
     end

@@ -10,6 +10,7 @@ local Trace = require "gamesense/Nyx/v1/Api/Trace"
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --}}}
@@ -70,8 +71,8 @@ function AiStateBase:getError()
 
         if not isNodeAvailable then
             return string.format(
-                "The following nodes are required on the map: '%s'",
-                Table.getImploded(unavailableNodes, ", ")
+                Localization.aiStateNodesRequired,
+                Table.getImplodedTable(unavailableNodes, ", ")
             )
         end
     end
@@ -89,8 +90,8 @@ function AiStateBase:getError()
 
         if not isValidGamemode then
             return string.format(
-                "The following gamemodes are required: '%s'",
-                Table.getImploded(self.requiredGamemodes, ", ")
+                Localization.aiStateGamemodesRequired,
+                Table.getImplodedTable(self.requiredGamemodes, ", ")
             )
         end
     end

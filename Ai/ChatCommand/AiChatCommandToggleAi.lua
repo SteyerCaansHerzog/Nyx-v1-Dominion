@@ -4,13 +4,14 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ Modules
 local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBase"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --}}}
 
---{{{ AiChatCommandEnabled
---- @class AiChatCommandEnabled : AiChatCommandBase
-local AiChatCommandEnabled = {
+--{{{ AiChatCommandToggleAi
+--- @class AiChatCommandToggleAi : AiChatCommandBase
+local AiChatCommandToggleAi = {
     cmd = "ai",
     requiredArgs = 1,
     isAdminOnly = true
@@ -20,7 +21,7 @@ local AiChatCommandEnabled = {
 --- @param sender PlayerChatEvent
 --- @param args string[]
 --- @return void
-function AiChatCommandEnabled:invoke(ai, sender, args)
+function AiChatCommandToggleAi:invoke(ai, sender, args)
     local toggle = args[1]
 
     if toggle == "on" then
@@ -41,7 +42,7 @@ function AiChatCommandEnabled:invoke(ai, sender, args)
         ai.reaper.isAiEnabled = false
         ai.antiAfkEnabled = false
 
-        Logger.console(2, "The AI has been disabled. To re-enable the AI, use the '/ai on' chat command, or check 'Enable AI' in the menu.")
+        Logger.console(2, Localization.cmdToggleAiOff)
 
         return
     end
@@ -49,5 +50,5 @@ function AiChatCommandEnabled:invoke(ai, sender, args)
     return self.NO_VALID_ARGUMENTS
 end
 
-return Nyx.class("AiChatCommandEnabled", AiChatCommandEnabled, AiChatCommandBase)
+return Nyx.class("AiChatCommandToggleAi", AiChatCommandToggleAi, AiChatCommandBase)
 --}}}

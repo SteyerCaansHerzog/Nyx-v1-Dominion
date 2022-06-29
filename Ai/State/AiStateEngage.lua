@@ -98,7 +98,11 @@ local WeaponMode = {
 --- @field preAimThroughCornersBlockTimer Timer
 --- @field preAimThroughCornersOrigin Vector3
 --- @field preAimThroughCornersUpdateTimer Timer
+--- @field prefireReactionTime number
 --- @field priorityHitbox number
+--- @field randomizeFireDelay number
+--- @field randomizeFireDelayTime number
+--- @field randomizeFireDelayTimer Timer
 --- @field reactionTime number
 --- @field reactionTimer Timer
 --- @field recoilControl number
@@ -200,6 +204,9 @@ function AiStateEngage:initFields()
     self.seekCoverTimer = Timer:new():startThenElapse()
     self.strafePeekTimer = Timer:new():startThenElapse()
     self.strafePeekIndex = 1
+    self.randomizeFireDelayTimer = Timer:new():startThenElapse()
+    self.randomizeFireDelayTime = 0
+    self.randomizeFireDelay = 0
 
     for i = 1, 64 do
         self.noticedPlayerTimers[i] = Timer:new()
@@ -945,14 +952,14 @@ function AiStateEngage:setWeaponStats(enemy)
             name = "Desert Eagle",
             -- The Deagle really cannot use pistol shooting/movement logic.
             weaponMode = WeaponMode.HEAVY,
-            fov = 3.5,
+            fov = 5,
             ranges = {
-                long = 750,
+                long = 700,
                 medium = 300,
                 short = 0
             },
             firerates = {
-                long = 0.55,
+                long = 0.65,
                 medium = 0.33,
                 short = 0.15
             },
@@ -1073,6 +1080,14 @@ function AiStateEngage:setWeaponStats(enemy)
     else
         self.tapFireTime = 0
         self.isRcsEnabled = true
+    end
+
+    if self.randomizeFireDelayTimer:isElapsedThenRestart(self.randomizeFireDelayTime) then
+        self.randomizeFireDelay = Math.getRandomFloat(-0.1, 0.1)
+    end
+
+    if self.tapFireTime > 0.1 then
+        self.tapFireTime = self.tapFireTime + self.randomizeFireDelay
     end
 
     self.weaponMode = selectedWeaponType.weaponMode
@@ -1694,6 +1709,10 @@ function AiStateEngage:attackBestTarget(cmd)
     local lastSeenEnemyTimer = self.lastSeenTimers[enemy.eid]
     local currentReactionTime = self.reactionTime
 
+    if self.noticedLoudPlayerTimers[enemy.eid]:isNotElapsed(8) then
+        currentReactionTime = self.prefireReactionTime
+    end
+
     if lastSeenEnemyTimer:isNotElapsed(2) then
         currentReactionTime = self.anticipateTime
     end
@@ -1736,6 +1755,10 @@ function AiStateEngage:attackBestTarget(cmd)
             local bangOrigin = enemy:getOrigin():offset(0, 0, 46)
             local traceEid, traceDamage = eyeOrigin:getTraceBullet(bangOrigin, LocalPlayer.eid)
             local isBangable = true
+
+            if AiUtility.isInsideSmoke then
+                isBangable = false
+            end
 
             if LocalPlayer:hasSniper() then
                 if ammoRatio < 1 then
@@ -2334,10 +2357,12 @@ function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
     if self.isTargetEasilyShot then
         self:actionCounterStrafe(cmd)
     else
-        self:actionStop(cmd)
+        if not self:isAllowedToStrafe() then
+            self:actionStop(cmd)
+        end
     end
 
-    local isVelocityOk = LocalPlayer:m_vecVelocity():getMagnitude() < 100
+    local isVelocityOk = LocalPlayer:m_vecVelocity():getMagnitude() < 120
 
     if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
@@ -2345,6 +2370,11 @@ function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
     then
         self:fireWeapon(cmd)
     end
+end
+
+--- @return boolean
+function AiStateEngage:isAllowedToStrafe()
+    return (self.tapFireTime - 0.15) - self.tapFireTimer:get() > 0
 end
 
 --- @param cmd SetupCommandEvent
@@ -2380,7 +2410,7 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
     self:actionStop(cmd)
 
     -- We can shoot when we're this slow.
-    local fireUnderVelocity = weapon.max_player_speed / 5
+    local fireUnderVelocity = weapon.max_player_speed / 4
 
     if fov < self.shootWithinFov
         and self.scopedTimer:isElapsedThenStop(fireDelay)
@@ -2493,8 +2523,10 @@ function AiStateEngage:actionCounterStrafe(cmd)
         cmd.in_duck = true
     end
 
-    if LocalPlayer:m_flDuckSpeed() < 3  then
-        Pathfinder.standStill()
+    if LocalPlayer:m_flDuckSpeed() < 4 then
+        if not self:isAllowedToStrafe() then
+            Pathfinder.standStill()
+        end
 
         return
     end
@@ -2856,6 +2888,7 @@ function AiStateEngage:setAimSkill(skill)
 
     local skillMinimum = {
         reactionTime = 0.4,
+        prefireReactionTime = 0.2,
         anticipateTime = 0.1,
         sprayTime = 0.5,
         aimSpeed = 8.5,
@@ -2868,6 +2901,7 @@ function AiStateEngage:setAimSkill(skill)
 
     local skillMaximum = {
         reactionTime = 0.025,
+        prefireReactionTime = 0.06,
         anticipateTime = 0.01,
         sprayTime = 0.33,
         aimSpeed = 15,

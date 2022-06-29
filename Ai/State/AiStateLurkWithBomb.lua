@@ -72,7 +72,7 @@ function AiStateLurkWithBomb:assess()
 		return AiPriority.IGNORE
 	end
 
-	if AiUtility.timeData.roundtime_elapsed > 60 then
+	if AiUtility.timeData.roundtime_elapsed > 45 then
 		return AiPriority.IGNORE
 	end
 

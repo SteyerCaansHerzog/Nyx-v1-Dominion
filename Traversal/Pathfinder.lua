@@ -9,6 +9,7 @@ local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
+local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
@@ -23,6 +24,7 @@ local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
@@ -56,6 +58,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @class PathfinderPath
 --- @field endGoal NodeTypeGoal
 --- @field errorMessage string
+--- @field finalIdx number
 --- @field idx number
 --- @field isDoorInPath boolean
 --- @field isDuckInPath boolean
@@ -74,6 +77,19 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field options PathfinderOptions
 --- @field startOrigin Vector3
 --- @field targetNode NodeTypeBase
+
+--- @class PathfinderPathDebugNode
+--- @field node NodeTypeBase
+--- @field error string
+
+--- @class PathfinderPathDebug
+--- @field username string
+--- @field task string
+--- @field nodes PathfinderPathDebugNode[]
+--- @field isOk boolean
+--- @field startOrigin Vector3
+--- @field endOrigin Vector3
+--- @field dateTimeFormatted string
 --}}}
 
 --{{{ Pathfinder
@@ -82,6 +98,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field avoidTeammatesDirection string
 --- @field avoidTeammatesDuration number
 --- @field avoidTeammatesTimer Timer
+--- @field blockedBombsite NodeTypeObjective
 --- @field cachedLastRequest PathfinderRequest
 --- @field deactivatedNodesPool NodeTypeBase[]
 --- @field directMovementAngle Angle
@@ -115,9 +132,9 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field moveOnGroundTimer Timer
 --- @field nodeClassesInTentativePath NodeTypeBase[]
 --- @field path PathfinderPath
+--- @field pathDebug PathfinderPathDebug
 --- @field pathfindInterval number
 --- @field pathfindIntervalTimer Timer
---- @field blockedBombsite NodeTypeObjective
 local Pathfinder = {}
 
 --- @return void
@@ -126,7 +143,7 @@ function Pathfinder.__setup()
 	Pathfinder.initEvents()
 	Pathfinder.initMenu()
 
-	Logger.console(0, "Pathfinder is ready.")
+	Logger.console(0, Localization.pathfinderReady)
 end
 
 --- @return void
@@ -191,10 +208,9 @@ function Pathfinder.initEvents()
 	end)
 
 	Callbacks.bombSpawned(function(e)
-		local site = Nodegraph.getClosestBombsiteName(e.bomb:m_vecOrigin())
+		local bombsite = Nodegraph.getClosestBombsite(e.bomb:m_vecOrigin())
 
-		-- Execute all retake blocks for the planted-at bombsite.
-		Node.hintBlockRotate.block(Nodegraph, site)
+		Pathfinder.blockRotate(bombsite)
 	end)
 
 	Callbacks.smokeGrenadeDetonate(function(e)
@@ -253,6 +269,19 @@ function Pathfinder.initMenu()
 	MenuGroup.enablePathfinder = MenuGroup.group:addCheckbox(" > Enable Pathfinder"):setParent(MenuGroup.master)
 	MenuGroup.enableMovement = MenuGroup.group:addCheckbox("    | Enable Movement"):setParent(MenuGroup.enablePathfinder)
 	MenuGroup.visualisePath = MenuGroup.group:addCheckbox("    | Visualise Path"):setParent(MenuGroup.enablePathfinder)
+end
+
+--- @param bombsite NodeTypeObjective
+--- @return void
+function Pathfinder.blockRotate(bombsite)
+	if not LocalPlayer:isCounterTerrorist() then
+		return
+	end
+
+	-- Execute all retake blocks for the planted-at bombsite.
+	Node.hintBlockRotate.block(Nodegraph, bombsite.bombsite)
+
+	Pathfinder.blockedBombsite = bombsite
 end
 
 --- @return void
@@ -405,7 +434,7 @@ end
 --- @return PathfinderPath
 function Pathfinder.moveToLocation(origin, options)
 	if not origin then
-		error(string.format("Pathfind task '%s' provided no origin to move to.", options.task), 2)
+		error(string.format(Localization.pathfinderNoOrigin, options.task), 2)
 	end
 
 	Pathfinder.lastRequest = {
@@ -419,7 +448,7 @@ end
 --- @return PathfinderPath
 function Pathfinder.moveToNode(node, options)
 	if not node then
-		error(string.format("Pathfind task '%s' provided no node to move to.", options.task), 2)
+		error(string.format(Localization.pathfinderNoOrigin, options.task), 2)
 	end
 
 	Pathfinder.lastRequest = {
@@ -780,6 +809,7 @@ function Pathfinder.createPath()
 	Pathfinder.path = {
 		endGoal = endGoal,
 		idx = 1,
+		finalIdx = #tentativePath,
 		isDoorInPath = Pathfinder.nodeClassesInTentativePath[Node.traverseDoor.__classid],
 		isDuckInPath = isDuckInPath,
 		isJumpInPath = isJumpInPath,
@@ -794,6 +824,8 @@ function Pathfinder.createPath()
 		task = pathfinderOptions.task,
 	}
 
+	Pathfinder.pathDebug.isOk = true
+
 	if pathfinderOptions.onFoundPath then
 		pathfinderOptions.onFoundPath()
 	end
@@ -801,7 +833,7 @@ function Pathfinder.createPath()
 	Pathfinder.clearLastRequest()
 
 	if Pathfinder.isLoggingEnabled then
-		Logger.console(-1, "New pathfind task: %s.", pathfinderOptions.task)
+		Logger.console(-1, Localization.pathfinderNewTask, pathfinderOptions.task)
 	end
 end
 
@@ -812,13 +844,28 @@ end
 function Pathfinder.failPath(options, goal, error, code)
 	Pathfinder.path = {
 		isOk = false,
-		errorMessage = error
+		errorMessage = error,
+		startOrigin = Pathfinder.lastRequest.startOrigin,
+		endOrigin = Pathfinder.lastRequest.endOrigin,
 	}
+
+	local time = Time.getDateTime()
+
+	Pathfinder.pathDebug.username = LocalPlayer:getName()
+	Pathfinder.pathDebug.task = Pathfinder.lastRequest.options.task
+	Pathfinder.pathDebug.isOk = false
+	Pathfinder.pathDebug.startOrigin = Pathfinder.lastRequest.startOrigin
+	Pathfinder.pathDebug.endOrigin = Pathfinder.lastRequest.endOrigin
+	Pathfinder.pathDebug.dateTimeFormatted = string.format(
+		"%02d/%02d/%02d @ %02d:%02d",
+		time.day, time.month, time.year, time.hour, time.minute
+	)
 
 	if options.onFailedToFindPath then
 		options.onFailedToFindPath()
 	end
 
+	Pathfinder.flushPathDebug()
 	Pathfinder.cleanupLastRequest()
 
 	if not Pathfinder.isLoggingEnabled then
@@ -829,17 +876,85 @@ function Pathfinder.failPath(options, goal, error, code)
 		local node = Pathfinder.lastRequest.targetNode
 
 		if node then
-			Logger.console(code, "Pathfind task '%s' failed: %s. Target node: [%i] %s.", Pathfinder.lastRequest.options.task, error, node.id, node.name)
+			Logger.console(code, Localization.pathfinderFailedKnownGoal, Pathfinder.lastRequest.options.task, error, node.id, node.name)
 		else
 			node = Nodegraph.getClosest(goal.origin)
 
-			Logger.console(code, "Pathfind task '%s' failed: %s. Assumed closest target node: [%i] %s (%s).", Pathfinder.lastRequest.options.task, error, node.id, node.name, node.origin:__tostring())
-
+			Logger.console(code, Localization.pathfinderFailedGuessGoal, Pathfinder.lastRequest.options.task, error, node.id, node.name, node.origin:__tostring())
 		end
 
 	else
-		Logger.console(code, "Pathfind task '%s' failed: %s.", Pathfinder.lastRequest.options.task, error)
+		Logger.console(code, Localization.pathfinderFailed, Pathfinder.lastRequest.options.task, error)
 	end
+end
+
+--- @return void
+function Pathfinder.flushPathDebug()
+	local filename = string.format(Config.getPath("Resource/Data/PathfinderPathDebug_%s.json"), LocalPlayer:getSteamId64())
+
+	--- @type PathfinderPathDebug
+	local data = {
+		task = Pathfinder.pathDebug.task,
+		username = Pathfinder.pathDebug.username,
+		dateTimeFormatted = Pathfinder.pathDebug.dateTimeFormatted,
+		startOrigin = Pathfinder.pathDebug.startOrigin:__serialize(),
+		endOrigin = Pathfinder.pathDebug.endOrigin:__serialize()
+	}
+
+	for _, debug in pairs(Pathfinder.pathDebug.nodes) do
+		if debug.error then
+			table.insert(data, {
+				node = debug.node.id,
+				error = debug.error
+			})
+		end
+	end
+
+	writefile(filename, json.stringify(data))
+end
+
+--- @return void
+function Pathfinder.loadPathDebug(steamid64)
+	if steamid64 == nil and Pathfinder.pathDebug ~= nil then
+		Pathfinder.pathDebug = nil
+
+		Logger.console(0, "Unloaded previously stored failed path.")
+
+		return
+	end
+
+	local filename = string.format(Config.getPath("Resource/Data/PathfinderPathDebug_%s.json"), steamid64)
+	local filedata = readfile(filename)
+
+	if not filedata then
+		Logger.console(1, "Cannot load stored failed path for SteamID64 '%s' as the file does not exist.", steamid64)
+
+		return
+	end
+
+	--- @type PathfinderPathDebug
+	local data = json.parse(filedata)
+
+	Pathfinder.pathDebug = {
+		nodes = {},
+		isOk = false,
+		task = data.task,
+		username = data.username,
+		dateTimeFormatted = data.dateTimeFormatted,
+		startOrigin = Vector3:newFromTable(data.startOrigin),
+		endOrigin = Vector3:newFromTable(data.endOrigin)
+	}
+
+	for _, debug in pairs(data) do
+		if Nodegraph.nodes[debug.node] then
+			table.insert(Pathfinder.pathDebug.nodes, {
+				node = Nodegraph.nodes[debug.node],
+				error = debug.error
+			})
+		end
+	end
+
+	Logger.console(0, "[%s] Loaded previously stored failed path for [%s] '%s': %s.", data.dateTimeFormatted, steamid64, data.username, data.task)
 end
 
 --- @param start NodeTypeGoal
@@ -848,47 +963,77 @@ end
 --- @return NodeTypeBase[]
 function Pathfinder.getPath(start, goal, options)
 	Pathfinder.nodeClassesInTentativePath = {}
+	Pathfinder.pathDebug = {
+		nodes = {}
+	}
+
+	local idx = 0
 
 	return AStar.findPath(start, goal, Nodegraph.pathableNodes, true, function(node, neighbor)
+		idx = neighbor.id
+
+		--- @type PathfinderPathDebugNode
+		Pathfinder.pathDebug.nodes[idx] = {
+			node = neighbor
+		}
+
 		if not node.connections[neighbor.id] then
+			Pathfinder.pathDebug.nodes[idx].error = "IS NOT CONNECTED"
+
 			return false
 		end
 
 		if not neighbor.isActive then
+			Pathfinder.pathDebug.nodes[idx].error = "IS NOT ACTIVE"
+
 			return false
 		end
 
 		if not options.isAllowedToTraverseSmokes and neighbor.isOccludedBySmoke then
+			Pathfinder.pathDebug.nodes[idx].error = "IS OCCLUDED BY SMOKE"
+
 			return false
 		end
 
 		if not options.isAllowedToTraverseInfernos and neighbor.isOccludedByInferno then
+			Pathfinder.pathDebug.nodes[idx].error = "IS OCCLUDED BY INFERNO"
+
 			return false
 		end
 
 		if not options.isAllowedToTraverseLadders
 			and (neighbor:is(Node.traverseLadderBottom) or neighbor:is(Node.traverseLadderTop))
 		then
+			Pathfinder.pathDebug.nodes[idx].error = "IS LADDER AND NOT ALLOWED"
+
 			return false
 		end
 
 		if neighbor.isJump then
 			if not options.isAllowedToTraverseJumps then
+				Pathfinder.pathDebug.nodes[idx].error = "IS JUMP AND NOT ALLOWED"
+
 				return false
 			end
 
 			local zDelta = neighbor.origin.z - node.origin.z
 
 			if zDelta > neighbor.zDeltaThreshold then
+				Pathfinder.pathDebug.nodes[idx].error = "IS OVER ZDELTA THRESHOLD"
+
 				return false
 			end
 
 			if node.isGoal and (zDelta > neighbor.zDeltaGoalThreshold) then
+				Pathfinder.pathDebug.nodes[idx].error = "IS OVER ZDELTA THRESHOLD"
+
 				return false
 			end
 		end
 
 		if not node.isRecorder and (neighbor.isRecorder and neighbor:is(Node.traverseRecorderEnd)) then
+			Pathfinder.pathDebug.nodes[idx].error = "IS RECORDER AND NOT ALLOWED"
+
 			return false
 		end
 
@@ -1145,6 +1290,10 @@ function Pathfinder.traverseActivePath(cmd)
 			Pathfinder.incrementPath()
 		end
 	elseif currentNode:is(Node.traverseLadderBottom) then
+		if distance2d < 55 then
+			Pathfinder.isAscendingLadder = true
+		end
+
 		if distance2d < 20 then
 			isAllowedToCreateMove = false
 
@@ -1163,8 +1312,6 @@ function Pathfinder.traverseActivePath(cmd)
 				cmd.in_speed = false
 				cmd.in_duck = false
 				cmd.in_use = false
-
-				Pathfinder.isAscendingLadder = true
 			end
 		end
 
@@ -1198,7 +1345,7 @@ function Pathfinder.traverseActivePath(cmd)
 				local ladderBottom = Pathfinder.path.nodes[Pathfinder.path.idx + 1]
 				local zDelta = clientOrigin.z - ladderBottom.origin.z
 
-				if zDelta < 512 then
+				if zDelta < 150 then
 					cmd.in_jump = true
 
 					Pathfinder.incrementPath()
@@ -1283,11 +1430,11 @@ function Pathfinder.traverseActivePath(cmd)
 
 		if Pathfinder.moveObstructedTimer:isElapsedThenStop(0.66) then
 			if MenuGroup.enableMovement:get()  then
-				Logger.console(2, "Pathfinder is obstructed. Retrying current path.")
+				Logger.console(2, Localization.pathfinderObstructed)
 
 				Pathfinder.retryLastRequest()
 			else
-				Logger.console(2, "Pathfinder movement is not enabled. Consider enabling movement.")
+				Logger.console(2, Localization.pathfinderMovementDisabled)
 			end
 
 		end

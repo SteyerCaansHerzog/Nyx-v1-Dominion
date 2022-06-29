@@ -32,6 +32,7 @@ local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
 local DominionClient = require "gamesense/Nyx/v1/Dominion/Client/Client"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
@@ -74,7 +75,7 @@ function Ai:__init()
 	self:initFields()
 	self:initEvents()
 
-	Logger.console(0, "AI Controller is ready.")
+	Logger.console(0, Localization.aiReady)
 end
 
 --- @return void
@@ -164,7 +165,7 @@ end
 function Ai:initEvents()
 	Callbacks.init(function()
 		if not Server.isIngame() then
-			Logger.console(2, "Not in-game. Waiting to join a server before initialising AI states.")
+			Logger.console(2, Localization.aiNotInGame)
 
 			return
 		end
@@ -179,7 +180,7 @@ function Ai:initEvents()
 			if err then
 				Logger.console(
 					2,
-					"AI state '%s' not loaded. %s.",
+					Localization.aiStateNotLoaded,
 					state.name,
 					err
 				)
@@ -193,7 +194,7 @@ function Ai:initEvents()
 
 			states[id] = object
 
-			Logger.console(0, "AI state '%s' successfully loaded.", state.name)
+			Logger.console(0, Localization.aiStateLoaded, state.name)
 		until true end
 
 		self.states = states
@@ -264,24 +265,24 @@ function Ai:handleChatCommands(e)
 	local rejection = command:getRejectionError(self, e.sender, args)
 
 	if rejection then
-		Logger.console(3, "Rejected chat command '/%s' from '%s' because %s.", cmd, e.sender:getName(), rejection)
+		Logger.console(3, Localization.chatCommandRejected, cmd, e.sender:getName(), rejection)
 
 		return
 	end
 
-	local argsImploded = Table.getImploded(args, ", ")
+	local argsImploded = Table.getImplodedTable(args, ", ")
 	local ignored = command:invoke(self, e.sender, args)
 
 	if ignored then
-		Logger.console(3, "Ignoring chat command '/%s' from '%s' because %s.", cmd, e.sender:getName(), ignored)
+		Logger.console(3, Localization.chatCommandIgnored, cmd, e.sender:getName(), ignored)
 
 		return
 	end
 
 	if argsImploded == "" then
-		Logger.console(0, "Executing chat command '/%s' from '%s'.", cmd, e.sender:getName())
+		Logger.console(0, Localization.chatCommandExecutedNoArgs, cmd, e.sender:getName())
 	else
-		Logger.console(0, "Executing chat command '/%s' from '%s' with '%s'.", cmd, e.sender:getName(), argsImploded)
+		Logger.console(0, Localization.chatCommandExecutedArgs, cmd, e.sender:getName(), argsImploded)
 	end
 end
 
@@ -526,6 +527,7 @@ function Ai:think(cmd)
 		return
 	end
 
+	self:preventDithering()
 	self:setCurrentState(cmd)
 end
 
@@ -576,7 +578,7 @@ function Ai:preventDithering()
 
 	self.ditherHistories = {}
 
-	Logger.console(1, "AI state '%s' is locked due to dithering.", highestPriority.name)
+	Logger.console(1, Localization.aiDitherLocked, highestPriority.name)
 end
 
 --- @param cmd SetupCommandEvent
@@ -602,13 +604,13 @@ function Ai:setCurrentState(cmd)
 		end
 
 		if not state.assess then
-			error(string.format("The state '%s' does not have an assess() method.", state.name))
+			error(string.format(Localization.aiNoAssessMethod, state.name))
 		end
 
 		local priority = state:assess()
 
 		if not priority then
-			error(string.format("The state '%s' does not return a priority.", state.name))
+			error(string.format(Localization.aiNoPriority, state.name))
 		end
 
 		if Debug.isLoggingStatePriorities and priority > -1 then
@@ -637,7 +639,7 @@ function Ai:setCurrentState(cmd)
 
 			currentState:activate()
 
-			Logger.console(3, "Re-activating AI state '%s' [%i].", currentState.name, highestPriority)
+			Logger.console(3, Localization.aiStateReactivating, currentState.name, highestPriority)
 		end
 
 		if self.lastPriority ~= highestPriority then
@@ -657,7 +659,7 @@ function Ai:setCurrentState(cmd)
 			end
 
 			if isActivatable then
-				Logger.console(3, "Changed AI state to '%s' [%i].", currentState.name, highestPriority)
+				Logger.console(3, Localization.aiStateChanged, currentState.name, highestPriority)
 
 				View.lookState = currentState.name
 				View.isLookSpeedDelayed = currentState.isMouseDelayAllowed

@@ -12,7 +12,7 @@ local NodeTypeGoal = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeG
 local NodeGoalStart = {
     name = "Start",
     description = {},
-    colorSecondary = Color:hsla(338, 0.9, 0.65),
+    colorSecondary = Color:hsla(180, 0.9, 0.65),
     isHiddenFromEditor = true
 }
 

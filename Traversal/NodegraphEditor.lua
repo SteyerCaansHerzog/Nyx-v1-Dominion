@@ -6,6 +6,7 @@ local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Menu = require "gamesense/Nyx/v1/Api/Menu"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Server = require "gamesense/Nyx/v1/Api/Server"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -20,6 +21,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
@@ -108,7 +110,7 @@ function NodegraphEditor:__init()
     self:initFields()
     self:initEvents()
 
-    Logger.console(0, "Nodegraph Editor is ready.")
+    Logger.console(0, Localization.editorReady)
 end
 
 --- @return void
@@ -154,7 +156,7 @@ function NodegraphEditor:initFields()
     MenuGroup.group:addLabel("----------------------------------------"):setParent(MenuGroup.master)
     MenuGroup.enableEditor = MenuGroup.group:addCheckbox("> Enable Nodegraph Editor"):setParent(MenuGroup.master)
 
-    MenuGroup.drawDistance = MenuGroup.group:addSlider("> Draw distance", 10, 100, {
+    MenuGroup.drawDistance = MenuGroup.group:addSlider("> Draw distance", 10, 80, {
         scale = 100
     }):addCallback(function(item)
         NodeTypeBase.drawDistance = item:get() * 100
@@ -222,11 +224,15 @@ function NodegraphEditor:initFields()
     end):setParent(MenuGroup.enableEditor)
 
     MenuGroup.group:addButton("Create nodegraph", function()
-    	Nodegraph.create(Nodegraph.getFilename())
+        Nodegraph.create(Nodegraph.getFilename())
     end):setParent(MenuGroup.enableEditor)
 
     MenuGroup.group:addButton("Run Graph Integrity Test", function()
         self:testPathfinding()
+    end):setParent(MenuGroup.enableEditor)
+
+    MenuGroup.group:addButton("Load Last Path Debug", function()
+        Pathfinder.loadPathDebug(LocalPlayer:getSteamId64())
     end):setParent(MenuGroup.enableEditor)
 end
 
@@ -253,19 +259,36 @@ function NodegraphEditor:initEvents()
 
         self:processMovementRecorder(cmd)
     end)
+
+    Callbacks.consoleInput(function(input)
+        local args = Table.getExplodedString(input, " ")
+        local cmd = args[1]
+
+        if cmd == "pathdebug" then
+            local steamid64 = args[2]
+
+            Pathfinder.loadPathDebug(steamid64)
+
+        elseif cmd == "copyid" then
+            Panorama.SteamOverlayAPI.CopyTextToClipboard(LocalPlayer:getSteamId64())
+        end
+    end)
 end
 
 --- @return void
 function NodegraphEditor:testPathfinding()
     local originNode = Nodegraph.getSpawn("CT")
+        or Nodegraph.getSpawn("T")
+        or Nodegraph.getBombsite("A")
+        or Nodegraph.getBombsite("B")
 
     if not originNode then
-        Logger.console(1, "The CT Spawn node is required to run an integrity test.")
+        Logger.console(1, Localization.editorObjectiveNodeRequired)
 
         return
     end
 
-    Logger.console(2, "Beginning Nodegraph integrity test.")
+    Logger.console(2, Localization.editorBeginIntegrityTest)
 
     self.pathfindTestNodes = {}
     self.groups = {
@@ -516,7 +539,7 @@ end
 --- @return void
 function NodegraphEditor:processAdd()
     local selectedNode = self:getSelectedNode()
-    local nodeBounds = Vector3:newBounds(Vector3.align.CENTER, 18)
+    local nodeBounds = NodeTypeBase.collisionHullNodeSpawn
 
     self.spawnNode = nil
 
@@ -579,17 +602,15 @@ function NodegraphEditor:processAdd()
         origin = trace.endPosition
     end
 
-    -- Test planar collisions.
-    if self.node.isPlanar then
-        local trace = Trace.getHullAtPosition(
-            origin,
-            Vector3:newBounds(Vector3.align.CENTER, 20, 20, 16),
-            AiUtility.traceOptionsPathfinding
-        )
+    -- Test collisions.
+    local trace = Trace.getHullAtPosition(
+        origin,
+        nodeBounds,
+        AiUtility.traceOptionsPathfinding
+    )
 
-        if trace.isIntersectingGeometry then
-            self.spawnError = "Node is inside geometry"
-        end
+    if trace.isIntersectingGeometry then
+        self.spawnError = "Node is inside geometry"
     end
 
     -- Test node height to floor.
@@ -782,6 +803,7 @@ function NodegraphEditor:render()
         Color:hsla(0, 0.8, 0.6, 150),
     }
 
+    -- Render graph sparsity.
     for idx, group in pairs(self.groups) do
         local groupColor = groupColors[idx]
 
@@ -790,7 +812,7 @@ function NodegraphEditor:render()
         end
     end
 
-    -- Nodes
+    -- Nodes.
     local iProblems = 0
     local iNodes = 0
 
@@ -812,6 +834,35 @@ function NodegraphEditor:render()
         iNodes = iNodes + 1
     end
 
+    -- Render failed path debug.
+    if Pathfinder.pathDebug and not Pathfinder.pathDebug.isOk then
+        local startGoal = Node.goalStart:new({
+            origin = Pathfinder.pathDebug.startOrigin:clone():offset(0, 0, 18)
+        })
+
+        local endGoal = Node.goalEnd:new({
+            origin = Pathfinder.pathDebug.endOrigin
+        })
+
+        startGoal:render(Nodegraph, false)
+        endGoal:render(Nodegraph, false)
+
+        for _, debug in pairs(Pathfinder.pathDebug.nodes) do repeat
+            if debug.node:isOf(NodeType.goal) then
+                break
+            end
+
+            local color = ColorList.ERROR:clone()
+
+            color:setAlpha(debug.node.renderAlphaFov)
+
+            if debug.error then
+                debug.node:renderTopText(color, debug.error)
+            end
+        until true end
+    end
+
+    -- Render connected nodes.
     if self.keySetConnections:isToggled() and self.selectedNode then
         for _, connection in pairs(self.selectedNode.connections) do
             connection.origin:drawScaledCircle(50, self.highlightNodeColor:setAlpha(75))
@@ -847,13 +898,13 @@ function NodegraphEditor:render()
         Pathfinder.moveToNode(Nodegraph.getRandom(Node.traverseGeneric), {
             task = "Display collision hulls",
             onFoundPath = function()
-            	Client.fireAfter(1, function()
+                Client.fireAfter(1, function()
                     Pathfinder.retryLastRequest()
 
                     for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do repeat
                         node.connectionCollisions = {}
                     until true end
-            	end)
+                end)
             end
         })
 
@@ -1037,7 +1088,7 @@ function NodegraphEditor:render()
     local max = #self.nodes
 
     for i = iStart, iEnd do repeat
-    	local node = self.nodes[i]
+        local node = self.nodes[i]
 
         if not node then
             if i < min then

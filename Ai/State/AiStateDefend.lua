@@ -73,11 +73,7 @@ function AiStateDefend:__init()
     self.teammateInTroubleTimer = Timer:new():startThenElapse()
     self.bombsite = AiUtility.randomBombsite
 
-    local isActivated = false
-
     Callbacks.roundPrestart(function()
-        isActivated = false
-
         self.getToSiteTimer:stop()
 
         local slot = 0
@@ -142,7 +138,7 @@ function AiStateDefend:__init()
             return
         end
 
-        if isActivated then
+        if self.getToSiteTimer:isStarted() then
             return
         end
 
@@ -152,13 +148,13 @@ function AiStateDefend:__init()
             return
         end
 
-        if LocalPlayer:getOrigin():getDistance(nearestBombsite.origin) < 750 then
+        local distance = LocalPlayer:isTerrorist() and 950 or 1500
+
+        if LocalPlayer:getOrigin():getDistance(nearestBombsite.origin) < distance then
             return
         end
 
         self.getToSiteTimer:start()
-
-        isActivated = true
     end)
 end
 
@@ -203,6 +199,12 @@ function AiStateDefend:assessDemolition()
             end
         end
 
+        -- We're not near the site.
+        -- This will practically force the AI to go to the site.
+        if self.getToSiteTimer:isStarted() and not self.getToSiteTimer:isElapsed(12) then
+            return AiPriority.DEFEND_EXPEDITE
+        end
+
         if bomb then
             -- Defend our teammate who is defusing.
             if AiUtility.isBombBeingDefusedByTeammate then
@@ -242,7 +244,7 @@ function AiStateDefend:assessDemolition()
             local bombsite = Nodegraph.getClosestBombsite(bombCarrierOrigin)
             local distance = bombCarrierOrigin:getDistance(bombsite.origin)
 
-            if AiUtility.isBombBeingPlantedByTeammate or distance < 400 then
+            if AiUtility.isBombBeingPlantedByTeammate or distance < 750 then
                 return AiPriority.DEFEND_PLANTER
             end
 

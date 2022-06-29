@@ -6,7 +6,9 @@ local Time = require "gamesense/Nyx/v1/Api/Time"
 --}}}
 
 --{{{ Modules
+local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 --}}}
 
@@ -16,27 +18,27 @@ local LoggerCode = {
 	[-1] = {
 		color = ColorList.FONT_MUTED,
 		chatColor = Chat.WHITE,
-		text = "[INFO]     ",
+		text = Localization.logInfo,
 	},
 	[0] = {
 		color = ColorList.OK,
 		chatColor = Chat.GREEN,
-		text = "[OK]       ",
+		text = Localization.logOk,
 	},
 	[1] = {
 		color = ColorList.ERROR,
 		chatColor = Chat.RED,
-		text = "[ISSUE]    "
+		text = Localization.logError,
 	},
 	[2] = {
 		color = ColorList.WARNING,
 		chatColor = Chat.GOLD,
-		text = "[WARNING]  "
+		text = Localization.logWarning,
 	},
 	[3] = {
 		color = ColorList.INFO,
 		chatColor = Chat.BLUE,
-		text = "[ALERT]    "
+		text = Localization.logAlert,
 	}
 }
 --}}}
@@ -51,7 +53,7 @@ local Logger = {}
 function Logger.__setup()
 	if Debug.isFilteringConsole then
 		cvar.con_filter_enable:set_int(1)
-		cvar.con_filter_text:set_string("Dominio")
+		cvar.con_filter_text:set_string("Dominion")
 	else
 		cvar.con_filter_enable:set_int(0)
 	end
@@ -69,7 +71,7 @@ function Logger.stopBenchmark()
 	local delta = (client.timestamp() - Logger.benchmarkStartedAt) / 1000
 	local ticks = delta / globals.tickinterval()
 
-	Logger.console(0, "Benchmark '%s' finished. Time: %.4fs (%.1f ticks).", Logger.benchmarkName, delta, ticks)
+	Logger.console(0, Localization.benchmark, Logger.benchmarkName, delta, ticks)
 
 	Logger.benchmarkName = nil
 	Logger.benchmarkStartedAt = nil
@@ -95,6 +97,10 @@ end
 --- @vararg string
 --- @return void
 function Logger.console(code, ...)
+	if not ... then
+		error("!", 2)
+	end
+
 	code = code or -1
 
 	local codeData = LoggerCode[code]
@@ -114,7 +120,9 @@ function Logger.console(code, ...)
 end
 
 --- @param version string
-function Logger.credits(version)
+--- @param date string
+--- @return void
+function Logger.credits(version, date)
 	Client.writeBlankLines(3)
 
 	local lines = {
@@ -164,7 +172,7 @@ function Logger.credits(version)
 		},
 		{
 			color = ColorList.FONT_MUTED,
-			text = "Competitive CS:GO AI built for official servers."
+			text = Localization.splashMotto
 		}
 	})
 
@@ -175,11 +183,11 @@ function Logger.credits(version)
 		},
 		{
 			color = ColorList.FONT_MUTED,
-			text = "Current build: "
+			text = Localization.splashBuild
 		},
 		{
 			color = ColorList.WARNING,
-			text = string.format("v%s", version)
+			text = string.format("v%s (%s)", version, date)
 		},
 		{
 			color = ColorList.FONT_MUTED,
@@ -194,11 +202,30 @@ function Logger.credits(version)
 		},
 		{
 			color = ColorList.FONT_MUTED,
-			text = "Developed and maintained by "
+			text = Localization.splashDevelopedBy
 		},
 		{
 			color = ColorList.WARNING,
 			text = "Kessie#0001"
+		},
+		{
+			color = ColorList.FONT_MUTED,
+			text = "."
+		}
+	})
+
+	Client.writeManyConsole({
+		{
+			color = ColorList.FONT_MUTED,
+			text = "| "
+		},
+		{
+			color = ColorList.FONT_MUTED,
+			text = Localization.splashLanguage
+		},
+		{
+			color = ColorList.WARNING,
+			text = Localization.language
 		},
 		{
 			color = ColorList.FONT_MUTED,
@@ -215,7 +242,7 @@ function Logger.credits(version)
 		},
 		{
 			color = ColorList.FONT_MUTED,
-			text = string.format("Copyright Nyx.to ©2021-%i, all rights reserved.", time.year)
+			text = string.format(Localization.splashCopyright, "2021", time.year)
 		},
 	})
 
@@ -226,11 +253,11 @@ function Logger.credits(version)
 		},
 		{
 			color = ColorList.FONT_MUTED,
-			text = string.format("%02d/%02d/%i. Your license to this software ", time.day, time.month, time.year)
+			text = string.format(Localization.splashLicense, time.day, time.month, time.year)
 		},
 		{
 			color = ColorList.WARNING,
-			text = "does not expire"
+			text = Localization.splashLicenseNeverExpires
 		},
 		{
 			color = ColorList.FONT_MUTED,

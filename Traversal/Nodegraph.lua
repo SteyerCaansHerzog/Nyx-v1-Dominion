@@ -1,7 +1,5 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local Chat = require "gamesense/Nyx/v1/Api/Chat"
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Server = require "gamesense/Nyx/v1/Api/Server"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -12,11 +10,13 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
-local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
+local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
-local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
 --}}}
 
 --{{{ Nodegraph
@@ -43,7 +43,7 @@ function Nodegraph.__setup()
     Nodegraph.initFields()
     Nodegraph.initEvents()
 
-    Logger.console(0, "Nodegraph is ready.")
+    Logger.console(0, Localization.nodegraphReady)
 end
 
 --- @return void
@@ -322,10 +322,6 @@ end
 --- @param bombsite string
 --- @return T
 function Nodegraph.getRandomForBombsite(node, bombsite)
-    if type(bombsite) ~= "string" then
-        error("no bombsite", 2)
-    end
-
     return Table.getRandom(Nodegraph.getForBombsite(node, bombsite:upper()))
 end
 
@@ -650,7 +646,7 @@ function Nodegraph.getFilename()
 
     map = map:gsub("/", "_")
 
-    return string.format("lua/gamesense/Nyx/v1/Dominion/Traversal/Nodegraphs/%s.json", map)
+    return string.format(Config.getPath("Traversal/Nodegraphs/%s.json"), map)
 end
 
 --- @return void
@@ -664,7 +660,7 @@ function Nodegraph.load(filename)
     local filedata = readfile(filename)
 
     if not filedata then
-        Logger.message(1, "Cannot load graph from '%s'. File does not exist.", filename)
+        Logger.message(1, Localization.nodegraphMissingFile, filename)
 
         return
     end
@@ -755,7 +751,7 @@ function Nodegraph.load(filename)
 
     Nodegraph.isLoaded = true
 
-    Logger.console(0, "Loaded nodegraph from '%s'.", filename)
+    Logger.console(0, Localization.nodegraphLoaded, filename)
 end
 
 --- @param filename string
@@ -819,7 +815,7 @@ function Nodegraph.save(filename)
 
     writefile(filename, json.stringify(data))
 
-    Logger.message(0, "Saved nodegraph to '%s'.", filename)
+    Logger.message(0, Localization.nodegraphSaved, filename)
 end
 
 return Nyx.class("Nodegraph", Nodegraph)

@@ -68,6 +68,9 @@ local AiMapInfo = {
 	workshop_2484335179_de_outferno = {
 		gamemode = "demolition",
 	},
+	workshop_396269972_de_overpass_d = {
+		gamemode = "demolition"
+	}
 }
 
 return AiMapInfo

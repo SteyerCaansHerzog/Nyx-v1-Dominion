@@ -1,7 +1,6 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Process = require "gamesense/Nyx/v1/Api/Process"
@@ -77,7 +76,7 @@ function AiProcessClient:setMisc()
 		}
 
 		client.set_event_callback("paint", function()
-			local r, g, b, a = 75, 75, 75, 175
+			local r, g, b, a = 255, 255, 255, 255
 
 			for i=1, #materials do
 				local mat = materials[i]
@@ -86,21 +85,12 @@ function AiProcessClient:setMisc()
 				materialsystem.find_material(mat):color_modulate(r, g, b)
 			end
 		end)
-	else
-		if Config.isDebugging then
-			local Debug = require "gamesense/Nyx/v1/Api/Debug"
-			local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
-
-			Debug:new({
-				VectorsAngles.Vector3
-			})
-		end
 	end
 end
 
 --- @return void
 function AiProcessClient:setClientLoaderLock()
-	writefile("lua/gamesense/Nyx/v1/Dominion/Resource/Data/ClientLoaderLock", "1")
+	writefile(Config.getPath("Resource/Data/ClientLoaderLock"), "1")
 end
 
 --- @return void

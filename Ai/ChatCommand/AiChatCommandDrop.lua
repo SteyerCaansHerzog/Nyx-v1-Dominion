@@ -6,6 +6,7 @@ local Player = require "gamesense/Nyx/v1/Api/Player"
 
 --{{{ Modules
 local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBase"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 --}}}
 
 --{{{ AiChatCommandDrop
@@ -51,7 +52,7 @@ function AiChatCommandDrop:invoke(ai, sender, args)
         else
             ai.states.pickupItems:temporarilyBlacklistDroppedItemsFrom(Player:new(eid))
 
-            return "the invoker was not asking us"
+            return Localization.cmdRejectionNotAskingUs
         end
     end
 
@@ -75,7 +76,7 @@ function AiChatCommandDrop:invoke(ai, sender, args)
     if closestTeammate and closestTeammate.eid ~= LocalPlayer.eid then
         ai.states.pickupItems:temporarilyBlacklistDroppedItemsFrom(closestTeammate)
 
-        return "the invoker was not asking us"
+        return Localization.cmdRejectionNotAskingUs
     end
 
     ai.states.drop:dropGear(sender, "weapon")

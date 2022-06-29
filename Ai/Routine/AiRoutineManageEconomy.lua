@@ -9,6 +9,7 @@ local Player = require "gamesense/Nyx/v1/Api/Player"
 --{{{ Modules
 local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --}}}
@@ -177,21 +178,21 @@ function AiRoutineManageEconomy:handleEconomy()
 
 
 	if playersWhoCanFullBuy == totalPlayers then
-		Logger.console(3, "Full buying this round.")
+		Logger.console(3, Localization.manageEconomyFullBuy)
 	elseif playersWhoCanFullBuy >= forceBuyThresholdFullCriterion and (playersWhoCanForceBuy + playersWhoCanBuyArmor) >= forceBuyThresholdForceCriterion then
 		self:determineForceBuyOrDrop()
 
-		Logger.console(3, "Full/force buying this round.")
+		Logger.console(3, Localization.manageEconomyForceBuy)
 	else
 		-- Randomly decide to eco-rush instead of a standard save.
 		if self:getPredictableChance(2) then
 			self.ai.routines.buyGear:ecoRush()
 
-			Logger.console(3, "Eco rushing this round.")
+			Logger.console(3, Localization.manageEconomyEcoRush)
 		else
 			self.ai.routines.buyGear:save()
 
-			Logger.console(3, "Saving this round.")
+			Logger.console(3, Localization.manageEconomyEco)
 		end
 	end
 end

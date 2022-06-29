@@ -95,6 +95,10 @@ function AiStateDefuse:assess()
     local isCovered = false
     local bombOrigin = AiUtility.plantedBomb:m_vecOrigin()
 
+    if not AiUtility.isClientThreatenedMajor and AiUtility.closestEnemy and AiUtility.closestEnemy:getOrigin():getDistance(clientOrigin) > 1500 then
+        return AiPriority.DEFUSE_COVERED
+    end
+
     for _, teammate in pairs(AiUtility.teammates) do
         local teammateOrigin = teammate:getOrigin()
 

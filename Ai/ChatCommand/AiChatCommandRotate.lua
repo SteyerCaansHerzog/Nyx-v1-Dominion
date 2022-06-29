@@ -6,8 +6,10 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --{{{ Modules
 local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --}}}
 
 --{{{ AiChatCommandRotate
@@ -35,28 +37,28 @@ function AiChatCommandRotate:invoke(ai, sender, args)
         return self.BOMB_IS_PLANTED
     end
 
-    local site = args[1]
+    local bombsiteName = args[1]
 
-    if site ~= "a" and site ~= "b" then
+    if bombsiteName ~= "a" and bombsiteName ~= "b" then
         return
     end
 
-    site = site:upper()
+    bombsiteName = bombsiteName:upper()
 
-    local node = Nodegraph.getBombsite(site)
+    local node = Nodegraph.getBombsite(bombsiteName)
 
     ai.states.engage.tellRotateTimer:restart()
 
     -- We're already near the site. It would be pointless to activate the rotation.
     if LocalPlayer:getOrigin():getDistance(node.origin) < 1000 then
-        return "the client is already near the bombsite"
+        return Localization.cmdRejectionAlreadyNearBombsite
     end
 
-    ai.states.rotate:invoke(site)
-    ai.states.defend.defendingSite = site
+    ai.states.rotate:invoke(bombsiteName)
+    ai.states.defend.defendingSite = bombsiteName
     ai.states.defend.isSpecificNodeSet = false
 
-    Node.hintBlockRotate.block(Nodegraph, site)
+    Pathfinder.blockRotate(Nodegraph.getBombsite(bombsiteName))
 end
 
 return Nyx.class("AiChatCommandRotate", AiChatCommandRotate, AiChatCommandBase)

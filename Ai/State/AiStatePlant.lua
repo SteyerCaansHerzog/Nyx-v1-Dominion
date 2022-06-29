@@ -103,63 +103,36 @@ end
 
 --- @return void
 function AiStatePlant:assess()
-    if AiUtility.gameRules:m_bFreezePeriod() == 1 then
-        return AiPriority.IGNORE
-    end
-
-    if not LocalPlayer.hasBomb() then
+    if AiUtility.gameRules:m_bFreezePeriod() == 1 or not LocalPlayer.hasBomb() then
         return AiPriority.IGNORE
     end
 
     local clientOrigin = LocalPlayer:getOrigin()
-    local bombsite = Nodegraph.getClosestBombsite(clientOrigin)
-    local closestPlantNode = Nodegraph.getClosest(clientOrigin, Node.spotPlant)
-    local isCovered = false
-    local distanceToSite = clientOrigin:getDistance(bombsite.origin)
-    local isNearSite = distanceToSite < 1400
-    local isOnPlant = clientOrigin:getDistance(closestPlantNode.origin) < 200
+    local isTeammateNearby = AiUtility.closestTeammate and clientOrigin:getDistance(AiUtility.closestTeammate:getOrigin()) < 350
+    local isAtPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 40
+    local isNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 650
 
-    if AiUtility.closestTeammate and AiUtility.closestTeammateDistance < 400 then
-        isCovered = true
-    end
-
-    -- Do not try to plant if the enemy is in top of us.
-    if AiUtility.closestEnemy and AiUtility.closestEnemyDistance < 400 then
-        return AiPriority.IGNORE
-    end
-
-    -- On plant-spot and covered.
-    if isOnPlant and isCovered then
+    if isAtPlantSpot and (isTeammateNearby or not AiUtility.isClientThreatenedMajor) then
         return AiPriority.PLANT_COVERED
     end
 
-    -- Not much time left in the round.
+    if isNearPlantSpot and isTeammateNearby then
+        return AiPriority.PLANT_EXPEDITE
+    end
+
     if AiUtility.timeData.roundtime_remaining < 20 then
         return AiPriority.PLANT_EXPEDITE
     end
 
-    -- We already begun planting.
-    if self.isPlanting then
-        return AiPriority.PLANT_EXPEDITE
-    end
-
-    -- Near site and covered.
-    if isNearSite then
+    if isNearPlantSpot then
         return AiPriority.PLANT_ACTIVE
     end
 
-    -- Near site and not threatened.
-    if isNearSite and not AiUtility.isClientThreatenedMinor then
-        return AiPriority.PLANT_PASSIVE
+    if AiUtility.timeData.roundtime_remaining < 35 then
+        return AiPriority.PLANT_ACTIVE
     end
 
-    -- Covered and not threatened.
-    if isCovered and not AiUtility.isClientThreatenedMajor then
-        return AiPriority.PLANT_PASSIVE
-    end
-
-    -- We have the bomb.
-    return AiPriority.PLANT_GENERIC
+    return AiPriority.PLANT_PASSIVE
 end
 
 --- @return void

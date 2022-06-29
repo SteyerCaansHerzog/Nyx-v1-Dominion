@@ -81,7 +81,7 @@ function AiStateLurkT:assess()
 		return AiPriority.IGNORE
 	end
 
-	if AiUtility.timeData.roundtime_elapsed > 45 then
+	if AiUtility.timeData.roundtime_elapsed > 30 then
 		return AiPriority.IGNORE
 	end
 
