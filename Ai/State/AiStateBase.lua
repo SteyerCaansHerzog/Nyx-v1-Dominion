@@ -27,6 +27,7 @@ local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --- @field delayedMouseMin number
 --- @field isBlocked boolean
 --- @field isCurrentState boolean
+--- @field isEnabled boolean
 --- @field isLockable boolean
 --- @field isMouseDelayAllowed boolean
 --- @field isQueuedForReactivation boolean
@@ -35,11 +36,13 @@ local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --- @field priorityMap string[]
 --- @field requiredGamemodes string[]
 --- @field requiredNodes NodeTypeBase[]
+--- @field reset fun(self: AiStateBase): void
 --- @field think fun(self: AiStateBase, cmd: SetupCommandEvent): void
 local AiStateBase = {
     priorityMap = Table.getInverted(AiPriority),
     delayedMouseMin = 0.25,
     delayedMouseMax = 0.55,
+    isEnabled = false,
     isLockable = true,
     isMouseDelayAllowed = true,
 }

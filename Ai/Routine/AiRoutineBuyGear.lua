@@ -84,14 +84,15 @@ local BuyCriteria = {
 --- @field balance number
 --- @field buyItemList string[]
 --- @field buyQueue BuyQueue[]
+--- @field customItemList string[]
+--- @field isBeingDropped boolean
 --- @field isEnabled boolean
 --- @field isForcing boolean
+--- @field isProcessingQueue boolean
 --- @field isQueued boolean
 --- @field isRushing boolean
 --- @field isSaving boolean
---- @field isProcessingQueue boolean
 --- @field processQueueTimer Timer
---- @field customItemList string[]
 local AiRoutineBuyGear = {}
 
 --- @param fields AiRoutineBuyGear
@@ -189,6 +190,11 @@ end
 --- @return void
 function AiRoutineBuyGear:ecoRush()
 	self.isRushing = true
+end
+
+--- @return void
+function AiRoutineBuyGear:receiveDrop()
+	self.isBeingDropped = true
 end
 
 --- @return void
@@ -340,6 +346,19 @@ function AiRoutineBuyGear:buyRoundStart()
 		return
 	end
 
+	-- AI requested to be dropped. Top up on armour and utility.
+	if self.isBeingDropped then
+		self.isBeingDropped = false
+
+		if LocalPlayer:isTerrorist() then
+			self:buyTerroristFromDrop()
+		elseif LocalPlayer:isCounterTerrorist() then
+			self:buyCounterTerroristFromDrop()
+		end
+
+		return
+	end
+
 	self.balance = LocalPlayer:m_iAccount()
 
 	local rounds = AiUtility.gameRules:m_totalRoundsPlayed()
@@ -377,6 +396,12 @@ function AiRoutineBuyGear:buyEcoRushRound()
 	elseif LocalPlayer:isCounterTerrorist() then
 		self:buyCounterTerroristEcoRushRound()
 	end
+end
+
+--- @return void
+function AiRoutineBuyGear:buyTerroristFromDrop()
+	self:equipFullArmor()
+	self:equipRandomGrenades(nil, 4)
 end
 
 --- @return void
@@ -550,6 +575,22 @@ function AiRoutineBuyGear:buyTerroristFullBuyRound()
 
 	self:equipFullArmor()
 	self:equipRandomGrenades(nil, self.balance > 6500 and 4 or 3)
+end
+
+--- @return void
+function AiRoutineBuyGear:buyCounterTerroristFromDrop()
+	self:equipFullArmor()
+
+	self:equipRandomGrenades({
+		Buy.FLASHBANG, Buy.SMOKEGRENADE
+	}, 2)
+
+	self:equipDefuseKit()
+
+	self:equipRandomGrenades({
+		Buy.HEGRENADE,
+		Buy.INCGRENADE
+	}, 2)
 end
 
 --- @return void

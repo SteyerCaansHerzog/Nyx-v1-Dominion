@@ -36,7 +36,6 @@ local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
-local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
@@ -137,6 +136,35 @@ function Ai:initFields()
 
 	self.processes = processes
 
+	-- States.
+	local states = {}
+
+	--- @param state AiStateBase
+	for id, state in pairs(AiState) do repeat
+		local isEnabled = true
+		local err = state:getError()
+
+		if err then
+			isEnabled = false
+		end
+
+		local object = state:new({
+			ai = self
+		})
+
+		object.isEnabled = isEnabled
+
+		states[id] = object
+
+		if isEnabled  then
+			Logger.console(0, Localization.aiStateLoaded, state.name)
+		else
+			Logger.console(2, Localization.aiStateNotLoaded, state.name, err)
+		end
+	until true end
+
+	self.states = states
+
 	self:initMenu()
 
 	self.voice = AiVoice:new()
@@ -170,34 +198,31 @@ function Ai:initEvents()
 			return
 		end
 
-		-- States.
-		local states = {}
+		self.currentState = nil
+
+		Pathfinder.clearActivePathAndLastRequest(true)
 
 		--- @param state AiStateBase
-		for id, state in pairs(AiState) do repeat
+		for _, state in pairs(self.states) do
+			local isEnabled = true
 			local err = state:getError()
 
 			if err then
-				Logger.console(
-					2,
-					Localization.aiStateNotLoaded,
-					state.name,
-					err
-				)
-
-				break
+				isEnabled = false
 			end
 
-			local object = state:new({
-				ai = self
-			})
+			if state.reset then
+				state:reset()
+			end
 
-			states[id] = object
+			state.isEnabled = isEnabled
 
-			Logger.console(0, Localization.aiStateLoaded, state.name)
-		until true end
-
-		self.states = states
+			if isEnabled  then
+				Logger.console(0, Localization.aiStateLoaded, state.name)
+			else
+				Logger.console(2, Localization.aiStateNotLoaded, state.name, err)
+			end
+		end
 	end)
 
 	Callbacks.frame(function()
@@ -596,6 +621,10 @@ function Ai:setCurrentState(cmd)
 		if state.isBlocked then
 			state.isBlocked = false
 
+			break
+		end
+
+		if not state.isEnabled then
 			break
 		end
 

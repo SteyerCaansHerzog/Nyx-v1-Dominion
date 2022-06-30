@@ -214,7 +214,7 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.roundStart(function()
-        Logger.console(3, string.format(Localization.aiUtilityNewRound, AiUtility.gameRules:m_totalRoundsPlayed() + 1))
+        Logger.console(3, Localization.aiUtilityNewRound, AiUtility.gameRules:m_totalRoundsPlayed() + 1)
     end)
 
     Callbacks.roundPrestart(function(e)

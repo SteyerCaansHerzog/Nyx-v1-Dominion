@@ -27,9 +27,10 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local DominionLocalization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
+local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
-local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
+local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ ReaperClientInfo
@@ -448,7 +449,7 @@ function Reaper:render()
 			drawPosition:drawSurfaceRectangleOutline(2, 2, clientBoxDimensions, outlineColor)
 		end
 
-		drawPosition:drawBlur(clientBoxDimensions, 1, 1)
+		drawPosition:drawBlur(clientBoxDimensions)
 		drawPosition:drawSurfaceRectangle(clientBoxDimensions, bgColor)
 		drawPosition:clone():offset(5, 0):drawSurfaceText(Font.MEDIUM_LARGE, nameColor, "l", client.info.name)
 
@@ -879,7 +880,6 @@ function Reaper:think()
 
 			Client.setInput(true)
 
-			MenuGroup.visualisePathfinding:set(false)
 			MenuGroup.visualiseAimbot:set(false)
 		else
 			AiUtility.isPerformingCalculations = true
@@ -888,11 +888,10 @@ function Reaper:think()
 				MenuGroup.enableAi:set(true)
 				MenuGroup.limitFps:set(true)
 				MenuGroup.enableAutoBuy:set(true)
-				MenuGroup.enableView:set(true)
+				MenuGroup.enableMouseControl:set(true)
 				MenuGroup.enableAimbot:set(true)
 			end
 
-			MenuGroup.visualisePathfinding:set(true)
 			MenuGroup.visualiseAimbot:set(true)
 
 			-- Ensure input is turned on or off when tabbing, so we cannot accidentally press keys in spectator mode.

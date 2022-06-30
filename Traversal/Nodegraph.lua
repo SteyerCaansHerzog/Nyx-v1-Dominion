@@ -48,6 +48,34 @@ end
 
 --- @return void
 function Nodegraph.initFields()
+    Nodegraph.setup()
+end
+
+--- @return void
+function Nodegraph.initEvents()
+    Callbacks.init(function()
+        if not Server.isIngame() then
+            return
+        end
+
+        local filename = Nodegraph.getFilename()
+
+        if not filename then
+            return
+        end
+
+        Nodegraph.load(filename)
+    end)
+
+    Callbacks.frame(function()
+        for _, node in pairs(Nodegraph.nodes) do
+            node:onThink(Nodegraph)
+        end
+    end)
+end
+
+--- @return void
+function Nodegraph.setup()
     Nodegraph.freeIds = {}
     Nodegraph.iNodes = 0
     Nodegraph.nodes = {}
@@ -79,35 +107,6 @@ function Nodegraph.initFields()
     for _, node in pairs(NodeType) do
         Nodegraph.nodesByType[node.type] = {}
     end
-end
-
---- @return void
-function Nodegraph.initEvents()
-    Callbacks.init(function()
-        if not Server.isIngame() then
-            return
-        end
-
-        local filename = Nodegraph.getFilename()
-
-        if not filename then
-            return
-        end
-
-        Nodegraph.load(filename)
-    end)
-
-    Callbacks.frame(function()
-        for _, node in pairs(Nodegraph.nodes) do
-            node:onThink(Nodegraph)
-        end
-    end)
-end
-
---- @return void
-function Nodegraph.reset()
-    Nodegraph.nodes = {}
-    Nodegraph.iNodes = 0
 end
 
 --- @param node NodeTypeBase
@@ -657,6 +656,8 @@ end
 --- @param filename string
 --- @return void
 function Nodegraph.load(filename)
+    Nodegraph.setup()
+
     local filedata = readfile(filename)
 
     if not filedata then

@@ -112,6 +112,10 @@ function AiStatePlant:assess()
     local isAtPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 40
     local isNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 650
 
+    if AiUtility.isLastAlive and AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin()) < 600 then
+        return AiPriority.IGNORE
+    end
+
     if isAtPlantSpot and (isTeammateNearby or not AiUtility.isClientThreatenedMajor) then
         return AiPriority.PLANT_COVERED
     end

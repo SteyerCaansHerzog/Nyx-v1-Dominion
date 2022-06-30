@@ -25,6 +25,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field requestingPlayer Player
 --- @field requestableGear fun(): nil This is the equip function to equip the item to drop.
 --- @field requestedGear string
+--- @field requestedCallback fun(): void
 local AiStateDrop = {
     name = "Drop",
     delayedMouseMin = 0.2,
@@ -51,11 +52,14 @@ end
 --- @param requestedGear string
 --- @return void
 function AiStateDrop:dropGear(player, requestedGear)
+    if not self.requestableGear[requestedGear] then
+        return
+    end
+
     self.requestingPlayer = player
     self.isDroppingGear = true
     self.requestedGear = requestedGear
-
-    self.requestableGear[requestedGear]()
+    self.requestedCallback = self.requestableGear[requestedGear]
 end
 
 --- @return number
@@ -86,7 +90,7 @@ function AiStateDrop:think(cmd)
     self.ai.routines.manageGear:block()
     self.ai.routines.buyGear:pauseQueue()
 
-    LocalPlayer.equipPrimary()
+    self.requestedCallback()
 
     local distance = LocalPlayer:getOrigin():getDistance(self.requestingPlayer:getOrigin())
     local hitbox = self.requestingPlayer:getOrigin():offset(0, 0, 64)

@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
@@ -91,6 +92,10 @@ function NodeHintBlockRotate.block(nodegraph, bombsite)
     local count = 0
 
     for _, node in pairs(nodes) do repeat
+        if LocalPlayer:getOrigin():getDistance(node.origin) < 600 then
+            break
+        end
+
         if not node.isActivatedByChance then
             node:setBlockedNodes(nodegraph)
 
