@@ -66,6 +66,11 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --- @field watchCornerTimer Timer
 --- @field yawFine number
 --- @field yawSoft number
+--- @field buildup number
+--- @field buildupThreshold number
+--- @field buildupLastAngles Angle
+--- @field buildupCooldownTime number
+--- @field buildupCooldownTimer Timer
 local View = {
 	noise = ViewNoiseType
 }
@@ -102,6 +107,10 @@ function View.initFields()
 	View.yawSoft = 0
 	View.lookSpeedIdeal = 0
 	View.watchCornerTimer = Timer:new():startThenElapse()
+	View.buildup = 0
+	View.buildupThreshold = 90
+	View.buildupCooldownTime = 0
+	View.buildupCooldownTimer = Timer:new():startThenElapse()
 
 	View.setNoiseType(ViewNoiseType.none)
 end
@@ -179,10 +188,17 @@ function View.setViewAngles()
 
 		smoothingCutoffThreshold = 0.6
 	elseif Pathfinder.isOnValidPath() then
-		-- Perform generic look behaviour.
-		View.setIdealLookAhead(idealViewAngles)
-		-- Watch corners enemies are actually occluded by.
-		View.setIdealWatchCorner(idealViewAngles)
+		-- Handle the "buildup" of mouse movement delta that would result in the virtual mouse leaving the mousemat.
+		View.handleBuildup()
+
+		if View.buildupCooldownTimer:isElapsed(View.buildupCooldownTime) then
+			-- Perform generic look behaviour.
+			View.setIdealLookAhead(idealViewAngles)
+			-- Watch corners enemies are actually occluded by.
+			View.setIdealWatchCorner(idealViewAngles)
+		else
+			View.setNoiseType(ViewNoiseType.minor)
+		end
 
 		smoothingCutoffThreshold = 1
 	else
@@ -218,6 +234,30 @@ function View.setViewAngles()
 
 	-- Lerp the real view angles.
 	View.interpolateViewAngles(targetViewAngles)
+end
+
+--- @return void
+function View.handleBuildup()
+	local cameraAngles = Client.getCameraAngles()
+
+	if not View.buildupLastAngles then
+		View.buildupLastAngles = cameraAngles
+	end
+
+	local delta = (View.buildupLastAngles - cameraAngles):normalize()
+
+	View.buildup = View.buildup + delta.y
+	View.buildupLastAngles = cameraAngles
+
+	if math.abs(View.buildup) < View.buildupThreshold then
+		return
+	end
+
+	View.buildup = 0
+	View.buildupThreshold = Math.getRandomFloat(40,  90)
+	View.buildupCooldownTime = Math.getRandomFloat(0.25, 0.8)
+
+	View.buildupCooldownTimer:restart()
 end
 
 --- @return void

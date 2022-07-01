@@ -1310,9 +1310,9 @@ function AiStateEngage:moveOnBestTarget(cmd)
         local node
 
         if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
-            node = Nodegraph.getRandomForBombsite(defendNode, self.ai.states.defend.bombsite)
-        else
             node = Nodegraph.getRandom(defendNode, clientOrigin, 1450)
+        else
+            node = Nodegraph.getRandomForBombsite(defendNode, self.ai.states.defend.bombsite)
         end
 
         if node then
@@ -1336,7 +1336,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
     end
 
     if self.isDefending then
-        self.activity = "Defending against enemy"
+        self.activity = string.format("Defending against enemy on %s", self.ai.states.defend.bombsite)
 
         return
     end

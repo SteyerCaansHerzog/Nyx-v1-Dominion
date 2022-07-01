@@ -37,15 +37,15 @@ function AiChatCommandRotate:invoke(ai, sender, args)
         return self.BOMB_IS_PLANTED
     end
 
-    local bombsiteName = args[1]
+    local objective = args[1]
 
-    if bombsiteName ~= "a" and bombsiteName ~= "b" then
+    if objective ~= "a" and objective ~= "b" then
         return
     end
 
-    bombsiteName = bombsiteName:upper()
+    objective = objective:upper()
 
-    local node = Nodegraph.getBombsite(bombsiteName)
+    local node = Nodegraph.getBombsite(objective)
 
     ai.states.engage.tellRotateTimer:restart()
 
@@ -54,11 +54,15 @@ function AiChatCommandRotate:invoke(ai, sender, args)
         return Localization.cmdRejectionAlreadyNearBombsite
     end
 
-    ai.states.rotate:invoke(bombsiteName)
-    ai.states.defend.defendingSite = bombsiteName
+    ai.states.rotate:invoke(objective)
+
+    ai.states.defend.defendingSite = objective
+    ai.states.defend.bombsite = objective
+    ai.states.plant.bombsite = objective
+    ai.states.lurkWithBomb.bombsite = objective
     ai.states.defend.isSpecificNodeSet = false
 
-    Pathfinder.blockRotate(Nodegraph.getBombsite(bombsiteName))
+    Pathfinder.blockRotate(Nodegraph.getBombsite(objective))
 end
 
 return Nyx.class("AiChatCommandRotate", AiChatCommandRotate, AiChatCommandBase)

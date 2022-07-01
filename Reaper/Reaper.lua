@@ -38,6 +38,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field activity string
 --- @field behavior string
 --- @field callout string
+--- @field colorHex string
 --- @field health number
 --- @field isAlive boolean
 --- @field isAttacked boolean
@@ -51,10 +52,10 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field lobbyMemberCount number
 --- @field map string
 --- @field name string
+--- @field phase number
 --- @field priority number
 --- @field skill number
 --- @field team number
---- @field phase number
 --}}}
 
 --{{{ ReaperClientShared
@@ -245,6 +246,8 @@ Nyx.class("ReaperManifest", ReaperManifest)
 --- @field syncInfoTimer Timer
 --- @field infoPath string
 --- @field clientBoxFocusedOffset number
+--- @field screenGradientAlpha number
+--- @field screenOverlayAlpha number
 --- @field savedCommunicationStates boolean[]
 local Reaper = {
 	gameConfig = "reaper",
@@ -277,6 +280,8 @@ function Reaper:initFields()
 	self.syncInfoTimer = Timer:new():start()
 	self.manifest = ReaperManifest:new()
 	self.clientBoxFocusedOffset = 0
+	self.screenGradientAlpha = 0
+	self.screenOverlayAlpha = 0
 	self.isForced = false
 
 	self.isEnabled = self.manifest.isEnabled
@@ -313,10 +318,95 @@ end
 
 --- @return void
 function Reaper:render()
-	local totalClients = Table.getCount(self.manifest.clients)
+	-- Handle rendering and console.
+	if not self.isActive then
+		-- We want to be able to use the console even if input is disabled.
+		if self.keyOpenConsole:wasPressed() then
+			Client.openConsole()
+		end
 
+		-- Enable input if the console has been opened.
+		Client.setInput(Client.isConsoleOpen())
+
+		if Server.isIngame() then
+			local screenCenter = Client.getScreenDimensionsCenter()
+			--- @type Color
+			local color
+			local text
+			local player = Player.getClient()
+
+			if player:isAlive() then
+				color = Color:rgba(255, 255, 255, 100)
+				text = "Press F to take control"
+
+				screenCenter:clone():offset(-62, 68):drawSurfaceRectangleOutline(1, 1, Vector2:new(16, 25), Color:rgba(255, 255, 255, 20))
+				screenCenter:clone():offset(-62, 68):drawSurfaceRectangleGradient(
+					Vector2:new(16, 25),
+					Color:rgba(255, 255, 255, 5),
+					Color:rgba(255, 255, 255, 20),
+					"h"
+				)
+			else
+				color = Color:rgba(255, 255, 255, 255)
+				text = "Player is dead"
+			end
+
+			-- Hint or dead notice.
+			screenCenter:offset(0, 60):drawSurfaceText(
+				Font.LARGE, color, "c",
+				text
+			)
+
+			screenCenter:offset(0, 10)
+
+			-- Client name.
+			screenCenter:offset(0, 30):drawSurfaceText(
+				Font.LARGE_BOLD, color, "c",
+				Panorama.MyPersonaAPI.GetName()
+			)
+
+			screenCenter:offset(0, 15)
+
+			-- Client has admin permissions on Dominion.
+			if self.isClientAdmin then
+				screenCenter:offset(0, 20):drawSurfaceText(
+					Font.MEDIUM, color, "c",
+					"Administrator"
+				)
+			end
+
+			-- AI is disabled notice.
+			if not self.isAiEnabled then
+				screenCenter:offset(0, 20):drawSurfaceText(
+					Font.MEDIUM, Color:hsla(0, 0.8, 0.6, 200), "c",
+					"AI Disabled"
+				)
+			end
+		else
+			local screenCenter = Client.getScreenDimensionsCenter()
+			--- @type Color
+
+			-- Hint or dead notice.
+			screenCenter:offset(0, 60):drawSurfaceText(
+				Font.LARGE, Color:rgba(255, 255, 255, 255), "c",
+				"Press F to use menu"
+			)
+
+			screenCenter:clone():offset(-51, 8):drawSurfaceRectangleOutline(1, 1, Vector2:new(16, 25), Color:rgba(255, 255, 255, 20))
+			screenCenter:clone():offset(-51, 8):drawSurfaceRectangleGradient(
+				Vector2:new(16, 25),
+				Color:rgba(255, 255, 255, 5),
+				Color:rgba(255, 255, 255, 20),
+				"h"
+			)
+		end
+	end
+
+	-- Render tabs.
+	local totalClients = Table.getCount(self.manifest.clients)
 	--- @type Vector2
 	local drawPosition
+	local screenDims = Client.getScreenDimensions()
 	local clientBoxDimensions = Vector2:new(350, 50)
 	local clientBoxTopOffset = 40 - (totalClients * clientBoxDimensions.y / 2)
 	local clientBoxRightOffset = -300
@@ -342,6 +432,23 @@ function Reaper:render()
 		IS_ATTACKED = Animate.sine(0.25, 0.2, 20),
 		IS_THREATENED = Animate.sine(0.33, 0.2, 10)
 	}
+
+	if self.isActive then
+		self.screenGradientAlpha = Animate.slerp(self.screenGradientAlpha, 0, 1.66)
+		self.screenOverlayAlpha = Animate.slerp(self.screenOverlayAlpha, 0, 2)
+	else
+		self.screenGradientAlpha = 255
+		self.screenOverlayAlpha = 100
+	end
+
+	Vector2:new():drawSurfaceRectangle(screenDims, Color:hsla(0, 0, 0.15, self.screenOverlayAlpha))
+
+	Vector2:new(0, screenDims.y - screenDims.y / 3):drawSurfaceRectangleGradient(
+		Vector2:new(screenDims.x, screenDims.y / 3),
+		Color:hsla(0, 0, 0.15, 0),
+		Color:hsla(0, 0, 0.15, self.screenGradientAlpha),
+		"v"
+	)
 
 	if self.isForced then
 		drawPosition:clone():offset(0, -30):drawSurfaceText(Font.MEDIUM, ColorList.FONT_MUTED, "l", "Tab-Lock Off")
@@ -451,7 +558,18 @@ function Reaper:render()
 
 		drawPosition:drawBlur(clientBoxDimensions)
 		drawPosition:drawSurfaceRectangle(clientBoxDimensions, bgColor)
-		drawPosition:clone():offset(5, 0):drawSurfaceText(Font.MEDIUM_LARGE, nameColor, "l", client.info.name)
+
+		local nameOffset = 0
+
+		if isPlayerInServer and client.info.colorHex then
+			local color = Color:hexa(client.info.colorHex)
+
+			drawPosition:clone():offset(12, 16):drawCircle(8, Color:hsla(0, 0, 0.2)):drawCircleOutline(6, 3, color)
+
+			nameOffset = 20
+		end
+
+		drawPosition:clone():offset(5 + nameOffset, 0):drawSurfaceText(Font.MEDIUM_LARGE, nameColor, "l", client.info.name)
 
 		if isConnectionLost then
 			drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "No connection to client")
@@ -649,11 +767,14 @@ function Reaper:think()
 			isLobbyQueuing = Panorama.LobbyAPI.GetMatchmakingStatusString() ~= ""
 		end
 
+		local teamColorIndicator = Panorama.GameStateAPI.GetPlayerColor(Panorama.MyPersonaAPI.GetXuid())
+
 		--- @type ReaperClientInfo
 		local info = {
 			activity = activity,
 			behavior = behavior,
 			callout = callout,
+			colorHex = teamColorIndicator,
 			health = health,
 			isAlive = isAlive,
 			isAttacked = AiUtility.isEnemyVisible,
@@ -667,10 +788,10 @@ function Reaper:think()
 			lobbyMemberCount = lobbyMemberCount,
 			map = map,
 			name = Panorama.MyPersonaAPI.GetName(),
+			phase = phase,
 			priority = self.ai.lastPriority,
 			skill = self.ai.states.engage.skill,
 			team = team,
-			phase = phase
 		}
 
 		if isAppFocused then
@@ -698,14 +819,14 @@ function Reaper:think()
 		writefile(string.format(self.infoPath, Panorama.MyPersonaAPI.GetXuid()), json.stringify(info))
 
 		for _, client in pairs(self.manifest.clients) do repeat
-			local info = readfile(string.format(self.infoPath, client.steamId64))
+			local filedata = readfile(string.format(self.infoPath, client.steamId64))
 
-			if not info then
+			if not filedata then
 				break
 			end
 
 			pcall(function()
-				local data = json.parse(info)
+				local data = json.parse(filedata)
 
 				client.info = data
 			end)
@@ -896,90 +1017,6 @@ function Reaper:think()
 
 			-- Ensure input is turned on or off when tabbing, so we cannot accidentally press keys in spectator mode.
 			Client.setInput(false)
-		end
-	end
-
-	-- Handle rendering and console.
-	if not self.isActive then
-		-- We want to be able to use the console even if input is disabled.
-		if self.keyOpenConsole:wasPressed() then
-			Client.openConsole()
-		end
-
-		-- Enable input if the console has been opened.
-		Client.setInput(Client.isConsoleOpen())
-
-		if isInGame then
-			local screenCenter = Client.getScreenDimensionsCenter()
-			--- @type Color
-			local color
-			local text
-			local player = Player.getClient()
-
-			if player:isAlive() then
-				color = Color:rgba(255, 255, 255, 100)
-				text = "Press F to take control"
-
-				screenCenter:clone():offset(-62, 68):drawSurfaceRectangleOutline(1, 1, Vector2:new(16, 25), Color:rgba(255, 255, 255, 20))
-				screenCenter:clone():offset(-62, 68):drawSurfaceRectangleGradient(
-					Vector2:new(16, 25),
-					Color:rgba(255, 255, 255, 5),
-					Color:rgba(255, 255, 255, 20),
-					"h"
-				)
-			else
-				color = Color:rgba(255, 255, 255, 255)
-				text = "Player is dead"
-			end
-
-			-- Hint or dead notice.
-			screenCenter:offset(0, 60):drawSurfaceText(
-				Font.LARGE, color, "c",
-				text
-			)
-
-			screenCenter:offset(0, 10)
-
-			-- Client name.
-			screenCenter:offset(0, 30):drawSurfaceText(
-				Font.LARGE_BOLD, color, "c",
-				Panorama.MyPersonaAPI.GetName()
-			)
-
-			screenCenter:offset(0, 15)
-
-			-- Client has admin permissions on Dominion.
-			if self.isClientAdmin then
-				screenCenter:offset(0, 20):drawSurfaceText(
-					Font.MEDIUM, color, "c",
-					"Administrator"
-				)
-			end
-
-			-- AI is disabled notice.
-			if not self.isAiEnabled then
-				screenCenter:offset(0, 20):drawSurfaceText(
-					Font.MEDIUM, Color:hsla(0, 0.8, 0.6, 200), "c",
-					"AI Disabled"
-				)
-			end
-		else
-			local screenCenter = Client.getScreenDimensionsCenter()
-			--- @type Color
-
-			-- Hint or dead notice.
-			screenCenter:offset(0, 60):drawSurfaceText(
-				Font.LARGE, Color:rgba(255, 255, 255, 255), "c",
-				"Press F to use menu"
-			)
-
-			screenCenter:clone():offset(-51, 8):drawSurfaceRectangleOutline(1, 1, Vector2:new(16, 25), Color:rgba(255, 255, 255, 20))
-			screenCenter:clone():offset(-51, 8):drawSurfaceRectangleGradient(
-				Vector2:new(16, 25),
-				Color:rgba(255, 255, 255, 5),
-				Color:rgba(255, 255, 255, 20),
-				"h"
-			)
 		end
 	end
 end

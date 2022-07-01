@@ -77,8 +77,10 @@ function AiStateEvacuate:assess()
             return AiPriority.SAVE_ROUND
         end
 
+        local bombTimeThreshold = LocalPlayer:m_iHealth() > 40 and 10 or 15
+
         -- The enemy likely cannot defuse now, and we need to leave the site.
-        if AiUtility.plantedBomb and not AiUtility.isBombBeingDefusedByEnemy and AiUtility.bombDetonationTime < 10 then
+        if AiUtility.plantedBomb and not AiUtility.isBombBeingDefusedByEnemy and AiUtility.bombDetonationTime < bombTimeThreshold then
             return AiPriority.ABANDON_BOMBSITE
         end
     end

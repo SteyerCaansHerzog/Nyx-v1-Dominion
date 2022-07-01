@@ -165,12 +165,12 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStatePlant:think(cmd)
-    self.activity = "Going to plant bomb"
+    self.activity = string.format("Going to plant on %s", self.node.bombsite)
 
     local distance = LocalPlayer:getOrigin():getDistance2(self.node.origin)
 
     if distance < 150 then
-        self.activity = "Planting bomb"
+        self.activity = string.format("Planting on %s", self.node.bombsite)
 
         self.ai.routines.manageGear:block()
 

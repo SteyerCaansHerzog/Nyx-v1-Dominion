@@ -29,6 +29,10 @@ local AiChatCommandBoost = {
 --- @param args string[]
 --- @return void
 function AiChatCommandBoost:invoke(ai, sender, args)
+    if ai.reaper.isActive then
+        return self.REAPER_IS_ACTIVE
+    end
+
     self.isTaken = false
 
     local senderOrigin = sender:getOrigin()
