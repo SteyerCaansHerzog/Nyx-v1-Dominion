@@ -133,7 +133,7 @@ function AiRoutineBuyGear:__init()
 		self.balance = LocalPlayer:m_iAccount()
 
 		local freezetime = cvar.mp_freezetime:get_int()
-		local minDelay = freezetime * 0.5
+		local minDelay = freezetime * 0.4
 		local maxDelay = freezetime * 0.9
 
 		Client.fireAfterRandom(minDelay, maxDelay, function()
@@ -225,8 +225,8 @@ function AiRoutineBuyGear:createBuyQueue()
 	local i = 0
 
 	for j, item in pairs(self.buyItemList) do
-		local intervalMin = i * 0.15
-		local intervalMax = intervalMin + Math.getRandomFloat(0, 0.09)
+		local intervalMin = i * 0.2
+		local intervalMax = intervalMin + Math.getRandomFloat(0, 0.12)
 
 		table.insert(self.buyQueue, {
 			buy = function()
@@ -434,7 +434,7 @@ function AiRoutineBuyGear:buyTerroristPistolRound()
 			balance = 0,
 			chance = 1,
 			queue = function()
-				self:equipBodyArmor()
+				self:equipLightArmor()
 			end
 		},
 	})
@@ -450,18 +450,30 @@ function AiRoutineBuyGear:buyTerroristPostPistolRound()
 
 	self:activateHighestChanceFrom({
 		{
-			balance = BuyCriteria.TERRORIST_SMG_BUY,
+			balance = 2150,
 			chance = 1,
 			queue = function()
-				self:equipRandomWeapon({
-					Buy.MAC10,
-					Buy.UMP45,
-					Buy.MP7,
-				})
-
-				self:equipFullArmor()
+				self:equipWeapon(Buy.MP7)
+				self:equipLightArmor()
 				self:equipRandomGrenades()
-
+			end
+		},
+		{
+			balance = 1850,
+			chance = 1,
+			queue = function()
+				self:equipWeapon(Buy.UMP45)
+				self:equipLightArmor()
+				self:equipRandomGrenades()
+			end
+		},
+		{
+			balance = 1700,
+			chance = 1,
+			queue = function()
+				self:equipWeapon(Buy.MAC10)
+				self:equipLightArmor()
+				self:equipRandomGrenades()
 			end
 		},
 		{
@@ -639,7 +651,7 @@ function AiRoutineBuyGear:buyCounterTerroristPistolRound()
 			balance = 0,
 			chance = 1,
 			queue = function()
-				self:equipBodyArmor()
+				self:equipLightArmor()
 			end
 		},
 	})
@@ -655,18 +667,30 @@ function AiRoutineBuyGear:buyCounterTerroristPostPistolRound()
 
 	self:activateHighestChanceFrom({
 		{
-			balance = BuyCriteria.COUNTER_TERRORIST_SMG_BUY,
+			balance = 2150,
 			chance = 1,
 			queue = function()
-				self:equipRandomWeapon({
-					Buy.MP9,
-					Buy.UMP45,
-					Buy.MP7,
-				})
-
-				self:equipFullArmor()
+				self:equipWeapon(Buy.MP7)
+				self:equipLightArmor()
 				self:equipRandomGrenades()
-
+			end
+		},
+		{
+			balance = 1900,
+			chance = 1,
+			queue = function()
+				self:equipWeapon(Buy.MP9)
+				self:equipLightArmor()
+				self:equipRandomGrenades()
+			end
+		},
+		{
+			balance = 1850,
+			chance = 1,
+			queue = function()
+				self:equipWeapon(Buy.UMP45)
+				self:equipLightArmor()
+				self:equipRandomGrenades()
 			end
 		},
 		{
@@ -858,7 +882,7 @@ function AiRoutineBuyGear:getCleanGrenades(items)
 end
 
 --- @return void
-function AiRoutineBuyGear:equipBodyArmor()
+function AiRoutineBuyGear:equipLightArmor()
 	if LocalPlayer:m_iArmor() > 33 then
 		return
 	end

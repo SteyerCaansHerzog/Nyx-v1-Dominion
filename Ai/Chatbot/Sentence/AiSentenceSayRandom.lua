@@ -23,10 +23,6 @@ local AiSentenceTemplate = {
         { "my mom is 25" },
         { "hmm" },
         {
-            "my team promised they were cleans",
-            "i swear"
-        },
-        {
             "i really pine for a toblerone",
             "like right now",
             "brb",
@@ -141,6 +137,21 @@ local AiSentenceTemplate = {
             "sussy baka",
             "uwu",
             "i fuck dogs"
+        },
+        {
+            "śtatnasfoiyr æ vim csenzand",
+            "se leer lass goe oþrplaaz",
+            "set dellane antsaveihht"
+        },
+        {
+            "achoo!",
+            "fuck.",
+            "sorry",
+            "i need a wipe"
+        },
+        {
+            "how the fuck he stand",
+            "on 10 perc"
         }
     }
 }

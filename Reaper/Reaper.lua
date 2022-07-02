@@ -36,6 +36,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --{{{ ReaperClientInfo
 --- @class ReaperClientInfo
 --- @field activity string
+--- @field balance number
 --- @field behavior string
 --- @field callout string
 --- @field colorHex string
@@ -246,6 +247,7 @@ Nyx.class("ReaperManifest", ReaperManifest)
 --- @field syncInfoTimer Timer
 --- @field infoPath string
 --- @field clientBoxFocusedOffset number
+--- @field clientBoxActiveOffset number
 --- @field screenGradientAlpha number
 --- @field screenOverlayAlpha number
 --- @field savedCommunicationStates boolean[]
@@ -336,7 +338,7 @@ function Reaper:render()
 			local player = Player.getClient()
 
 			if player:isAlive() then
-				color = Color:rgba(255, 255, 255, 100)
+				color = Color:rgba(255, 255, 255, 155)
 				text = "Press F to take control"
 
 				screenCenter:clone():offset(-62, 68):drawSurfaceRectangleOutline(1, 1, Vector2:new(16, 25), Color:rgba(255, 255, 255, 20))
@@ -378,7 +380,7 @@ function Reaper:render()
 			-- AI is disabled notice.
 			if not self.isAiEnabled then
 				screenCenter:offset(0, 20):drawSurfaceText(
-					Font.MEDIUM, Color:hsla(0, 0.8, 0.6, 200), "c",
+					Font.MEDIUM, Color:hsla(0, 0.8, 0.6, 255), "c",
 					"AI Disabled"
 				)
 			end
@@ -415,10 +417,12 @@ function Reaper:render()
 	local screenCenter = Client.getScreenDimensionsCenter()
 	local alphaMod = 0.9
 
+	-- Set draw position.
 	if self.isActive then
 		drawPosition = Vector2:new(clientBoxLeftMargin, screenCenter.y)
 		alphaMod = 0.5
 
+		drawPosition.x = drawPosition.x + self.clientBoxActiveOffset
 		drawPosition.y = drawPosition.y + clientBoxTopOffset
 	else
 		drawPosition = screenCenter
@@ -436,9 +440,11 @@ function Reaper:render()
 	if self.isActive then
 		self.screenGradientAlpha = Animate.slerp(self.screenGradientAlpha, 0, 1.66)
 		self.screenOverlayAlpha = Animate.slerp(self.screenOverlayAlpha, 0, 2)
+		self.clientBoxActiveOffset = Animate.slerp(self.clientBoxActiveOffset, 0, 6)
 	else
 		self.screenGradientAlpha = 255
 		self.screenOverlayAlpha = 100
+		self.clientBoxActiveOffset = 50
 	end
 
 	Vector2:new():drawSurfaceRectangle(screenDims, Color:hsla(0, 0, 0.15, self.screenOverlayAlpha))
@@ -696,11 +702,19 @@ function Reaper:render()
 			end
 
 			if client.info.map then
+				local text
+
 				if isPlayerInServer then
-					drawPosition:clone():offset(clientBoxDimensions.x - 5, 25):drawSurfaceText(Font.SMALL, infoColor, "r", client.info.callout)
+					if AiUtility.gameRules:m_bFreezePeriod() == 1 then
+						text = string.format("$%i balance", client.info.balance)
+					else
+						text = client.info.callout
+					end
 				else
-					drawPosition:clone():offset(clientBoxDimensions.x - 5, 25):drawSurfaceText(Font.SMALL, infoColor, "r", "In other match")
+					text = "In another match"
 				end
+
+				drawPosition:clone():offset(clientBoxDimensions.x - 5, 25):drawSurfaceText(Font.SMALL, infoColor, "r", text)
 			end
 		end
 
@@ -730,21 +744,23 @@ function Reaper:think()
 			activity = "Possessed"
 		end
 
-		local map
+		local balance
 		local callout
 		local health
-		local team
 		local isAlive = false
 		local isWarmup = false
+		local map
 		local phase
+		local team
 
 		if Server.isIngame() then
-			map = globals.mapname()
+			balance = LocalPlayer:m_iAccount()
 			callout = Localization.get(LocalPlayer:m_szLastPlaceName())
 			health = LocalPlayer:m_iHealth()
 			isAlive = LocalPlayer:isAlive()
-			team = LocalPlayer:m_iTeamNum()
 			isWarmup = Entity.getGameRules():m_bWarmupPeriod() == 1
+			map = globals.mapname()
+			team = LocalPlayer:m_iTeamNum()
 
 			if AiUtility.timeData then
 				phase = AiUtility.timeData.gamephase
@@ -772,6 +788,7 @@ function Reaper:think()
 		--- @type ReaperClientInfo
 		local info = {
 			activity = activity,
+			balance = balance,
 			behavior = behavior,
 			callout = callout,
 			colorHex = teamColorIndicator,

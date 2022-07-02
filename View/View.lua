@@ -254,7 +254,7 @@ function View.handleBuildup()
 	end
 
 	View.buildup = 0
-	View.buildupThreshold = Math.getRandomFloat(40,  90)
+	View.buildupThreshold = Math.getRandomFloat(60,  125)
 	View.buildupCooldownTime = Math.getRandomFloat(0.25, 0.8)
 
 	View.buildupCooldownTimer:restart()
