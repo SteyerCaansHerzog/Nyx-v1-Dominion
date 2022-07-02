@@ -579,7 +579,6 @@ function Reaper:render()
 
 		if isConnectionLost then
 			drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "No connection to client")
-
 			drawPosition:offset(0, clientBoxDimensions.y + clientBoxBottomMargin)
 
 			break
@@ -587,7 +586,6 @@ function Reaper:render()
 
 		if isMatchOver then
 			drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "Match ended")
-
 			drawPosition:offset(0, clientBoxDimensions.y + clientBoxBottomMargin)
 
 			break
@@ -597,6 +595,7 @@ function Reaper:render()
 			if client.info.isWarmup then
 				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "Idling in warmup")
 			elseif isPlayerAlive then
+				--drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", string.format("[%i] %s", client.info.priority or -1, client.info.activity))
 				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", client.info.activity)
 			else
 				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "Dead")

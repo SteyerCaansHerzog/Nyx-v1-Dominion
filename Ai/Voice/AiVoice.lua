@@ -65,13 +65,13 @@ function AiVoice:__init()
     end)
 
     Callbacks.levelInit(function()
-    	Client.fireAfterRandom(10, 20, function()
+    	Client.fireAfterRandom(5, 25, function()
             if Entity.getGameRules():m_bWarmupPeriod() == 1 then
                 self.pack:speakWarmupGreeting()
             end
     	end)
 
-        Client.fireAfterRandom(22, 40, function()
+        Client.fireAfterRandom(30, 120, function()
             if Entity.getGameRules():m_bWarmupPeriod() == 1 then
                 self.pack:speakWarmupIdle()
             end
@@ -226,7 +226,7 @@ function AiVoice:__init()
                     return
                 end
 
-                if e.attacker:isTeammate() then
+                if e.attacker:isTeammate() and not e.victim:isClient() then
                     self.pack:speakClientKilledByTeammate(e)
 
                     return

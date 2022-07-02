@@ -125,7 +125,21 @@ end
 
 --- @param event PlayerHurtEvent
 --- @return void
-function AiVoicePackGenericBase:speakTeammateHurtByClient(event) end
+function AiVoicePackGenericBase:speakTeammateHurtByClient(event)
+	if event.dmg_health > 10 then
+		self:speak(self:getGroupDynamic("TeammateHurtByClient"), {
+			chance = 2,
+			interrupt = false,
+			lock = true,
+			ignoreLock = false,
+			minDelay = 1,
+			maxDelay = 1.5,
+			condition = function()
+				return event.victim:isAlive()
+			end
+		})
+	end
+end
 
 --- @param event PlayerHurtEvent
 --- @return void
@@ -227,7 +241,7 @@ function AiVoicePackGenericBase:speakHearNearbyEnemies()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0.33,
-		maxDelay = 1,
+		maxDelay = 2,
 		condition = function()
 			return not AiUtility.isRoundOver and not AiUtility.isLastAlive
 		end
@@ -244,7 +258,7 @@ function AiVoicePackGenericBase:speakNotifyTeamOfBombCarrier()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0.33,
-		maxDelay = 1
+		maxDelay = 3
 	})
 end
 
@@ -284,7 +298,7 @@ function AiVoicePackGenericBase:speakRoundStartPistolFirstHalf()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0.33,
-		maxDelay = 8
+		maxDelay = 13
 	})
 end
 
@@ -296,7 +310,7 @@ function AiVoicePackGenericBase:speakRoundStartPistolSecondHalf()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0.33,
-		maxDelay = 8
+		maxDelay = 13
 	})
 end
 
@@ -308,7 +322,7 @@ function AiVoicePackGenericBase:speakRoundStartWonPrevious()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0.33,
-		maxDelay = 8
+		maxDelay = 13
 	})
 end
 
@@ -320,7 +334,7 @@ function AiVoicePackGenericBase:speakRoundStartLostPrevious()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0.33,
-		maxDelay = 8
+		maxDelay = 13
 	})
 end
 
@@ -369,7 +383,7 @@ function AiVoicePackGenericBase:speakRoundEndWon()
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 1,
+		minDelay = 0.5,
 		maxDelay = 6
 	})
 end
@@ -381,7 +395,7 @@ function AiVoicePackGenericBase:speakRoundEndLost()
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 1,
+		minDelay = 0.5,
 		maxDelay = 6
 	})
 end
@@ -393,8 +407,8 @@ function AiVoicePackGenericBase:speakRoundEndHalftime()
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 1,
-		maxDelay = 9
+		minDelay = 0.5,
+		maxDelay = 8
 	})
 end
 --}}}
@@ -429,7 +443,7 @@ end
 --- @return void
 function AiVoicePackGenericBase:speakGameEndWon()
 	self:speak(self:getGroupDynamic("GameEndWon"), {
-		chance = 2,
+		chance = 1,
 		interrupt = true,
 		lock = true,
 		ignoreLock = false,
@@ -650,7 +664,19 @@ function AiVoicePackGenericBase:speakAgreement()
 end
 
 --- @return void
-function AiVoicePackGenericBase:speakDisagreement() end
+function AiVoicePackGenericBase:speakDisagreement()
+	self:speak(self:getGroupDynamic("Disagreement"), {
+		chance = 6,
+		interrupt = false,
+		lock = true,
+		ignoreLock = false,
+		minDelay = 2.5,
+		maxDelay = 4,
+		condition = function()
+			return LocalPlayer:isAlive()
+		end
+	})
+end
 
 --- @return void
 function AiVoicePackGenericBase:speakNoProblem()

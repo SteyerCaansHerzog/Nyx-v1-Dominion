@@ -144,17 +144,18 @@ function AiStateDefend:__init()
 
         local nearestBombsite = Nodegraph.getClosestBombsite(AiUtility.bombCarrier:getOrigin())
 
-        if AiUtility.bombCarrier:getOrigin():getDistance(nearestBombsite.origin) > 1400 then
+        if AiUtility.bombCarrier:getOrigin():getDistance(nearestBombsite.origin) > 1500 then
             return
         end
 
-        local distance = LocalPlayer:isTerrorist() and 950 or 1500
+        local distance = 1000
 
         if LocalPlayer:getOrigin():getDistance(nearestBombsite.origin) < distance then
             return
         end
 
         self.getToSiteTimer:start()
+        self:invoke(nearestBombsite.bombsite)
     end)
 end
 
@@ -182,6 +183,16 @@ function AiStateDefend:assessDemolition()
     end
 
     if LocalPlayer:isCounterTerrorist() then
+        -- The bomb is planted.
+        if AiUtility.isBombPlanted() then
+            -- Defend our teammate who is defusing.
+            if AiUtility.isBombBeingDefusedByTeammate then
+                return AiPriority.DEFEND_DEFUSER
+            end
+
+            return AiPriority.IGNORE
+        end
+
         -- Hold specific angle.
         if not bomb and self.isSpecificNodeSet and self:isEnemyHoldable() then
             local isAbleToDefend = true
@@ -203,13 +214,6 @@ function AiStateDefend:assessDemolition()
         -- This will practically force the AI to go to the site.
         if self.getToSiteTimer:isStarted() and not self.getToSiteTimer:isElapsed(12) then
             return AiPriority.DEFEND_EXPEDITE
-        end
-
-        if bomb then
-            -- Defend our teammate who is defusing.
-            if AiUtility.isBombBeingDefusedByTeammate then
-                return AiPriority.DEFEND_DEFUSER
-            end
         end
 
         -- We can hold an approaching enemy.
@@ -248,7 +252,7 @@ function AiStateDefend:assessDemolition()
                 return AiPriority.DEFEND_PLANTER
             end
 
-            if distance < 750 then
+            if distance < 900 then
                 return AiPriority.DEFEND_PASSIVE
             end
         end
@@ -394,6 +398,8 @@ function AiStateDefend:think(cmd)
         return
     end
 
+    Pathfinder.canRandomlyJump()
+
     if self.priority ~= self.lastPriority then
         self.lastPriority = self.priority
 
@@ -412,6 +418,23 @@ function AiStateDefend:think(cmd)
 
     local distance = AiUtility.clientNodeOrigin:getDistance(self.node.origin)
 
+    -- Walk.
+    if distance < 500 then
+        local isAbleToWalk = true
+
+        if self.priority == AiPriority.DEFEND_DEFUSER or self.priority == AiPriority.DEFEND_PLANTER then
+            isAbleToWalk = false
+        end
+
+        if not AiUtility.closestEnemy or LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) > 1650 then
+            isAbleToWalk = false
+        end
+
+        if isAbleToWalk then
+            Pathfinder.walk()
+        end
+    end
+
     if distance < 300 then
         self.isOnDefendSpot = true
 
@@ -429,10 +452,6 @@ function AiStateDefend:think(cmd)
         -- Look at the angle we intend to hold.
         if not nodeVisibleTrace.isIntersectingGeometry then
             View.lookAtLocation(self.node.lookAtOrigin, 5.5, View.noise.moving, "Defend look at angle")
-
-            if self.priority ~= AiPriority.DEFEND_DEFUSER and self.priority ~= AiPriority.DEFEND_PLANTER then
-                Pathfinder.walk()
-            end
         end
 
         -- Equip the correct gear.
@@ -453,10 +472,16 @@ function AiStateDefend:think(cmd)
     if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
         self.activity = "Defending hostages"
     else
-        if distance < 750 then
-            self.activity = string.format("Defending %s", self.node.bombsite)
+        if self.priority == AiPriority.DEFEND_DEFUSER then
+            self.activity = "Defending defuser"
+        elseif self.priority == AiPriority.DEFEND_PLANTER then
+            self.activity = "Defending planter"
         else
-            self.activity = string.format("Going %s", self.node.bombsite)
+            if distance < 750 then
+                self.activity = string.format("Defending %s", self.node.bombsite)
+            else
+                self.activity = string.format("Going %s", self.node.bombsite)
+            end
         end
     end
 

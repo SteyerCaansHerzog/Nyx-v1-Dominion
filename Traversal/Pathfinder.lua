@@ -135,6 +135,9 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field pathDebug PathfinderPathDebug
 --- @field pathfindInterval number
 --- @field pathfindIntervalTimer Timer
+--- @field isAllowedToRandomlyJump boolean
+--- @field randomJumpIntervalTime number
+--- @field randomJumpIntervalTimer Timer
 local Pathfinder = {}
 
 --- @return void
@@ -164,6 +167,8 @@ function Pathfinder.initFields()
 	Pathfinder.goalConnectionCollisions = {}
 	Pathfinder.goalGapCollisions = {}
 	Pathfinder.movementRecorderTimer = Timer:new()
+	Pathfinder.randomJumpIntervalTime = Math.getRandomFloat(0, 160)
+	Pathfinder.randomJumpIntervalTimer = Timer:new():start()
 end
 
 --- @return void
@@ -373,8 +378,14 @@ function Pathfinder.syncClientState()
 end
 
 --- @return void
+function Pathfinder.canRandomlyJump()
+	Pathfinder.isAllowedToRandomlyJump = true
+end
+
+--- @return void
 function Pathfinder.blockJumping()
 	Pathfinder.isAllowedToJump = false
+	Pathfinder.isAllowedToRandomlyJump = false
 end
 
 --- @return void
@@ -385,21 +396,25 @@ end
 --- @return void
 function Pathfinder.standStill()
 	Pathfinder.isAllowedToMove = false
+	Pathfinder.isAllowedToRandomlyJump = false
 end
 
 --- @return void
 function Pathfinder.walk()
 	Pathfinder.isWalking = true
+	Pathfinder.isAllowedToRandomlyJump = false
 end
 
 --- @return void
 function Pathfinder.duck()
 	Pathfinder.isDucking = true
+	Pathfinder.isAllowedToRandomlyJump = false
 end
 
 --- @return void
 function Pathfinder.jump()
 	Pathfinder.isJumping = true
+	Pathfinder.isAllowedToRandomlyJump = false
 end
 
 --- @return void
@@ -1158,7 +1173,11 @@ function Pathfinder.traverseActivePath(cmd)
 	local angleToNode = clientOrigin:getAngle(currentNode.pathOrigin)
 	local distance3d = clientOrigin:getDistance(currentNode.pathOrigin)
 	local distance2d = clientOrigin:getDistance2(currentNode.pathOrigin)
+	local distanceToGoal = clientOrigin:getDistance(Pathfinder.path.endGoal.origin)
 	local isGoal = currentNode:is(Pathfinder.path.endGoal)
+	local isAllowedToRandomlyJump = Pathfinder.isAllowedToRandomlyJump
+
+	Pathfinder.isAllowedToRandomlyJump = false
 
 	if currentNode.isDuck then
 		if previousNode and previousNode.isDuck then
@@ -1418,6 +1437,17 @@ function Pathfinder.traverseActivePath(cmd)
 		Pathfinder.avoidTeammates(cmd)
 	end
 
+	-- Randomly jump, because humans do that sometimes.
+	if Pathfinder.randomJumpIntervalTimer:isElapsedThenRestart(Pathfinder.randomJumpIntervalTime)
+		and isAllowedToRandomlyJump
+		and not AiUtility.isClientThreatenedMinor
+		and distanceToGoal > 1000
+	then
+		Pathfinder.randomJumpIntervalTime = Math.getRandomFloat(1, 90)
+
+		Pathfinder.jump()
+	end
+
 	-- Handle any changes to movement options as a result of the path.
 	Pathfinder.handleMovementOptions(cmd)
 
@@ -1611,6 +1641,7 @@ function Pathfinder.avoidTeammates(cmd)
 	end
 
 	Pathfinder.isAvoidingTeammate = true
+	Pathfinder.isAllowedToRandomlyJump = false
 
 	Pathfinder.createMove(cmd, eyeOrigin:getAngle(directionOffset))
 end
@@ -1618,11 +1649,6 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function Pathfinder.avoidGeometry(cmd)
-	-- Jump off of ladders.
-	if LocalPlayer:isMoveType(Player.moveType.LADDER) then
-		--cmd.in_jump = true
-	end
-
 	if not Pathfinder.lastMovementAngle then
 		return false
 	end
@@ -1660,6 +1686,8 @@ function Pathfinder.avoidGeometry(cmd)
 
 	if avoidAngle and clipCount ~= 2 then
 		Pathfinder.createMove(cmd, avoidAngle)
+
+		Pathfinder.isAllowedToRandomlyJump = false
 
 		return true
 	end

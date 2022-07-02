@@ -202,6 +202,8 @@ function AiStateEvacuate:think(cmd)
     local trace = Trace.getLineToPosition(LocalPlayer:getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateEvacuate.think<FindSpotVisible>")
     local distance = LocalPlayer:getOrigin():getDistance(self.node.origin)
 
+    Pathfinder.canRandomlyJump()
+
     if distance < 32 then
         Pathfinder.duck()
     end

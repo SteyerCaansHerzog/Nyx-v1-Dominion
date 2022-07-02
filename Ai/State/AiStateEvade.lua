@@ -69,12 +69,6 @@ function AiStateEvade:assess()
         return AiPriority.IGNORE
     end
 
-    if not AiUtility.plantedBomb and not LocalPlayer.hasBomb() and not self.hurtTimer:isElapsed(7.5) and AiUtility.timeData.roundtime_remaining > 40 then
-        self.isLookingAtPathfindingDirection = true
-
-        return AiPriority.EVADE_PASSIVE
-    end
-
     -- We can be peeked by an enemy.
     if not AiUtility.isClientThreatenedMinor then
         return AiPriority.IGNORE
@@ -110,16 +104,18 @@ function AiStateEvade:assess()
     end
 
     local eyeOrigin = Client.getEyeOrigin()
-    local isCheckingSmokes = true
 
-    if AiUtility.plantedBomb and AiUtility.bombDetonationTime < 15 then
-        isCheckingSmokes = false
+    -- Retreat due to injury.
+    if not AiUtility.plantedBomb and not LocalPlayer.hasBomb() and not self.hurtTimer:isElapsed(7.5) and AiUtility.timeData.roundtime_remaining > 40 then
+        self.isLookingAtPathfindingDirection = true
+
+        return AiPriority.EVADE_PASSIVE
     end
 
     -- Avoid grenades.
     for _, grenade in Entity.find({"CBaseCSGrenadeProjectile", "CMolotovProjectile"}) do
         if eyeOrigin:getDistance(grenade:m_vecOrigin()) < 128 then
-            return AiPriority.EVADE_ACTIVE
+            return AiPriority.EVADE_PASSIVE
         end
     end
 

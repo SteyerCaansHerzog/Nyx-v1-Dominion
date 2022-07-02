@@ -83,6 +83,8 @@ end
 --- @return void
 function AiStatePushDemolition:think(cmd)
     self.activity = string.format("Pushing %s", self.node.bombsite)
+
+    Pathfinder.canRandomlyJump()
 end
 
 --- @param bombsite string

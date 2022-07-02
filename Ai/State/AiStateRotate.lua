@@ -74,6 +74,8 @@ function AiStateRotate:think(cmd)
 
     self.activity = string.format("Rotating to %s", self.site:upper())
 
+    Pathfinder.canRandomlyJump()
+
     if LocalPlayer:getOrigin():isInBounds(self.bounds) then
         self:reset()
     end

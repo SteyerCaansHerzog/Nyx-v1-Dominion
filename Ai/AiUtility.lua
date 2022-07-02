@@ -342,6 +342,8 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.setupCommand(function()
+        AiUtility.updateAllPlayers()
+
         if not AiUtility.isPerformingCalculations then
             return
         end
@@ -350,7 +352,6 @@ function AiUtility:initEvents()
         AiUtility.updateMisc()
         AiUtility.updateThreats()
         AiUtility.updateEnemies()
-        AiUtility.updateAllPlayers()
     end)
 end
 
@@ -406,18 +407,22 @@ function AiUtility.updateAllPlayers()
     local clientOrigin = LocalPlayer:getOrigin()
     local closestTeammate
     local closestTeammateDistance = math.huge
-
     local playerResource = entity.get_player_resource()
 
     for eid = 1, globals.maxplayers() do repeat
         local player = Player:new(eid)
         local isEnemy = player:isEnemy()
         local isAlive = player:isAlive()
+        local isValidOrigin = not player:getOrigin():isZero()
 
         if isAlive then
-            if entity.get_prop(playerResource, "m_iPlayerC4") == eid then
+            -- Set bomb carrier.
+            if entity.get_prop(playerResource, "m_iPlayerC4") == eid and isValidOrigin then
                 AiUtility.bombCarrier = player
             end
+
+            -- Disable AA correction because Gamesense has severe brain damage.
+            plist.set(eid, "Correction active", false)
 
             if isEnemy then
                 AiUtility.enemiesAlive = AiUtility.enemiesAlive + 1
@@ -687,6 +692,15 @@ end
 --- @return boolean
 function AiUtility.isBombPlanted()
     return AiUtility.plantedBomb ~= nil
+end
+
+--- @return boolean
+function AiUtility.isBombDefused()
+    if not AiUtility.isBombPlanted() then
+        return false
+    end
+
+    return AiUtility.plantedBomb:m_bBombDefused() == 1
 end
 
 return Nyx.class("AiUtility", AiUtility)

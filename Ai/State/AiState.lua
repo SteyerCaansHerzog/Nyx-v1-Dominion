@@ -16,6 +16,7 @@ local AiStateList = {
 	flashbangDynamic = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFlashbangDynamic",
 	follow = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFollow",
 	freezetime = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateFreezetime",
+	goToRandomLocation = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGoToRandomLocation",
 	graffiti = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateGraffiti",
 	heGrenade = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateHeGrenade",
 	idle = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateIdle",

@@ -15,6 +15,12 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 --}}}
 
+--{{{ Definitions
+--- @class AiProcessClientGsConfig
+--- @field normal string
+--- @field reaper string
+--}}}
+
 --{{{ AiProcessClient
 --- @class AiProcessClient : AiProcessBase
 --- @field isEnabled boolean
@@ -41,11 +47,6 @@ function AiProcessClient:__init()
 	end
 
 	Callbacks.frameGlobal(function()
-		-- Disable AA correction because Gamesense has severe brain damage.
-		for _, enemy in pairs(AiUtility.enemies) do
-			plist.set(enemy.eid, "Correction active", false)
-		end
-
 		if not self.isEnabled then
 			return
 		end
@@ -58,13 +59,15 @@ end
 --- @return void
 function AiProcessClient:setMisc()
 	if self.ai.reaper.isEnabled then
+		config.load(Config.clientConfigs.reaper)
+
 		return
 	end
 
 	-- Prevent loading configuration on master accounts.
 	if not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
 		Client.fireAfter(1, function()
-			config.load("Nyx-v1-Dominion")
+			config.load(Config.clientConfigs.normal)
 		end)
 
 		local materials = {

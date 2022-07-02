@@ -430,6 +430,10 @@ function AiStateEngage:assess()
         return AiPriority.ENGAGE_ACTIVE
     end
 
+    if AiUtility.isBombBeingPlantedByEnemy then
+        return AiPriority.ENGAGE_ACTIVE
+    end
+
     if AiUtility.isHostageCarriedByEnemy then
         return AiPriority.ENGAGE_ACTIVE
     end
@@ -1336,7 +1340,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
     end
 
     if self.isDefending then
-        self.activity = string.format("Defending against enemy on %s", self.ai.states.defend.bombsite)
+        self.activity = string.format("Holding enemy on %s", self.ai.states.defend.bombsite)
 
         return
     end

@@ -254,7 +254,9 @@ function AiRoutineBuyGear:processBuyQueue()
 			break
 		end
 
-		item.buy()
+		Client.fireAfter(item.after, function()
+			item.buy()
+		end)
 
 		self.buyQueue[id] = nil
 	until true end

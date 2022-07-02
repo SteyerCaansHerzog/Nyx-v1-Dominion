@@ -62,9 +62,7 @@ function AiStateCheck:reset()
 end
 
 --- @return void
-function AiStateCheck:deactivate()
-    self:reset()
-end
+function AiStateCheck:deactivate() end
 
 --- @param spawn string
 --- @return void
@@ -80,11 +78,13 @@ end
 function AiStateCheck:think(cmd)
     local distance = LocalPlayer:getOrigin():getDistance(self.node.origin)
 
-    if distance < 350 then
+    if distance < 400 then
         self.activity = string.format("Checking %s", self.spawn)
     else
         self.activity = string.format("Going to check %s", self.spawn)
     end
+
+    Pathfinder.canRandomlyJump()
 
     if distance < self.abortDistance then
         self.isChecking = false

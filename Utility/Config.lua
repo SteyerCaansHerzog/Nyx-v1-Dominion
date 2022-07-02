@@ -6,6 +6,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --{{{ Config
 --- @class Config : Class
 --- @field administrators string[]
+--- @field clientConfigs AiProcessClientGsConfig
 --- @field clientFocusVolume number
 --- @field defaultSkillLevel number
 --- @field isClearingSteamFriends boolean
@@ -28,6 +29,10 @@ local Config = {
         "76561198866118626", -- Michael
         "76561198283352893", -- Comm banned
         "76561199241945029" -- Digital Spring
+    },
+    clientConfigs = {
+        normal = "Nyx-v1-Dominion", -- GS config to load when in normal mode.
+        reaper = "Nyx-v1-Dominion-Reaper", -- GS config to load when in Reaper mode.
     },
     clientFocusVolume = 0.15, -- The volume of a Reaper client that is focused.
     defaultSkillLevel = 4, -- The skill level to set the AI to by default.

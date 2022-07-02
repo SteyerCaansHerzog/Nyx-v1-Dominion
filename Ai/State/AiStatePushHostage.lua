@@ -86,11 +86,9 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStatePushHostage:think(cmd)
-    if not self.node then
-        return
-    end
-
     self.activity = "Pushing the map"
+
+    Pathfinder.canRandomlyJump()
 end
 
 --- @return Node

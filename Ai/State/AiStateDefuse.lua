@@ -75,7 +75,7 @@ function AiStateDefuse:assess()
     end
 
     -- Bomb's already defused.
-    if bomb:m_bBombDefused() == 1 then
+    if AiUtility.isBombDefused() then
         return AiPriority.IGNORE
     end
 
@@ -95,7 +95,13 @@ function AiStateDefuse:assess()
     local isCovered = false
     local bombOrigin = AiUtility.plantedBomb:m_vecOrigin()
 
-    if not AiUtility.isClientThreatenedMajor and AiUtility.closestEnemy and AiUtility.closestEnemy:getOrigin():getDistance(clientOrigin) > 1500 then
+    -- Safe to defuse.
+    if not AiUtility.closestEnemy then
+        return AiPriority.DEFUSE_COVERED
+    end
+
+    -- Enemy is far away and isn't a threat to us.
+    if not AiUtility.isClientThreatenedMajor and AiUtility.closestEnemy and AiUtility.closestEnemy:getOrigin():getDistance(bombOrigin) > 1500 then
         return AiPriority.DEFUSE_COVERED
     end
 

@@ -86,6 +86,8 @@ end
 function AiStateFollow:think(cmd)
     self.activity = "Following teammate"
 
+    Pathfinder.canRandomlyJump()
+
     local followingPlayerOrigin = self.followingPlayer:getOrigin()
     local distanceToLastOrigin = followingPlayerOrigin:getDistance(self.lastFollowingPlayOrigin)
     local distanceToPlayer = followingPlayerOrigin:getDistance(LocalPlayer:getOrigin())
