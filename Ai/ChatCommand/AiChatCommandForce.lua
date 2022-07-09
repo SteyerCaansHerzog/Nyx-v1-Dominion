@@ -24,9 +24,7 @@ function AiChatCommandForce:invoke(ai, sender, args)
         return
     end
 
-    Client.fireAfterRandom(0, 1, function()
-        ai.routines.buyGear:force()
-    end)
+    ai.routines.buyGear:force()
 end
 
 return Nyx.class("AiChatCommandForce", AiChatCommandForce, AiChatCommandBase)

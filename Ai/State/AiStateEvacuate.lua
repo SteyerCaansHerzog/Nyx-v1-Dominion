@@ -25,6 +25,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field isForcedToSave boolean
 --- @field node NodeSpotHide
 --- @field isAtDestination boolean
+--- @field isAutomaticSavingAllowed boolean
 local AiStateEvacuate = {
     name = "Evacuate",
     requiredNodes = {
@@ -42,6 +43,7 @@ end
 --- @return void
 function AiStateEvacuate:__init()
     self.isForcedToSave = false
+    self.isAutomaticSavingAllowed = true
 
     Callbacks.roundPrestart(function()
     	self:reset()
@@ -95,6 +97,11 @@ end
 
 --- @return boolean
 function AiStateEvacuate:isRoundWinProbabilityLow()
+    -- Allow the user to disable automatic saving.
+    if not self.isAutomaticSavingAllowed then
+        return false
+    end
+
     -- Prevent sitting in a corner and being murdered.
     if self.isAtDestination and AiUtility.isClientThreatenedMinor then
         return false

@@ -1,4 +1,4 @@
---- Copyright, Steyer Caans Herzog <kessie@nyx.to>
+--- Copyright ©2021-2022, Steyer Caans Herzog <kessie@nyx.to>
 --- All rights reserved.
 ---
 --- Dependencies:
@@ -10,7 +10,7 @@
 --{{{ Modules
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 
-Logger.credits("2.0.0-beta", "26/06/2022")
+Logger.credits("2.2.0-beta", "04/07/2022")
 
 require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 

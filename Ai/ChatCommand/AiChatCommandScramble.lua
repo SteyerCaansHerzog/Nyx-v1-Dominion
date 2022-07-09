@@ -24,7 +24,7 @@ function AiChatCommandScramble:invoke(ai, sender, args)
     local site = Math.getChance(2) and "a" or "b"
 
     Client.fireAfterRandom(1, 2, function()
-        ai.states.defend:activate(ai, site, false, false)
+        ai.states.defend:invoke(site)
     end)
 end
 

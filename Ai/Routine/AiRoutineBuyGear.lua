@@ -127,18 +127,20 @@ function AiRoutineBuyGear:__init()
 			return
 		end
 
-		self.buyItemList = {}
-		self.isQueued = false
-		self.isProcessingQueue = false
-		self.balance = LocalPlayer:m_iAccount()
+		Client.onNextTick(function()
+			self.buyItemList = {}
+			self.isQueued = false
+			self.isProcessingQueue = false
+			self.balance = LocalPlayer:m_iAccount()
 
-		local freezetime = cvar.mp_freezetime:get_int()
-		local minDelay = freezetime * 0.4
-		local maxDelay = freezetime * 0.9
+			local freezetime = cvar.mp_freezetime:get_int()
+			local minDelay = freezetime * 0.4
+			local maxDelay = freezetime * 0.9
 
-		Client.fireAfterRandom(minDelay, maxDelay, function()
-			self:buyRoundStart()
-			self:createBuyQueue()
+			Client.fireAfterRandom(minDelay, maxDelay, function()
+				self:buyRoundStart()
+				self:createBuyQueue()
+			end)
 		end)
 	end)
 
@@ -293,6 +295,8 @@ function AiRoutineBuyGear:activateHighestChanceFrom(gearSets)
 
 		return
 	until true end
+
+	Logger.console(1, "Tried to purchase from best set, except there was no best set to buy.")
 end
 
 --- @param gearSets GearSet[]
@@ -325,6 +329,12 @@ function AiRoutineBuyGear:activateAnyPassingFrom(gearSets)
 
 	local randomSet = not Table.isEmpty(passingSets) and Table.getRandom(passingSets) or bestOneInOneSet
 
+	if not randomSet then
+		Logger.console(1, "Tried to purchase from any set, except there was no set to buy.")
+
+		return
+	end
+
 	randomSet.queue()
 end
 
@@ -339,6 +349,12 @@ function AiRoutineBuyGear:buyRoundStart()
 		self.isSaving = false
 
 		return
+	end
+
+	if self.isForcing then
+		self.isForcing = false
+
+		self:buyCounterTerroristForceRound()
 	end
 
 	-- Buy from custom items list.
@@ -397,6 +413,15 @@ function AiRoutineBuyGear:buyEcoRushRound()
 		self:buyTerroristEcoRushRound()
 	elseif LocalPlayer:isCounterTerrorist() then
 		self:buyCounterTerroristEcoRushRound()
+	end
+end
+
+--- @return void
+function AiRoutineBuyGear:buyForceRound()
+	if LocalPlayer:isTerrorist() then
+		self:buyTerroristForceRound()
+	elseif LocalPlayer:isCounterTerrorist() then
+		self:buyCounterTerroristForceRound()
 	end
 end
 
@@ -548,14 +573,6 @@ function AiRoutineBuyGear:buyTerroristFullBuyRound()
 		return
 	end
 
-	if self.balance < BuyCriteria.TERRORIST_FULL_BUY then
-		if self.isForcing then
-			self:buyTerroristForceRound()
-		end
-
-		return
-	end
-
 	self:activateAnyPassingFrom({
 		{
 			balance = 6000,
@@ -661,7 +678,7 @@ end
 
 --- @return void
 function AiRoutineBuyGear:buyCounterTerroristPostPistolRound()
-	if self.balance > BuyCriteria.COUNTER_TERRORIST_FULL_BUY then
+	if self.balance >= BuyCriteria.COUNTER_TERRORIST_FULL_BUY then
 		self:buyCounterTerroristFullBuyRound()
 
 		return
@@ -755,14 +772,6 @@ end
 --- @return void
 function AiRoutineBuyGear:buyCounterTerroristFullBuyRound()
 	if self:isAlreadyGearedUpAndBuyMisc() then
-		return
-	end
-
-	if self.balance < BuyCriteria.COUNTER_TERRORIST_FULL_BUY then
-		if self.isForcing then
-			self:buyCounterTerroristForceRound()
-		end
-
 		return
 	end
 

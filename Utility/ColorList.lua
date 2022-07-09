@@ -11,6 +11,7 @@ return {
     INFO = Color:rgba(71, 212, 255),
     WARNING = Color:rgba(255, 203, 71),
     ERROR = Color:rgba(255, 89, 89),
+    INTERNAL = Color:rgba(150, 150, 255),
 
     -- Background.
     BACKGROUND_1 = Color:rgba(50, 50, 50, 100),

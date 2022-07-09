@@ -79,6 +79,8 @@ end
 
 --- @return void
 function Ai:initFields()
+	AiUtility.ai = self
+
 	self.isAntiAfkEnabled = false
 	self.lockStateTimer = Timer:new():startThenElapse()
 	self.ditherHistories = {}
@@ -235,17 +237,25 @@ function Ai:initEvents()
 
 	Client.onNextTick(function()
 		Callbacks.setupCommand(function(cmd)
+			if self.debugPre then
+				self:debugPre(cmd)
+			end
+
 			self:think(cmd)
+
+			if self.debugPost then
+				self:debugPost(cmd)
+			end
 		end)
 	end)
 
 	Callbacks.roundStart(function()
-		if not self.reaper.isEnabled then
-			Client.openConsole()
-		end
-
 		if not MenuGroup.master:get() or not MenuGroup.enableAi:get() then
 			return
+		end
+
+		if not self.reaper.isEnabled then
+			Client.openConsole()
 		end
 
 		self.lastPriority = nil
@@ -555,6 +565,14 @@ function Ai:think(cmd)
 	self:preventDithering()
 	self:setCurrentState(cmd)
 end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function Ai:debugPre(cmd) end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function Ai:debugPost(cmd) end
 
 --- @return void
 function Ai:preventDithering()

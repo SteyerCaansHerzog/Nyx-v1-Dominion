@@ -173,15 +173,6 @@ end
 
 --- @return void
 function Pathfinder.initEvents()
-	Callbacks.setupCommand(function()
-		if not Pathfinder.isEnabled then
-			return
-		end
-
-		Pathfinder.handleLastRequest()
-		Pathfinder.handleBlockRotate()
-	end)
-
 	Callbacks.setupCommand(function(cmd)
 		if not Pathfinder.isEnabled then
 			return
@@ -189,7 +180,21 @@ function Pathfinder.initEvents()
 
 		Pathfinder.traverseActivePath(cmd)
 		Pathfinder.handleRecorders()
+
+		-- Allow the jump interval timer to elapse and restart itself.
+		-- Otherwise, the AI will jump at the first opportunity it gets, which is usually right as the round begins.
+		Pathfinder.randomJumpIntervalTimer:isElapsedThenRestart(Pathfinder.randomJumpIntervalTime)
 	end, true)
+
+	Callbacks.setupCommand(function()
+		if not Pathfinder.isEnabled then
+			return
+		end
+
+		Pathfinder.handleLastRequest()
+		Pathfinder.handleBlockRotate()
+		Pathfinder.resetMoveParameters()
+	end, false)
 
 	Callbacks.frame(function()
 		Pathfinder.render()
@@ -846,6 +851,7 @@ function Pathfinder.createPath()
 	end
 
 	Pathfinder.clearLastRequest()
+	Pathfinder.incrementPath("remove start")
 
 	if Pathfinder.isLoggingEnabled then
 		Logger.console(-1, Localization.pathfinderNewTask, pathfinderOptions.task)
@@ -865,6 +871,10 @@ function Pathfinder.failPath(options, goal, error, code)
 	}
 
 	local time = Time.getDateTime()
+
+	if not Pathfinder.pathDebug then
+		Pathfinder.pathDebug = {}
+	end
 
 	Pathfinder.pathDebug.username = LocalPlayer:getName()
 	Pathfinder.pathDebug.task = Pathfinder.lastRequest.options.task
@@ -1065,7 +1075,8 @@ function Pathfinder.correctGoalZ(node)
 		node.origin,
 		Vector3.align.DOWN,
 		Vector3:newBounds(Vector3.align.CENTER, 15, 15, 18),
-		AiUtility.traceOptionsPathfinding
+		AiUtility.traceOptionsPathfinding,
+		"Pathfinder.correctGoalZ<FindFloor>"
 	)
 
 	node.origin:setFromVector(trace.endPosition)
@@ -1079,7 +1090,8 @@ function Pathfinder.correctGoalOrigin(node)
 	local trace = Trace.getHullInPlace(
 		node.origin,
 		Vector3:newBounds(Vector3.align.CENTER, 15, 15, 18),
-		AiUtility.traceOptionsPathfinding
+		AiUtility.traceOptionsPathfinding,
+		"Pathfinder.correctGoalOrigin<FindCorrectedOrigin>"
 	)
 
 	node.origin:setFromVector(trace.endPosition)
@@ -1101,8 +1113,6 @@ function Pathfinder.traverseActivePath(cmd)
 	Pathfinder.movementRecorderAngle = nil
 
 	if not Pathfinder.isAllowedToMove then
-		Pathfinder.isAllowedToMove = true
-
 		return
 	end
 
@@ -1118,8 +1128,6 @@ function Pathfinder.traverseActivePath(cmd)
 	if Pathfinder.directMovementAngle then
 		Pathfinder.ejectFromLadder(cmd)
 		Pathfinder.createMove(cmd, Pathfinder.directMovementAngle)
-
-		Pathfinder.directMovementAngle = nil
 
 		return
 	end
@@ -1171,7 +1179,6 @@ function Pathfinder.traverseActivePath(cmd)
 	local isClientOnGround = LocalPlayer:getFlag(Player.flags.FL_ONGROUND)
 	local clientSpeed = LocalPlayer:m_vecVelocity():getMagnitude()
 	local angleToNode = clientOrigin:getAngle(currentNode.pathOrigin)
-	local distance3d = clientOrigin:getDistance(currentNode.pathOrigin)
 	local distance2d = clientOrigin:getDistance2(currentNode.pathOrigin)
 	local distanceToGoal = clientOrigin:getDistance(Pathfinder.path.endGoal.origin)
 	local isGoal = currentNode:is(Pathfinder.path.endGoal)
@@ -1215,10 +1222,10 @@ function Pathfinder.traverseActivePath(cmd)
 
 					if Pathfinder.moveObstructedTimer:isElapsed(0.3) and clientSpeed < 50 then
 						Pathfinder.jump()
-						Pathfinder.incrementPath()
+						Pathfinder.incrementPath("clamber")
 					end
 				else
-					Pathfinder.incrementPath()
+					Pathfinder.incrementPath("clamber too low)")
 				end
 			end,
 			[Node.traverseClimb.__classid] = function()
@@ -1238,10 +1245,10 @@ function Pathfinder.traverseActivePath(cmd)
 					if Pathfinder.moveObstructedTimer:isElapsed(0.05) and clientSpeed < 75 then
 						Pathfinder.jump()
 
-						Pathfinder.incrementPath()
+						Pathfinder.incrementPath("climb")
 					end
 				else
-					Pathfinder.incrementPath()
+					Pathfinder.incrementPath("climb too low")
 				end
 			end,
 			[Node.traverseVault.__classid] = function()
@@ -1254,7 +1261,7 @@ function Pathfinder.traverseActivePath(cmd)
 				end
 
 				Pathfinder.jump()
-				Pathfinder.incrementPath()
+				Pathfinder.incrementPath("vault")
 			end,
 			[Node.traverseGap.__classid] = function()
 				if distance2d < 40 then
@@ -1274,14 +1281,11 @@ function Pathfinder.traverseActivePath(cmd)
 				isAllowedToCreateMove = false
 
 				Pathfinder.jump()
-				Pathfinder.incrementPath()
-
-				--- @type NodeTypeTraverse
-				local previousNode = Pathfinder.path[Pathfinder.path.idx - 1]
+				Pathfinder.incrementPath("gap")
 
 				-- Skip a double-gap node.
 				if previousNode and previousNode:is(Node.traverseGap) then
-					Pathfinder.incrementPath()
+					Pathfinder.incrementPath("gap next")
 				end
 			end,
 			[Node.traverseDrop.__classid] = function()
@@ -1289,7 +1293,7 @@ function Pathfinder.traverseActivePath(cmd)
 					return
 				end
 
-				Pathfinder.incrementPath()
+				Pathfinder.incrementPath("drop")
 			end
 		}
 
@@ -1299,14 +1303,14 @@ function Pathfinder.traverseActivePath(cmd)
 	elseif currentNode:is(Node.traverseBreakObstacle) then
 		Pathfinder.detectObstacles(currentNode)
 
-		if not Pathfinder.isObstructedByObstacle and distance2d < 20 then
-			Pathfinder.incrementPath()
+		if not Pathfinder.isObstructedByObstacle and distance2d < 35 then
+			Pathfinder.incrementPath("obstacle broken")
 		end
 	elseif currentNode:is(Node.traverseDoor) then
 		Pathfinder.detectDoors(currentNode)
 
-		if not Pathfinder.isObstructedByDoor and distance2d < 20 then
-			Pathfinder.incrementPath()
+		if not Pathfinder.isObstructedByDoor and distance2d < 30 then
+			Pathfinder.incrementPath("door open")
 		end
 	elseif currentNode:is(Node.traverseLadderBottom) then
 		if distance2d < 55 then
@@ -1338,8 +1342,8 @@ function Pathfinder.traverseActivePath(cmd)
 		local zDelta = clientOrigin.z - ladderTop.origin.z
 
 		if zDelta > 0 then
-			Pathfinder.incrementPath()
-			Pathfinder.incrementPath()
+			Pathfinder.incrementPath("ascend ladder")
+			Pathfinder.incrementPath("ascend ladder")
 		end
 	elseif currentNode:is(Node.traverseLadderTop) then
 		if distance2d < 20 then
@@ -1367,8 +1371,8 @@ function Pathfinder.traverseActivePath(cmd)
 				if zDelta < 150 then
 					cmd.in_jump = true
 
-					Pathfinder.incrementPath()
-					Pathfinder.incrementPath()
+					Pathfinder.incrementPath("descend ladder")
+					Pathfinder.incrementPath("descend ladder")
 				end
 			end
 		end
@@ -1411,8 +1415,8 @@ function Pathfinder.traverseActivePath(cmd)
 			else
 				Pathfinder.isReadyToReplayMovementRecording = false
 
-				Pathfinder.incrementPath()
-				Pathfinder.incrementPath()
+				Pathfinder.incrementPath("finish recorder")
+				Pathfinder.incrementPath("finish recorder")
 			end
 
 			return
@@ -1427,7 +1431,7 @@ function Pathfinder.traverseActivePath(cmd)
 		end
 
 		if distance2d < clearDistance then
-			Pathfinder.incrementPath()
+			Pathfinder.incrementPath("pass node")
 		end
 	end
 
@@ -1481,8 +1485,25 @@ function Pathfinder.traverseActivePath(cmd)
 end
 
 --- @return void
-function Pathfinder.incrementPath()
+function Pathfinder.resetMoveParameters()
+	Pathfinder.directMovementAngle = nil
+	Pathfinder.isAllowedToDuck = true
+	Pathfinder.isAllowedToJump = true
+	Pathfinder.isAllowedToMove = true
+	Pathfinder.isAllowedToWalk = true
+	Pathfinder.isCounterStrafing = false
+	Pathfinder.isDucking = false
+	Pathfinder.isJumping = false
+	Pathfinder.isWalking = false
+end
+
+--- @return void
+function Pathfinder.incrementPath(note)
 	local lastNode = Pathfinder.path.node
+
+	if Debug.isLoggingPathfinderMoveOntoNextNode then
+		Logger.console(Logger.INFO, "Incremented path (%s): [%i] %s.", note, lastNode.id, lastNode.name)
+	end
 
 	if lastNode then
 		lastNode:onIsPassed(Nodegraph)
@@ -1516,14 +1537,10 @@ function Pathfinder.handleMovementOptions(cmd)
 	local clientOrigin = LocalPlayer:getOrigin()
 
 	if Pathfinder.isAllowedToDuck and Pathfinder.isDucking then
-		Pathfinder.isDucking = false
-
 		cmd.in_duck = true
 	end
 
 	if Pathfinder.isAllowedToJump and Pathfinder.isJumping then
-		Pathfinder.isJumping = false
-
 		cmd.in_jump = true
 	end
 
@@ -1534,22 +1551,14 @@ function Pathfinder.handleMovementOptions(cmd)
 	end
 
 	if Pathfinder.isCounterStrafing then
-		Pathfinder.isCounterStrafing = false
-
 		MenuGroup.standaloneQuickStopRef:set(true)
 	else
 		MenuGroup.standaloneQuickStopRef:set(false)
 	end
 
 	if Pathfinder.isAllowedToWalk and Pathfinder.isWalking then
-		Pathfinder.isWalking = false
-
 		cmd.in_speed = true
 	end
-
-	Pathfinder.isAllowedToWalk = true
-	Pathfinder.isAllowedToDuck = true
-	Pathfinder.isAllowedToJump = true
 end
 
 --- @param node NodeTraverseBreakObstacle
@@ -1561,8 +1570,8 @@ function Pathfinder.detectObstacles(node)
 	end
 
 	local detectionOrigin = node.origin:clone():offset(0, 0, 40)
-	local detectionOffset = detectionOrigin + node.direction:getForward() * 50
-	local trace = Trace.getLineToPosition(detectionOrigin, detectionOffset, AiUtility.traceOptionsPathfinding)
+	local detectionOffset = detectionOrigin + node.direction:getForward() * 64
+	local trace = Trace.getLineToPosition(detectionOrigin, detectionOffset, AiUtility.traceOptionsPathfinding, "Pathfinder.detectObstacles<FindObstacle>")
 
 	if trace.isIntersectingGeometry then
 		Pathfinder.isObstructedByObstacle = true
@@ -1573,8 +1582,8 @@ end
 --- @return void
 function Pathfinder.detectDoors(node)
 	local detectionOrigin = node.origin:clone():offset(0, 0, 64)
-	local detectionOffset = detectionOrigin + node.direction:getForward() * 50
-	local trace = Trace.getLineToPosition(detectionOrigin, detectionOffset, AiUtility.traceOptionsPathfinding)
+	local detectionOffset = detectionOrigin + node.direction:getForward() * 64
+	local trace = Trace.getLineToPosition(detectionOrigin, detectionOffset, AiUtility.traceOptionsPathfinding, "Pathfinder.detectDoors<FindDoor>")
 
 	if trace.isIntersectingGeometry then
 		Pathfinder.isObstructedByDoor = true
@@ -1674,7 +1683,7 @@ function Pathfinder.avoidGeometry(cmd)
 		--- @type Vector3
 		local checkDirection = direction(moveAngle)
 		local boundsTraceOffset = boundsOrigin + checkDirection * 20
-		local trace = Trace.getHullToPosition(boundsTraceOrigin, boundsTraceOffset, bounds, AiUtility.traceOptionsPathfinding)
+		local trace = Trace.getHullToPosition(boundsTraceOrigin, boundsTraceOffset, bounds, AiUtility.traceOptionsPathfinding, "Pathfinder.avoidGeometry<FindClip>")
 
 		if trace.isIntersectingGeometry then
 			local avoidDirection = clientOrigin - checkDirection * 8

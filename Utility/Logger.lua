@@ -39,6 +39,11 @@ local LoggerCode = {
 		color = ColorList.INFO,
 		chatColor = Chat.BLUE,
 		text = Localization.logAlert,
+	},
+	[4] = {
+		color = ColorList.INTERNAL,
+		chatColor = Chat.PURPLE,
+		text = Localization.logInternal,
 	}
 }
 --}}}
@@ -47,7 +52,14 @@ local LoggerCode = {
 --- @class Logger : Class
 --- @field benchmarkName string
 --- @field benchmarkStartedAt number
-local Logger = {}
+local Logger = {
+	INFO = -1,
+	OK = 0,
+	ERROR = 1,
+	WARNING = 2,
+	ALERT = 3,
+	INTERNAL = 4,
+}
 
 --- @return void
 function Logger.__setup()

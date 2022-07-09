@@ -97,12 +97,12 @@ function AiStateDefuse:assess()
 
     -- Safe to defuse.
     if not AiUtility.closestEnemy then
-        return AiPriority.DEFUSE_COVERED
+        return AiPriority.DEFUSE_ACTIVE
     end
 
     -- Enemy is far away and isn't a threat to us.
     if not AiUtility.isClientThreatenedMajor and AiUtility.closestEnemy and AiUtility.closestEnemy:getOrigin():getDistance(bombOrigin) > 1500 then
-        return AiPriority.DEFUSE_COVERED
+        return AiPriority.DEFUSE_ACTIVE
     end
 
     for _, teammate in pairs(AiUtility.teammates) do

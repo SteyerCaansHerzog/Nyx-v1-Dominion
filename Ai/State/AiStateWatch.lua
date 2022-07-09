@@ -133,7 +133,7 @@ function AiStateWatch:getWatchNode(weapons, chance)
         end
 
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance(node.origin) < 60 then
+            if teammate:getOrigin():getDistance(node.origin) < 100 then
                 break
             end
         end
@@ -178,7 +178,7 @@ function AiStateWatch:think(cmd)
 
     if not self.isWatching then
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance(self.node.origin) < 80 then
+            if teammate:getOrigin():getDistance(self.node.origin) < 100 then
                 self:reset()
 
                 break

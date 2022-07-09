@@ -71,6 +71,7 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --- @field buildupLastAngles Angle
 --- @field buildupCooldownTime number
 --- @field buildupCooldownTimer Timer
+--- @field blockMouseControlTimer Timer
 local View = {
 	noise = ViewNoiseType
 }
@@ -94,7 +95,7 @@ function View.initFields()
 	View.lookSpeedDelayed = 0
 	View.lookSpeedModifier = 1.4
 	View.recoilControl = 2
-	View.useCooldown = Timer:new():start()
+	View.useCooldown = Timer:new():startThenElapse()
 	View.velocity = Angle:new()
 	View.velocityBoundary = 20
 	View.velocityGainModifier = 0.7
@@ -111,6 +112,7 @@ function View.initFields()
 	View.buildupThreshold = 90
 	View.buildupCooldownTime = 0
 	View.buildupCooldownTimer = Timer:new():startThenElapse()
+	View.blockMouseControlTimer = Timer:new():startThenElapse()
 
 	View.setNoiseType(ViewNoiseType.none)
 end
@@ -125,6 +127,18 @@ function View.initEvents()
 		View.setViewAngles()
 		View.think(cmd)
 	end, true)
+
+	Callbacks.setupCommand(function(cmd)
+		View.resetViewParameters()
+	end, false)
+
+	Callbacks.levelInit(function()
+		View.blockMouseControlTimer:restart()
+	end)
+
+	Callbacks.roundPrestart(function()
+		View.blockMouseControlTimer:restart()
+	end)
 end
 
 --- @return void
@@ -136,6 +150,16 @@ end
 
 --- @return void
 function View.setViewAngles()
+	if not View.blockMouseControlTimer:isElapsed(1) then
+		local cameraAngles = Client.getCameraAngles()
+
+		View.viewAngles = cameraAngles
+		View.lookAtAngles = cameraAngles
+		View.lastCameraAngles = cameraAngles
+
+		return
+	end
+
 	if not View.isEnabled then
 		return
 	end
@@ -237,7 +261,18 @@ function View.setViewAngles()
 end
 
 --- @return void
+function View.resetViewParameters()
+	View.overrideViewAngles = nil
+end
+
+--- @return void
 function View.handleBuildup()
+	if AiUtility.isClientThreatenedMinor then
+		View.buildup = 0
+
+		return
+	end
+
 	local cameraAngles = Client.getCameraAngles()
 
 	if not View.buildupLastAngles then
@@ -494,13 +529,13 @@ function View.setIdealLookAhead(idealViewAngles)
 	local isLookingDirectlyAhead = false
 
 	if Pathfinder.path.node.isJump then
-		isLookingDirectlyAhead = true
+		-- todo isLookingDirectlyAhead = true
 	end
 
 	local previousNode = Pathfinder.path.nodes[Pathfinder.path.idx - 1]
 
 	if previousNode and previousNode.isJump then
-		isLookingDirectlyAhead = true
+		-- todo isLookingDirectlyAhead = true
 	end
 
 	-- Look in direction of jumps to increase accuracy.
@@ -569,6 +604,10 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function View.think(cmd)
+	if not View.blockMouseControlTimer:isElapsed(1) then
+		return
+	end
+
 	if not View.isEnabled then
 		return
 	end
@@ -589,7 +628,6 @@ function View.think(cmd)
 	correctedViewAngles:normalize()
 
 	View.lookAtAngles = correctedViewAngles
-	View.overrideViewAngles = nil
 	View.isViewLocked = false
 
 	cmd.pitch = correctedViewAngles.p
@@ -601,31 +639,22 @@ function View.think(cmd)
 	local clientOrigin = LocalPlayer:getOrigin()
 
 	if Pathfinder.isOnValidPath() then
-		-- Shoot out cover.
-		if Pathfinder.isObstructedByObstacle then
-			local node = Pathfinder.path.node
+		local node = Pathfinder.path.node
+
+		-- Shoot out cover or open doors.
+		if Pathfinder.isObstructedByObstacle or Pathfinder.isObstructedByDoor then
 			local maxDiff = correctedViewAngles:getMaxDiff(node.direction)
 
 			View.overrideViewAngles = node.direction
 			View.lookSpeedIdeal = 4
 			View.isViewLocked =  true
 
-			if clientOrigin:getDistance2(node.origin) < 20 and maxDiff < 20 and View.useCooldown:isElapsedThenRestart(0.5) then
-				cmd.in_attack = true
-			end
-		end
-
-		-- Use doors.
-		if Pathfinder.isObstructedByDoor then
-			local node = Pathfinder.path.node
-			local maxDiff = correctedViewAngles:getMaxDiff(node.direction)
-
-			View.overrideViewAngles = node.direction
-			View.lookSpeedIdeal = 4
-			View.isViewLocked =  true
-
-			if clientOrigin:getDistance2(node.origin) < 20 and maxDiff < 20 and View.useCooldown:isElapsedThenRestart(0.5) then
-				cmd.in_use = true
+			if clientOrigin:getDistance2(node.origin) < 35 and maxDiff < 35 and View.useCooldown:isElapsedThenRestart(1) then
+				if Pathfinder.isObstructedByObstacle then
+					cmd.in_attack = true
+				elseif Pathfinder.isObstructedByDoor then
+					cmd.in_use = true
+				end
 			end
 		end
 	end

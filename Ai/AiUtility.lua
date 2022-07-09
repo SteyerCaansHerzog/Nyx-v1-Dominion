@@ -1,6 +1,8 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Color = require "gamesense/Nyx/v1/Api/Color"
+local DrawDebug = require "gamesense/Nyx/v1/Api/DrawDebug"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
@@ -350,9 +352,9 @@ function AiUtility:initEvents()
 
         AiUtility.seedPrng()
         AiUtility.updateMisc()
-        AiUtility.updateThreats()
         AiUtility.updateEnemies()
-    end)
+        AiUtility.updateThreats()
+    end, false)
 end
 
 --- @return void
@@ -403,6 +405,12 @@ function AiUtility.updateAllPlayers()
     AiUtility.bombCarrier = nil
     AiUtility.closestTeammate = nil
     AiUtility.closestTeammateDistance = nil
+    AiUtility.isLastAlive = true
+    AiUtility.enemies = {}
+    AiUtility.visibleEnemies = {}
+    AiUtility.closestEnemy = nil
+    AiUtility.closestEnemyDistance = nil
+    AiUtility.isEnemyVisible = false
 
     local clientOrigin = LocalPlayer:getOrigin()
     local closestTeammate
@@ -468,13 +476,6 @@ end
 
 --- @return void
 function AiUtility.updateEnemies()
-    AiUtility.enemies = {}
-    AiUtility.visibleEnemies = {}
-    AiUtility.closestEnemy = nil
-    AiUtility.closestEnemyDistance = nil
-    AiUtility.isLastAlive = true
-    AiUtility.isEnemyVisible = false
-
     local clientOrigin = Client.getOrigin()
     local clientEyeOrigin = Client.getEyeOrigin()
     local cameraAngles = Client.getCameraAngles()
@@ -530,20 +531,6 @@ function AiUtility.updateEnemies()
         if isVisible then
             AiUtility.visibleEnemies[enemy.eid] = enemy
             AiUtility.isEnemyVisible = true
-            AiUtility.isClientThreatenedMinor = true
-            AiUtility.isClientThreatenedMajor = true
-
-            local canSetThreatenedFromOrigin = false
-
-            if not AiUtility.lastPresenceTimers[enemy.eid]:isElapsed(AiUtility.ignorePresenceAfter) then
-                canSetThreatenedFromOrigin = true
-            elseif clientOrigin:getDistance(enemyOrigin) > 700 then
-                canSetThreatenedFromOrigin = true
-            end
-
-            if canSetThreatenedFromOrigin then
-                AiUtility.clientThreatenedFromOrigin = enemyOrigin:clone():offset(0, 0, 64)
-            end
         elseif enemy:m_bIsDefusing() == 1 then
             AiUtility.visibleEnemies[enemy.eid] = enemy
         end
@@ -587,7 +574,7 @@ end
 function AiUtility.updateThreats()
     -- Don't update the threat origin too often, or it'll be obvious this is effectively wallhacking.
     if not AiUtility.threatUpdateTimer:isElapsedThenRestart(0.15) then
-        return
+        --return
     end
 
     AiUtility.threats = {}
@@ -612,6 +599,15 @@ function AiUtility.updateThreats()
     end
 
     for _, enemy in pairs(AiUtility.enemies) do repeat
+        if AiUtility.visibleEnemies[enemy.eid] then
+            AiUtility.isClientThreatenedMinor = true
+            AiUtility.isClientThreatenedMajor = true
+            AiUtility.clientThreatenedFromOrigin = enemy:getOrigin():offset(0, 0, 64)
+            AiUtility.threats[enemy.eid] = true
+
+            break
+        end
+
         local enemyOrigin = enemy:getOrigin()
         local canSetThreatenedFromOrigin = false
 
@@ -624,7 +620,7 @@ function AiUtility.updateThreats()
         local enemyOffset = enemy:getOrigin():offset(0, 0, 72)
         local bandAngle = eyeOrigin:getAngle(enemyOffset):set(0):offset(0, 90)
         local enemyAngle = eyeOrigin:getAngle(enemyOffset)
-        local steps = 6
+        local steps = 4
         local stepDistance = 180 / steps
         local isClientThreatenedMinor = false
         local isClientThreatenedMajor = false
@@ -668,7 +664,7 @@ function AiUtility.updateThreats()
             bandAngle:offset(0, stepDistance)
         end
 
-        if isClientThreatenedMinor then
+        if isClientThreatenedMinor or isClientThreatenedMajor then
             AiUtility.isClientThreatenedMinor = true
             AiUtility.isClientThreatenedMajor = isClientThreatenedMajor
             AiUtility.clientThreatenedBy = enemy

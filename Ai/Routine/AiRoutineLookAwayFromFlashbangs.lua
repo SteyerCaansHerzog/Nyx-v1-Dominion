@@ -88,7 +88,8 @@ function AiRoutineLookAwayFromFlashbangs:think(cmd)
 			flashbangOrigin,
 			flashbangOrigin + flashbang:m_vecVelocity(),
 			self.flashbangCollisionHull,
-			AiUtility.traceOptionsPathfinding
+			AiUtility.traceOptionsPathfinding,
+			"AiRoutineLookAwayFromFlashbangs.think<FindPredictedFlashbangPosition>"
 		)
 
 		local distance = eyeOrigin:getDistance(findPredictedFuturePositionTrace.endPosition)
@@ -113,7 +114,8 @@ function AiRoutineLookAwayFromFlashbangs:think(cmd)
 		local findIsVisibleToClientTrace = Trace.getLineToPosition(
 			eyeOrigin,
 			findPredictedFuturePositionTrace.endPosition,
-			AiUtility.traceOptionsAttacking
+			AiUtility.traceOptionsAttacking,
+			"AiRoutineLookAwayFromFlashbangs.think<FindIsVisible>"
 		)
 
 		-- Flash is not visible.
@@ -131,7 +133,7 @@ function AiRoutineLookAwayFromFlashbangs:think(cmd)
 
 	View.isLookSpeedDelayed = false
 
-	LocalPlayer.unscope(true)
+	LocalPlayer.unscope()
 	View.lookAlongAngle(self.lookAngles, 10, View.noise.moving, "Look away from flashbangs")
 end
 

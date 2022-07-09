@@ -20,7 +20,6 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @class AiStateEvade : AiStateBase
 --- @field node Node
 --- @field shotBoltActionRifleTimer Timer
---- @field shotBoltActionRifleTime number
 --- @field changeAngleTimer Timer
 --- @field changeAngleTime number
 --- @field evadeLookAtAngles Vector3
@@ -40,8 +39,7 @@ end
 
 --- @return void
 function AiStateEvade:__init()
-    self.shotBoltActionRifleTimer = Timer:new()
-    self.shotBoltActionRifleTime = 1
+    self.shotBoltActionRifleTimer = Timer:new():startThenElapse()
     self.evadeLookAtAngles = Client.getCameraAngles()
     self.changeAngleTimer = Timer:new():startThenElapse()
     self.changeAngleTime = 1
@@ -49,7 +47,7 @@ function AiStateEvade:__init()
 
     Callbacks.weaponFire(function(e)
         if e.player:isClient() and e.player:isHoldingSniper() then
-            self.shotBoltActionRifleTimer:ifPausedThenStart()
+            self.shotBoltActionRifleTimer:restart()
         end
     end)
 
@@ -82,7 +80,7 @@ function AiStateEvade:assess()
     end
 
     -- We fired an AWP or Scout.
-    if self.shotBoltActionRifleTimer:isNotElapsed(1) then
+    if not self.shotBoltActionRifleTimer:isElapsed(1) then
         return AiPriority.EVADE_ACTIVE
     end
 
@@ -130,6 +128,7 @@ end
 --- @return void
 function AiStateEvade:think()
     self.activity = "Seeking cover"
+
     self.ai.routines.manageGear:block()
 
     if not self.isLookingAtPathfindingDirection then
@@ -147,7 +146,7 @@ end
 
 --- @return void
 function AiStateEvade:moveToCover()
-    local cover = self:getCoverNode(750, AiUtility.clientThreatenedBy)
+    local cover = self:getCoverNode(800, AiUtility.clientThreatenedBy)
 
     if not cover then
         return

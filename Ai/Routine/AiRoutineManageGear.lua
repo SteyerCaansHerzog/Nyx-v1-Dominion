@@ -47,7 +47,11 @@ function AiRoutineManageGear:manageKnife()
 		isKnifeEquippable = false
 	end
 
-	local period = (AiUtility.enemiesAlive == 0 or AiUtility.isBombPlanted()) and 1 or 3
+	local period = 3
+
+	if AiUtility.enemiesAlive == 0 then
+		period = 0.25
+	end
 
 	for _, dormantAt in pairs(AiUtility.dormantAt) do
 		local dormantTime = Time.getRealtime() - dormantAt

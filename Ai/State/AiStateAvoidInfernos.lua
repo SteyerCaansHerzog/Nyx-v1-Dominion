@@ -33,24 +33,8 @@ function AiStateAvoidInfernos:__init() end
 
 --- @return void
 function AiStateAvoidInfernos:assess()
-    local clientOrigin = LocalPlayer:getOrigin()
-
-    -- Find an inferno that we're probably inside of.
-    for _, inferno in Entity.find("CInferno") do
-        local distance = clientOrigin:getDistance(inferno:m_vecOrigin())
-
-        -- We're doing a cheap way of detecting if we're inside a molotov.
-        -- May require tweaking.
-        if distance < 280 then
-            self.inferno = inferno
-
-            return AiPriority.AVOID_INFERNO
-        end
-
-        -- This is here because reasons.
-        if distance < 360 then
-            Pathfinder.standStill()
-        end
+    if self.ai.routines.handleOccluderTraversal.infernoInsideOf then
+        return AiPriority.AVOID_INFERNO
     end
 
     return AiPriority.IGNORE
@@ -62,14 +46,7 @@ function AiStateAvoidInfernos:activate()
 end
 
 --- @return void
-function AiStateAvoidInfernos:deactivate()
-    self:reset()
-end
-
---- @return void
-function AiStateAvoidInfernos:reset()
-    self.inferno = nil
-end
+function AiStateAvoidInfernos:deactivate() end
 
 --- @param cmd SetupCommandEvent
 --- @return void
@@ -83,23 +60,82 @@ end
 
 --- @return void
 function AiStateAvoidInfernos:move()
-    Pathfinder.moveToNode(self:getCoverNode(800, AiUtility.closestThreat), {
+    local clientOrigin = LocalPlayer:getOrigin()
+    local testOrigin
+
+    if AiUtility.closestEnemy then
+        testOrigin = AiUtility.closestEnemy:getOrigin()
+    else
+        testOrigin = clientOrigin + LocalPlayer.getCameraAngles():getForward() * 100
+    end
+
+    if not testOrigin then
+        self:moveToRandom()
+
+        return
+    end
+
+    local infernoOrigin = self.ai.routines.handleOccluderTraversal.infernoInsideOf:m_vecOrigin()
+    local clientDistance = clientOrigin:getDistance(testOrigin)
+    local infernoDistance = infernoOrigin:getDistance(testOrigin)
+    --- @type NodeTraverseGeneric
+    local node
+
+    if clientDistance < infernoDistance then
+        local angleToTest = clientOrigin:getAngle(testOrigin)
+
+        node = Nodegraph.findOne(Node.traverseGeneric, function(n)
+        	local fov = angleToTest:getFov(clientOrigin, n.origin)
+
+            if fov < 80 then
+                return n
+            end
+        end)
+    else
+        local angleAway = clientOrigin:getAngle(testOrigin):zeroPitch():getInversed()
+
+        node = Nodegraph.findOne(Node.traverseGeneric, function(n)
+            local fov = angleAway:getFov(clientOrigin, n.origin)
+
+            if fov < 80 then
+                return n
+            end
+        end)
+    end
+
+    if not node then
+        self:moveToRandom()
+
+        return
+    end
+
+    Pathfinder.moveToNode(node, {
         task = "Get out of inferno",
         isAllowedToTraverseInfernos = true,
         isAllowedToTraverseInactives = true,
         isPathfindingFromNearestNodeIfNoConnections = true,
         isPathfindingToNearestNodeIfNoConnections = true,
         isPathfindingToNearestNodeOnFailure = true,
-        onFailedToFindPath = function()
-        	Pathfinder.moveToNode(Nodegraph.getRandom(Node.traverseGeneric), {
-                task = "Get out of inferno (random node)",
-                isAllowedToTraverseInfernos = true,
-                isAllowedToTraverseInactives = true,
-                isPathfindingFromNearestNodeIfNoConnections = true,
-                isPathfindingToNearestNodeIfNoConnections = true,
-                isPathfindingToNearestNodeOnFailure = true,
-            })
-        end
+    })
+end
+
+--- @return void
+function AiStateAvoidInfernos:moveToRandom()
+    local infernoOrigin = self.ai.routines.handleOccluderTraversal.infernoInsideOf:m_vecOrigin()
+    local clientOrigin = LocalPlayer:getOrigin()
+
+    Pathfinder.moveToNode(Nodegraph.findRandom(Node.traverseGeneric, function(n)
+        local distanceToClient = clientOrigin:getDistance(n.origin)
+        local distanceToInferno = infernoOrigin:getDistance(n.origin)
+
+        return distanceToClient > 400 and distanceToClient < distanceToInferno
+    end), {
+        task = "Get out of inferno (random node)",
+        isAllowedToTraverseInfernos = true,
+        isAllowedToTraverseInactives = true,
+        isPathfindingFromNearestNodeIfNoConnections = true,
+        isPathfindingToNearestNodeIfNoConnections = true,
+        isPathfindingToNearestNodeOnFailure = true,
     })
 end
 

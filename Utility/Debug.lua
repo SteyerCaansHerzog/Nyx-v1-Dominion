@@ -7,7 +7,8 @@ local Debug = {
 	isDisplayingGapCollisions = true,
 	isLoggingLookState = true,
 	isLoggingStatePriorities = false,
-	isFilteringConsole = true
+	isFilteringConsole = true,
+	isLoggingPathfinderMoveOntoNextNode =  true
 }
 
 return Debug

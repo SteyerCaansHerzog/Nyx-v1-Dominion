@@ -59,14 +59,16 @@ end
 --- @return void
 function AiProcessClient:setMisc()
 	if self.ai.reaper.isEnabled then
-		config.load(Config.clientConfigs.reaper)
+		Client.onNextFrame(function()
+			config.load(Config.clientConfigs.reaper)
+		end)
 
 		return
 	end
 
 	-- Prevent loading configuration on master accounts.
 	if not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
-		Client.fireAfter(1, function()
+		Client.onNextFrame(function()
 			config.load(Config.clientConfigs.normal)
 		end)
 

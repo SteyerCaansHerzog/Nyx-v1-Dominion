@@ -53,18 +53,10 @@ end
 
 --- @return void
 function Nodegraph.initEvents()
-    Callbacks.init(function()
-        if not Server.isIngame() then
-            return
-        end
+    Nodegraph.loadForCurrentMap()
 
-        local filename = Nodegraph.getFilename()
-
-        if not filename then
-            return
-        end
-
-        Nodegraph.load(filename)
+    Callbacks.levelInit(function()
+        Nodegraph.loadForCurrentMap()
     end)
 
     Callbacks.frame(function()
@@ -219,6 +211,102 @@ function Nodegraph.getOfType(node)
     return Nodegraph.nodesByType[node.type] or {}
 end
 
+--- @generic T
+--- @param node T
+--- @param filter fun(node: T): boolean
+--- @return T[]
+function Nodegraph.find(node, filter)
+    --- @type T[]
+    local result = {}
+
+    for _, search in pairs(Nodegraph.nodesByClass[node.__classname]) do
+        if filter(search) then
+            table.insert(result, search)
+        end
+    end
+
+    return result
+end
+
+--- @generic T
+--- @param node T
+--- @param filter fun(node: T): boolean
+--- @return T[]
+function Nodegraph.findRandom(node, filter)
+    --- @type T[]
+    local result = {}
+
+    for _, search in pairs(Nodegraph.nodesByClass[node.__classname]) do
+        if filter(search) then
+            table.insert(result, search)
+        end
+    end
+
+    return Table.getRandom(result)
+end
+
+--- @generic T
+--- @param node T
+--- @param filter fun(node: T): boolean
+--- @return T|nil
+function Nodegraph.findOne(node, filter)
+    for _, search in pairs(Nodegraph.nodesByClass[node.__classname]) do
+        if filter(search) then
+            return search
+        end
+    end
+
+    return nil
+end
+
+--- @generic T
+--- @param node T
+--- @param filter fun(node: T): boolean
+--- @return T[]
+function Nodegraph.findOfType(node, filter)
+    --- @type T[]
+    local result = {}
+
+    for _, search in pairs(Nodegraph.nodesByType[node.type]) do
+        if filter(search) then
+            table.insert(result, search)
+        end
+    end
+
+    return result
+end
+
+--- @generic T
+--- @param node T
+--- @param filter fun(node: T): boolean
+--- @return T[]
+function Nodegraph.findRandomOfType(node, filter)
+    --- @type T[]
+    local result = {}
+
+    for _, search in pairs(Nodegraph.nodesByType[node.type]) do
+        if filter(search) then
+            table.insert(result, search)
+        end
+    end
+
+    return Table.getRandom(result)
+end
+
+--- @generic T
+--- @param node T
+--- @param filter fun(node: T): boolean
+--- @return T|nil
+function Nodegraph.findOneOfType(node, filter)
+    for _, search in pairs(Nodegraph.nodesByType[node.type]) do
+        if filter(search) then
+            return search
+        end
+    end
+
+    return nil
+end
+
 --- @param bombsite string
 --- @return NodeTypeObjective
 function Nodegraph.getBombsite(bombsite)
@@ -365,7 +453,7 @@ function Nodegraph.getVisible(node, origin, radius)
         local distance = origin:getDistance(search.origin)
 
         if distance < radius then
-            local trace = Trace.getLineToPosition(origin, search.origin, AiUtility.traceOptionsAttacking)
+            local trace = Trace.getLineToPosition(origin, search.origin, AiUtility.traceOptionsAttacking, "Nodegraph.getVisible<FindVisible>")
 
             if not trace.isIntersectingGeometry then
                 iNodes = iNodes + 1
@@ -401,7 +489,7 @@ function Nodegraph.getVisibleOfType(node, origin, radius)
         local distance = origin:getDistance(search.origin)
 
         if distance < radius then
-            local trace = Trace.getLineToPosition(origin, search.origin, AiUtility.traceOptionsAttacking)
+            local trace = Trace.getLineToPosition(origin, search.origin, AiUtility.traceOptionsAttacking, "Nodegraph.getVisibleOfType<FindVisible>")
 
             if not trace.isIntersectingGeometry then
                 iNodes = iNodes + 1
@@ -643,6 +731,10 @@ end
 function Nodegraph.getFilename()
     local map = Server.getMapName()
 
+    if not map then
+        return nil
+    end
+
     map = map:gsub("/", "_")
 
     return string.format(Config.getPath("Traversal/Nodegraphs/%s.json"), map)
@@ -651,6 +743,17 @@ end
 --- @return void
 function Nodegraph.create()
     Nodegraph.initFields()
+end
+
+--- @return void
+function Nodegraph.loadForCurrentMap()
+    local filename = Nodegraph.getFilename()
+
+    if not filename then
+        return
+    end
+
+    Nodegraph.load(filename)
 end
 
 --- @param filename string

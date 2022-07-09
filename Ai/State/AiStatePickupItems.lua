@@ -210,7 +210,7 @@ function AiStatePickupItems:assess()
 
         if not LocalPlayer:hasPrimary() then
             priority = AiPriority.PICKUP_WEAPON_URGENT
-        elseif AiUtility.isRoundOver then
+        elseif AiUtility.isRoundOver and not AiUtility.isClientThreatenedMinor then
             priority = AiPriority.PICKUP_WEAPON_ROUND_OVER
         end
 
@@ -270,7 +270,9 @@ function AiStatePickupItems:temporarilyBlacklistDroppedItemsFrom(player)
 end
 
 --- @return void
-function AiStatePickupItems:activate() end
+function AiStatePickupItems:activate()
+    self:move()
+end
 
 --- @return void
 function AiStatePickupItems:deactivate() end
@@ -310,18 +312,10 @@ function AiStatePickupItems:think(cmd)
     end
 
     local itemOrigin = self.item:m_vecOrigin()
-    local floorTrace = Trace.getLineInDirection(itemOrigin, Vector3.align.DOWN, AiUtility.traceOptionsPathfinding)
+    local floorTrace = Trace.getLineInDirection(itemOrigin, Vector3.align.DOWN, AiUtility.traceOptionsPathfinding, "AiStatePickupItems.assess<FindItemFloor>")
 
-    if itemOrigin:getDistance(floorTrace.endPosition) < 10 and Pathfinder.isIdle() then
-        Pathfinder.moveToLocation(self.item:m_vecOrigin(), {
-            task = "Pick up item",
-            isConnectingGoalByCollisionLine = true,
-            onFailedToFindPath = function()
-                self.entityBlacklist[self.item.eid] = true
-
-                self.item = nil
-            end
-        })
+    if itemOrigin:getDistance(floorTrace.endPosition) < 32 and Pathfinder.isIdle() then
+        self:move()
     end
 
     local origin = LocalPlayer:getOrigin()
@@ -335,6 +329,19 @@ function AiStatePickupItems:think(cmd)
     if distance < 128 and self.useCooldown:isElapsedThenRestart(0.1) then
         cmd.in_use = true
     end
+end
+
+--- @return void
+function AiStatePickupItems:move()
+    Pathfinder.moveToLocation(self.item:m_vecOrigin(), {
+        task = "Pick up item",
+        isConnectingGoalByCollisionLine = true,
+        onFailedToFindPath = function()
+            self.entityBlacklist[self.item.eid] = true
+
+            self.item = nil
+        end
+    })
 end
 
 return Nyx.class("AiStatePickupItems", AiStatePickupItems, AiStateBase)

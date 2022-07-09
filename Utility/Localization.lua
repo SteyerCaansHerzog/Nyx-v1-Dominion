@@ -36,6 +36,7 @@ local English = {
 	cmdRejectionGamemodeIsNotDemolition = "the gamemode is not demolition",
 	cmdRejectionGamemodeIsNotHostage = "the gamemode is not hostage",
 	cmdRejectionLiveClientRequired = "this command is only available for live clients",
+	cmdRejectionLuaError = "the evaluated statement threw an error",
 	cmdRejectionNoBomb = "the client does not have the bomb",
 	cmdRejectionNoEnemiesAlive = "no enemies are alive",
 	cmdRejectionNotAdmin = "the invoker is not an administrator",
@@ -58,6 +59,7 @@ local English = {
 	logAlert =      "[ALERT]    ", -- Keep the number of spaces aligned
 	logError =      "[ISSUE]    ", -- Keep the number of spaces aligned
 	logInfo =       "[INFO]     ", -- Keep the number of spaces aligned
+	logInternal =   "[INTERNAL] ", -- Keep the number of spaces aligned
 	logOk =         "[OK]       ", -- Keep the number of spaces aligned
 	logWarning =    "[WARNING]  ", -- Keep the number of spaces aligned
 	manageEconomyEco = "Saving this round.",
@@ -122,6 +124,7 @@ local Versaikr = {
 	cmdRejectionGamemodeIsNotDemolition = "",
 	cmdRejectionGamemodeIsNotHostage = "",
 	cmdRejectionLiveClientRequired = "",
+	cmdRejectionLuaError = "",
 	cmdRejectionNoBomb = "",
 	cmdRejectionNoEnemiesAlive = "",
 	cmdRejectionNotAdmin = "",
@@ -144,6 +147,7 @@ local Versaikr = {
 	logAlert =      "[ATANT]     ",
 	logError =      "[GENUUG]    ",
 	logInfo =       "[NOOÞ]      ",
+	logInternal =   "[NADAŊ]     ",
 	logOk =         "[RAND]      ",
 	logWarning =    "[VAANERAN]  ",
 	manageEconomyEco = "",
@@ -222,6 +226,7 @@ local Languages = {
 --- @field cmdRejectionGamemodeIsNotDemolition string
 --- @field cmdRejectionGamemodeIsNotHostage string
 --- @field cmdRejectionLiveClientRequired string
+--- @field cmdRejectionLuaError string
 --- @field cmdRejectionNoBomb string
 --- @field cmdRejectionNoEnemiesAlive string
 --- @field cmdRejectionNotAdmin string
@@ -244,6 +249,7 @@ local Languages = {
 --- @field logAlert string
 --- @field logError string
 --- @field logInfo string
+--- @field logInternal string
 --- @field logOk string
 --- @field logWarning string
 --- @field manageEconomyEco string

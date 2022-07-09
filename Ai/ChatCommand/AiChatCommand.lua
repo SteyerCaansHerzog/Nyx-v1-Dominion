@@ -12,6 +12,7 @@ local AiChatCommand = {
 	buy = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBuy",
 	dc = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandDisconnect",
 	drop = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandDrop",
+	e = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandEval",
 	eco = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandEco",
 	ai = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandToggleAi",
 	follow = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandFollow",

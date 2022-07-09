@@ -22,7 +22,7 @@ end
 
 --- @return void
 function AiRoutineManageWeaponScope:__init()
-	self.unscopeTime = 2.25
+	self.unscopeTime = 1.6
 	self.unscopeTimer = Timer:new():startThenElapse()
 end
 

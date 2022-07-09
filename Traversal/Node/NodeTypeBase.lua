@@ -362,7 +362,7 @@ end
 --- @return Vector3
 function NodeTypeBase:setLookAtOrigin()
     local lookFromOrigin = self.origin:clone():offset(0, 0, self.lookZOffset)
-    local lookDirectionTrace = Trace.getLineAtAngle(lookFromOrigin, self.direction, AiUtility.traceOptionsAttacking, "NodeTypeDefend.getLookOrigin<FindLookAngle>")
+    local lookDirectionTrace = Trace.getLineAtAngle(lookFromOrigin, self.direction, AiUtility.traceOptionsAttacking, "NodeTypeBase.setLookAtOrigin<FindLookAngle>")
 
     self.lookAtOrigin = lookDirectionTrace.endPosition
     self.lookFromOrigin = lookFromOrigin
@@ -533,14 +533,14 @@ function NodeTypeBase:setConnections(nodegraph, options)
         local isCollisionOk = true
 
         if options.isUsingLineCollisionTest then
-            local trace = Trace.getLineToPosition(self.origin, node.origin, AiUtility.traceOptionsPathfinding)
+            local trace = Trace.getLineToPosition(self.origin, node.origin, AiUtility.traceOptionsPathfinding, "NodeTypeBase.setConnections<FindConnections>")
 
             isCollisionOk = not trace.isIntersectingGeometry
         elseif node.isCollisionTestWeak and options.isUsingHumanCollisionTest then
             local distance2 = self.origin:getDistance2(node.origin)
 
             if distance < 150 and distance2 > 50 then
-                local collisionTrace = Trace.getHullToPosition(self.origin, node.origin, self.collisionHullNodeSmall, AiUtility.traceOptionsPathfinding)
+                local collisionTrace = Trace.getHullToPosition(self.origin, node.origin, self.collisionHullNodeSmall, AiUtility.traceOptionsPathfinding, "NodeTypeBase.setConnections<FindConnections>")
 
                 if options.isCollisionInfoSaved then
                     self.connectionCollisions[node.id] = {
@@ -552,7 +552,7 @@ function NodeTypeBase:setConnections(nodegraph, options)
 
                 isCollisionOk = not collisionTrace.isIntersectingGeometry
             else
-                if distance > 50 then
+                if distance > 35 then
                     isCollisionOk = false
                 else
                     if options.isCollisionInfoSaved then
@@ -565,9 +565,9 @@ function NodeTypeBase:setConnections(nodegraph, options)
                 end
             end
         else
-            if distance > 50 then
+            if distance > 35 then
                 local targetCollisionOrigin = node.origin:clone():offset(0, 0, hullOffset)
-                local collisionTrace = Trace.getHullToPosition(selfCollisionOrigin, targetCollisionOrigin, hullBounds, AiUtility.traceOptionsPathfinding)
+                local collisionTrace = Trace.getHullToPosition(selfCollisionOrigin, targetCollisionOrigin, hullBounds, AiUtility.traceOptionsPathfinding, "NodeTypeBase.setConnections<FindConnections>")
 
                 if options.isCollisionInfoSaved then
                     self.connectionCollisions[node.id] = {
@@ -610,7 +610,7 @@ function NodeTypeBase:setConnections(nodegraph, options)
             for i = 1, steps do
                 local fraction = i / maxSteps
                 local testOrigin = self.origin:getLerp(node.origin, fraction):offset(0, 0, 0)
-                local fallTrace = Trace.getHullToPosition(testOrigin, testOrigin:clone():offset(0, 0, -48), fallBounds, AiUtility.traceOptionsPathfinding)
+                local fallTrace = Trace.getHullToPosition(testOrigin, testOrigin:clone():offset(0, 0, -48), fallBounds, AiUtility.traceOptionsPathfinding, "NodeTypeBase.setConnections<FindConnections>")
 
                 if options.isCollisionInfoSaved then
                     self.gapCollisions[node.id] = {
@@ -782,7 +782,8 @@ function NodeTypeBase:onIsNext(nodegraph, path)
             self.origin,
             idealPathOrigin,
             Vector3:newBounds(Vector3.align.UP, 32, 32, 16),
-            AiUtility.traceOptionsPathfinding
+            AiUtility.traceOptionsPathfinding,
+            "NodeTypeBase.onIsNext<FindPlanarOffset>"
         )
 
         -- Randomly offset the path origin so that the AI moves along a path in a slightly random fashion.

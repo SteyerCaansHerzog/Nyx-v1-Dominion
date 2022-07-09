@@ -23,6 +23,7 @@ local AiVoicePack = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePack"
 --- @field isEnabled boolean
 --- @field liveClientPacks number[]
 --- @field pack AiVoicePackBase
+--- @field packNone AiVoicePackBase
 --- @field packs AiVoicePack
 --- @field packsListboxMap table<string, boolean>
 local AiVoice = {
@@ -40,19 +41,32 @@ function AiVoice:__init()
     local packs = {}
     local packNames = {}
 
+    --- @param pack AiVoicePackBase
     for id, pack in pairs(AiVoicePack) do
         packs[id] = pack:new()
         packNames[id] = pack.name
+
+        if pack.name == "None" then
+            self.packNone = pack
+        end
     end
 
     self.packs = packs
     self.packsListboxMap = packNames
 
     MenuGroup.enableMicrophone = MenuGroup.group:addCheckbox(" > Enable Microphone"):addCallback(function(item)
-    	Voice.isEnabled = item:get()
+        if item:get() then
+            self.pack = self.packs[MenuGroup.voicePack:get() + 1]
+        else
+            self.pack = self.packNone
+        end
     end):setParent(MenuGroup.master)
 
     MenuGroup.voicePack = MenuGroup.group:addList("    > Voice Pack", packNames):addCallback(function(item)
+        if not MenuGroup.enableMicrophone:get() then
+            return
+        end
+
     	self.pack = self.packs[item:get() + 1]
     end):setParent(MenuGroup.enableMicrophone)
 

@@ -45,12 +45,22 @@ function AiChatCommandDrop:invoke(ai, sender, args)
     if eid then
         eid = tonumber(eid)
 
+        if not eid then
+            return self.NO_VALID_ARGUMENTS
+        end
+
         if eid == LocalPlayer.eid then
             ai.states.drop:dropGear(sender, "weapon")
 
             return
         else
-            ai.states.pickupItems:temporarilyBlacklistDroppedItemsFrom(Player:new(eid))
+            local player = Player:new(eid)
+
+            if not player:isValid() then
+                return self.NO_VALID_ARGUMENTS
+            end
+
+            ai.states.pickupItems:temporarilyBlacklistDroppedItemsFrom()
 
             return Localization.cmdRejectionNotAskingUs
         end

@@ -33,6 +33,7 @@ local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
+--{{{ Definitions
 --{{{ ReaperClientInfo
 --- @class ReaperClientInfo
 --- @field activity string
@@ -62,6 +63,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --{{{ ReaperClientShared
 --- @class ReaperClientShared
 --- @field isForced boolean
+--}}}
 --}}}
 
 --{{{ ReaperClient
@@ -567,6 +569,7 @@ function Reaper:render()
 
 		local nameOffset = 0
 
+		-- Player color circle.
 		if isPlayerInServer and client.info.colorHex then
 			local color = Color:hexa(client.info.colorHex)
 
@@ -577,6 +580,7 @@ function Reaper:render()
 
 		drawPosition:clone():offset(5 + nameOffset, 0):drawSurfaceText(Font.MEDIUM_LARGE, nameColor, "l", client.info.name)
 
+		-- No connection to the client.
 		if isConnectionLost then
 			drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "No connection to client")
 			drawPosition:offset(0, clientBoxDimensions.y + clientBoxBottomMargin)
@@ -584,6 +588,7 @@ function Reaper:render()
 			break
 		end
 
+		-- Match is over.
 		if isMatchOver then
 			drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "Match ended")
 			drawPosition:offset(0, clientBoxDimensions.y + clientBoxBottomMargin)
@@ -591,16 +596,18 @@ function Reaper:render()
 			break
 		end
 
+		-- Player state.
 		if client.info.isInGame then
+			-- In-game state.
 			if client.info.isWarmup then
 				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "Idling in warmup")
 			elseif isPlayerAlive then
-				--drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", string.format("[%i] %s", client.info.priority or -1, client.info.activity))
 				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", client.info.activity)
 			else
 				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "Dead")
 			end
 		else
+			-- Lobby state.
 			local isInLobby = false
 			local playerCount
 

@@ -87,7 +87,7 @@ function AiStatePlant:__init()
 
         local origin = LocalPlayer:getOrigin()
 
-        if self.tellSiteTimer:isElapsedThenRestart(50) and MenuGroup.useChatCommands:get() then
+        if not self.ai.reaper.isActive and MenuGroup.useChatCommands:get() and self.tellSiteTimer:isElapsedThenRestart(50) then
             self.ai.commands.go:bark(self.bombsite:lower())
 
             local distanceToSite = origin:getDistance(Nodegraph.getClosestBombsite(origin).origin)
@@ -108,7 +108,7 @@ function AiStatePlant:assess()
     end
 
     local clientOrigin = LocalPlayer:getOrigin()
-    local isTeammateNearby = AiUtility.closestTeammate and clientOrigin:getDistance(AiUtility.closestTeammate:getOrigin()) < 350
+    local isTeammateNearby = AiUtility.closestTeammate and clientOrigin:getDistance(AiUtility.closestTeammate:getOrigin()) < 400
     local isAtPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 40
     local isNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 650
 

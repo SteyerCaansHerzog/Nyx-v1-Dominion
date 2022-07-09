@@ -2,6 +2,7 @@
 --- @class AiRoutine
 local AiRoutine = {
 	buyGear = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBuyGear",
+	handleOccluderTraversal = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineHandleOccluderTraversal",
 	lookAwayFromFlashbangs = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineLookAwayFromFlashbangs",
 	manageEconomy = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineManageEconomy",
 	manageGear = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineManageGear",

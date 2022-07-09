@@ -255,14 +255,14 @@ function AiVoicePackBase:getGroupDynamic(name)
     local result = {}
 
     for i = 1, 256 do
-        local name = string.format("%s_%i", name, i)
-        local filepath = self:getFile(name)
+        local subname = string.format("%s_%i", name, i)
+        local filepath = self:getFile(subname)
 
         if not readfile(filepath) then
             break
         end
 
-        result[i] = name
+        result[i] = subname
     end
 
     if Table.isEmpty(result) then

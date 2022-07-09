@@ -176,6 +176,10 @@ end
 
 --- @return number
 function AiStateDefend:assessDemolition()
+    if LocalPlayer.hasBomb() then
+        return AiPriority.IGNORE
+    end
+
     local bomb = AiUtility.plantedBomb
 
     if AiUtility.isBombBeingDefusedByEnemy or AiUtility.isBombBeingPlantedByEnemy then
@@ -191,6 +195,12 @@ function AiStateDefend:assessDemolition()
             end
 
             return AiPriority.IGNORE
+        end
+
+        -- We're not near the site.
+        -- This will practically force the AI to go to the site.
+        if self.getToSiteTimer:isStarted() and not self.getToSiteTimer:isElapsed(12) then
+            return AiPriority.DEFEND_EXPEDITE
         end
 
         -- Hold specific angle.
@@ -210,12 +220,6 @@ function AiStateDefend:assessDemolition()
             end
         end
 
-        -- We're not near the site.
-        -- This will practically force the AI to go to the site.
-        if self.getToSiteTimer:isStarted() and not self.getToSiteTimer:isElapsed(12) then
-            return AiPriority.DEFEND_EXPEDITE
-        end
-
         -- We can hold an approaching enemy.
         if self.isOnDefendSpot and self:isEnemyHoldable() then
             return AiPriority.DEFEND_ACTIVE
@@ -231,17 +235,6 @@ function AiStateDefend:assessDemolition()
             return AiPriority.DEFEND_EXPEDITE
         end
 
-        -- We're not near the site.
-        -- This will practically force the AI to go to the site.
-        if self.getToSiteTimer:isStarted() and not self.getToSiteTimer:isElapsed(12) then
-            return AiPriority.DEFEND_EXPEDITE
-        end
-
-        -- We can hold an approaching enemy.
-        if AiUtility.plantedBomb and not AiUtility.isBombBeingDefusedByEnemy and self.isOnDefendSpot and self:isEnemyHoldable() then
-            return AiPriority.DEFEND_ACTIVE
-        end
-
         -- We should probably go to the site.
         if AiUtility.bombCarrier and not AiUtility.bombCarrier:is(LocalPlayer) then
             local bombCarrierOrigin = AiUtility.bombCarrier:getOrigin()
@@ -255,6 +248,22 @@ function AiStateDefend:assessDemolition()
             if distance < 900 then
                 return AiPriority.DEFEND_PASSIVE
             end
+        end
+
+        -- We're not near the site.
+        -- This will practically force the AI to go to the site.
+        if self.getToSiteTimer:isStarted() and not self.getToSiteTimer:isElapsed(12) then
+            return AiPriority.DEFEND_EXPEDITE
+        end
+
+        -- We can hold an approaching enemy.
+        if AiUtility.plantedBomb and not AiUtility.isBombBeingDefusedByEnemy and self.isOnDefendSpot and self:isEnemyHoldable() then
+            return AiPriority.DEFEND_ACTIVE
+        end
+
+        -- Bomb is planted.
+        if AiUtility.plantedBomb then
+            return AiPriority.DEFEND_ACTIVE
         end
 
         -- Basic defend behaviour.
@@ -320,7 +329,7 @@ function AiStateDefend:isEnemyHoldable()
 
         local enemyOrigin = enemy:getOrigin()
 
-        if clientOrigin:getDistance(enemyOrigin) < 1000 and cameraAngles:getFov(eyeOrigin, enemyOrigin:offset(0, 0, 64)) < 85 then
+        if clientOrigin:getDistance(enemyOrigin) < 1500 and cameraAngles:getFov(eyeOrigin, enemyOrigin:offset(0, 0, 64)) < 85 then
             isEnemyInFoV = true
 
             break
@@ -473,9 +482,9 @@ function AiStateDefend:think(cmd)
         self.activity = "Defending hostages"
     else
         if self.priority == AiPriority.DEFEND_DEFUSER then
-            self.activity = "Defending defuser"
+            self.activity = string.format("Covering defuser on %s", self.node.bombsite)
         elseif self.priority == AiPriority.DEFEND_PLANTER then
-            self.activity = "Defending planter"
+            self.activity = string.format("Covering planter on %s", self.node.bombsite)
         else
             if distance < 750 then
                 self.activity = string.format("Defending %s", self.node.bombsite)
@@ -486,11 +495,9 @@ function AiStateDefend:think(cmd)
     end
 
     -- There's a teammate already near this defensive spot. We should hold someplace else.
-    if self.priority ~= AiPriority.DEFEND_ACTIVE then
-        for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance(self.node.origin) < 50 then
-                self:invoke(self.node.bombsite)
-            end
+    for _, teammate in pairs(AiUtility.teammates) do
+        if teammate:getOrigin():getDistance(self.node.origin) < 80 then
+            self:invoke(self.node.bombsite)
         end
     end
 

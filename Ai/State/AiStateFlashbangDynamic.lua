@@ -60,20 +60,9 @@ end
 
 --- @return void
 function AiStateFlashbangDynamic:assess()
-    -- Cooldown because the AI doesn't need to keep throwing flashbangs constantly.
-    if not self.throwCooldownTimer:isElapsed(12) then
-        return AiPriority.IGNORE
-    end
-
-    -- Don't let the AI spam when attempting this behaviour.
-    -- Our anti-dithering is literally timers. Timers everywhere. Timers forever.
-    if not self.throwAttemptCooldownTimer:isElapsed(1.5) then
-        return AiPriority.IGNORE
-    end
-
-    -- AI is threatened. Don't try to, or abort trying to, throw a flashbang.
-    if AiUtility.isClientThreatenedMinor then
-        self.threatCooldownTimer:start()
+    -- AI is threatened. Don't try to throw a flashbang.
+    if AiUtility.isClientThreatenedMajor then
+        self.threatCooldownTimer:restart()
 
         return AiPriority.IGNORE
     end
@@ -86,6 +75,17 @@ function AiStateFlashbangDynamic:assess()
     -- We already found an angle to not-blind a totally-suspecting enemy player with.
     if self.throwAngles then
         return AiPriority.FLASHBANG_DYNAMIC
+    end
+
+    -- Cooldown because the AI doesn't need to keep throwing flashbangs constantly.
+    if not self.throwCooldownTimer:isElapsed(12) then
+        return AiPriority.IGNORE
+    end
+
+    -- Don't let the AI spam when attempting this behaviour.
+    -- Our anti-dithering is literally timers. Timers everywhere. Timers forever.
+    if not self.throwAttemptCooldownTimer:isElapsed(1.5) then
+        return AiPriority.IGNORE -- todo
     end
 
     -- Don't bother if we don't even have a flashbang on us.
@@ -184,8 +184,6 @@ end
 
 --- @return void
 function AiStateFlashbangDynamic:deactivate()
-    LocalPlayer.equipPrimary()
-
     self.throwAttemptCooldownTimer:restart()
 
     self:reset()

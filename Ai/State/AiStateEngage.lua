@@ -407,7 +407,7 @@ function AiStateEngage:assess()
     for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
         local smokeTick = smoke:m_nFireEffectTickBegin()
 
-        if smokeTick and smokeTick > 0 and clientOrigin:getDistance(smoke:m_vecOrigin()) < 130 then
+        if smokeTick and smokeTick > 0 and clientOrigin:getDistance(smoke:m_vecOrigin()) < 115 then
             return AiPriority.IGNORE
         end
     end
@@ -514,7 +514,7 @@ function AiStateEngage:think(cmd)
     self:moveOnBestTarget(cmd)
     self:attackBestTarget(cmd)
 end
-
+local timer = Timer:new():startThenElapse()
 --- @return void
 function AiStateEngage:requestRotations()
     -- Only CTs should bark rotate commands.
@@ -533,6 +533,38 @@ function AiStateEngage:requestRotations()
     if self.tellGoTimer:isElapsed(20) then
         self:callGoToSite()
     end
+
+    if timer:isElapsed(20) then
+        self:pingEnemy()
+    end
+end
+
+--- @return void
+function AiStateEngage:pingEnemy()
+    if not AiUtility.isClientThreatenedMinor then
+        return
+    end
+
+    local cameraAngles = LocalPlayer.getCameraAngles()
+    local clientEyeOrigin = LocalPlayer.getEyeOrigin()
+    local trace = Trace.getLineAlongCrosshair()
+
+    for _, enemy in pairs(AiUtility.enemies) do repeat
+        local enemyEyeOrigin = enemy:getEyeOrigin()
+        local fov = cameraAngles:getFov(clientEyeOrigin, enemyEyeOrigin)
+
+        if enemyEyeOrigin:getDistance(trace.endPosition) < 600 and fov < 25 then
+            LocalPlayer.ping()
+
+            Client.fireAfter(0.1, function()
+                LocalPlayer.ping()
+            end)
+
+            timer:restart()
+
+            return
+        end
+    until true end
 end
 
 --- @return void
@@ -1263,6 +1295,8 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:moveOnBestTarget(cmd)
+    self.activity = "Enemy contact"
+
     if not self.bestTarget then
         return
     end
@@ -1287,7 +1321,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
 
         defendNode = Node.defendSiteT
 
-        if clientOrigin:getDistance(bombsite.origin) > 1450 then
+        if clientOrigin:getDistance(bombsite.origin) > 1750 then
             isAbleToDefend = false
         elseif LocalPlayer:isTerrorist() then
             if not AiUtility.plantedBomb or AiUtility.isBombBeingDefusedByEnemy or AiUtility.bombDetonationTime <= 15 then
@@ -1314,7 +1348,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
         local node
 
         if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
-            node = Nodegraph.getRandom(defendNode, clientOrigin, 1450)
+            node = Nodegraph.getRandom(defendNode, clientOrigin, 1750)
         else
             node = Nodegraph.getRandomForBombsite(defendNode, self.ai.states.defend.bombsite)
         end
@@ -1421,7 +1455,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
         -- Avoid smokes.
         local isAvoidingSmokes = true
 
-        if AiUtility.timeData.roundtime_remaining < 40 then
+        if AiUtility.timeData.roundtime_remaining < 30 then
             isAvoidingSmokes = false
         elseif AiUtility.plantedBomb and AiUtility.bombDetonationTime < 25 then
             isAvoidingSmokes = false
@@ -1429,7 +1463,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
             isAvoidingSmokes = false
         elseif AiUtility.isHostageCarriedByTeammate or AiUtility.isHostageCarriedByEnemy then
             isAvoidingSmokes = false
-        elseif AiUtility.totalThreats < 2 then
+        elseif AiUtility.totalThreats == 0 then
             isAvoidingSmokes = false
         end
 
@@ -1438,7 +1472,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
             local nearSmoke
 
             for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
-                if clientOrigin:getDistance(smoke:m_vecOrigin()) < 300 then
+                if clientOrigin:getDistance(smoke:m_vecOrigin()) < 400 then
                     nearSmoke = smoke
 
                     break
@@ -1452,7 +1486,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
 
                 self.seekCoverTimer:restart()
 
-                local cover = self:getCoverNode(500, self.bestTarget)
+                local cover = self:getCoverNode(800, self.bestTarget)
 
                 if cover then
                     self.hasBackupCover = true
@@ -1788,7 +1822,7 @@ function AiStateEngage:attackBestTarget(cmd)
 
             local isShooting = false
             local isOccludedBySmoke = eyeOrigin:isRayIntersectingSmoke(bangOrigin)
-            local trace = Trace.getLineToPosition(eyeOrigin, bangOrigin, AiUtility.traceOptionsAttacking)
+            local trace = Trace.getLineToPosition(eyeOrigin, bangOrigin, AiUtility.traceOptionsAttacking, "AiStateEngage.attackBestTarget<FindBangable>")
             local isOccludedByWall = trace.isIntersectingGeometry
             local isEnemyTargetable = traceEid == enemy.eid
 
@@ -1936,7 +1970,7 @@ function AiStateEngage:canHoldAngle()
         distance = 200
     })
 
-    local losTrace = Trace.getLineAtAngle(clientEyeOrigin, Client.getCameraAngles(), traceOptions)
+    local losTrace = Trace.getLineAtAngle(clientEyeOrigin, Client.getCameraAngles(), traceOptions, "AiStateEngage.canHoldAngle<FindLos>")
 
     -- Line of sight is facing too close to a wall.
     if losTrace.isIntersectingGeometry then
@@ -1955,7 +1989,7 @@ function AiStateEngage:canHoldAngle()
 
     local clientOrigin = LocalPlayer:getOrigin()
     local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 32)
-    local hullTrace = Trace.getHullAtPosition(clientOrigin:clone():offset(0, 0, 16), bounds, AiUtility.traceOptionsAttacking)
+    local hullTrace = Trace.getHullAtPosition(clientOrigin:clone():offset(0, 0, 16), bounds, AiUtility.traceOptionsAttacking, "AiStateEngage.canHoldAngle<FindHull>")
 
     -- Our proximity to a wall is too close.
     if hullTrace.isIntersectingGeometry then
@@ -2036,7 +2070,7 @@ function AiStateEngage:walk()
         local predictedEyeOrigin = clientEyeOrigin + LocalPlayer:m_vecVelocity() * 0.8
         local enemyOrigin = AiUtility.closestEnemy:getOrigin()
         local distance = clientEyeOrigin:getDistance(enemyOrigin)
-        local trace = Trace.getLineToPosition(predictedEyeOrigin, self.bestTarget:getOrigin():offset(0, 0, 48), AiUtility.traceOptionsAttacking)
+        local trace = Trace.getLineToPosition(predictedEyeOrigin, self.bestTarget:getOrigin():offset(0, 0, 48), AiUtility.traceOptionsAttacking, "AiStateEngage.walk<FindPredicted>")
         local shootFov = self:getShootFov(self.bestTarget:getCameraAngles(), self.bestTarget:getEyeOrigin(), clientEyeOrigin)
 
         if distance < 1200 then
@@ -2060,7 +2094,7 @@ function AiStateEngage:walk()
         self.walkCheckCount = Math.getClamped(self.walkCheckCount - 1, 0, 20)
     end
 
-    if self.walkCheckCount >= 8 then
+    if self.walkCheckCount >= 10 then
         canWalk = false
     end
 
@@ -2170,7 +2204,7 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
             return
         end
 
-        local trace = Trace.getLineToPosition(clientEyeOrigin, aimAtBaseOrigin, AiUtility.traceOptionsAttacking)
+        local trace = Trace.getLineToPosition(clientEyeOrigin, aimAtBaseOrigin, AiUtility.traceOptionsAttacking, "AiStateEngage.shoot<FindShootAtBehindWall>")
 
         -- Enemy is behind a wall. We have other code responsible for wallbanging.
         if trace.isIntersectingGeometry then
@@ -2621,7 +2655,7 @@ function AiStateEngage:strafePeek()
     local count = 0
 
     for name, direction in pairs(directions) do
-        local findOffsetTrace = Trace.getHullInDirection(eyeOrigin, direction, bounds, traceOptions)
+        local findOffsetTrace = Trace.getHullInDirection(eyeOrigin, direction, bounds, traceOptions, "AiStateEngage.strafePeek<FindStrafePeekDirection>")
         local offsetTraceOrigin = findOffsetTrace.endPosition
         local isVisible = false
 
@@ -2633,7 +2667,7 @@ function AiStateEngage:strafePeek()
             Player.hitbox.LEFT_LOWER_ARM,
             Player.hitbox.RIGHT_LOWER_LEG,
         })) do
-            local findVisibleHitboxTrace = Trace.getLineToPosition(hitbox, offsetTraceOrigin, AiUtility.traceOptionsAttacking)
+            local findVisibleHitboxTrace = Trace.getLineToPosition(hitbox, offsetTraceOrigin, AiUtility.traceOptionsAttacking, "AiStateEngage.strafePeek<FindVisibleHitbox>")
 
             if not findVisibleHitboxTrace.isIntersectingGeometry then
                 isVisible = true

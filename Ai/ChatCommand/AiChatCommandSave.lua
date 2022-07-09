@@ -21,6 +21,18 @@ local AiChatCommandSave = {
 --- @param args string[]
 --- @return void
 function AiChatCommandSave:invoke(ai, sender, args)
+    local toggle = args[1]
+
+    if toggle == "on" then
+        ai.states.evacuate.isAutomaticSavingAllowed = true
+
+        return
+    elseif toggle == "off" then
+        ai.states.evacuate.isAutomaticSavingAllowed = false
+
+        return
+    end
+
     if AiUtility.gameRules:m_bFreezePeriod() == 1 then
         return self.FREEZETIME
     end

@@ -87,7 +87,7 @@ function AiStateTrafficControl:assess()
             break
         end
 
-        local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), node.origin, AiUtility.traceOptionsPathfinding)
+        local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), node.origin, AiUtility.traceOptionsPathfinding, "AiStateTrafficControl.assess<FindQueueNode>")
 
         if trace.isIntersectingGeometry then
             break

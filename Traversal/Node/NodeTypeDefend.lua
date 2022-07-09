@@ -70,7 +70,7 @@ function NodeTypeDefend:onSetup(nodegraph)
 	end
 
 	local lookFromOrigin = self.lookFromOrigin:clone():offset(0, 0, -18)
-	local trace = Trace.getLineToPosition(lookFromOrigin, self.lookAtOrigin, AiUtility.traceOptionsAttacking)
+	local trace = Trace.getLineToPosition(lookFromOrigin, self.lookAtOrigin, AiUtility.traceOptionsAttacking, "NodeTypeDefend.onSetup<FindIsDuckableSpot>")
 
 	self.isAllowedToDuck = not trace.isIntersectingGeometry
 

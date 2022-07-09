@@ -426,30 +426,34 @@ function AiStateGrenadeBase:think(cmd)
             end
 
             if isThrowable and not self.isThrown then
-                local predictor = NadePredictor.create()
+                if self.isDamaging then
+                    local predictor = NadePredictor.create()
 
-                predictor:init(LocalPlayer.eid)
+                    predictor:init(LocalPlayer.eid)
 
-                local prediction = predictor:predict()
+                    local prediction = predictor:predict()
 
-                if prediction then
-                    local predictionEndPosition = Vector3:new(predictor.end_pos.x, predictor.end_pos.y, predictor.end_pos.z)
+                    if prediction then
+                        local predictionEndPosition = Vector3:new(prediction.end_pos.x, prediction.end_pos.y, prediction.end_pos.z)
 
-                    -- We're most likely going to annoy our teammates if we throw this lineup right now.
-                    -- See: https://en.wikipedia.org/wiki/Griefer
-                    for _, teammate in pairs(AiUtility.teammates) do
-                        if teammate:getOrigin():getDistance(predictionEndPosition) < 400 then
-                            self.usedNodes[self.node.id]:restart()
+                        -- We're most likely going to annoy our teammates if we throw this lineup right now.
+                        -- See: https://en.wikipedia.org/wiki/Griefer
+                        for _, teammate in pairs(AiUtility.teammates) do
+                            local teammatePredictedOrigin = teammate:getOrigin() + teammate:m_vecVelocity() * 0.4
 
-                            return
+                            if teammatePredictedOrigin:getDistance(predictionEndPosition) < 350 then
+                                self.usedNodes[self.node.id]:restart()
+
+                                return
+                            end
                         end
                     end
-
-                    self.throwHoldTimer:ifPausedThenStart()
-
-                    cmd.in_attack = true
-                    self.isThrown = true
                 end
+
+                self.throwHoldTimer:ifPausedThenStart()
+
+                cmd.in_attack = true
+                self.isThrown = true
             end
         end
     end

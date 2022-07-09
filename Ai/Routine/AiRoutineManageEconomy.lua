@@ -58,6 +58,10 @@ function AiRoutineManageEconomy:__init()
 			return
 		end
 
+		if self.ai.reaper.isActive then
+			return
+		end
+
 		Client.fireAfter(0.1, function()
 			self:determineEconomy()
 			self:handleEconomy()
