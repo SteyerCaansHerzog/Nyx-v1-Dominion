@@ -3,7 +3,9 @@ local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Player = require "gamesense/Nyx/v1/Api/Player"
+local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
 
 --{{{ Modules
@@ -11,6 +13,7 @@ local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBas
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --}}}
 
@@ -55,6 +58,10 @@ function AiRoutineManageEconomy:__init()
 
 	Callbacks.roundStart(function()
 		if not self.isEnabled then
+			return
+		end
+
+		if not MenuGroup.enableAi:get() then
 			return
 		end
 
@@ -106,6 +113,14 @@ function AiRoutineManageEconomy:determineEconomy()
 		local fullBuys = 0
 		local fullBuyBalance = economy.balance
 
+		if teammate:isEnemy() then
+			print("IS ENEMY!!")
+		end
+
+		if not teammate:m_iAccount() then
+			print(teammate.eid)
+		end
+
 		if fullBuyBalance > fullBuyThreshold then
 			fullBuys = 1 + math.floor((economy.balance - fullBuyThreshold) / rifleBuyThreshold)
 		end
@@ -143,9 +158,18 @@ end
 --- @return void
 function AiRoutineManageEconomy:handleEconomy()
 	local rounds = AiUtility.gameRules:m_totalRoundsPlayed()
-	local halftime = math.floor(cvar.mp_maxrounds:get_int() / 2)
+	local maxRounds = cvar.mp_maxrounds:get_int()
+	local halftime = math.floor(maxRounds / 2)
 	local isPistolRound = rounds == 0 or rounds == halftime
 	local isPostPistolRound = rounds == 1 or rounds == halftime + 1
+	local scoreData = Table.fromPanorama(Panorama.GameStateAPI.GetScoreDataJSO())
+	local tWins = scoreData.teamdata.TERRORIST.score
+	local ctWins = scoreData.teamdata.CT.score
+
+	-- Don't bother with economy on match point rounds.
+	if rounds == (halftime - 1) or tWins == halftime or ctWins == halftime or rounds == (maxRounds) then
+		return
+	end
 
 	-- Do not manage the economy on the first-of-half or second-after-pistol rounds.
 	if isPistolRound or isPostPistolRound then
@@ -179,8 +203,6 @@ function AiRoutineManageEconomy:handleEconomy()
 	-- How many force buys are required when force buying.
 	local forceBuyThresholdForceCriterion = totalPlayers - forceBuyThresholdFullCriterion
 
-
-
 	if playersWhoCanFullBuy == totalPlayers then
 		Logger.console(3, Localization.manageEconomyFullBuy)
 	elseif playersWhoCanFullBuy >= forceBuyThresholdFullCriterion and (playersWhoCanForceBuy + playersWhoCanBuyArmor) >= forceBuyThresholdForceCriterion then
@@ -205,6 +227,11 @@ end
 function AiRoutineManageEconomy:determineForceBuyOrDrop()
 	-- We aren't poor.
 	if self.ourEconomy.fullBuys > 0 then
+		return
+	end
+
+	-- We have a weapon already.
+	if self.ourEconomy.isGearedUp then
 		return
 	end
 

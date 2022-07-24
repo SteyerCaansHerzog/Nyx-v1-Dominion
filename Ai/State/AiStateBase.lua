@@ -40,8 +40,8 @@ local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --- @field think fun(self: AiStateBase, cmd: SetupCommandEvent): void
 local AiStateBase = {
     priorityMap = Table.getInverted(AiPriority),
-    delayedMouseMin = 0.25,
-    delayedMouseMax = 0.55,
+    delayedMouseMin = 0.1,
+    delayedMouseMax = 0.3,
     isEnabled = false,
     isLockable = true,
     isMouseDelayAllowed = true,

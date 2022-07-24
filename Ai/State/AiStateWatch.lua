@@ -210,8 +210,6 @@ function AiStateWatch:think(cmd)
     end
 
     if distance < 200 then
-        View.lookAtLocation(self.node.lookAtOrigin, 3, View.noise.none, "Watch look at angle")
-
         self.ai.routines.manageGear:block()
 
         if not LocalPlayer:isHoldingGun() then
@@ -221,6 +219,10 @@ function AiStateWatch:think(cmd)
                 LocalPlayer.equipPistol()
             end
         end
+    end
+
+    if distance < 750 then
+        View.lookAtLocation(self.node.lookAtOrigin, 3, View.noise.none, "Watch look at angle")
     end
 end
 

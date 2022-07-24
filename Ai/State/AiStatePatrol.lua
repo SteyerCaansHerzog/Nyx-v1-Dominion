@@ -84,7 +84,7 @@ function AiStatePatrol:assess()
 
         if bombOrigin:getDistance(nearestBombsite.origin) > 1500 then
             local eyeOrigin = LocalPlayer:getEyeOrigin()
-            local trace = Trace.getLineToPosition(eyeOrigin, bombOrigin, AiUtility.traceOptionsAttacking, "AiStatePatrol.asses<FindBomb>")
+            local trace = Trace.getLineToPosition(eyeOrigin, bombOrigin, AiUtility.traceOptionsAttacking, "AiStatePatrol.assess<FindBomb>")
 
             if not trace.isIntersectingGeometry then
                 self:invoke(bombOrigin, LocalPlayer)
@@ -94,7 +94,15 @@ function AiStatePatrol:assess()
         end
     end
 
-    return (self.isBeginningPatrol or self.isOnPatrol) and AiPriority.PATROL or AiPriority.IGNORE
+    if self.isBeginningPatrol or self.isOnPatrol then
+        if LocalPlayer:getOrigin():getDistance(self.patrolOrigin) > 1000 then
+            return AiPriority.PATROL_MOVE_TO_ZONE
+        else
+            return AiPriority.PATROL
+        end
+    end
+
+    return AiPriority.IGNORE
 end
 
 --- @return void

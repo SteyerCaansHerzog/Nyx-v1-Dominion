@@ -11,6 +11,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Process = require "gamesense/Nyx/v1/Api/Process"
+local SecondOrderDynamics = require "gamesense/Nyx/v1/Api/SecondOrderDynamics"
 local Server = require "gamesense/Nyx/v1/Api/Server"
 local VKey = require "gamesense/Nyx/v1/Api/VKey"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -23,11 +24,6 @@ local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
 
-local SecondOrderDynamics = require "gamesense/Nyx/v1/Api/SecondOrderDynamics"
-local sods = Table.populateForMaxPlayers(function(eid)
-	return SecondOrderDynamics:new(0.2, 0.45, 0, 0.12, Vector3, Player:new(eid):getOrigin())
-end)
-
 --{{{ Modules
 local AiProcessBase = require "gamesense/Nyx/v1/Dominion/Ai/Process/AiProcessBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
@@ -39,21 +35,23 @@ local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 
 --{{{ Definitions
 --- @class AiClientInfo
---- @field isOk boolean
 --- @field activity string
 --- @field behavior string
+--- @field isEnabled boolean
+--- @field isOk boolean
+--- @field lastUpdateAt number
 --- @field priority number
+--- @field renderables AiClientInfoRenderable[]
+--- @field steamid64 string
 --- @field threatLevel number
 --- @field userdata string[]
---- @field renderables AiClientInfoRenderable[]
---- @field lastUpdateAt number
 
 --- @class AiClientInfoRenderable
---- @field origin Vector3
 --- @field color Color
+--- @field isOutlined boolean
+--- @field origin Vector3
 --- @field radius number
 --- @field thickness number
---- @field isOutlined boolean
 --}}}
 
 --{{{ AiProcessInfo
@@ -64,6 +62,7 @@ local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --- @field userdata string[]
 --- @field renderables AiClientInfoRenderable[]
 --- @field cachedInfo AiClientInfo[]
+--- @field animations SecondOrderDynamics[]
 local AiProcessInfo = {
 	infoPath = Config.getPath("Resource/Data/AiClientInfo_%s.json")
 }
@@ -82,8 +81,12 @@ function AiProcessInfo:__init()
 	self.renderables = {}
 	self.cachedInfo = {}
 
+	self.animations = Table.populateForMaxPlayers(function(eid)
+		return SecondOrderDynamics:new(0.178, 0.45, 0, 0.12, Vector3, Player:new(eid):getOrigin())
+	end)
+
 	Callbacks.frame(function()
-		if not Config.isAdministrator(LocalPlayer:getSteamId64()) or not MenuGroup.showAiInfo:get() then
+		if not Config.isAdministrator(LocalPlayer:getSteamId64()) then
 			return
 		end
 
@@ -91,10 +94,6 @@ function AiProcessInfo:__init()
 	end)
 
 	Callbacks.runCommand(function()
-		if not self.isEnabled then
-			return
-		end
-
 		self:think()
 	end)
 end
@@ -115,16 +114,16 @@ end
 
 --- @return void
 function AiProcessInfo:render()
-	if self.ai.reaper.isEnabled then
-		self:renderReaper()
-	else
-		self:renderNormal()
+	if MenuGroup.visualiseOtherAiMode:get() == "Spectator" then
+		self:renderSpectator()
 		self:renderGrenades()
+	elseif MenuGroup.visualiseOtherAiMode:get() == "Competitive" then
+		self:renderCompetitive()
 	end
 end
 
 --- @return void
-function AiProcessInfo:renderNormal()
+function AiProcessInfo:renderSpectator()
 	local threatLevelColors = {
 		[0] = ColorList.BACKGROUND_1,
 		[1] = Color:rgba(95, 40, 40, 255),
@@ -203,9 +202,12 @@ function AiProcessInfo:renderNormal()
 			break
 		end
 
-		info.lastUpdateAt = Time.getRealtime()
-
 		self.cachedInfo[player.eid] = info
+
+		-- SteamIDs don't match. Player isn't in server.
+		if player:getSteamId64() ~= info.steamid64 then
+			break
+		end
 
 		for _, renderable in pairs(info.renderables) do
 			renderable = self:getDeserializedRenderable(renderable)
@@ -214,7 +216,7 @@ function AiProcessInfo:renderNormal()
 		end
 
 		local playerOrigin = origins[player.eid]
-		local playerOriginAnimated = sods[player.eid]:think(playerOrigin)
+		local playerOriginAnimated = self.animations[player.eid]:think(playerOrigin)
 
 		--- @type Vector2
 		local drawPosBottom = playerOrigin:getVector2()
@@ -228,10 +230,11 @@ function AiProcessInfo:renderNormal()
 		drawPosBottomAnimated:offset(8, 8)
 
 		local colorBase = player:isTerrorist() and ColorList.TERRORIST or ColorList.COUNTER_TERRORIST
-		local color = colorBase:clone()
-		local color2 = ColorList.FONT_MUTED:clone()
-		local color3 = ColorList.FONT_NORMAL:clone()
-		local color4 = colorBase:clone()
+		local colorTeam = colorBase:clone()
+		local colorMuted = ColorList.FONT_MUTED:clone()
+		local colorNormal = ColorList.FONT_NORMAL:clone()
+		local colorName = colorBase:clone()
+		local colorError = ColorList.ERROR:clone()
 		local colorBg = threatLevelColors[info.threatLevel]
 		local alphaModStack = 1
 
@@ -239,38 +242,53 @@ function AiProcessInfo:renderNormal()
 			alphaModStack = stacks[player.eid]
 		end
 
-		color.a = alphaModStack * 255
-		color2.a = color.a * 0.25
-		color3.a = color.a
-		color4.a = color.a
+		colorTeam.a = alphaModStack * 255
+		colorMuted.a = colorTeam.a * 0.25
+		colorNormal.a = colorTeam.a
+		colorName.a = colorTeam.a
 
-		drawPosBottom:drawCircle(2, color2)
-		drawPosBottom:drawLine(drawPosBottomAnimated, color2)
+		drawPosBottom:drawCircle(2, colorMuted)
+		drawPosBottom:drawLine(drawPosBottomAnimated, colorMuted)
 
-		drawPosBottomAnimated:clone():offset(-2):drawSurfaceRectangle(Vector2:new(2, 35), color)
+		drawPosBottomAnimated:clone():offset(-2):drawSurfaceRectangle(Vector2:new(2, 35), colorTeam)
 		drawPosBottomAnimated:offset(4)
 		drawPosBottomAnimated:clone():offset(-4):drawSurfaceRectangleGradient(
 			Vector2:new(150, 35),
-			colorBg:clone():setAlpha(math.min(color.a, 255)),
+			colorBg:clone():setAlpha(math.min(colorTeam.a, 255)),
 			colorBg:clone():setAlpha(0),
 			"h"
 		)
 
 		drawPosBottomAnimated:offset(4)
-		drawPosBottomAnimated:offset(0, 0):drawSurfaceText(Font.TINY, color4, "l", string.format("[%i] %s", info.priority, info.behavior))
-		drawPosBottomAnimated:offset(0, 12):drawSurfaceText(Font.SMALL, color3, "l", info.activity)
+
+		-- Client has stopped updating.
+		if Time.getUnixTimestamp() - info.lastUpdateAt > 5 then
+			drawPosBottomAnimated:offset(0, 0):drawSurfaceText(Font.TINY, colorError, "l", player:getName())
+			drawPosBottomAnimated:offset(0, 12):drawSurfaceText(Font.SMALL, colorError, "l", "Lost connection to client")
+		else
+			local isBombCarrier = AiUtility.bombCarrier and AiUtility.bombCarrier:is(player)
+
+			if isBombCarrier then
+				self:drawBombIcon(drawPosBottomAnimated:clone():offset(0, 7), colorTeam.a)
+
+				drawPosBottomAnimated:offset(24)
+			end
+
+			drawPosBottomAnimated:offset(0, 0):drawSurfaceText(Font.TINY, colorName, "l", string.format("[%i] %s", info.priority, info.behavior))
+			drawPosBottomAnimated:offset(0, 12):drawSurfaceText(Font.SMALL, colorNormal, "l", info.activity)
+		end
 
 		drawPosBottomAnimated:offset(0, 22)
 
 		for i, item in pairs(info.userdata) do
-			drawPosBottomAnimated:drawSurfaceText(Font.TINY, color3, "l", item)
+			drawPosBottomAnimated:drawSurfaceText(Font.TINY, colorNormal, "l", item)
 			drawPosBottomAnimated:offset(0, i * 12)
 		end
 	until true end
 end
 
 --- @return void
-function AiProcessInfo:renderReaper()
+function AiProcessInfo:renderCompetitive()
 	--- @type Vector3[]
 	local origins = {}
 
@@ -345,9 +363,12 @@ function AiProcessInfo:renderReaper()
 			break
 		end
 
-		info.lastUpdateAt = Time.getRealtime()
-
 		self.cachedInfo[player.eid] = info
+
+		-- SteamIDs don't match. Player isn't in server.
+		if player:getSteamId64() ~= info.steamid64 then
+			break
+		end
 
 		for _, renderable in pairs(info.renderables) do
 			renderable = self:getDeserializedRenderable(renderable)
@@ -356,7 +377,7 @@ function AiProcessInfo:renderReaper()
 		end
 
 		local playerOrigin = origins[player.eid]
-		local playerOriginAnimated = sods[player.eid]:think(playerOrigin)
+		local playerOriginAnimated = self.animations[player.eid]:think(playerOrigin)
 
 		local playerFoVOrigin = player:getOrigin():clone():offset(0, 0, 46)
 		local clientOrigin = LocalPlayer:getOrigin()
@@ -372,10 +393,11 @@ function AiProcessInfo:renderReaper()
 		drawPosBottomAnimated:offset(8, 8)
 
 		local colorBase = Color:hexa(Panorama.GameStateAPI.GetPlayerColor(player:getSteamId64()))
-		local color = colorBase:clone()
-		local color2 = ColorList.FONT_MUTED:clone()
-		local color3 = ColorList.FONT_NORMAL:clone()
-		local color4 = ColorList.FONT_NORMAL:clone():darken(0.15)
+		local colorTeam = colorBase:clone()
+		local colorMuted = ColorList.FONT_MUTED:clone()
+		local colorNormal = ColorList.FONT_NORMAL:clone()
+		local colorName = ColorList.FONT_NORMAL:clone():darken(0.15)
+		local colorError = ColorList.ERROR:clone()
 		local colorBg = ColorList.BACKGROUND_1
 		local alphaModDistance = Math.getClamped(Math.getInversedFloat(clientOrigin:getDistance(playerFoVOrigin), Math.getClamped(2500, 1500, 2500)), 0, 1)
 		local alphaModFovOuter = Math.getClamped(Math.getInversedFloat(cameraAngles:getFov(cameraOrigin, playerFoVOrigin), 60), 0.25, 1)
@@ -386,26 +408,42 @@ function AiProcessInfo:renderReaper()
 			alphaModStack = stacks[player.eid]
 		end
 
-		color.a = math.min(alphaModDistance, alphaModFovOuter, alphaModFovInner, alphaModStack) * 255
-		color2.a = color.a * 0.25
-		color3.a = color.a
-		color4.a = color.a
+		colorTeam.a = math.min(alphaModDistance, alphaModFovOuter, alphaModFovInner, alphaModStack) * 255
+		colorMuted.a = colorTeam.a * 0.25
+		colorNormal.a = colorTeam.a
+		colorName.a = colorTeam.a
+		colorError.a = colorTeam.a
 
-		drawPosBottom:drawCircle(2, color2)
-		drawPosBottom:drawLine(drawPosBottomAnimated, color2)
+		drawPosBottom:drawCircle(2, colorMuted)
+		drawPosBottom:drawLine(drawPosBottomAnimated, colorMuted)
 
-		drawPosBottomAnimated:clone():offset(-2):drawSurfaceRectangle(Vector2:new(2, 35), color)
+		drawPosBottomAnimated:clone():offset(-2):drawSurfaceRectangle(Vector2:new(2, 35), colorTeam)
 		drawPosBottomAnimated:offset(4)
 		drawPosBottomAnimated:clone():offset(-4):drawSurfaceRectangleGradient(
 			Vector2:new(150, 35),
-			colorBg:clone():setAlpha(math.min(color.a, 255)),
+			colorBg:clone():setAlpha(math.min(colorTeam.a, 255)),
 			colorBg:clone():setAlpha(0),
 			"h"
 		)
 
 		drawPosBottomAnimated:offset(4)
-		drawPosBottomAnimated:offset(0, 0):drawSurfaceText(Font.TINY, color4, "l", player:getName())
-		drawPosBottomAnimated:offset(0, 12):drawSurfaceText(Font.SMALL, color3, "l", info.activity)
+
+		-- Client has stopped updating.
+		if Time.getUnixTimestamp() - info.lastUpdateAt > 5 then
+			drawPosBottomAnimated:offset(0, 0):drawSurfaceText(Font.TINY, colorError, "l", player:getName())
+			drawPosBottomAnimated:offset(0, 12):drawSurfaceText(Font.SMALL, colorError, "l", "Lost connection to client")
+		else
+			local isBombCarrier = AiUtility.bombCarrier and AiUtility.bombCarrier:is(player)
+
+			if isBombCarrier then
+				self:drawBombIcon(drawPosBottomAnimated:clone():offset(0, 7), colorTeam.a)
+
+				drawPosBottomAnimated:offset(24)
+			end
+
+			drawPosBottomAnimated:offset(0, 0):drawSurfaceText(Font.TINY, colorName, "l", player:getName())
+			drawPosBottomAnimated:offset(0, 12):drawSurfaceText(Font.SMALL, colorNormal, "l", info.activity)
+		end
 	until true end
 end
 
@@ -475,8 +513,11 @@ function AiProcessInfo:think()
 		end
 	end
 
+	local steamid = LocalPlayer:getSteamId64()
+
 	--- @type AiClientInfo
 	local info = {
+		isEnabled = self.isEnabled,
 		isOk = priority ~= nil,
 		activity = activity,
 		behavior = behavior,
@@ -484,9 +525,11 @@ function AiProcessInfo:think()
 		threatLevel = threatLevel,
 		userdata = self.userdata,
 		renderables = self.renderables,
+		steamid64 = steamid,
+		lastUpdateAt = Time.getUnixTimestamp()
 	}
 
-	writefile(string.format(self.infoPath, Panorama.MyPersonaAPI.GetXuid()), json.stringify(info))
+	writefile(string.format(self.infoPath, steamid), json.stringify(info))
 
 	self.userdata = {}
 	self.renderables = {}
@@ -520,6 +563,30 @@ function AiProcessInfo:getDeserializedRenderable(serialized)
 	deserialized.thickness = serialized.thickness
 
 	return deserialized
+end
+
+--- @param drawPos Vector2
+--- @return void
+function AiProcessInfo:drawBombIcon(drawPos, alpha)
+	local colorBombA = Color:hsla(33, 0.0, 0.6, alpha)
+	local colorBombB = Color:hsla(33, 0.0, 0.3, alpha)
+
+	drawPos:drawSurfaceRectangle(Vector2:new(18, 22), colorBombA)
+
+	drawPos:clone():offset(1, -3):drawSurfaceRectangle(Vector2:new(2, 3), colorBombA)
+	drawPos:clone():offset(8, -3):drawSurfaceRectangle(Vector2:new(2, 3), colorBombA)
+	drawPos:clone():offset(15, -3):drawSurfaceRectangle(Vector2:new(2, 3), colorBombA)
+	drawPos:clone():offset(-3, 3):drawSurfaceRectangle(Vector2:new(3, 8), colorBombA)
+
+	drawPos:offset(2, 2):drawSurfaceRectangle(Vector2:new(14, 6), colorBombB)
+
+	drawPos:offset(0, 8):drawSurfaceRectangle(Vector2:new(4, 4), colorBombB)
+	drawPos:offset(5, 0):drawSurfaceRectangle(Vector2:new(4, 4), colorBombB)
+	drawPos:offset(5, 0):drawSurfaceRectangle(Vector2:new(4, 4), colorBombB)
+
+	drawPos:offset(-10, 5):drawSurfaceRectangle(Vector2:new(4, 4), colorBombB)
+	drawPos:offset(5, 0):drawSurfaceRectangle(Vector2:new(4, 4), colorBombB)
+	drawPos:offset(5, 0):drawSurfaceRectangle(Vector2:new(4, 4), colorBombB)
 end
 
 return Nyx.class("AiProcessInfo", AiProcessInfo, AiProcessBase)

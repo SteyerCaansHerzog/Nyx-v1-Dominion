@@ -72,11 +72,6 @@ function AiStateFlashbangDynamic:assess()
         return AiPriority.IGNORE
     end
 
-    -- We already found an angle to not-blind a totally-suspecting enemy player with.
-    if self.throwAngles then
-        return AiPriority.FLASHBANG_DYNAMIC
-    end
-
     -- Cooldown because the AI doesn't need to keep throwing flashbangs constantly.
     if not self.throwCooldownTimer:isElapsed(12) then
         return AiPriority.IGNORE
@@ -85,12 +80,17 @@ function AiStateFlashbangDynamic:assess()
     -- Don't let the AI spam when attempting this behaviour.
     -- Our anti-dithering is literally timers. Timers everywhere. Timers forever.
     if not self.throwAttemptCooldownTimer:isElapsed(1.5) then
-        return AiPriority.IGNORE -- todo
+        return AiPriority.IGNORE
     end
 
     -- Don't bother if we don't even have a flashbang on us.
     if not LocalPlayer:hasWeapon(Weapons.FLASHBANG) then
         return AiPriority.IGNORE
+    end
+
+    -- We already found an angle to not-blind a totally-suspecting enemy player with.
+    if self.throwAngles then
+        return AiPriority.FLASHBANG_DYNAMIC
     end
 
     local clientEyeOrigin = Client.getEyeOrigin()

@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -24,6 +25,18 @@ end
 function AiRoutineManageWeaponScope:__init()
 	self.unscopeTime = 1.6
 	self.unscopeTimer = Timer:new():startThenElapse()
+
+	Callbacks.weaponFire(function(e)
+		if not e.player:isClient() then
+			return
+		end
+
+		if not LocalPlayer:isHoldingSniper() then
+			return
+		end
+
+		LocalPlayer.quickSwap()
+	end)
 end
 
 --- @return void

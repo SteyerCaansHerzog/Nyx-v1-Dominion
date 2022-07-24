@@ -31,7 +31,7 @@ local traces = {
 		end
 	},
 	{
-		offset = 20,
+		offset = 15,
 		validation = function(origin)
 			local trace = Trace.getHullAtPosition(
 				origin,
@@ -44,7 +44,7 @@ local traces = {
 		end
 	},
 	{
-		offset = 40,
+		offset = 20,
 		validation = function(origin)
 			local trace = Trace.getHullAtPosition(
 				origin,
@@ -57,7 +57,7 @@ local traces = {
 		end
 	},
 	{
-		offset = 60,
+		offset = 25,
 		validation = function(origin)
 			local trace = Trace.getHullAtPosition(
 				origin,

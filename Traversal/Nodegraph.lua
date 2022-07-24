@@ -14,6 +14,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
+local MapInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/MapInfo"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
@@ -334,6 +335,16 @@ end
 --- @param origin Vector3
 --- @return NodeTypeObjective
 function Nodegraph.getClosestBombsite(origin)
+    if AiUtility.bombsiteType == "distance" then
+        return Nodegraph.getClosestBombsiteByDistance(origin)
+    elseif AiUtility.bombsiteType == "height" then
+        return Nodegraph.getClosestBombsiteByHeight(origin)
+    end
+end
+
+--- @param origin Vector3
+--- @return NodeTypeObjective
+function Nodegraph.getClosestBombsiteByDistance(origin)
     --- @type NodeTypeObjective[]
     local bombsites = {
         Nodegraph.getOne(Node.objectiveBombsiteA),
@@ -354,6 +365,33 @@ function Nodegraph.getClosestBombsite(origin)
     end
 
     return closestBombsite
+end
+
+--- @param origin Vector3
+--- @return NodeTypeObjective
+function Nodegraph.getClosestBombsiteByHeight(origin)
+    --- @type NodeTypeObjective
+    local lower
+    --- @type NodeTypeObjective
+    local upper
+    local bombsiteA = Nodegraph.getOne(Node.objectiveBombsiteA)
+    local bombsiteB = Nodegraph.getOne(Node.objectiveBombsiteB)
+
+    if bombsiteA.origin.z < bombsiteB.origin.z then
+        lower = bombsiteA
+        upper = bombsiteB
+    else
+        lower = bombsiteB
+        upper = bombsiteA
+    end
+
+    local upperZ = upper.origin.z - 128
+
+    if origin.z < upperZ then
+        return lower
+    end
+
+    return upper
 end
 
 --- @param origin Vector3

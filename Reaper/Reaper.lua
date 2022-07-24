@@ -44,6 +44,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field health number
 --- @field isAlive boolean
 --- @field isAttacked boolean
+--- @field isBombCarrier boolean
 --- @field isFlashed boolean
 --- @field isInGame boolean
 --- @field isLobbyHost boolean
@@ -337,9 +338,8 @@ function Reaper:render()
 			--- @type Color
 			local color
 			local text
-			local player = Player.getClient()
 
-			if player:isAlive() then
+			if LocalPlayer:isAlive() then
 				color = Color:rgba(255, 255, 255, 155)
 				text = "Press F to take control"
 
@@ -411,7 +411,7 @@ function Reaper:render()
 	--- @type Vector2
 	local drawPosition
 	local screenDims = Client.getScreenDimensions()
-	local clientBoxDimensions = Vector2:new(350, 50)
+	local clientBoxDimensions = Vector2:new(360, 52)
 	local clientBoxTopOffset = 40 - (totalClients * clientBoxDimensions.y / 2)
 	local clientBoxRightOffset = -300
 	local clientBoxBottomMargin = 12
@@ -442,11 +442,11 @@ function Reaper:render()
 	if self.isActive then
 		self.screenGradientAlpha = Animate.slerp(self.screenGradientAlpha, 0, 1.66)
 		self.screenOverlayAlpha = Animate.slerp(self.screenOverlayAlpha, 0, 2)
-		self.clientBoxActiveOffset = Animate.slerp(self.clientBoxActiveOffset, 0, 6)
+		self.clientBoxActiveOffset = Animate.slerp(self.clientBoxActiveOffset, 0, 10)
 	else
 		self.screenGradientAlpha = 255
 		self.screenOverlayAlpha = 100
-		self.clientBoxActiveOffset = 50
+		self.clientBoxActiveOffset = 75
 	end
 
 	Vector2:new():drawSurfaceRectangle(screenDims, Color:hsla(0, 0, 0.15, self.screenOverlayAlpha))
@@ -535,9 +535,9 @@ function Reaper:render()
 		bgColor.a = bgColor.a * bgAlphaMod
 
 		if isFocused then
-			self.clientBoxFocusedOffset = Animate.slerp(self.clientBoxFocusedOffset, 10, 1.66)
+			self.clientBoxFocusedOffset = Animate.slerp(self.clientBoxFocusedOffset, 12, 4)
 		else
-			self.clientBoxFocusedOffset = Animate.slerp(self.clientBoxFocusedOffset, 0, 1.66)
+			self.clientBoxFocusedOffset = Animate.slerp(self.clientBoxFocusedOffset, 0, 4)
 		end
 
 		if self.isActive then
@@ -582,7 +582,7 @@ function Reaper:render()
 
 		-- No connection to the client.
 		if isConnectionLost then
-			drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "No connection to client")
+			drawPosition:clone():offset(5, 28):drawSurfaceText(Font.SMALL, infoColor, "l", "Lost connection to client")
 			drawPosition:offset(0, clientBoxDimensions.y + clientBoxBottomMargin)
 
 			break
@@ -590,7 +590,7 @@ function Reaper:render()
 
 		-- Match is over.
 		if isMatchOver then
-			drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "Match ended")
+			drawPosition:clone():offset(5, 28):drawSurfaceText(Font.SMALL, infoColor, "l", "Match ended")
 			drawPosition:offset(0, clientBoxDimensions.y + clientBoxBottomMargin)
 
 			break
@@ -600,11 +600,11 @@ function Reaper:render()
 		if client.info.isInGame then
 			-- In-game state.
 			if client.info.isWarmup then
-				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "Idling in warmup")
+				drawPosition:clone():offset(5, 28):drawSurfaceText(Font.SMALL, infoColor, "l", "Idling in warmup")
 			elseif isPlayerAlive then
-				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", client.info.activity)
+				drawPosition:clone():offset(5, 28):drawSurfaceText(Font.SMALL, infoColor, "l", client.info.activity)
 			else
-				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "Dead")
+				drawPosition:clone():offset(5, 28):drawSurfaceText(Font.SMALL, infoColor, "l", "Dead")
 			end
 		else
 			-- Lobby state.
@@ -635,13 +635,13 @@ function Reaper:render()
 					)
 				end
 
-				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", lobbyText)
+				drawPosition:clone():offset(5, 28):drawSurfaceText(Font.SMALL, infoColor, "l", lobbyText)
 
 				if client.info.lobbyMemberCount > 1 and client.info.isLobbyHost then
 					drawPosition:clone():offset(clientBoxDimensions.x - 5, 25):drawSurfaceText(Font.SMALL, infoColor, "r", "Host")
 				end
 			else
-				drawPosition:clone():offset(5, 25):drawSurfaceText(Font.SMALL, infoColor, "l", "In the main menu")
+				drawPosition:clone():offset(5, 28):drawSurfaceText(Font.SMALL, infoColor, "l", "In the main menu")
 			end
 		end
 
@@ -658,22 +658,23 @@ function Reaper:render()
 			"h"
 		)
 
+		-- Set team color.
+		local teamColor
+		local teamName
+
+		if client.info.team == 2 then
+			teamColor = ColorList.TERRORIST
+			teamName = "T"
+		elseif client.info.team == 3 then
+			teamColor = ColorList.COUNTER_TERRORIST
+			teamName = "CT"
+		else
+			teamColor = ColorList.FONT_MUTED
+			teamName = "-"
+		end
+
 		-- Team.
 		if client.info.team then
-			local teamColor
-			local teamName
-
-			if client.info.team == 2 then
-				teamColor = ColorList.TERRORIST
-				teamName = "T"
-			elseif client.info.team == 3 then
-				teamColor = ColorList.COUNTER_TERRORIST
-				teamName = "CT"
-			else
-				teamColor = ColorList.FONT_MUTED
-				teamName = "-"
-			end
-
 			drawPosition:clone():offset(clientBoxDimensions.x - 14 - 28):drawSurfaceText(Font.SMALL_BOLD, teamColor, "c", teamName)
 			drawPosition:clone():offset(clientBoxDimensions.x - 21 - 28, 6):drawSurfaceRectangleOutline(1, 4, Vector2:new(15, 10), teamColor:clone():setAlpha(33 * alphaMod))
 			drawPosition:clone():offset(clientBoxDimensions.x - 21 - 32, 2):drawSurfaceRectangleGradient(
@@ -705,6 +706,18 @@ function Reaper:render()
 					healthColor:clone():setAlpha(48 * alphaMod),
 					"h"
 				)
+
+				-- C4.
+				if client.info.isBombCarrier then
+					drawPosition:clone():offset(clientBoxDimensions.x - 14 - 94):drawSurfaceText(Font.SMALL_BOLD, teamColor, "c", "C4")
+					drawPosition:clone():offset(clientBoxDimensions.x - 21 - 94, 6):drawSurfaceRectangleOutline(1, 4, Vector2:new(15, 10), teamColor:clone():setAlpha(33 * alphaMod))
+					drawPosition:clone():offset(clientBoxDimensions.x - 21 - 98, 2):drawSurfaceRectangleGradient(
+						Vector2:new(24, 18),
+						teamColor:clone():setAlpha(8 * alphaMod),
+						teamColor:clone():setAlpha(48 * alphaMod),
+						"h"
+					)
+				end
 			end
 
 			if client.info.map then
@@ -758,6 +771,7 @@ function Reaper:think()
 		local map
 		local phase
 		local team
+		local isBombCarrier
 
 		if Server.isIngame() then
 			balance = LocalPlayer:m_iAccount()
@@ -767,6 +781,7 @@ function Reaper:think()
 			isWarmup = Entity.getGameRules():m_bWarmupPeriod() == 1
 			map = globals.mapname()
 			team = LocalPlayer:m_iTeamNum()
+			isBombCarrier = AiUtility.bombCarrier and AiUtility.bombCarrier:isClient()
 
 			if AiUtility.timeData then
 				phase = AiUtility.timeData.gamephase
@@ -801,6 +816,7 @@ function Reaper:think()
 			health = health,
 			isAlive = isAlive,
 			isAttacked = AiUtility.isEnemyVisible,
+			isBombCarrier = isBombCarrier,
 			isFlashed = LocalPlayer.isFlashed(),
 			isInGame = Server.isIngame(),
 			isLobbyHost = isLobbyHost,

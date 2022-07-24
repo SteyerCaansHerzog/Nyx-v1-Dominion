@@ -26,6 +26,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field requestableGear fun(): nil This is the equip function to equip the item to drop.
 --- @field requestedGear string
 --- @field requestedCallback fun(): void
+--- @field isBuyingAfterDrop boolean
 local AiStateDrop = {
     name = "Drop",
     delayedMouseMin = 0.2,
@@ -50,8 +51,9 @@ end
 
 --- @param player Player
 --- @param requestedGear string
+--- @param isBuyingAfterDrop boolean
 --- @return void
-function AiStateDrop:dropGear(player, requestedGear)
+function AiStateDrop:dropGear(player, requestedGear, isBuyingAfterDrop)
     if not self.requestableGear[requestedGear] then
         return
     end
@@ -60,6 +62,7 @@ function AiStateDrop:dropGear(player, requestedGear)
     self.isDroppingGear = true
     self.requestedGear = requestedGear
     self.requestedCallback = self.requestableGear[requestedGear]
+    self.isBuyingAfterDrop = isBuyingAfterDrop
 end
 
 --- @return number
@@ -124,7 +127,7 @@ function AiStateDrop:think(cmd)
                 self.isDroppingGear = false
 
                 -- We need to rebuy.
-                if isFreezeTime or AiUtility.timeData.roundtime_elapsed < cvar.mp_buytime:get_int() then
+                if self.isBuyingAfterDrop and isFreezeTime or AiUtility.timeData.roundtime_elapsed < cvar.mp_buytime:get_int() then
                     self:buyGear()
                 end
             end

@@ -165,12 +165,13 @@ function AiStateDefuse:deactivate() end
 --- @return void
 function AiStateDefuse:think(cmd)
     local bomb = AiUtility.plantedBomb
+    local bombsite = Nodegraph.getClosestBombsiteName(AiUtility.plantedBomb:m_vecOrigin())
 
     if not bomb then
         return
     end
 
-    self.activity = "Retaking bombsite"
+    self.activity = string.format("Retaking bombsite %s", bombsite)
 
     local bombOrigin = bomb:m_vecOrigin()
     local distance = LocalPlayer:getOrigin():getDistance(bombOrigin)
@@ -190,7 +191,7 @@ function AiStateDefuse:think(cmd)
     end
 
     if self.isDefusing then
-        self.activity = "Defusing the bomb"
+        self.activity = string.format("Defusing bomb on %s", bombsite)
 
         self.ai.routines.manageWeaponReload:block()
         cmd.in_use = true

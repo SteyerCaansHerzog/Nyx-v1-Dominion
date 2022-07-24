@@ -9,6 +9,7 @@ local AiRoutine = {
 	manageWeaponReload = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineManageWeaponReload",
 	manageWeaponScope = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineManageWeaponScope",
 	resolveFlyGlitch = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineResolveFlyGlitch",
+	voteController = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineVoteController",
 }
 
 return AiRoutine

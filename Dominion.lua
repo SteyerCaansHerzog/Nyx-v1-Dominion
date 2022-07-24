@@ -7,16 +7,6 @@
 --- - Localization-API <https://gamesense.pub/forums/viewtopic.php?id=30643>
 --- - Web-Sockets-API <https://gamesense.pub/forums/viewtopic.php?id=23653>
 
---{{{ Modules
-local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
-
-Logger.credits("2.2.0-beta", "04/07/2022")
-
-require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-
-local Ai = require "gamesense/Nyx/v1/Dominion/Ai/Ai"
-local NodegraphEditor = require "gamesense/Nyx/v1/Dominion/Traversal/NodegraphEditor"
---}}}
-
-Ai:new()
-NodegraphEditor:new()
+require "gamesense/Nyx/v1/Dominion/Utility/Logger".credits("2.3.0", "24/07/2022")
+require "gamesense/Nyx/v1/Dominion/Ai/Ai":new()
+require "gamesense/Nyx/v1/Dominion/Traversal/NodegraphEditor":new()

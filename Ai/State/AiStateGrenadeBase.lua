@@ -54,7 +54,6 @@ local AiStateGrenadeBase = {
     name = "GrenadeBase",
     delayedMouseMin = 0,
     delayedMouseMax = 0.15,
-    globalCooldownTimer = Timer:new():startThenElapse(),
     usedNodes = {},
     rangeThreshold = 2000
 }
@@ -106,11 +105,6 @@ function AiStateGrenadeBase:assess()
 
     -- Ignore before round starts. Otherwise we can trip the cooldown.
     if AiUtility.gameRules:m_bFreezePeriod() == 1 then
-        return AiPriority.IGNORE
-    end
-
-    -- We're on cooldown from using any line-ups.
-    if not AiStateGrenadeBase.globalCooldownTimer:isElapsed(10) then
         return AiPriority.IGNORE
     end
 
@@ -355,7 +349,7 @@ function AiStateGrenadeBase:think(cmd)
 
     -- We haven't thrown the grenade within this time.
     -- We're probably stuck. Abort the throw.
-    if self.inBehaviorTimer:isElapsedThenStop(4) then
+    if self.inBehaviorTimer:isElapsedThenStop(5) then
         self.cooldownTimer:start()
 
         self:deactivate()
@@ -368,13 +362,15 @@ function AiStateGrenadeBase:think(cmd)
 
     self.ai.states.evade:block()
 
+    if distance < 150 then
+        View.lookAlongAngle(self.node.direction, 15, View.noise.none, "Grenade look at line-up")
+    end
+
     if distance < 250 then
         self.activity = string.format("Throwing %s", self.name)
 
         self.ai.routines.manageGear:block()
         self.ai.routines.lookAwayFromFlashbangs:block()
-
-        View.lookAlongAngle(self.node.direction, 15, View.noise.none, "Grenade look at line-up")
 
         self.equipFunction()
     end

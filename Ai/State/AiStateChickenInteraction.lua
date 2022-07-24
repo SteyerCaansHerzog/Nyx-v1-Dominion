@@ -137,9 +137,9 @@ end
 --- @return void
 function AiStateChickenInteraction:think(cmd)
     if self.interaction == "kill" then
-        self.activity = "Intercept hostile poultry"
+        self.activity = "Intercepting hostile poultry"
     elseif self.interaction == "collect" then
-        self.activity = "Pick up birds"
+        self.activity = "Picking up birds"
     end
 
     if not LocalPlayer:isHoldingKnife() then
@@ -156,10 +156,16 @@ function AiStateChickenInteraction:think(cmd)
         return
     end
 
-    local playerOrigin = LocalPlayer:getOrigin()
-    local distance = playerOrigin:getDistance(chickenOrigin)
+    local clientOrigin = LocalPlayer:getOrigin()
+    local distance = clientOrigin:getDistance(chickenOrigin)
 
     if distance > 500 then
+        self:reset()
+
+        return
+    end
+
+    if AiUtility.closestTeammate and clientOrigin:getDistance(AiUtility.closestTeammate:getOrigin()) < 80 then
         self:reset()
 
         return

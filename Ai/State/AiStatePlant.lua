@@ -87,7 +87,7 @@ function AiStatePlant:__init()
 
         local origin = LocalPlayer:getOrigin()
 
-        if not self.ai.reaper.isActive and MenuGroup.useChatCommands:get() and self.tellSiteTimer:isElapsedThenRestart(50) then
+        if MenuGroup.enableAi:get() and not AiUtility.isLastAlive and not self.ai.reaper.isActive and MenuGroup.useChatCommands:get() and self.tellSiteTimer:isElapsedThenRestart(50) then
             self.ai.commands.go:bark(self.bombsite:lower())
 
             local distanceToSite = origin:getDistance(Nodegraph.getClosestBombsite(origin).origin)
@@ -107,16 +107,34 @@ function AiStatePlant:assess()
         return AiPriority.IGNORE
     end
 
-    local clientOrigin = LocalPlayer:getOrigin()
-    local isTeammateNearby = AiUtility.closestTeammate and clientOrigin:getDistance(AiUtility.closestTeammate:getOrigin()) < 400
-    local isAtPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 40
-    local isNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 650
-
-    if AiUtility.isLastAlive and AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin()) < 600 then
+    if self.ai.states.evacuate.isSaving then
         return AiPriority.IGNORE
     end
 
-    if isAtPlantSpot and (isTeammateNearby or not AiUtility.isClientThreatenedMajor) then
+    local clientOrigin = LocalPlayer:getOrigin()
+    local isTeammateNearby = AiUtility.closestTeammate and clientOrigin:getDistance(AiUtility.closestTeammate:getOrigin()) < 400
+    local isAtPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 75
+    local isNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 700
+    local isVeryNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 350
+    local closestEnemyDistance = AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin())
+
+    if AiUtility.isLastAlive and closestEnemyDistance and closestEnemyDistance < 1000 then
+        return AiPriority.IGNORE
+    end
+
+    if AiUtility.isClientThreatenedMinor and closestEnemyDistance and closestEnemyDistance < 200 then
+        return AiPriority.IGNORE
+    end
+
+    if isAtPlantSpot and isTeammateNearby then
+        return AiPriority.PLANT_COVERED
+    end
+
+    if isAtPlantSpot and not AiUtility.isClientThreatenedMajor then
+        return AiPriority.PLANT_COVERED
+    end
+
+    if isVeryNearPlantSpot and isTeammateNearby and closestEnemyDistance and closestEnemyDistance > 800 then
         return AiPriority.PLANT_COVERED
     end
 

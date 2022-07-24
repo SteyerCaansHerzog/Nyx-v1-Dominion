@@ -22,13 +22,18 @@ local Config = {
     administrators = {
         -- Friends
         "76561198138748363", -- Adrian
+        "76561198080048177", -- Fanta
         -- Main accounts
         "76561198339559079", -- Data
         "76561198373386496", -- Bropp
         "76561198816968549", -- Kirsty
         "76561198866118626", -- Michael
         "76561198283352893", -- Comm banned
-        "76561199241945029" -- Digital Spring
+        "76561199241945029", -- Digital Spring
+        -- Others
+        "76561198887876627", -- Phil
+        "76561198849675001", -- Rittenhouse
+        "76561198994143335" -- Hoss
     },
     clientConfigs = {
         normal = "Nyx-v1-Dominion", -- GS config to load when in normal mode.

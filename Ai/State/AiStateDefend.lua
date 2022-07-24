@@ -227,9 +227,7 @@ function AiStateDefend:assessDemolition()
 
         -- Basic defend behaviour.
         return AiPriority.DEFEND_GENERIC
-    end
-
-    if LocalPlayer:isTerrorist() then
+    elseif LocalPlayer:isTerrorist() then
         -- Hold specific angle.
         if bomb and self.isSpecificNodeSet and self:isEnemyHoldable() then
             return AiPriority.DEFEND_EXPEDITE
@@ -321,26 +319,22 @@ function AiStateDefend:isEnemyHoldable()
     local cameraAngles = Client.getCameraAngles()
     local eyeOrigin = Client.getEyeOrigin()
     local clientOrigin = Client.getEyeOrigin()
-    local isEnemyInFoV = false
-    local isEnemies = false
 
     for _, enemy in pairs(AiUtility.enemies) do
-        isEnemies = true
+        isAnyEnemies = true
 
-        local enemyOrigin = enemy:getOrigin()
-
-        if clientOrigin:getDistance(enemyOrigin) < 1500 and cameraAngles:getFov(eyeOrigin, enemyOrigin:offset(0, 0, 64)) < 85 then
-            isEnemyInFoV = true
-
-            break
+        if clientOrigin:getDistance(enemy:getOrigin()) < 1500
+            and cameraAngles:getFov(eyeOrigin, enemy:getEyeOrigin()) > 80
+        then
+            return false
         end
     end
 
-    if not isEnemies then
+    if not isAnyEnemies then
         return false
     end
 
-    return isEnemyInFoV
+    return true
 end
 
 --- @return void
@@ -351,6 +345,7 @@ function AiStateDefend:activate()
 
     if not self.node then
         self:invoke()
+        self:setActivityNode(self.bombsite)
     end
 
     self:move()
@@ -426,6 +421,19 @@ function AiStateDefend:think(cmd)
     end
 
     local distance = AiUtility.clientNodeOrigin:getDistance(self.node.origin)
+    local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), self.node.origin:clone():offset(46), AiUtility.traceOptionsAttacking, "AiStateDefend.think<FindIfVisibleNode>")
+
+    if not trace.isIntersectingGeometry then
+        if AiUtility.closestEnemy and LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) < 1250 then
+            if distance < 750 then
+                View.lookAtLocation(self.node.lookAtOrigin, 5.5, View.noise.moving, "Defend look at angle")
+            end
+        else
+            if distance < 500 then
+                View.lookAtLocation(self.node.lookAtOrigin, 5, View.noise.moving, "Defend look at angle")
+            end
+        end
+    end
 
     -- Walk.
     if distance < 500 then
@@ -451,16 +459,9 @@ function AiStateDefend:think(cmd)
         self.ai.routines.manageWeaponScope:block()
         self.defendTimer:ifPausedThenStart()
 
-        local nodeVisibleTrace = Trace.getLineToPosition(Client.getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateDefend.think<FindSpotVisible>")
-
         -- Duck when holding this node.
         if self.isAllowedToDuckAtNode and distance < 32 and self.node.isAllowedToDuck then
             Pathfinder.duck()
-        end
-
-        -- Look at the angle we intend to hold.
-        if not nodeVisibleTrace.isIntersectingGeometry then
-            View.lookAtLocation(self.node.lookAtOrigin, 5.5, View.noise.moving, "Defend look at angle")
         end
 
         -- Equip the correct gear.

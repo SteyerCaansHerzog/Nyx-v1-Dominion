@@ -49,6 +49,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 
 --{{{ Ai
 --- @class Ai : Class
+--- @field isEnabled boolean
 --- @field chatbots AiChatbot
 --- @field client DominionClient
 --- @field commands AiChatCommand
@@ -175,7 +176,11 @@ end
 --- @return void
 function Ai:initMenu()
 	MenuGroup.enableAi = MenuGroup.group:addCheckbox("> Enable AI"):setParent(MenuGroup.master):addCallback(function(item)
-		Pathfinder.isEnabled = item:get()
+		local bool = item:get()
+
+		Pathfinder.isEnabled = bool
+		self.isEnabled = bool
+		AiUtility.isPerformingCalculations = bool
 		self.lastPriority = nil
 		self.currentState = nil
 
@@ -193,7 +198,7 @@ end
 
 --- @return void
 function Ai:initEvents()
-	Callbacks.init(function()
+	Callbacks.levelInit(function()
 		if not Server.isIngame() then
 			Logger.console(2, Localization.aiNotInGame)
 
@@ -268,16 +273,6 @@ function Ai:initEvents()
 		end
 
 		self:handleChatCommands(e)
-	end)
-
-	Callbacks.weaponFire(function(e)
-		if not MenuGroup.master:get() or not MenuGroup.enableAi:get() then
-			return
-		end
-
-		if e.player:isClient() and e.player:isHoldingBoltActionRifle() then
-			LocalPlayer.unscope(true)
-		end
 	end)
 end
 
@@ -505,7 +500,7 @@ function Ai:renderUi()
 	end
 
 	if Pathfinder.path then
-		if Pathfinder.path.isOk then
+		if Pathfinder.isOnValidPath() then
 			uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(
 				"Task: %s",
 				Pathfinder.path.task
@@ -563,7 +558,7 @@ function Ai:think(cmd)
 	end
 
 	self:preventDithering()
-	self:setCurrentState(cmd)
+	self:selectState(cmd)
 end
 
 --- @param cmd SetupCommandEvent
@@ -626,7 +621,7 @@ end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function Ai:setCurrentState(cmd)
+function Ai:selectState(cmd)
 	--- @type AiStateBase
 	local currentState
 	local highestPriority = -1

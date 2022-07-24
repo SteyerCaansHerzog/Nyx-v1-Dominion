@@ -1,0 +1,194 @@
+Agreement:
+	ohhei braa
+	yhhe
+	ohhei
+	'hhei
+	van śtarthost
+	he bener
+	he mener
+	marke
+	he marke
+	marke den
+	marke'n
+	yaap
+
+Apologize:
+	anśehh
+	anśehh braa
+	vyhht, anśehh
+	het vækair
+	ahh, lanr
+	anśe
+
+
+CannotDefuseBomb:
+
+
+ClientDefusingBomb:
+
+
+ClientHurtByEnemy:
+
+
+ClientHurtByTeammate:
+
+
+ClientKilledByEnemy_Generic:
+
+
+ClientKilledByEnemy_Owned:
+
+
+ClientKilledByTeammate:
+
+
+ClientPlantingBomb:
+
+
+ClientThrowingFlashbang:
+
+
+ClientThrowingHeGrenade:
+
+
+ClientThrowingIncendiary:
+
+
+ClientThrowingSmoke:
+
+
+Disagreement:
+	van
+	anśe van
+	mamarkim
+	he bener markim den
+
+EnemyDefusingBomb:
+
+
+EnemyHurtByClient:
+
+
+EnemyKilledByClient_Generic:
+
+
+EnemyKilledByClient_Grenade:
+
+
+EnemyKilledByClient_Owned:
+
+
+EnemyPlantingBomb:
+
+
+GameEndLost:
+
+
+GameEndWon:
+
+
+Gifting:
+	den æ na seg
+	na seg
+	vuug den
+	œka, hark den
+
+
+Gratitude:
+	dahht
+	zu dahht
+	dahht an
+	taa lanr
+	dahht lanr
+	het rannoez
+	rannoez
+
+HearNearbyEnemies:
+
+
+LastAlive:
+
+
+NoProblem:
+	van śtarthost
+	van śtarta
+	he bener
+	mamarke
+	grennar marke
+
+
+NotifyFlashbanged:
+
+
+NotifyTeamOfBomb:
+
+
+NotifyTeamOfBombCarrier:
+
+
+Reloading:
+	nækse
+	he nækse
+	taþþ heg
+	taþþ pa heg
+	taþþ heg, he nækse
+	vaike nækse
+	kar nækse nau
+
+RequestTeammatesToPush_A:
+
+
+RequestTeammatesToPush_B:
+
+
+RequestTeammatesToRotate_A:
+
+
+RequestTeammatesToRotate_B:
+
+
+RoundEndHalftime:
+
+
+RoundEndLost:
+
+
+RoundEndWon:
+
+
+RoundStartLostPrevious:
+
+
+RoundStartMatchPointFinalRound:
+
+
+RoundStartMatchPointToOpposition:
+
+
+RoundStartMatchPointToTeam:
+
+
+RoundStartPistolFirstHalf:
+
+
+RoundStartPistolSecondHalf:
+
+
+RoundStartWonPrevious:
+
+
+TeammateKilledByClient_Blind:
+
+
+TeammateKilledByClient_Generic:
+
+
+TeammateKilledByClient_Inferno:
+
+
+WarmupGreeting:
+
+
+WarmupIdle:
+
+

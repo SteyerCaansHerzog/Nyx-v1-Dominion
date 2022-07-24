@@ -140,7 +140,7 @@ local AiSentenceTemplate = {
         },
         {
             "śtatnasfoiyr æ vim csenzand",
-            "se leer lass goe oþrplaaz",
+            "se leer lass go oþrplaaz",
             "set dellane antsaveihht"
         },
         {
@@ -152,6 +152,28 @@ local AiSentenceTemplate = {
         {
             "how the fuck he stand",
             "on 10 perc"
+        },
+        {
+            "this is paul's abortion clinic and pizzeria, where yesterday's loss is todays sauce. how can I help you today?"
+        },
+        {
+            "grind my balls on an axe!",
+            "cum-scented candle",
+            "cum-broiled eggs",
+            "cum-christ consciousness",
+            "third-eye, cum spy",
+            "cum-scrote sailboat",
+            "semen speed racer",
+            "off-road cum chode",
+            "my uterus came out!"
+        },
+        {
+            "i fucked a fairy in half",
+            "how do i piece her back together?",
+            "she cost like $2k"
+        },
+        {
+            "fuck everyone named alex",
         }
     }
 }

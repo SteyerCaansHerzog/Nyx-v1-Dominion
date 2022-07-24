@@ -89,8 +89,10 @@ local WeaponMode = {
 --- @field noticedPlayerTimers Timer[]
 --- @field onGroundTime Timer
 --- @field onGroundTimer Timer
+--- @field overrideBestTarget Player
 --- @field patienceCooldownTimer Timer
 --- @field patienceTimer Timer
+--- @field pingEnemyTimer Timer
 --- @field preAimAboutCornersAimOrigin Vector3
 --- @field preAimAboutCornersCenterOrigin Vector3
 --- @field preAimAboutCornersUpdateTimer Timer
@@ -200,13 +202,14 @@ function AiStateEngage:initFields()
     self.visibleReactionTimer = Timer:new()
     self.visualizerCallbacks = {}
     self.visualizerExpiryTimers = {}
-    self.aimNoise = View.noise.minor
+    self.aimNoise = View.noise.moving
     self.seekCoverTimer = Timer:new():startThenElapse()
     self.strafePeekTimer = Timer:new():startThenElapse()
     self.strafePeekIndex = 1
     self.randomizeFireDelayTimer = Timer:new():startThenElapse()
     self.randomizeFireDelayTime = 0
     self.randomizeFireDelay = 0
+    self.pingEnemyTimer = Timer:new():startThenElapse()
 
     for i = 1, 64 do
         self.noticedPlayerTimers[i] = Timer:new()
@@ -397,6 +400,10 @@ end
 function AiStateEngage:assess()
     self:setBestTarget()
 
+    if self.overrideBestTarget then
+        return AiPriority.ENGAGE_ACTIVE
+    end
+
     self.sprayTimer:isElapsedThenStop(self.sprayTime)
     self.watchTimer:isElapsedThenStop(self.watchTime)
 
@@ -514,7 +521,7 @@ function AiStateEngage:think(cmd)
     self:moveOnBestTarget(cmd)
     self:attackBestTarget(cmd)
 end
-local timer = Timer:new():startThenElapse()
+
 --- @return void
 function AiStateEngage:requestRotations()
     -- Only CTs should bark rotate commands.
@@ -534,7 +541,7 @@ function AiStateEngage:requestRotations()
         self:callGoToSite()
     end
 
-    if timer:isElapsed(20) then
+    if self.pingEnemyTimer:isElapsed(40) then
         self:pingEnemy()
     end
 end
@@ -553,14 +560,14 @@ function AiStateEngage:pingEnemy()
         local enemyEyeOrigin = enemy:getEyeOrigin()
         local fov = cameraAngles:getFov(clientEyeOrigin, enemyEyeOrigin)
 
-        if enemyEyeOrigin:getDistance(trace.endPosition) < 600 and fov < 25 then
+        if enemyEyeOrigin:getDistance(trace.endPosition) < 500 and fov < 15 then
             LocalPlayer.ping()
 
-            Client.fireAfter(0.1, function()
+            Client.fireAfterRandom(0.12, 0.5, function()
                 LocalPlayer.ping()
             end)
 
-            timer:restart()
+            self.pingEnemyTimer:restart()
 
             return
         end
@@ -572,7 +579,7 @@ function AiStateEngage:callRotateToSite()
     local clientOrigin = LocalPlayer:getOrigin()
     local nearestSite = Nodegraph.getClosestBombsite(clientOrigin)
 
-    if clientOrigin:getDistance(nearestSite.origin) > 1800 then
+    if clientOrigin:getDistance(nearestSite.origin) > 2000 then
         return
     end
 
@@ -704,6 +711,15 @@ end
 
 --- @return Player
 function AiStateEngage:setBestTarget()
+    if self.overrideBestTarget then
+        self.bestTarget = self.overrideBestTarget
+
+        self:setWeaponStats(self.overrideBestTarget)
+        self:setIsVisibleToBestTarget()
+
+        return
+    end
+
     --- @type Player
     local selectedEnemy
     local lowestFov = math.huge
@@ -914,13 +930,13 @@ function AiStateEngage:setWeaponStats(enemy)
             weaponMode = WeaponMode.HEAVY,
             fov = 4.5,
             ranges = {
-                long = 2000,
-                medium = 1500,
+                long = 2250,
+                medium = 1800,
                 short = 0
             },
             firerates = {
-                long = 0.2,
-                medium = 0.16,
+                long = 0.22,
+                medium = 0.14,
                 short = 0
             },
             isRcsEnabled = {
@@ -1344,7 +1360,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
         end
     end
 
-    if isAbleToDefend and Pathfinder.isIdle() then
+    if isAbleToDefend and not self.isDefending then
         local node
 
         if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
@@ -1375,6 +1391,19 @@ function AiStateEngage:moveOnBestTarget(cmd)
 
     if self.isDefending then
         self.activity = string.format("Holding enemy on %s", self.ai.states.defend.bombsite)
+
+        if self.ai.states.defend.node ~= nil
+            and not AiUtility.clientThreatenedFromOrigin
+            and not self.preAimAboutCornersAimOrigin
+            and not self.watchOrigin
+            and LocalPlayer:getOrigin():getDistance(self.ai.states.defend.node.origin) < 500
+        then
+            local fov = self.ai.states.defend.node.direction:getFov(self.ai.states.defend.node.origin, self.bestTarget:getOrigin())
+
+            if fov < 45 then
+                View.lookAtLocation(self.ai.states.defend.node.lookAtOrigin, 4, View.noise.moving, "Engage look along defend angle")
+            end
+        end
 
         return
     end
@@ -1660,7 +1689,7 @@ function AiStateEngage:attackBestTarget(cmd)
 
     -- Look at occluded origin.
     if self.lookAtOccludedOrigin and not AiUtility.clientThreatenedFromOrigin then
-        View.lookAtLocation(self.lookAtOccludedOrigin, 4, View.noise.minor, "Engage look-at occlusion")
+        View.lookAtLocation(self.lookAtOccludedOrigin, 4, View.noise.moving, "Engage look-at occlusion")
     end
 
     -- Spray.
@@ -1847,9 +1876,6 @@ function AiStateEngage:attackBestTarget(cmd)
                 end)
 
                 self:shoot(cmd, self.shootAtOrigin)
-
-                -- Do we need to return?
-                return
             end
         end
     end
@@ -1889,8 +1915,8 @@ function AiStateEngage:attackBestTarget(cmd)
     end
 
     -- Make sure the default mouse movement isn't active while the enemy is visible but the reaction timer hasn't elapsed.
-    if AiUtility.visibleEnemies[enemy.eid] and shootFov < 40 then
-       View.lookAtLocation(hitbox, 2.5, View.noise.idle, "Engage prepare to react")
+    if AiUtility.visibleEnemies[enemy.eid] and shootFov < 60 then
+       View.lookAtLocation(hitbox, 2, View.noise.moving, "Engage prepare to react")
 
         self:addVisualizer("hold", function()
             hitbox:drawCircleOutline(12, 2, Color:hsla(50, 1, 0.5, 200))
@@ -1907,12 +1933,12 @@ function AiStateEngage:attackBestTarget(cmd)
             self:noticeEnemy(enemy, 4096, false, "In shoot FoV")
             self:shoot(cmd, hitbox, enemy)
         elseif shootFov < 40 then
-           View.lookAtLocation(hitbox, self.aimSpeed * 0.8, View.noise.minor, "Engage find enemy under 40 FoV")
+           View.lookAtLocation(hitbox, self.aimSpeed * 0.8, View.noise.moving, "Engage find enemy under 40 FoV")
 
             self.watchTimer:start()
             self.lastSeenTimers[enemy.eid]:start()
         elseif shootFov >= 40 and self:hasNoticedEnemy(enemy) then
-           View.lookAtLocation(hitbox, self.slowAimSpeed, View.noise.minor, "Engage find enemy over 40 FoV")
+           View.lookAtLocation(hitbox, self.slowAimSpeed, View.noise.moving, "Engage find enemy over 40 FoV")
         end
     end
 end
@@ -2090,8 +2116,8 @@ function AiStateEngage:walk()
         end
     end
 
-    if self.walkCheckTimer:isElapsedThenRestart(0.15) then
-        self.walkCheckCount = Math.getClamped(self.walkCheckCount - 1, 0, 20)
+    if self.walkCheckTimer:isElapsedThenRestart(0.1) then
+        self.walkCheckCount = Math.getClamped(self.walkCheckCount - 1, 0, 16)
     end
 
     if self.walkCheckCount >= 10 then
@@ -2288,7 +2314,8 @@ function AiStateEngage:fireWeapon(cmd)
         return
     end
 
-    cmd.in_attack = true
+    -- Try calling an unsafe CMD function instead of safe cmd override.
+    View.fireWeapon()
 end
 
 --- @param cmd SetupCommandEvent
@@ -2769,7 +2796,7 @@ function AiStateEngage:preAimThroughCorners()
     if self.preAimThroughCornersUpdateTimer:isElapsedThenRestart(1.2) then
         local hitboxPosition = target:getHitboxPosition(Player.hitbox.HEAD)
         local distance = playerOrigin:getDistance(hitboxPosition)
-        local offsetRange = Math.getFloat(Math.getClamped(distance, 0, 1024), 1024) * 100
+        local offsetRange = Math.getFloat(Math.getClamped(distance, 0, 1024), 1024) * 150
 
         self.preAimThroughCornersOrigin = hitboxPosition:offset(
             Math.getRandomFloat(-offsetRange, offsetRange),
@@ -2780,7 +2807,7 @@ function AiStateEngage:preAimThroughCorners()
 
     self.preAimTarget = self.bestTarget
 
-   View.lookAtLocation(self.preAimThroughCornersOrigin, 6, View.noise.none, "Engage look through corner")
+   View.lookAtLocation(self.preAimThroughCornersOrigin, 6, View.noise.moving, "Engage look through corner")
 
     self:addVisualizer("pre through", function()
         self.preAimThroughCornersOrigin:drawCircleOutline(16, 2, Color:hsla(100, 1, 0.5, 150))
@@ -2806,7 +2833,7 @@ function AiStateEngage:preAimAboutCorners()
     if self.preAimAboutCornersAimOrigin then
         self.ai.routines.manageWeaponScope:block()
 
-       View.lookAtLocation(self.preAimAboutCornersAimOrigin, self.slowAimSpeed, View.noise.none, "Engage look at corner")
+       View.lookAtLocation(self.preAimAboutCornersAimOrigin, self.slowAimSpeed, View.noise.moving, "Engage look at corner")
 
         self:addVisualizer("pre about", function()
             if self.preAimAboutCornersAimOrigin then
@@ -2822,19 +2849,19 @@ function AiStateEngage:preAimAboutCorners()
     local eyeOrigin = Client.getEyeOrigin()
     local bands = {
         {
-            distance = 40,
+            distance = 50,
             points = 2
         },
         {
-            distance = 80,
+            distance = 150,
             points = 4
         },
         {
-            distance = 150,
+            distance = 200,
             points = 6
         },
         {
-            distance = 200,
+            distance = 250,
             points = 8
         }
     }
@@ -2910,7 +2937,7 @@ function AiStateEngage:watchAngle()
         self.watchOrigin = nil
     end
 
-   View.lookAtLocation(self.watchOrigin, self.aimSpeed, View.noise.idle, "Engage watch last spot")
+   View.lookAtLocation(self.watchOrigin, self.aimSpeed, View.noise.moving, "Engage watch last spot")
 
     self:addVisualizer("watch", function()
         if self.watchOrigin then

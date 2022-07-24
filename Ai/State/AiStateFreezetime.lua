@@ -22,18 +22,19 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 
 --{{{ AiStateFreezetime
 --- @class AiStateFreezetime : AiStateBase
---- @field target Player
---- @field nextBehaviorTimer Timer
---- @field nextBehaviorTime Timer
---- @field currentBehavior fun(self: AiStateFreezetime, cmd: SetupCommandEvent): void
---- @field lookAngles Angle
---- @field crouchTimer Timer
---- @field crouchTime number
---- @field crouchCooldownTimer Timer
 --- @field crouchCooldownTime number
---- @field freezeTimer Timer
+--- @field crouchCooldownTimer Timer
+--- @field crouchTime number
+--- @field crouchTimer Timer
+--- @field currentBehavior fun(self: AiStateFreezetime, cmd: SetupCommandEvent): void
 --- @field freezeTime number
 --- @field freezeTimeCutoff number
+--- @field freezeTimer Timer
+--- @field lookAngles Angle
+--- @field nextBehaviorTime Timer
+--- @field nextBehaviorTimer Timer
+--- @field plusDirection number
+--- @field target Player
 local AiStateFreezetime = {
     name = "Freezetime"
 }
@@ -58,9 +59,10 @@ function AiStateFreezetime:__init()
     Callbacks.roundPrestart(function()
     	self.freezeTimer:restart()
         self.freezeTime = cvar.mp_freezetime:get_int()
+        self.plusDirection = Math.getChance(2) and 1 or 0
 
         if Math.getChance(3) then
-            self.freezeTimeCutoff = Math.getRandomFloat(0.1, 1)
+            self.freezeTimeCutoff = Math.getRandomFloat(0.1, 1.5)
         else
             self.freezeTimeCutoff = -(self.freezeTime * Math.getRandomFloat(0.0, 0.33))
         end
@@ -150,7 +152,15 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateFreezetime:actionSpinAround(cmd)
-    self.lookAngles:offset(0, 90 * Time.getDelta())
+    local speed
+
+    if self.plusDirection == 0 then
+        speed = 180
+    else
+        speed = -180
+    end
+
+    self.lookAngles:offset(0, speed * Time.getDelta())
 
     View.lookAlongAngle(self.lookAngles, 6, View.noise.idle, "Freezetime idling")
 end

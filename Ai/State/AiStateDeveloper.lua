@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Color = require "gamesense/Nyx/v1/Api/Color"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -43,6 +44,7 @@ function AiStateDeveloper:__init()
     self.angles = Angle:new()
     self.timerA = Timer:new():startThenElapse()
     self.timerB = Timer:new():startThenElapse()
+
     self.isTrue = false
 end
 
@@ -52,11 +54,7 @@ function AiStateDeveloper:assess()
 end
 
 --- @return void
-function AiStateDeveloper:activate()
-    Pathfinder.moveToNode(Nodegraph.getById(177), {
-        task = "Test path"
-    })
-end
+function AiStateDeveloper:activate() end
 
 --- @return void
 function AiStateDeveloper:reset() end
@@ -64,7 +62,13 @@ function AiStateDeveloper:reset() end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateDeveloper:think(cmd)
-    self.activity = "Developing"
+    self.activity = "Under maintenance"
+
+    local angle = Angle:new()
+
+    Client.draw(Vector3.drawCircle, LocalPlayer.getEyeOrigin():offsetByVector(angle:getForward() * 128), 2, Color)
+
+    View.lookAlongAngle(angle, 4, View.noise.special, "Developer look in test direction")
 end
 
 --- @return void

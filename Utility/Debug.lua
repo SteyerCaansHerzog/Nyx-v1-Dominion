@@ -4,11 +4,11 @@ local Debug = {
 	isDisplayingNodeLookAngles = false,
 	isDisplayingNodeConnections = false,
 	isDisplayingConnectionCollisions = false,
-	isDisplayingGapCollisions = true,
-	isLoggingLookState = true,
+	isDisplayingGapCollisions = false,
+	isLoggingLookState = false,
 	isLoggingStatePriorities = false,
 	isFilteringConsole = true,
-	isLoggingPathfinderMoveOntoNextNode =  true
+	isLoggingPathfinderMoveOntoNextNode =  false
 }
 
 return Debug

@@ -23,8 +23,9 @@ end
 function AiChatbotNormal:__init()
     local sentences = {}
 
-    for _, sentence in pairs(AiSentence) do
-        table.insert(sentences, sentence:new())
+    --- @param sentence AiSentenceBase
+    for id, sentence in pairs(AiSentence) do
+        sentences[id] = sentence:new()
     end
 
     self.sentences = sentences

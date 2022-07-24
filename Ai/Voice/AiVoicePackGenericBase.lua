@@ -626,7 +626,7 @@ function AiVoicePackGenericBase:speakGifting()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0,
-		maxDelay = 1,
+		maxDelay = 0.5,
 		condition = function()
 			return LocalPlayer:isAlive()
 		end
@@ -641,7 +641,7 @@ function AiVoicePackGenericBase:speakGratitude()
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0,
-		maxDelay = 2,
+		maxDelay = 1,
 		condition = function()
 			return LocalPlayer:isAlive()
 		end
@@ -655,8 +655,8 @@ function AiVoicePackGenericBase:speakAgreement()
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 2.5,
-		maxDelay = 4,
+		minDelay = 1.25,
+		maxDelay = 2,
 		condition = function()
 			return LocalPlayer:isAlive()
 		end
@@ -670,8 +670,8 @@ function AiVoicePackGenericBase:speakDisagreement()
 		interrupt = false,
 		lock = true,
 		ignoreLock = false,
-		minDelay = 2.5,
-		maxDelay = 4,
+		minDelay = 1.25,
+		maxDelay = 2,
 		condition = function()
 			return LocalPlayer:isAlive()
 		end

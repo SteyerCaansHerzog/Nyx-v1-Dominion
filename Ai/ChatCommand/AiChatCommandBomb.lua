@@ -37,7 +37,7 @@ function AiChatCommandBomb:invoke(ai, sender, args)
         return Localization.cmdRejectionNoBomb
     end
 
-    ai.states.drop:dropGear(sender, "bomb")
+    ai.states.drop:dropGear(sender, "bomb", false)
 end
 
 return Nyx.class("AiChatCommandBomb", AiChatCommandBomb, AiChatCommandBase)

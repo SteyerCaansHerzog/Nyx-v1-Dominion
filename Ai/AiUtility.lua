@@ -32,6 +32,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field bomb Entity
 --- @field bombCarrier Player
 --- @field bombDetonationTime number
+--- @field bombsiteType string
 --- @field canDefuse boolean
 --- @field client Player
 --- @field clientNodeOrigin Vector3
@@ -46,6 +47,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field dormantAt number[]
 --- @field enemies Player[]
 --- @field enemiesAlive number
+--- @field enemiesTotal number
 --- @field enemyDistances number[]
 --- @field enemyFovs number[]
 --- @field enemyHitboxes table<number, Vector3[]>
@@ -77,6 +79,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field teammates Player[]
 --- @field teammatesAlive number
 --- @field teammatesAndClient Player[]
+--- @field teammatesTotal number
 --- @field threats boolean[]
 --- @field threatUpdateTimer Timer
 --- @field timeData GameStateTimeData
@@ -212,11 +215,18 @@ function AiUtility:initEvents()
 
         if map and MapInfo[map] then
             AiUtility.gamemode = MapInfo[map].gamemode
+            AiUtility.bombsiteType = MapInfo[map].bombsiteType
         end
     end)
 
     Callbacks.roundStart(function()
-        Logger.console(3, Localization.aiUtilityNewRound, AiUtility.gameRules:m_totalRoundsPlayed() + 1)
+        local roundsPlayed = AiUtility.gameRules:m_totalRoundsPlayed()
+
+        if not roundsPlayed then
+            return
+        end
+
+        Logger.console(3, Localization.aiUtilityNewRound, roundsPlayed + 1)
     end)
 
     Callbacks.roundPrestart(function(e)
@@ -343,7 +353,7 @@ function AiUtility:initEvents()
         AiUtility.lastPresenceTimers[e.player.eid]:restart()
     end)
 
-    Callbacks.setupCommand(function()
+    Callbacks.netUpdateEnd(function()
         AiUtility.updateAllPlayers()
 
         if not AiUtility.isPerformingCalculations then
@@ -354,6 +364,7 @@ function AiUtility:initEvents()
         AiUtility.updateMisc()
         AiUtility.updateEnemies()
         AiUtility.updateThreats()
+
     end, false)
 end
 
@@ -397,8 +408,9 @@ function AiUtility.updateAllPlayers()
     AiUtility.teammates = {}
     AiUtility.teammatesAndClient = {}
     AiUtility.enemiesAlive = 0
-    -- Very funny Valve.
-    AiUtility.teammatesAlive = -1
+    AiUtility.teammatesAlive = 0
+    AiUtility.enemiesTotal = 0
+    AiUtility.teammatesTotal = 0
     AiUtility.isHostageCarriedByEnemy = false
     AiUtility.isHostageCarriedByTeammate = false
     AiUtility.hostageCarriers = {}
@@ -419,47 +431,65 @@ function AiUtility.updateAllPlayers()
 
     for eid = 1, globals.maxplayers() do repeat
         local player = Player:new(eid)
+
+        if not player:isValid() then
+            break
+        end
+
+        local playerXuid = player:getSteamId64()
         local isEnemy = player:isEnemy()
-        local isAlive = player:isAlive()
-        local isValidOrigin = not player:getOrigin():isZero()
+        local isAlive = Panorama.GameStateAPI.IsPlayerAlive(playerXuid)
 
         if isAlive then
-            -- Set bomb carrier.
-            if entity.get_prop(playerResource, "m_iPlayerC4") == eid and isValidOrigin then
+            local isValidOrigin = not player:getOrigin():isZero()
+
+            if isValidOrigin and entity.get_prop(playerResource, "m_iPlayerC4") == eid then
                 AiUtility.bombCarrier = player
             end
+        end
 
-            -- Disable AA correction because Gamesense has severe brain damage.
+        if isEnemy then
+            AiUtility.enemiesTotal = AiUtility.enemiesTotal + 1
+
+            if not isAlive then
+                break
+            end
+
+            AiUtility.enemiesAlive = AiUtility.enemiesAlive + 1
+
+            -- Disable GS's braindead AA detection.
             plist.set(eid, "Correction active", false)
 
-            if isEnemy then
-                AiUtility.enemiesAlive = AiUtility.enemiesAlive + 1
+            if Player:m_hCarriedHostage() ~= nil then
+                AiUtility.isHostageCarriedByEnemy = true
+                AiUtility.hostageCarriers[eid] = player
+            end
+        else
+            AiUtility.teammatesTotal = AiUtility.teammatesTotal + 1
 
-                if Player:m_hCarriedHostage() ~= nil then
-                    AiUtility.isHostageCarriedByEnemy = true
-                    AiUtility.hostageCarriers[eid] = player
-                end
-            else
-                AiUtility.teammatesAlive = AiUtility.teammatesAlive + 1
-                AiUtility.teammatesAndClient[player.eid] = player
+            if not isAlive then
+                break
+            end
 
-                if player:isClient() then
-                    break
-                end
+            AiUtility.teammatesAndClient[player.eid] = player
+            AiUtility.teammatesAlive = AiUtility.teammatesAlive + 1
 
-                if Player:m_hCarriedHostage() ~= nil then
-                    AiUtility.isHostageCarriedByTeammate = true
-                    AiUtility.hostageCarriers[eid] = player
-                end
+            if player:isClient() then
+                break
+            end
 
-                local distance = player:getOrigin():getDistance(clientOrigin)
+            AiUtility.teammates[player.eid] = player
 
-                if distance < closestTeammateDistance then
-                    closestTeammateDistance = distance
-                    closestTeammate = player
-                end
+            if Player:m_hCarriedHostage() ~= nil then
+                AiUtility.isHostageCarriedByTeammate = true
+                AiUtility.hostageCarriers[eid] = player
+            end
 
-                AiUtility.teammates[player.eid] = player
+            local distance = player:getOrigin():getDistance(clientOrigin)
+
+            if distance < closestTeammateDistance then
+                closestTeammateDistance = distance
+                closestTeammate = player
             end
         end
     until true end
@@ -559,7 +589,7 @@ function AiUtility.updateEnemies()
             return
         end
 
-        local playerHasKit = Player.getClient():m_bHasDefuser() == 1
+        local playerHasKit = LocalPlayer:m_bHasDefuser() == 1
         local defuseTime = 10
 
         if playerHasKit then
@@ -573,8 +603,8 @@ end
 --- @return void
 function AiUtility.updateThreats()
     -- Don't update the threat origin too often, or it'll be obvious this is effectively wallhacking.
-    if not AiUtility.threatUpdateTimer:isElapsedThenRestart(0.15) then
-        --return
+    if not AiUtility.threatUpdateTimer:isElapsedThenRestart(0.2) then
+        return
     end
 
     AiUtility.threats = {}
@@ -584,7 +614,7 @@ function AiUtility.updateThreats()
 
     local eyeOrigin = Client.getEyeOrigin() + LocalPlayer:m_vecVelocity():set(nil, nil, 0) * 0.33
     local threats = 0
-    local clientPlane = eyeOrigin:getPlane(Vector3.align.CENTER, 120)
+    local clientPlane = eyeOrigin:getPlane(Vector3.align.CENTER, 140)
     local clientOrigin = LocalPlayer:getOrigin()
     --- @type Player
     local closestThreat
@@ -620,13 +650,13 @@ function AiUtility.updateThreats()
         local enemyOffset = enemy:getOrigin():offset(0, 0, 72)
         local bandAngle = eyeOrigin:getAngle(enemyOffset):set(0):offset(0, 90)
         local enemyAngle = eyeOrigin:getAngle(enemyOffset)
-        local steps = 4
+        local steps = 6
         local stepDistance = 180 / steps
         local isClientThreatenedMinor = false
         local isClientThreatenedMajor = false
         local absPitch = math.abs(enemyAngle.p)
         local traceExtension = 1 - Math.getFloat(Math.getClamped(absPitch, 0, 75), 90)
-        local traceDistance = 300 * traceExtension
+        local traceDistance = 350 * traceExtension
         local lowestFov = math.huge
 
         for _ = 1, steps do

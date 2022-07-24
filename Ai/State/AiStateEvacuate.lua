@@ -26,6 +26,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field node NodeSpotHide
 --- @field isAtDestination boolean
 --- @field isAutomaticSavingAllowed boolean
+--- @field isSaving boolean
 local AiStateEvacuate = {
     name = "Evacuate",
     requiredNodes = {
@@ -52,8 +53,12 @@ end
 
 --- @return void
 function AiStateEvacuate:assess()
+    self.isSaving = false
+
     -- A human has told us to save this round.
     if self.isForcedToSave then
+        self.isSaving = true
+
         return AiPriority.SAVE_ROUND
     end
 
@@ -66,20 +71,26 @@ function AiStateEvacuate:assess()
 
         -- We should save.
         if self:isRoundWinProbabilityLow() then
+            self.isSaving = true
+
             return AiPriority.SAVE_ROUND
         end
 
         -- We're not able to defuse the bomb due to time.
         if AiUtility.plantedBomb and not AiUtility.canDefuse then
+            self.isSaving = true
+
             return AiPriority.SAVE_ROUND
         end
     elseif LocalPlayer:isTerrorist() then
         -- We should save.
         if self:isRoundWinProbabilityLow()then
+            self.isSaving = true
+
             return AiPriority.SAVE_ROUND
         end
 
-        local bombTimeThreshold = LocalPlayer:m_iHealth() > 40 and 10 or 15
+        local bombTimeThreshold = LocalPlayer:m_iHealth() > 50 and 12 or 16
 
         -- The enemy likely cannot defuse now, and we need to leave the site.
         if AiUtility.plantedBomb and not AiUtility.isBombBeingDefusedByEnemy and AiUtility.bombDetonationTime < bombTimeThreshold then

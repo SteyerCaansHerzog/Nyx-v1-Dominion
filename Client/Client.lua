@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
+local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
@@ -189,10 +190,9 @@ function DominionClient:__init()
             local scoreData = Table.fromPanorama(Panorama.GameStateAPI.GetScoreDataJSO())
             local tWins = scoreData.teamdata.TERRORIST.score
             local ctWins = scoreData.teamdata.CT.score
-            local player = Player.getClient()
             local isWinner
 
-            if player:isCounterTerrorist() then
+            if LocalPlayer:isCounterTerrorist() then
                 isWinner = ctWins > tWins
             else
                 isWinner = tWins > ctWins

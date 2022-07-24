@@ -60,7 +60,7 @@ function AiChatCommandDrop:invoke(ai, sender, args)
                 return self.NO_VALID_ARGUMENTS
             end
 
-            ai.states.pickupItems:temporarilyBlacklistDroppedItemsFrom()
+            ai.states.pickupItems:temporarilyBlacklistDroppedItemsFrom(player)
 
             return Localization.cmdRejectionNotAskingUs
         end
@@ -89,7 +89,7 @@ function AiChatCommandDrop:invoke(ai, sender, args)
         return Localization.cmdRejectionNotAskingUs
     end
 
-    ai.states.drop:dropGear(sender, "weapon")
+    ai.states.drop:dropGear(sender, "weapon", true)
 end
 
 return Nyx.class("AiChatCommandDrop", AiChatCommandDrop, AiChatCommandBase)

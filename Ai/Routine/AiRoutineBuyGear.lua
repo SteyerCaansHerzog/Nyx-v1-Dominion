@@ -163,6 +163,11 @@ function AiRoutineBuyGear:isAlreadyGearedUpAndBuyMisc()
 
 	if isGearedUp then
 		self:equipFullArmor()
+
+		if LocalPlayer:isCounterTerrorist() then
+			self:equipDefuseKit()
+		end
+
 		self:equipRandomGrenades(nil, self.balance > 6500 and 4 or 3)
 	end
 

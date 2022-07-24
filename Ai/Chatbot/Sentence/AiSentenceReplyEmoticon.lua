@@ -29,7 +29,7 @@ function AiSentenceReplyEmoticon:__init()
 
     self.insertions = {
         EMOTICON = {
-            ":)", ":(", ":|", "c:"
+            ":)", ":(", ":|", "c:", "xD", "XD", ":D", "D:"
         }
     }
 end

@@ -2,6 +2,7 @@
 local Animate = require "gamesense/Nyx/v1/Api/Animate"
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Color = require "gamesense/Nyx/v1/Api/Color"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -26,15 +27,25 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --{{{ View
 --- @class View : Class
 --- @field aimPunchAngles Angle
+--- @field blockMouseControlTimer Timer
+--- @field buildup number
+--- @field buildupCooldownTime number
+--- @field buildupCooldownTimer Timer
+--- @field buildupLastAngles Angle
+--- @field buildupThreshold number
 --- @field currentNoise ViewNoise
 --- @field isAllowedToWatchCorners boolean
 --- @field isCrosshairSmoothed boolean
 --- @field isCrosshairUsingVelocity boolean
 --- @field isEnabled boolean
+--- @field isFiringWeapon boolean
+--- @field isInAttack boolean
+--- @field isInUse boolean
 --- @field isLookSpeedDelayed boolean
 --- @field isRcsEnabled boolean
 --- @field isViewLocked boolean
 --- @field lastCameraAngles Angle
+--- @field lastIdleAngle Angle
 --- @field lastLookAtLocationOrigin Vector3
 --- @field lookAtAngles Angle
 --- @field lookSpeed number
@@ -66,12 +77,6 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --- @field watchCornerTimer Timer
 --- @field yawFine number
 --- @field yawSoft number
---- @field buildup number
---- @field buildupThreshold number
---- @field buildupLastAngles Angle
---- @field buildupCooldownTime number
---- @field buildupCooldownTimer Timer
---- @field blockMouseControlTimer Timer
 local View = {
 	noise = ViewNoiseType
 }
@@ -101,6 +106,7 @@ function View.initFields()
 	View.velocityGainModifier = 0.7
 	View.velocityResetSpeed = 100
 	View.viewAngles = Client.getCameraAngles()
+	View.lastIdleAngle = Angle:new()
 	View.viewPitchOffset = 0
 	View.pitchFine = 0
 	View.pitchSoft = 0
@@ -191,7 +197,7 @@ function View.setViewAngles()
 
 	View.setDelayedLookSpeed()
 
-	if not View.isLookSpeedDelayed then
+	if not View.isLookSpeedDelayed or Pathfinder.movementRecorderAngle then
 		View.lookSpeed = View.lookSpeedIdeal
 	end
 
@@ -201,7 +207,10 @@ function View.setViewAngles()
 	local idealViewAngles = Client.getCameraAngles()
 	local smoothingCutoffThreshold = 0
 
-	if Pathfinder.movementRecorderAngle then
+	if Pathfinder.isObstructedByObstacle or Pathfinder.isObstructedByDoor then
+		-- Remove obstructions in front of the player.
+		View.setIdealRemoveObstructions(idealViewAngles)
+	elseif Pathfinder.movementRecorderAngle then
 		-- If Pathfinder "is replaying" is not true, but this value is set,
 		-- then the Pathfinder is about to execute a recorded movement,
 		-- and the angle is the starting direction for the movement.
@@ -236,9 +245,6 @@ function View.setViewAngles()
 	-- when moving the mouse far and fast.
 	View.setTargetVelocity(targetViewAngles)
 
-	-- Makes the crosshair curve.
-	View.setTargetCurve(targetViewAngles)
-
 	-- Makes the crosshair have noise.
 	View.setTargetNoise(targetViewAngles)
 
@@ -261,8 +267,14 @@ function View.setViewAngles()
 end
 
 --- @return void
+function View.fireWeapon()
+	View.isFiringWeapon = true
+end
+
+--- @return void
 function View.resetViewParameters()
 	View.overrideViewAngles = nil
+	View.isFiringWeapon = false
 end
 
 --- @return void
@@ -289,7 +301,7 @@ function View.handleBuildup()
 	end
 
 	View.buildup = 0
-	View.buildupThreshold = Math.getRandomFloat(60,  125)
+	View.buildupThreshold = Math.getRandomFloat(90,  125)
 	View.buildupCooldownTime = Math.getRandomFloat(0.25, 0.8)
 
 	View.buildupCooldownTimer:restart()
@@ -306,7 +318,7 @@ end
 --- @return void
 function View.setDelayedLookSpeed()
 	if View.lookSpeedDelayTimer:isElapsed(View.lookSpeedDelay) then
-		View.lookSpeedDelayed = Math.getClamped(View.lookSpeedDelayed + 33 * Time.getDelta(), 0, View.lookSpeedIdeal)
+		View.lookSpeedDelayed = Math.getClamped(View.lookSpeedDelayed + 30 * Time.getDelta(), 0, View.lookSpeedIdeal)
 	end
 
 	View.lookSpeed = View.lookSpeedDelayed
@@ -348,7 +360,13 @@ function View.setTargetNoise(targetViewAngles)
 
 		if View.currentNoise.togglePeriodTimer:isStarted() then
 			if not View.currentNoise.togglePeriodTimer:isElapsed(View.currentNoise.togglePeriod) then
-				targetViewAngles:set(targetViewAngles.p + View.pitchFine + View.pitchSoft, targetViewAngles.y + View.yawFine + View.yawSoft)
+				View.setNaturalNoise()
+
+				View.lastIdleAngle = Angle:new(
+					View.pitchFine + View.pitchSoft,
+					View.yawFine + View.yawSoft
+				)
+
 			else
 				View.currentNoise.togglePeriod = Math.getRandomFloat(View.currentNoise.togglePeriodMin, View.currentNoise.togglePeriodMax)
 
@@ -357,9 +375,23 @@ function View.setTargetNoise(targetViewAngles)
 			end
 		end
 
+		targetViewAngles:offsetByAngle(View.lastIdleAngle)
+
 		return
 	end
 
+	View.setNaturalNoise()
+
+	local angle = Angle:new(
+		View.pitchFine + View.pitchSoft,
+		View.yawFine + View.yawSoft
+	)
+
+	targetViewAngles:offsetByAngle(angle)
+end
+
+--- @return void
+function View.setNaturalNoise()
 	-- Scale the noise based on velocity.
 	local velocityMod = 1
 
@@ -400,8 +432,6 @@ function View.setTargetNoise(targetViewAngles)
 		View.currentNoise.yawSoftY * timeExponent,
 		View.currentNoise.yawSoftZ * timeExponent
 	) * 10 * velocityMod
-
-	targetViewAngles:set(targetViewAngles.p + View.pitchFine + View.pitchSoft, targetViewAngles.y + View.yawFine + View.yawSoft)
 end
 
 --- @param targetViewAngles Angle
@@ -427,7 +457,7 @@ function View.setTargetVelocity(targetViewAngles)
 	View.velocity:approach(Angle:new(), View.velocityResetSpeed)
 
 	-- Velocity sine. This should make the over-swing become non-parallel to the aim target.
-	local velocitySine = Angle:new(Animate.sine(0, Math.getClamped(View.velocity:getMagnitude() * 0.5, -8, 8), 1), 0)
+	local velocitySine = Angle:new(Animate.sine(0, Math.getClamped(View.velocity:getMagnitude() * 0.33, -3, 3), 1), 0)
 
 	targetViewAngles:setFromAngle(targetViewAngles + (View.velocity + velocitySine))
 end
@@ -436,8 +466,8 @@ end
 --- @return void
 function View.setTargetCurve(targetViewAngles)
 	-- Sine wave float the angles.
-	local floatPitch = Animate.sine(0, 50, 5)
-	local floatYaw = Animate.sine(0, 50, 2)
+	local floatPitch = Animate.sine(0, 25, 4)
+	local floatYaw = Animate.sine(0, 25, 2)
 
 	-- Get the absolute difference of the angles.
 	local deltaPitch = math.abs(targetViewAngles.p - View.viewAngles.p)
@@ -445,7 +475,7 @@ function View.setTargetCurve(targetViewAngles)
 
 	-- Scale the floating effect based on the difference.
 	local modPitch = Math.getClamped(Math.getFloat(deltaPitch, 180), 0, 1)
-	local modYaw = Math.getClamped(Math.getFloat(deltaYaw, 50), 0, 1)
+	local modYaw = Math.getClamped(Math.getFloat(deltaYaw, 180), 0, 1)
 
 	targetViewAngles:set(
 		targetViewAngles.p + floatPitch * modPitch,
@@ -495,9 +525,16 @@ function View.setIdealLookAhead(idealViewAngles)
 
 	--- @type NodeTypeBase
 	local lookAheadNode
+	local lookAheadBy = 4
+
+	if AiUtility.isClientThreatenedMinor
+		or (AiUtility.closestEnemy and LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) < 1250)
+	then
+		lookAheadBy = 2
+	end
 
 	-- How far in the path to look ahead.
-	local lookAheadTo = 4
+	local lookAheadTo = lookAheadBy
 
 	local i = 0
 
@@ -529,13 +566,13 @@ function View.setIdealLookAhead(idealViewAngles)
 	local isLookingDirectlyAhead = false
 
 	if Pathfinder.path.node.isJump then
-		-- todo isLookingDirectlyAhead = true
+		-- isLookingDirectlyAhead = true
 	end
 
 	local previousNode = Pathfinder.path.nodes[Pathfinder.path.idx - 1]
 
 	if previousNode and previousNode.isJump then
-		-- todo isLookingDirectlyAhead = true
+		-- isLookingDirectlyAhead = true
 	end
 
 	-- Look in direction of jumps to increase accuracy.
@@ -601,6 +638,29 @@ function View.setIdealWatchCorner(idealViewAngles)
 	View.lookSpeedDelayMax = 0.5
 end
 
+--- @param idealViewAngles Angle
+--- @return void
+function View.setIdealRemoveObstructions(idealViewAngles)
+	local clientOrigin = LocalPlayer:getOrigin()
+	local node = Pathfinder.path.node
+	local maxDiff = Client.getCameraAngles():getMaxDiff(node.direction)
+
+	idealViewAngles:setFromAngle(node.direction)
+
+	View.lookState = "View generic"
+	View.lookSpeedIdeal = 6
+	View.lookSpeedDelayMin = 0
+	View.lookSpeedDelayMax = 0
+
+	if clientOrigin:getDistance2(node.origin) < 35 and maxDiff < 35 and View.useCooldown:isElapsedThenRestart(1) then
+		if Pathfinder.isObstructedByObstacle then
+			View.isInAttack = true
+		elseif Pathfinder.isObstructedByDoor then
+			View.isInUse = true
+		end
+	end
+end
+
 --- @param cmd SetupCommandEvent
 --- @return void
 function View.think(cmd)
@@ -616,8 +676,13 @@ function View.think(cmd)
 		return
 	end
 
-	local aimPunchAngles = LocalPlayer:m_aimPunchAngle()
 	local correctedViewAngles = View.viewAngles:clone()
+
+	if View.isFiringWeapon then
+		cmd.in_attack = true
+	end
+
+	local aimPunchAngles = LocalPlayer:m_aimPunchAngle()
 
 	if View.isRcsEnabled then
 		View.aimPunchAngles = View.aimPunchAngles + (aimPunchAngles - View.aimPunchAngles) * 20 * Time.getDelta()
@@ -636,27 +701,16 @@ function View.think(cmd)
 	-- Reset noise. Defaults to none at all.
 	View.setNoiseType(ViewNoiseType.none)
 
-	local clientOrigin = LocalPlayer:getOrigin()
+	if View.isInAttack then
+		View.isInAttack = false
 
-	if Pathfinder.isOnValidPath() then
-		local node = Pathfinder.path.node
+		cmd.in_attack = true
+	end
 
-		-- Shoot out cover or open doors.
-		if Pathfinder.isObstructedByObstacle or Pathfinder.isObstructedByDoor then
-			local maxDiff = correctedViewAngles:getMaxDiff(node.direction)
+	if View.isInUse then
+		View.isInUse = false
 
-			View.overrideViewAngles = node.direction
-			View.lookSpeedIdeal = 4
-			View.isViewLocked =  true
-
-			if clientOrigin:getDistance2(node.origin) < 35 and maxDiff < 35 and View.useCooldown:isElapsedThenRestart(1) then
-				if Pathfinder.isObstructedByObstacle then
-					cmd.in_attack = true
-				elseif Pathfinder.isObstructedByDoor then
-					cmd.in_use = true
-				end
-			end
-		end
+		cmd.in_use = true
 	end
 end
 

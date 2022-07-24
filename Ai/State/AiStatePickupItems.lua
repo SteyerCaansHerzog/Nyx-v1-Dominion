@@ -53,6 +53,7 @@ function AiStatePickupItems:__init()
     self.recalculateItemsTimer = Timer:new():startThenElapse()
     self.entityBlacklist = {}
     self.watchDropsFrom = {}
+    self.watchedItems = {}
 
     Callbacks.setupCommand(function()
         if self.recalculateItemsTimer:isElapsedThenRestart(2) then

@@ -29,7 +29,7 @@ function AiChatCommandNoise:invoke(ai, sender, args)
     local toggle = args[1]
 
     if toggle == "on" then
-        ai.states.engage.aimNoise = View.noise.minor
+        ai.states.engage.aimNoise = View.noise.moving
 
         return
     elseif toggle == "off" then

@@ -1427,7 +1427,7 @@ function Pathfinder.traverseActivePath(cmd)
 		if currentNode:is(NodeType.goal) then
 			clearDistance = pathfinderOptions.goalReachedRadius
 		else
-			clearDistance = isClientOnGround and 15 or 35
+			clearDistance = isClientOnGround and 20 or 40
 		end
 
 		if distance2d < clearDistance then

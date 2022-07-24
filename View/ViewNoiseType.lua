@@ -37,9 +37,9 @@ local ViewNoiseType = {
 		isRandomlyToggled = true,
 
 		toggleIntervalMin = 1,
-		toggleIntervalMax = 6,
+		toggleIntervalMax = 4,
 		togglePeriodMin = 0.1,
-		togglePeriodMax = 2.5,
+		togglePeriodMax = 1,
 
 		pitchFineX = 0.001,
 		pitchFineY = 0.002,
@@ -47,10 +47,10 @@ local ViewNoiseType = {
 
 		pitchSoftX = 0.0008,
 		pitchSoftY = 0.001,
-		pitchSoftZ = 0.0015,
+		pitchSoftZ = 0.0115,
 
 		yawFineX = 0.008,
-		yawFineY = 0.0005,
+		yawFineY = 0.0025,
 		yawFineZ = 0.001,
 
 		yawSoftX = 0.001,
@@ -59,25 +59,25 @@ local ViewNoiseType = {
 	}),
 	moving = ViewNoise:new({
 		name = "Moving",
-		timeExponent = 250,
+		timeExponent = 80,
 		isBasedOnVelocity = true,
 		isRandomlyToggled = false,
 
-		pitchFineX = 0.006,
-		pitchFineY = 0.005,
-		pitchFineZ = 0.0033,
+		pitchFineX = 0.0001,
+		pitchFineY = 0.01,
+		pitchFineZ = 0.001,
 
-		pitchSoftX = 0.001,
-		pitchSoftY = 0.001,
-		pitchSoftZ = 0.001,
+		pitchSoftX = 0.00033,
+		pitchSoftY = 0.004,
+		pitchSoftZ = 0.0006,
 
-		yawFineX = 0.006,
-		yawFineY = 0.045,
-		yawFineZ = 0.0133,
+		yawFineX = 0.005,
+		yawFineY = 0.002,
+		yawFineZ = 0.002,
 
-		yawSoftX = 0.0012,
-		yawSoftY = 0.0046,
-		yawSoftZ = 0.007,
+		yawSoftX = 0.002,
+		yawSoftY = 0.008,
+		yawSoftZ = 0.0008,
 	}),
 	minor = ViewNoise:new({
 		name = "Minor",
@@ -100,6 +100,33 @@ local ViewNoiseType = {
 		yawSoftX = 0.0,
 		yawSoftY = 0.0,
 		yawSoftZ = 0.0,
+	}),
+	special = ViewNoise:new({
+		name = "Special",
+		timeExponent = 200,
+		isBasedOnVelocity = false,
+		isRandomlyToggled = false,
+
+		toggleIntervalMin = 1,
+		toggleIntervalMax = 4,
+		togglePeriodMin = 0.1,
+		togglePeriodMax = 1,
+
+		pitchFineX = 0.001,
+		pitchFineY = 0.002,
+		pitchFineZ = 0.0,
+
+		pitchSoftX = 0.0008,
+		pitchSoftY = 0.001,
+		pitchSoftZ = 0.0015,
+
+		yawFineX = 0.008,
+		yawFineY = 0.0005,
+		yawFineZ = 0.001,
+
+		yawSoftX = 0.001,
+		yawSoftY = 0.0002,
+		yawSoftZ = 0.001,
 	}),
 }
 
