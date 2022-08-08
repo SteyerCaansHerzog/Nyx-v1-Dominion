@@ -595,7 +595,7 @@ function NodegraphEditor:processAdd()
     local origin
 
     if self.node.isDirectional then
-        origin = Client.getOrigin():offset(0, 0, 18)
+        origin = LocalPlayer:getOrigin():offset(0, 0, 18)
     else
         local trace = Trace.getHullAlongCrosshair(nodeBounds, AiUtility.traceOptionsPathfinding)
 
@@ -626,7 +626,7 @@ function NodegraphEditor:processAdd()
     end
 
     -- Test node distance.
-    if Client.getOrigin():getDistance(origin) > 750 then
+    if LocalPlayer:getOrigin():getDistance(origin) > 750 then
         self.spawnError = "Node is too far away"
     end
 
@@ -721,8 +721,8 @@ function NodegraphEditor:getSelectedNode()
         return
     end
 
-    local cameraOrigin = Client.getCameraOrigin()
-    local cameraAngles = Client.getCameraAngles()
+    local cameraOrigin = LocalPlayer.getCameraOrigin()
+    local cameraAngles = LocalPlayer.getCameraAngles()
     local isTestingLos = self.keyTestLineOfSight:isToggled()
 
     --- @type NodeTypeBase

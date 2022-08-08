@@ -122,7 +122,7 @@ function AiStatePlant:assess()
         return AiPriority.IGNORE
     end
 
-    if AiUtility.isClientThreatenedMinor and closestEnemyDistance and closestEnemyDistance < 200 then
+    if AiUtility.isClientThreatenedMinor and closestEnemyDistance and closestEnemyDistance < 125 then
         return AiPriority.IGNORE
     end
 
@@ -134,7 +134,7 @@ function AiStatePlant:assess()
         return AiPriority.PLANT_COVERED
     end
 
-    if isVeryNearPlantSpot and isTeammateNearby and closestEnemyDistance and closestEnemyDistance > 800 then
+    if isVeryNearPlantSpot and isTeammateNearby and closestEnemyDistance and closestEnemyDistance > 350 then
         return AiPriority.PLANT_COVERED
     end
 
@@ -200,7 +200,7 @@ function AiStatePlant:think(cmd)
         Pathfinder.counterStrafe()
     end
 
-    if distance < 25 then
+    if distance < 35 then
         cmd.in_duck = true
 
         if LocalPlayer:isAbleToAttack() then

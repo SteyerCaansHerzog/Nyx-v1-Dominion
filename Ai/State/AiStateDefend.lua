@@ -316,9 +316,9 @@ function AiStateDefend:isEnemyHoldable()
         return false
     end
 
-    local cameraAngles = Client.getCameraAngles()
-    local eyeOrigin = Client.getEyeOrigin()
-    local clientOrigin = Client.getEyeOrigin()
+    local cameraAngles = LocalPlayer.getCameraAngles()
+    local eyeOrigin = LocalPlayer.getEyeOrigin()
+    local clientOrigin = LocalPlayer.getEyeOrigin()
 
     for _, enemy in pairs(AiUtility.enemies) do
         isAnyEnemies = true
@@ -421,7 +421,7 @@ function AiStateDefend:think(cmd)
     end
 
     local distance = AiUtility.clientNodeOrigin:getDistance(self.node.origin)
-    local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), self.node.origin:clone():offset(46), AiUtility.traceOptionsAttacking, "AiStateDefend.think<FindIfVisibleNode>")
+    local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), self.node.lookFromOrigin, AiUtility.traceOptionsAttacking, "AiStateDefend.think<FindIfVisibleNode>")
 
     if not trace.isIntersectingGeometry then
         if AiUtility.closestEnemy and LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) < 1250 then

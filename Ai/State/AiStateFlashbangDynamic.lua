@@ -93,7 +93,7 @@ function AiStateFlashbangDynamic:assess()
         return AiPriority.FLASHBANG_DYNAMIC
     end
 
-    local clientEyeOrigin = Client.getEyeOrigin()
+    local clientEyeOrigin = LocalPlayer.getEyeOrigin()
     local bounds = Vector3:newBounds(Vector3.align.CENTER, 8)
 
     -- Angle to try our mentally handicapped flash prediction with.
@@ -162,7 +162,7 @@ function AiStateFlashbangDynamic:assess()
 
         -- Determine if we want to jump-throw the flashbang.
         self.canJumpThrow = not isVisibleWhenJumping and predictionAngles.p < -40 and predictionAngles.p > -70
-        self.throwFromOrigin = Client.getOrigin()
+        self.throwFromOrigin = LocalPlayer:getOrigin()
 
         -- Forgot why this needed to be on the next tick. Probably because of other bad code I have written.
         Client.onNextTick(function()
@@ -210,8 +210,6 @@ function AiStateFlashbangDynamic:think(cmd)
         return
     end
 
-    self.activity = "Throwing Flashbang"
-
     -- If we're not in a throw, and the round is over or our target has died, then do not throw.
     if not self.isThrowing and (AiUtility.isRoundOver or not self.targetPlayer:isAlive()) then
         self:reset()
@@ -220,35 +218,32 @@ function AiStateFlashbangDynamic:think(cmd)
     end
 
     -- We've moved too far.
-    if Client.getOrigin():getDistance(self.throwFromOrigin) > 32 then
+    if LocalPlayer:getOrigin():getDistance(self.throwFromOrigin) > 32 then
         self:reset()
 
         return
     end
 
+    self.activity = "Throwing Flashbang"
+
     self.ai.states.evade:block()
     self.ai.routines.manageGear:block()
     self.ai.routines.lookAwayFromFlashbangs:block()
 
-    Pathfinder.counterStrafe()
     Pathfinder.standStill()
+    Pathfinder.counterStrafe()
+    Pathfinder.blockTeammateAvoidance()
+    LocalPlayer.equipFlashbang()
+    View.lookAlongAngle(self.throwAngles, 4.5, View.noise.none, "FlashbangDynamic look at throw angle")
 
     View.isCrosshairUsingVelocity = true
     View.isCrosshairSmoothed = false
 
-    Pathfinder.blockTeammateAvoidance()
-
-    if not LocalPlayer:isHoldingWeapon(Weapons.FLASHBANG) then
-        LocalPlayer.equipFlashbang()
-    end
-
-   View.lookAlongAngle(self.throwAngles, 4.5, View.noise.none, "FlashbangDynamic look at throw angle")
-
-    local maxDiff = self.throwAngles:getMaxDiff(Client.getCameraAngles())
+    local maxDiff = self.throwAngles:getMaxDiff(LocalPlayer.getCameraAngles())
 
     if maxDiff < 15
-        and LocalPlayer:isHoldingWeapon(Weapons.FLASHBANG)
         and LocalPlayer:isAbleToAttack()
+        and LocalPlayer:isHoldingWeapon(Weapons.FLASHBANG)
     then
         self.isThrowing = true
     end

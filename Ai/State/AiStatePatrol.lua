@@ -133,7 +133,7 @@ function AiStatePatrol:think(cmd)
 
                View.lookAtLocation(bombOrigin, 4, View.noise.minor, "Patrol look at bomb")
 
-                local deltaAngles = Client.getEyeOrigin():getAngle(bombOrigin):getAbsDiff(Client.getCameraAngles())
+                local deltaAngles = LocalPlayer.getEyeOrigin():getAngle(bombOrigin):getAbsDiff(LocalPlayer.getCameraAngles())
 
                 if deltaAngles.p < 20 and deltaAngles.y < 20 then
                     self.hasNotifiedTeamOfBomb = true

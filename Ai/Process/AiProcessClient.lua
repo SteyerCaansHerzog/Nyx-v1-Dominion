@@ -39,7 +39,7 @@ function AiProcessClient:__init()
 	self:setMisc()
 	self:setCvars()
 
-	if not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
+	if not Config.isAdministrator(Client.xuid) then
 		self:purgeSteamFriendsList()
 		self:setCrosshair()
 
@@ -67,7 +67,7 @@ function AiProcessClient:setMisc()
 	end
 
 	-- Prevent loading configuration on master accounts.
-	if not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
+	if not Config.isAdministrator(Client.xuid) then
 		Client.onNextFrame(function()
 			config.load(Config.clientConfigs.normal)
 		end)
@@ -103,7 +103,7 @@ function AiProcessClient:setMenuStates() end
 
 --- @return void
 function AiProcessClient:setAppFocusedFps()
-	if self.ai.reaper.isEnabled then
+	if self.ai.reaper.isEnabled or Config.isAdministrator(Client.xuid) then
 		return
 	end
 

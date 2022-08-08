@@ -51,15 +51,15 @@ function AiProcessPanorama:__init()
 
 		if self.timer:isElapsedThenRestart(30) then
 			self:reconnectToOngoingMatch()
-			self:closeAllPopups()
 			self:acknowledgeNewInventoryItems()
+			self:closeAllPopups()
 		end
 	end)
 end
 
 --- @return void
 function AiProcessPanorama:autoAcceptMatches()
-	if MenuGroup.autoAcceptMatches:get() then
+	if MenuGroup.autoAcceptMatches:get() and not Server.isIngame() then
 		Panorama.LobbyAPI.SetLocalPlayerReady("accept")
 	end
 
@@ -70,7 +70,9 @@ end
 
 --- @return void
 function AiProcessPanorama:closeAllPopups()
-	panorama.loadstring("UiToolkitAPI.CloseAllVisiblePopups()", "CSGOMainMenu")()
+	if not Server.isIngame() then
+		panorama.loadstring("UiToolkitAPI.CloseAllVisiblePopups()", "CSGOMainMenu")()
+	end
 end
 
 --- @return void

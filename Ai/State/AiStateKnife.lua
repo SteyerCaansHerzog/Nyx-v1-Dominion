@@ -67,7 +67,7 @@ function AiStateKnife:__init()
             return
         end
 
-        local eyeOrigin = Client.getEyeOrigin()
+        local eyeOrigin = LocalPlayer.getEyeOrigin()
         local rayIntersection = eyeOrigin:getRayClosestPoint(e.shooter:getEyeOrigin(), e.origin)
 
         -- The enemy shot near us.
@@ -134,7 +134,7 @@ function AiStateKnife:think(cmd)
 
     self.activity = "Going to knife enemy"
 
-    local clientOrigin = Client.getOrigin()
+    local clientOrigin = LocalPlayer:getOrigin()
     local targetOrigin = AiUtility.closestEnemy:getOrigin()
 
     if AiUtility.visibleEnemies[AiUtility.closestEnemy.eid] then
@@ -143,7 +143,7 @@ function AiStateKnife:think(cmd)
 
     if clientOrigin:getDistance2(targetOrigin) < 100 then
         local traceRun = Trace.getHullToPosition(
-            Client.getEyeOrigin(),
+            LocalPlayer.getEyeOrigin(),
             AiUtility.closestEnemy:getEyeOrigin(),
             Vector3:newBounds(Vector3.align.CENTER, 8),
             AiUtility.traceOptionsPathfinding,

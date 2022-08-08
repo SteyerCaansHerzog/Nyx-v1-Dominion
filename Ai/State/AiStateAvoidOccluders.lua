@@ -13,45 +13,49 @@ local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --}}}
 
---{{{ AiStateAvoidInfernos
---- @class AiStateAvoidInfernos : AiStateBase
+--{{{ AiStateAvoidOccluders
+--- @class AiStateAvoidOccluders : AiStateBase
 --- @field inferno Entity
 --- @field isInsideInferno boolean
-local AiStateAvoidInfernos = {
+local AiStateAvoidOccluders = {
     name = "Avoid Infernos",
     isLockable = false
 }
 
---- @param fields AiStateAvoidInfernos
---- @return AiStateAvoidInfernos
-function AiStateAvoidInfernos:new(fields)
+--- @param fields AiStateAvoidOccluders
+--- @return AiStateAvoidOccluders
+function AiStateAvoidOccluders:new(fields)
     return Nyx.new(self, fields)
 end
 
 --- @return void
-function AiStateAvoidInfernos:__init() end
+function AiStateAvoidOccluders:__init() end
 
 --- @return void
-function AiStateAvoidInfernos:assess()
+function AiStateAvoidOccluders:assess()
     if self.ai.routines.handleOccluderTraversal.infernoInsideOf then
         return AiPriority.AVOID_INFERNO
+    end
+
+    if self.ai.routines.handleOccluderTraversal.smokeInsideOf then
+        return AiPriority.AVOID_SMOKE
     end
 
     return AiPriority.IGNORE
 end
 
 --- @return void
-function AiStateAvoidInfernos:activate()
+function AiStateAvoidOccluders:activate()
     self:move()
 end
 
 --- @return void
-function AiStateAvoidInfernos:deactivate() end
+function AiStateAvoidOccluders:deactivate() end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function AiStateAvoidInfernos:think(cmd)
-    self.activity = "Avoiding inferno"
+function AiStateAvoidOccluders:think(cmd)
+    self.activity = "Avoiding occluder"
 
     if Pathfinder.isIdle() then
         self:move()
@@ -59,7 +63,7 @@ function AiStateAvoidInfernos:think(cmd)
 end
 
 --- @return void
-function AiStateAvoidInfernos:move()
+function AiStateAvoidOccluders:move()
     local clientOrigin = LocalPlayer:getOrigin()
     local testOrigin
 
@@ -75,13 +79,20 @@ function AiStateAvoidInfernos:move()
         return
     end
 
-    local infernoOrigin = self.ai.routines.handleOccluderTraversal.infernoInsideOf:m_vecOrigin()
+    local origin
+
+    if self.ai.routines.handleOccluderTraversal.infernoInsideOf then
+        origin = self.ai.routines.handleOccluderTraversal.infernoInsideOf:m_vecOrigin()
+    elseif self.ai.routines.handleOccluderTraversal.smokeInsideOf then
+        origin = self.ai.routines.handleOccluderTraversal.smokeInsideOf:m_vecOrigin()
+    end
+
     local clientDistance = clientOrigin:getDistance(testOrigin)
-    local infernoDistance = infernoOrigin:getDistance(testOrigin)
+    local occluderDistance = origin:getDistance(testOrigin)
     --- @type NodeTraverseGeneric
     local node
 
-    if clientDistance < infernoDistance then
+    if clientDistance < occluderDistance then
         local angleToTest = clientOrigin:getAngle(testOrigin)
 
         node = Nodegraph.findOne(Node.traverseGeneric, function(n)
@@ -120,15 +131,22 @@ function AiStateAvoidInfernos:move()
 end
 
 --- @return void
-function AiStateAvoidInfernos:moveToRandom()
-    local infernoOrigin = self.ai.routines.handleOccluderTraversal.infernoInsideOf:m_vecOrigin()
+function AiStateAvoidOccluders:moveToRandom()
+    local origin
+
+    if self.ai.routines.handleOccluderTraversal.infernoInsideOf then
+        origin = self.ai.routines.handleOccluderTraversal.infernoInsideOf:m_vecOrigin()
+    elseif self.ai.routines.handleOccluderTraversal.smokeInsideOf then
+        origin = self.ai.routines.handleOccluderTraversal.smokeInsideOf:m_vecOrigin()
+    end
+
     local clientOrigin = LocalPlayer:getOrigin()
 
     Pathfinder.moveToNode(Nodegraph.findRandom(Node.traverseGeneric, function(n)
         local distanceToClient = clientOrigin:getDistance(n.origin)
-        local distanceToInferno = infernoOrigin:getDistance(n.origin)
+        local distanceToOccluder = origin:getDistance(n.origin)
 
-        return distanceToClient > 400 and distanceToClient < distanceToInferno
+        return distanceToClient > 400 and distanceToClient < distanceToOccluder
     end), {
         task = "Get out of inferno (random node)",
         isAllowedToTraverseInfernos = true,
@@ -139,5 +157,5 @@ function AiStateAvoidInfernos:moveToRandom()
     })
 end
 
-return Nyx.class("AiStateAvoidInfernos", AiStateAvoidInfernos, AiStateBase)
+return Nyx.class("AiStateAvoidOccluders", AiStateAvoidOccluders, AiStateBase)
 --}}}

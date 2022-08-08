@@ -95,7 +95,8 @@ local WeaponMode = {
 --- @field pingEnemyTimer Timer
 --- @field preAimAboutCornersAimOrigin Vector3
 --- @field preAimAboutCornersCenterOrigin Vector3
---- @field preAimAboutCornersUpdateTimer Timer
+--- @field preAimAboutCornersCenterOriginZ number
+--- @field preAimAboutCornersLastOrigin Vector3
 --- @field preAimTarget Player
 --- @field preAimThroughCornersBlockTimer Timer
 --- @field preAimThroughCornersOrigin Vector3
@@ -182,7 +183,6 @@ function AiStateEngage:initFields()
     self.onGroundTimer = Timer:new()
     self.patienceCooldownTimer = Timer:new():startThenElapse()
     self.patienceTimer = Timer:new()
-    self.preAimAboutCornersUpdateTimer = Timer:new():startThenElapse()
     self.preAimOriginDelayed = Vector3:new()
     self.preAimThroughCornersBlockTimer = Timer:new():startThenElapse()
     self.preAimThroughCornersUpdateTimer = Timer:new():startThenElapse()
@@ -350,7 +350,7 @@ function AiStateEngage:initEvents()
             return
         end
 
-        local eyeOrigin = Client.getEyeOrigin()
+        local eyeOrigin = LocalPlayer.getEyeOrigin()
 
         local rayIntersection = eyeOrigin:getRayClosestPoint(e.shooter:getEyeOrigin(), e.origin)
 
@@ -437,11 +437,11 @@ function AiStateEngage:assess()
         return AiPriority.ENGAGE_ACTIVE
     end
 
-    if AiUtility.isBombBeingPlantedByEnemy then
+    if AiUtility.isBombBeingPlantedByEnemy and AiUtility.bombCarrier then
         return AiPriority.ENGAGE_ACTIVE
     end
 
-    if AiUtility.isHostageCarriedByEnemy then
+    if AiUtility.isHostageCarriedByEnemy and not Table.isEmpty(AiUtility.hostageCarriers) then
         return AiPriority.ENGAGE_ACTIVE
     end
 
@@ -779,10 +779,6 @@ function AiStateEngage:setBestTarget()
 
     if self.bestTarget and not self.bestTarget:isAlive() then
         self.watchTimer:stop()
-    end
-
-    if (selectedEnemy and self.bestTarget) and not selectedEnemy:is(self.bestTarget) then
-        self.preAimAboutCornersUpdateTimer:elapse()
     end
 
     if self.setBestTargetTimer:isElapsedThenRestart(1) or isUrgent then
@@ -1400,7 +1396,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
         then
             local fov = self.ai.states.defend.node.direction:getFov(self.ai.states.defend.node.origin, self.bestTarget:getOrigin())
 
-            if fov < 45 then
+            if fov < 40 then
                 View.lookAtLocation(self.ai.states.defend.node.lookAtOrigin, 4, View.noise.moving, "Engage look along defend angle")
             end
         end
@@ -1771,7 +1767,7 @@ function AiStateEngage:attackBestTarget(cmd)
     -- Wide-peek enemies.
     self:strafePeek()
 
-    local eyeOrigin = Client.getEyeOrigin()
+    local eyeOrigin = LocalPlayer.getEyeOrigin()
     local enemyOrigin = enemy:getOrigin()
     local lastSeenEnemyTimer = self.lastSeenTimers[enemy.eid]
     local currentReactionTime = self.reactionTime
@@ -1786,7 +1782,7 @@ function AiStateEngage:attackBestTarget(cmd)
 
     self.currentReactionTime = currentReactionTime
 
-    local shootFov = self:getShootFov(Client.getCameraAngles(), eyeOrigin, enemyOrigin)
+    local shootFov = self:getShootFov(LocalPlayer.getCameraAngles(), eyeOrigin, enemyOrigin)
 
     -- Begin reaction timer.
     if self:hasNoticedEnemy(enemy) then
@@ -1930,8 +1926,10 @@ function AiStateEngage:attackBestTarget(cmd)
             self.watchTimer:start()
             self.lastSeenTimers[enemy.eid]:start()
 
+            local velocityAdd = enemy:m_vecVelocity() * 0.0
+
             self:noticeEnemy(enemy, 4096, false, "In shoot FoV")
-            self:shoot(cmd, hitbox, enemy)
+            self:shoot(cmd, hitbox + velocityAdd, enemy)
         elseif shootFov < 40 then
            View.lookAtLocation(hitbox, self.aimSpeed * 0.8, View.noise.moving, "Engage find enemy under 40 FoV")
 
@@ -1991,12 +1989,12 @@ function AiStateEngage:canHoldAngle()
     end
 
     -- Check we're not going to hold an angle in a really dumb spot.
-    local clientEyeOrigin = Client.getEyeOrigin()
+    local clientEyeOrigin = LocalPlayer.getEyeOrigin()
     local traceOptions = Table.getMerged(AiUtility.traceOptionsAttacking, {
         distance = 200
     })
 
-    local losTrace = Trace.getLineAtAngle(clientEyeOrigin, Client.getCameraAngles(), traceOptions, "AiStateEngage.canHoldAngle<FindLos>")
+    local losTrace = Trace.getLineAtAngle(clientEyeOrigin, LocalPlayer.getCameraAngles(), traceOptions, "AiStateEngage.canHoldAngle<FindLos>")
 
     -- Line of sight is facing too close to a wall.
     if losTrace.isIntersectingGeometry then
@@ -2092,7 +2090,7 @@ function AiStateEngage:walk()
     local canWalk
 
     if self.bestTarget and AiUtility.closestEnemy then
-        local clientEyeOrigin = Client.getEyeOrigin()
+        local clientEyeOrigin = LocalPlayer.getEyeOrigin()
         local predictedEyeOrigin = clientEyeOrigin + LocalPlayer:m_vecVelocity() * 0.8
         local enemyOrigin = AiUtility.closestEnemy:getOrigin()
         local distance = clientEyeOrigin:getDistance(enemyOrigin)
@@ -2221,7 +2219,7 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
         aimAtBaseOrigin:drawLine(aimAtOrigin, Color:hsla(0, 1, 0.5, 75))
     end)
 
-    local clientEyeOrigin = Client.getEyeOrigin()
+    local clientEyeOrigin = LocalPlayer.getEyeOrigin()
 
     -- We have an actual target to shoot, and not just some point in space.
     if enemy then
@@ -2241,7 +2239,7 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
     -- Avoid shooting at teammates if possible.
     -- This will not be perfect, but it'll help most of the time.
     local distanceToHitbox = clientEyeOrigin:getDistance(aimAtOrigin)
-    local correctedAngles = Client.getCameraAngles() + LocalPlayer:m_aimPunchAngle() * 2
+    local correctedAngles = LocalPlayer.getCameraAngles() + LocalPlayer:m_aimPunchAngle() * 2
     local box = (clientEyeOrigin + correctedAngles:getForward() * distanceToHitbox):getBox(Vector3.align.CENTER, 16)
 
     for _, vertex in pairs(box) do
@@ -2275,7 +2273,7 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
         end
     end
 
-    local fov = self:getShootFov(Client.getCameraAngles(), Client.getEyeOrigin(), aimAtOrigin)
+    local fov = self:getShootFov(LocalPlayer.getCameraAngles(), LocalPlayer.getEyeOrigin(), aimAtOrigin)
 
     -- Set RCS parameters.
     -- RCS should be off for snipers and shotguns, and on for rifles, SMGs, and pistols.
@@ -2324,7 +2322,7 @@ end
 --- @param weapon CsgoWeapon
 --- @return void
 function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
-    local distance = Client.getEyeOrigin():getDistance(aimAtOrigin)
+    local distance = LocalPlayer.getEyeOrigin():getDistance(aimAtOrigin)
     local isVelocityOk = true
 
     if distance > 600 then
@@ -2359,7 +2357,7 @@ end
 --- @param weapon CsgoWeapon
 --- @return void
 function AiStateEngage:shootLight(cmd, aimAtOrigin, fov, weapon)
-    local distance = Client.getEyeOrigin():getDistance(aimAtOrigin)
+    local distance = LocalPlayer.getEyeOrigin():getDistance(aimAtOrigin)
     local aimSpeed = self.aimSpeed
 
     if distance < 500 then
@@ -2387,7 +2385,7 @@ end
 --- @param weapon CsgoWeapon
 --- @return void
 function AiStateEngage:shootShotgun(cmd, aimAtOrigin, fov, weapon)
-    local distance = Client.getEyeOrigin():getDistance(aimAtOrigin)
+    local distance = LocalPlayer.getEyeOrigin():getDistance(aimAtOrigin)
     local aimSpeed = self.aimSpeed
 
     if distance < 500 then
@@ -2448,7 +2446,7 @@ end
 --- @param weapon CsgoWeapon
 --- @return void
 function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
-    local distance = Client.getEyeOrigin():getDistance(aimAtOrigin)
+    local distance = LocalPlayer.getEyeOrigin():getDistance(aimAtOrigin)
     local fireDelay = 0.66
 
     -- Set the delay of our shooting to be roughly accurate as we scope.
@@ -2467,7 +2465,7 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
        View.lookAtLocation(aimAtOrigin, self.aimSpeed * 3, self.aimNoise, "Engage look-at target")
     end
 
-    if fov < self.shootWithinFov then
+    if fov < self.shootWithinFov * 2.5 then
         LocalPlayer.scope()
     end
 
@@ -2478,7 +2476,7 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
     local fireUnderVelocity = weapon.max_player_speed / 4
 
     if fov < self.shootWithinFov
-        and self.scopedTimer:isElapsedThenStop(fireDelay)
+        and self.scopedTimer:isElapsed(fireDelay)
         and LocalPlayer:m_bIsScoped() == 1
         and LocalPlayer:m_vecVelocity():getMagnitude() < fireUnderVelocity
     then
@@ -2519,7 +2517,7 @@ function AiStateEngage:getHitbox(enemy)
         [Player.hitbox.RIGHT_UPPER_LEG] = 11,
     }
 
-    local eyeOrigin = Client.getEyeOrigin()
+    local eyeOrigin = LocalPlayer.getEyeOrigin()
     local visibleHitboxCount = 0
     local bestHitbox = math.huge
     local isPriorityHitboxVisible = false
@@ -2555,7 +2553,7 @@ function AiStateEngage:actionBackUp()
     end
 
     -- Move backwards because we don't feel like deliberately peeking the entire enemy team at once.
-    local angleToEnemy = Client.getOrigin():getAngle(self.bestTarget:getOrigin())
+    local angleToEnemy = LocalPlayer:getOrigin():getAngle(self.bestTarget:getOrigin())
 
     Pathfinder.moveAtAngle(-angleToEnemy)
 end
@@ -2572,9 +2570,9 @@ function AiStateEngage:actionJiggle(period)
     local direction
 
     if self.jiggleDirection == "Left" then
-        direction = Client.getCameraAngles():getLeft()
+        direction = LocalPlayer.getCameraAngles():getLeft()
     else
-        direction = Client.getCameraAngles():getRight()
+        direction = LocalPlayer.getCameraAngles():getRight()
     end
 
     Pathfinder.moveAtAngle(direction:getAngleFromForward())
@@ -2661,7 +2659,7 @@ function AiStateEngage:strafePeek()
     --- @type Angle
     local moveAngle
     local moveDirection
-    local eyeOrigin = Client.getEyeOrigin()
+    local eyeOrigin = LocalPlayer.getEyeOrigin()
     local bounds = Vector3:newBounds(Vector3.align.DOWN, 16, 16, 32)
     local distances = {
         10, 20, 30, 40, 50, 60
@@ -2756,7 +2754,7 @@ function AiStateEngage:preAimThroughCorners()
     })
 
     -- Determine if we're about to peek the target.
-    local testOrigin = Client.getEyeOrigin() + (clientVelocity * 0.4)
+    local testOrigin = LocalPlayer.getEyeOrigin() + (clientVelocity * 0.4)
     local isPeeking = false
 
     for _, hitbox in pairs(hitboxes) do
@@ -2822,6 +2820,10 @@ function AiStateEngage:preAimAboutCorners()
 
     self.preAimAboutCornersCenterOrigin = self.bestTarget:getOrigin():offset(0, 0, 60)
 
+    if self.bestTarget:getFlag(Player.flags.FL_ONGROUND) then
+        self.preAimAboutCornersCenterOriginZ = self.preAimAboutCornersCenterOrigin.z
+    end
+
     if not self.preAimAboutCornersCenterOrigin then
         return
     end
@@ -2842,27 +2844,43 @@ function AiStateEngage:preAimAboutCorners()
         end)
     end
 
-    if not self.preAimAboutCornersUpdateTimer:isElapsedThenRestart(0.33) then
+    local enemyOrigin = self.bestTarget:getOrigin()
+
+    if not self.preAimAboutCornersLastOrigin then
+        self.preAimAboutCornersLastOrigin = enemyOrigin
+    end
+
+    if enemyOrigin:getDistance(self.preAimAboutCornersLastOrigin) < 60 then
         return
     end
 
-    local eyeOrigin = Client.getEyeOrigin()
+    self.preAimAboutCornersLastOrigin = enemyOrigin
+
+    if not self.bestTarget:getFlag(Player.flags.FL_ONGROUND) then
+        self.preAimAboutCornersCenterOrigin.z = self.preAimAboutCornersCenterOriginZ
+    end
+
+    local eyeOrigin = LocalPlayer.getEyeOrigin()
     local bands = {
         {
-            distance = 50,
+            distance = 40,
             points = 2
         },
         {
-            distance = 150,
+            distance = 80,
             points = 4
         },
         {
-            distance = 200,
+            distance = 120,
             points = 6
         },
         {
-            distance = 250,
+            distance = 160,
             points = 8
+        },
+        {
+            distance = 200,
+            points = 16
         }
     }
 
@@ -2887,7 +2905,6 @@ function AiStateEngage:preAimAboutCorners()
 
             if not findWallCollideTrace.isIntersectingGeometry then
                 local findVisibleToClientTrace = Trace.getLineToPosition(eyeOrigin, vertex, AiUtility.traceOptionsAttacking, "AiStateEngage.preAimAboutCorners<FindPointVisibleToClient>")
-
                 if not findVisibleToClientTrace.isIntersectingGeometry then
                     local distance = eyeOrigin:getDistance(vertex)
 
@@ -2901,6 +2918,16 @@ function AiStateEngage:preAimAboutCorners()
                     end
                 end
             end
+        end
+    end
+
+    if closestVertex then
+        local findFloorTrace = Trace.getLineInDirection(closestVertex, Vector3.align.DOWN, AiUtility.traceOptionsPathfinding)
+        local newClosestVertex = findFloorTrace.endPosition:offset(0, 0, 60)
+        local deltaZ = closestVertex.z - newClosestVertex.z
+
+        if deltaZ > 0 and deltaZ < 128 then
+            closestVertex = newClosestVertex
         end
     end
 
@@ -2965,16 +2992,16 @@ function AiStateEngage:setAimSkill(skill)
     }
 
     local skillMaximum = {
-        reactionTime = 0.025,
-        prefireReactionTime = 0.06,
+        reactionTime = 0.01,
+        prefireReactionTime = 0.005,
         anticipateTime = 0.01,
         sprayTime = 0.33,
-        aimSpeed = 15,
+        aimSpeed = 16,
         slowAimSpeed = 9.5,
         recoilControl = 2,
         aimOffset = 0,
         aimInaccurateOffset = 80,
-        blockTime = 0.04
+        blockTime = 0.01
     }
 
     local skillPct = skill / self.skillLevelMax

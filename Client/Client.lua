@@ -35,7 +35,7 @@ local SkipMatch = require "gamesense/Nyx/v1/Dominion/Client/Message/SkipMatch"
 --- @type ServerCrasher
 local ServerCrasher
 
-if Config.isLiveClient and not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
+if Config.isLiveClient and not Config.isAdministrator(Client.xuid) then
     ServerCrasher = require "gamesense/Nyx/v1/Api/ServerCrasher"
 end
 --}}}
@@ -111,7 +111,7 @@ function DominionClient:__init()
             return
         end
 
-        self.isInLobby = Panorama.LobbyAPI.IsPartyMember(Panorama.MyPersonaAPI.GetXuid())
+        self.isInLobby = Panorama.LobbyAPI.IsPartyMember(Client.xuid)
 
         if self.isInLobby then
             self.allocationTimer:stop()
@@ -377,7 +377,7 @@ function DominionClient:stopQueue(error)
         'Game::Chat',
         string.format(
             'run all xuid %s chat %s',
-            Panorama.MyPersonaAPI.GetXuid(),
+            Client.xuid,
             string.format(
                 "[Nyx.to Dominion] %s.",
                 error
@@ -408,7 +408,7 @@ function DominionClient:logon()
     self.server.token = self.logonToken
 
     self.server:transmit(LogonRequest:new({
-        steamid = Panorama.MyPersonaAPI.GetXuid(),
+        steamid = Client.xuid,
         username = Panorama.MyPersonaAPI.GetName(),
         friendCode = Panorama.MyPersonaAPI.GetFriendCode(),
         rank = Panorama.MyPersonaAPI.GetCompetitiveRank()
@@ -419,7 +419,7 @@ function DominionClient:logon()
 
         if allocation.voicePacks then
             local idx
-            local steamid = Panorama.MyPersonaAPI.GetXuid()
+            local steamid = Client.xuid
 
             for i = 1, #allocation.botSteamids do
                 if allocation.botSteamids[i] == steamid then

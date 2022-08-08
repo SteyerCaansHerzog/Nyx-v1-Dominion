@@ -87,7 +87,7 @@ function Ai:initFields()
 	self.ditherHistories = {}
 	self.ditherHistoryMax = 24
 
-	if Config.isLiveClient and not Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
+	if Config.isLiveClient and not Config.isAdministrator(Client.xuid) then
 		self.client = DominionClient:new()
 	end
 

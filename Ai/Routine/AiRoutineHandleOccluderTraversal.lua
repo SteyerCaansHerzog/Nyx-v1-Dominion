@@ -7,6 +7,7 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 
 --{{{ Modules
 local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBase"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --}}}
 
@@ -14,7 +15,7 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --- @class AiRoutineHandleOccluderTraversal : AiRoutineBase
 --- @field infernoInsideOf Entity
 --- @field smokeInsideOf Entity
---- @field isWaitingOnInferno boolean
+--- @field isWaitingOnOccluder boolean
 local AiRoutineHandleOccluderTraversal = {}
 
 --- @param fields AiRoutineHandleOccluderTraversal
@@ -31,7 +32,7 @@ function AiRoutineHandleOccluderTraversal:__init() end
 function AiRoutineHandleOccluderTraversal:think(cmd)
 	self.infernoInsideOf = nil
 	self.smokeInsideOf = nil
-	self.isWaitingOnInferno = false
+	self.isWaitingOnOccluder = false
 
 	local clientOrigin = LocalPlayer:getOrigin()
 
@@ -48,7 +49,26 @@ function AiRoutineHandleOccluderTraversal:think(cmd)
 		end
 	end
 
-	-- Do not stand still inside of an inferno.
+	-- Find an inferno that we're probably inside of.
+	for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
+		local smokeTick = smoke:m_nFireEffectTickBegin()
+
+		if smokeTick and smokeTick > 0 and clientOrigin:getDistance(smoke:m_vecOrigin()) < 115 then
+			local distance = clientOrigin:getDistance(smoke:m_vecOrigin())
+
+			if distance < 200 then
+				self.smokeInsideOf = smoke
+
+				break
+			end
+		end
+	end
+end
+
+--- @return void
+function AiRoutineHandleOccluderTraversal:handleInferno()
+	local clientOrigin = LocalPlayer:getOrigin()
+
 	if self.infernoInsideOf then
 		return
 	end
@@ -66,7 +86,7 @@ function AiRoutineHandleOccluderTraversal:think(cmd)
 
 		local distance = clientOrigin:getDistance(node.origin)
 
-		if distance > 400 then
+		if distance > 500 then
 			break
 		end
 
@@ -80,7 +100,51 @@ function AiRoutineHandleOccluderTraversal:think(cmd)
 		return
 	end
 
-	self.isWaitingOnInferno = true
+	self.isWaitingOnOccluder = true
+
+	Pathfinder.standStill()
+end
+
+--- @return void
+function AiRoutineHandleOccluderTraversal:handleSmoke()
+	local clientOrigin = LocalPlayer:getOrigin()
+
+	if self.smokeInsideOf then
+		return
+	end
+
+	if not Pathfinder.isOnValidPath() then
+		return
+	end
+
+	local isTraversingSmoke = false
+
+	for _, node in pairs(Pathfinder.path.nodes) do if isTraversingSmoke then break end repeat
+		if not node.isOccludedBySmoke then
+			break
+		end
+
+		local distance = clientOrigin:getDistance(node.origin)
+
+		if distance > 600 then
+			break
+		end
+
+		isTraversingSmoke = true
+
+		break
+	until true end
+
+	-- No molotov.
+	if not isTraversingSmoke then
+		return
+	end
+
+	if AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin()) > 750 then
+		return
+	end
+
+	self.isWaitingOnOccluder = true
 
 	Pathfinder.standStill()
 end

@@ -249,7 +249,7 @@ function AiStatePickupItems:getNearbyItems(items)
                 break
             end
 
-            local trace = Trace.getLineToPosition(Client.getEyeOrigin(), weaponOrigin, AiUtility.traceOptionsPathfinding, "AiStatePickupItems.getNearbyItems<FindVisibleItems>")
+            local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), weaponOrigin, AiUtility.traceOptionsPathfinding, "AiStatePickupItems.getNearbyItems<FindVisibleItems>")
 
             if trace.isIntersectingGeometry then
                 break

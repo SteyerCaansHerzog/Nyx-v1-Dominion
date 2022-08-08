@@ -133,7 +133,7 @@ function ReaperManifest:__init()
 	local clients = {}
 	local index = 1
 	local clientKeysSorted = {}
-	local steamId64 = Panorama.MyPersonaAPI.GetXuid()
+	local steamId64 = Client.xuid
 	local steamId64Map = {}
 	local windowHandleMap = {}
 
@@ -277,7 +277,7 @@ end
 function Reaper:initFields()
 	self.isActive = false
 	self.isAiEnabled = true
-	self.isClientAdmin = Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid())
+	self.isClientAdmin = Config.isAdministrator(Client.xuid)
 	self.keyHotSwap = VKey:new(VKey.TAB)
 	self.keyTakeControl = VKey:new(VKey.F)
 	self.keyOpenConsole = VKey:new(VKey.PUNCT_BACKTICK)
@@ -804,7 +804,7 @@ function Reaper:think()
 			isLobbyQueuing = Panorama.LobbyAPI.GetMatchmakingStatusString() ~= ""
 		end
 
-		local teamColorIndicator = Panorama.GameStateAPI.GetPlayerColor(Panorama.MyPersonaAPI.GetXuid())
+		local teamColorIndicator = Panorama.GameStateAPI.GetPlayerColor(Client.xuid)
 
 		--- @type ReaperClientInfo
 		local info = {
@@ -855,7 +855,7 @@ function Reaper:think()
 			end
 		end
 
-		writefile(string.format(self.infoPath, Panorama.MyPersonaAPI.GetXuid()), json.stringify(info))
+		writefile(string.format(self.infoPath, Client.xuid), json.stringify(info))
 
 		for _, client in pairs(self.manifest.clients) do repeat
 			local filedata = readfile(string.format(self.infoPath, client.steamId64))
@@ -887,7 +887,7 @@ function Reaper:think()
 
 	-- The hot-swap key was pressed.
 	if self.keyHotSwap:wasPressed() and isAppFocused then
-		local cameraAngles = Client.getCameraAngles()
+		local cameraAngles = LocalPlayer.getCameraAngles()
 
 		-- Prevent the AI camera from snapping between the human and the AI.
 		-- This will force the AI's camera angles to match the possessed angles.

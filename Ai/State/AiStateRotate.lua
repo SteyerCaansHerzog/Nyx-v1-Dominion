@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
+local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
@@ -45,6 +46,16 @@ end
 function AiStateRotate:__init()
     Callbacks.roundStart(function()
     	self:reset()
+    end)
+
+    Callbacks.bombBeginPlant(function(e)
+        if not LocalPlayer:isCounterTerrorist() then
+            return
+        end
+
+        Client.fireAfterRandom(0, 1, function()
+            self:invoke(AiUtility.getBombsiteFromIdx(e.site))
+        end)
     end)
 end
 

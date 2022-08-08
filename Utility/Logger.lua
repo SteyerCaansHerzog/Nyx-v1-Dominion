@@ -109,10 +109,6 @@ end
 --- @vararg string
 --- @return void
 function Logger.console(code, ...)
-	if not ... then
-		error("!", 2)
-	end
-
 	code = code or -1
 
 	local codeData = LoggerCode[code]

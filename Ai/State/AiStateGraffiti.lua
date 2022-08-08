@@ -91,11 +91,11 @@ end
 function AiStateGraffiti:think()
     self.activity = "Spraying graffiti"
 
-    local newCameraAngles = Client.getCameraAngles():set(80)
+    local newCameraAngles = LocalPlayer.getCameraAngles():set(80)
 
     View.lookAlongAngle(newCameraAngles, 6, View.noise.minor, "Graffiti look at floor")
 
-    if Client.getCameraAngles().p > 75 then
+    if LocalPlayer.getCameraAngles().p > 75 then
         self.isEnabled = false
 
         LocalPlayer.sprayGraffiti()

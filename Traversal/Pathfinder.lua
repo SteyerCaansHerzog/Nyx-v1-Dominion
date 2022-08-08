@@ -525,6 +525,10 @@ function Pathfinder.isOnValidPath()
 		return false
 	end
 
+	if not Pathfinder.path.node then
+		return false
+	end
+
 	return true
 end
 
@@ -1628,7 +1632,7 @@ function Pathfinder.avoidTeammates(cmd)
 	Pathfinder.isObstructedByTeammate = true
 
 	if not Pathfinder.avoidTeammatesAngle then
-		Pathfinder.avoidTeammatesAngle = Client.getEyeOrigin():getAngle(blockingTeammate:getEyeOrigin())
+		Pathfinder.avoidTeammatesAngle = LocalPlayer.getEyeOrigin():getAngle(blockingTeammate:getEyeOrigin())
 	end
 
 	Pathfinder.avoidTeammatesTimer:ifPausedThenStart()
@@ -1639,7 +1643,7 @@ function Pathfinder.avoidTeammates(cmd)
 	end
 
 	local directionMethod = string.format("get%s", Pathfinder.avoidTeammatesDirection)
-	local eyeOrigin = Client.getEyeOrigin()
+	local eyeOrigin = LocalPlayer.getEyeOrigin()
 	local movementAngles = Pathfinder.lastMovementAngle
 	local directionOffset = eyeOrigin + movementAngles[directionMethod](movementAngles) * 150
 

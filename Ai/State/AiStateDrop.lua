@@ -107,7 +107,7 @@ function AiStateDrop:think(cmd)
         -- Stop approaching the player.
         Pathfinder.clearActivePathAndLastRequest()
 
-        local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), hitbox)
+        local fov = LocalPlayer.getCameraAngles():getFov(LocalPlayer.getEyeOrigin(), hitbox)
 
         -- We're looking close enough to the player.
         if fov < 20 then

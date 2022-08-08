@@ -32,6 +32,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field bomb Entity
 --- @field bombCarrier Player
 --- @field bombDetonationTime number
+--- @field bombsiteBeingPlantedAt string
 --- @field bombsiteType string
 --- @field canDefuse boolean
 --- @field client Player
@@ -80,8 +81,10 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field teammatesAlive number
 --- @field teammatesAndClient Player[]
 --- @field teammatesTotal number
+--- @field threatLastOrigins Vector3[]
 --- @field threats boolean[]
 --- @field threatUpdateTimer Timer
+--- @field threatZs number[]
 --- @field timeData GameStateTimeData
 --- @field totalThreats number
 --- @field traceOptionsAttacking TraceOptions
@@ -111,7 +114,7 @@ end
 --- @return void
 function AiUtility:initFields()
     AiUtility.isPerformingCalculations = true
-    AiUtility.clientNodeOrigin = Client.getOrigin():offset(0, 0, 18)
+    AiUtility.clientNodeOrigin = LocalPlayer:getOrigin():offset(0, 0, 18)
     AiUtility.visibleEnemies = {}
     AiUtility.lastVisibleEnemyTimer = Timer:new()
     AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
@@ -124,13 +127,14 @@ function AiUtility:initFields()
     end
 
     AiUtility.defuseTimer = Timer:new()
-    AiUtility.lastKnownOrigin = {}
     AiUtility.dormantAt = {}
     AiUtility.enemies = {}
     AiUtility.teammates = {}
     AiUtility.teammatesAndClient = {}
     AiUtility.enemiesAlive = 0
     AiUtility.teammatesAlive = 0
+    AiUtility.threatZs = {}
+    AiUtility.threatLastOrigins = {}
     AiUtility.totalThreats = 0
     AiUtility.threatUpdateTimer = Timer:new():startThenElapse()
     AiUtility.gameRules = Entity.getGameRules()
@@ -190,11 +194,11 @@ end
 --- @return void
 function AiUtility:initEvents()
     Callbacks.roundStart(function()
+        AiUtility.bombsiteBeingPlantedAt = nil
         AiUtility.canDefuse = nil
         AiUtility.visibleEnemies = {}
         AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
         AiUtility.enemyFovs = Table.populateForMaxPlayers(math.huge)
-        AiUtility.lastKnownOrigin = {}
         AiUtility.dormantAt = {}
 
         AiUtility.defuseTimer:stop()
@@ -217,6 +221,8 @@ function AiUtility:initEvents()
             AiUtility.gamemode = MapInfo[map].gamemode
             AiUtility.bombsiteType = MapInfo[map].bombsiteType
         end
+
+        AiUtility.timeData = Table.fromPanorama(Panorama.GameStateAPI.GetTimeDataJSO())
     end)
 
     Callbacks.roundStart(function()
@@ -240,6 +246,8 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombBeginPlant(function(e)
+        AiUtility.bombsiteBeingPlantedAt = AiUtility.getBombsiteFromIdx(e.site)
+
         if e.player:isClient() then
             AiUtility.isClientPlanting = true
         elseif e.player:isTeammate() then
@@ -251,6 +259,8 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombAbortPlant(function(e)
+        AiUtility.bombsiteBeingPlantedAt = nil
+
         if e.player:isClient() then
             AiUtility.isClientPlanting = false
         elseif e.player:isTeammate() then
@@ -261,6 +271,7 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombPlanted(function(e)
+        AiUtility.bombsiteBeingPlantedAt = nil
         AiUtility.isClientPlanting = false
         AiUtility.isBombBeingPlantedByEnemy = false
         AiUtility.isBombBeingPlantedByTeammate = false
@@ -316,12 +327,15 @@ function AiUtility:initEvents()
             AiUtility.visibleEnemies = {}
             AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
             AiUtility.enemyFovs = Table.populateForMaxPlayers(math.huge)
-            AiUtility.lastKnownOrigin = {}
             AiUtility.dormantAt = {}
         end
 
         if e.attacker:isEnemy() then
-            AiUtility.lastPresenceTimers[e.attacker.eid]:restart()
+            local timer = AiUtility.lastPresenceTimers[e.attacker.eid]
+
+            if timer then
+                timer:restart()
+            end
         end
     end)
 
@@ -364,13 +378,12 @@ function AiUtility:initEvents()
         AiUtility.updateMisc()
         AiUtility.updateEnemies()
         AiUtility.updateThreats()
-
     end, false)
 end
 
 --- @return void
 function AiUtility.updateMisc()
-    AiUtility.clientNodeOrigin = Client.getOrigin():offset(0, 0, 18)
+    AiUtility.clientNodeOrigin = LocalPlayer:getOrigin():offset(0, 0, 18)
     AiUtility.bomb = Entity.findOne("CC4")
     AiUtility.plantedBomb = Entity.findOne("CPlantedC4")
     AiUtility.gameRules = Entity.getGameRules()
@@ -506,9 +519,9 @@ end
 
 --- @return void
 function AiUtility.updateEnemies()
-    local clientOrigin = Client.getOrigin()
-    local clientEyeOrigin = Client.getEyeOrigin()
-    local cameraAngles = Client.getCameraAngles()
+    local clientOrigin = LocalPlayer:getOrigin()
+    local clientEyeOrigin = LocalPlayer.getEyeOrigin()
+    local cameraAngles = LocalPlayer.getCameraAngles()
 
     local closestEnemy
     local closestDistance = math.huge
@@ -612,13 +625,14 @@ function AiUtility.updateThreats()
     AiUtility.isClientThreatenedMinor = false
     AiUtility.isClientThreatenedMajor = false
 
-    local eyeOrigin = Client.getEyeOrigin() + LocalPlayer:m_vecVelocity():set(nil, nil, 0) * 0.33
+    local eyeOrigin = LocalPlayer.getEyeOrigin() + LocalPlayer:m_vecVelocity():set(nil, nil, 0) * 0.33
     local threats = 0
-    local clientPlane = eyeOrigin:getPlane(Vector3.align.CENTER, 140)
+    local clientPlane = eyeOrigin:getPlane(Vector3.align.CENTER, 120)
     local clientOrigin = LocalPlayer:getOrigin()
     --- @type Player
     local closestThreat
     local closestThreatDistance = math.huge
+    local clientThreatenedFromOrigin
 
     -- Prevent our own plane from clipping thin walls.
     -- It can look very wrong when pre-aiming through certain geometry.
@@ -641,22 +655,38 @@ function AiUtility.updateThreats()
         local enemyOrigin = enemy:getOrigin()
         local canSetThreatenedFromOrigin = false
 
+        if enemy:getFlag(Player.flags.FL_ONGROUND) then
+            AiUtility.threatZs[enemy.eid] = enemyOrigin.z
+        elseif AiUtility.threatZs[enemy.eid] then
+            enemyOrigin.z = AiUtility.threatZs[enemy.eid]
+        end
+
+        if not AiUtility.threatLastOrigins[enemy.eid] then
+            AiUtility.threatLastOrigins[enemy.eid] = enemyOrigin
+        end
+
+        if enemyOrigin:getDistance(AiUtility.threatLastOrigins[enemy.eid]) < 80 then
+            enemyOrigin = AiUtility.threatLastOrigins[enemy.eid]:clone()
+        else
+            AiUtility.threatLastOrigins[enemy.eid] = enemyOrigin:clone()
+        end
+
         if not AiUtility.lastPresenceTimers[enemy.eid]:isElapsed(AiUtility.ignorePresenceAfter) then
             canSetThreatenedFromOrigin = true
-        elseif clientOrigin:getDistance(enemyOrigin) > 700 then
+        elseif clientOrigin:getDistance(enemyOrigin) > 400 then
             canSetThreatenedFromOrigin = true
         end
 
-        local enemyOffset = enemy:getOrigin():offset(0, 0, 72)
+        local enemyOffset = enemyOrigin:offset(0, 0, 50)
         local bandAngle = eyeOrigin:getAngle(enemyOffset):set(0):offset(0, 90)
         local enemyAngle = eyeOrigin:getAngle(enemyOffset)
-        local steps = 6
+        local steps = 8
         local stepDistance = 180 / steps
         local isClientThreatenedMinor = false
         local isClientThreatenedMajor = false
         local absPitch = math.abs(enemyAngle.p)
         local traceExtension = 1 - Math.getFloat(Math.getClamped(absPitch, 0, 75), 90)
-        local traceDistance = 350 * traceExtension
+        local traceDistance = 320 * traceExtension
         local lowestFov = math.huge
 
         for _ = 1, steps do
@@ -686,7 +716,7 @@ function AiUtility.updateThreats()
                     if canSetThreatenedFromOrigin and fov < lowestFov and fov < 20 then
                         lowestFov = fov
 
-                        AiUtility.clientThreatenedFromOrigin = findWallCollideTrace.endPosition
+                        clientThreatenedFromOrigin = findWallCollideTrace.endPosition
                     end
                 end
             end
@@ -711,6 +741,16 @@ function AiUtility.updateThreats()
         end
     until true end
 
+    if clientThreatenedFromOrigin then
+        local predictedEyeOrigin = eyeOrigin + LocalPlayer:m_vecVelocity() * 0.4
+        local findVisibleTrace = Trace.getLineToPosition(eyeOrigin, clientThreatenedFromOrigin, AiUtility.traceOptionsAttacking)
+        local findPredictedVisibleTrace = Trace.getLineToPosition(predictedEyeOrigin, clientThreatenedFromOrigin, AiUtility.traceOptionsAttacking)
+
+        if not findVisibleTrace.isIntersectingGeometry or not findPredictedVisibleTrace.isIntersectingGeometry then
+            AiUtility.clientThreatenedFromOrigin = clientThreatenedFromOrigin
+        end
+    end
+
     AiUtility.closestThreat = closestThreat
     AiUtility.totalThreats = threats
 end
@@ -727,6 +767,20 @@ function AiUtility.isBombDefused()
     end
 
     return AiUtility.plantedBomb:m_bBombDefused() == 1
+end
+
+--- @param idx number
+--- @return string
+function AiUtility.getBombsiteFromIdx(idx)
+    local playerResource = Entity.getPlayerResource()
+    local bombsite = Entity:create(idx)
+    local centerA = playerResource:m_bombsiteCenterA()
+    local centerB = playerResource:m_bombsiteCenterB()
+    local mins, maxs = bombsite:m_vecMins(), bombsite:m_vecMaxs()
+    local center = mins:getLerp(maxs, 0.5)
+    local distanceToA, distanceToB = center:getDistance(centerA), center:getDistance(centerB)
+
+    return distanceToB > distanceToA and "A" or "B"
 end
 
 return Nyx.class("AiUtility", AiUtility)

@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
@@ -25,6 +26,10 @@ local AiChatCommandRotate = {
 --- @param args string[]
 --- @return void
 function AiChatCommandRotate:invoke(ai, sender, args)
+    if Entity.getGameRules():m_bFreezePeriod() == 1 then
+        return self.FREEZETIME
+    end
+
     if AiUtility.gamemode == "hostage" then
         return self.GAMEMODE_IS_NOT_DEMOLITION
     end

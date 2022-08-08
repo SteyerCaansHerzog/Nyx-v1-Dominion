@@ -18,6 +18,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --- @field language string
 --- @field openAiApiKey string
 --- @field projectDirectory string
+--- @field virtualMouseMode string ridid | dynamic
 local Config = {
     administrators = {
         -- Friends
@@ -31,9 +32,11 @@ local Config = {
         "76561198283352893", -- Comm banned
         "76561199241945029", -- Digital Spring
         -- Others
-        "76561198887876627", -- Phil
-        "76561198849675001", -- Rittenhouse
-        "76561198994143335" -- Hoss
+        --"76561198887876627", -- Phil
+        --"76561198849675001", -- Rittenhouse
+        --"76561198994143335", -- Hoss
+        --"76561198391892203", -- Smithz
+        "76561198326826469" -- Lobenzo
     },
     clientConfigs = {
         normal = "Nyx-v1-Dominion", -- GS config to load when in normal mode.
@@ -49,7 +52,8 @@ local Config = {
     isTextModeAllowed = true, -- Enable this to disable Source engine rendering when applicable.
     language = "English", -- Language localization for logs and other text.
     openAiApiKey = "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", -- Set this to provide an API key for use with the Open AI chatbot.
-    projectDirectory = "lua/gamesense/Nyx/v1/Dominion/%s" -- Root project directory for the Dominion folder. Must have /%s at the end.
+    projectDirectory = "lua/gamesense/Nyx/v1/Dominion/%s", -- Root project directory for the Dominion folder. Must have /%s at the end.
+    virtualMouseMode = "dynamic" -- "rigid" for old method, "dynamic" for smoother new method.
 }
 
 --- @return void
@@ -60,7 +64,7 @@ end
 --- @param steamId64 string
 --- @return boolean
 function Config.isAdministrator(steamId64)
-    return Config.administrators[steamId64]
+    return Config.administrators[steamId64] ~= nil
 end
 
 --- @param pathFragment string

@@ -123,7 +123,7 @@ function AiStateBase:getCoverNode(range, target)
     if target then
         coverAngle = clientOrigin:getAngle(target:getOrigin())
     else
-        coverAngle = Client.getCameraAngles()
+        coverAngle = LocalPlayer.getCameraAngles()
     end
 
     --- @type Vector3[]

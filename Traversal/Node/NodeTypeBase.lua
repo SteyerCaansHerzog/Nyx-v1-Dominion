@@ -188,9 +188,9 @@ function NodeTypeBase:deserialize(nodegraph, userdata) end
 --- @param isRenderingMetaData boolean
 --- @return void
 function NodeTypeBase:render(nodegraph, isRenderingMetaData)
-    local cameraOrigin = Client.getCameraOrigin()
-    local origin = Client.getOrigin()
-    local cameraAngles = Client.getCameraAngles()
+    local cameraOrigin = LocalPlayer.getCameraOrigin()
+    local origin = LocalPlayer:getOrigin()
+    local cameraAngles = LocalPlayer.getCameraAngles()
     local alphaModDistance = Math.getClamped(Math.getInversedFloat(origin:getDistance(self.origin), Math.getClamped(NodeTypeBase.drawDistance / 2, 0, 1000)), 0, 1) * 255
     local alphaModFoV = Math.getClamped(Math.getInversedFloat(cameraAngles:getFov(cameraOrigin, self.origin), 30), 0.1, 1) * 255
 
@@ -676,7 +676,7 @@ end
 --- @return void
 function NodeTypeBase:onCreatePre(nodegraph)
     if self.isDirectional then
-        self.direction = Client.getCameraAngles()
+        self.direction = LocalPlayer.getCameraAngles()
     end
 end
 

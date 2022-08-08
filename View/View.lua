@@ -7,6 +7,7 @@ local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local PerlinNoise = require "gamesense/Nyx/v1/Api/PerlinNoise"
+local SecondOrderDynamics = require "gamesense/Nyx/v1/Api/SecondOrderDynamics"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
@@ -16,6 +17,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
@@ -34,6 +36,7 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --- @field buildupLastAngles Angle
 --- @field buildupThreshold number
 --- @field currentNoise ViewNoise
+--- @field dynamic SecondOrderDynamics
 --- @field isAllowedToWatchCorners boolean
 --- @field isCrosshairSmoothed boolean
 --- @field isCrosshairUsingVelocity boolean
@@ -59,6 +62,7 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --- @field lookState string
 --- @field lookState string
 --- @field lookStateCached string
+--- @field mode string rigid | dynamic
 --- @field nodegraph Nodegraph
 --- @field noise ViewNoiseType
 --- @field overrideViewAngles Angle
@@ -92,8 +96,8 @@ end
 function View.initFields()
 	View.aimPunchAngles = Angle:new(0, 0)
 	View.isCrosshairUsingVelocity = false
-	View.lastCameraAngles = Client.getCameraAngles()
-	View.lookAtAngles = Client.getCameraAngles()
+	View.lastCameraAngles = LocalPlayer.getCameraAngles()
+	View.lookAtAngles = LocalPlayer.getCameraAngles()
 	View.lookSpeed = 0
 	View.lookSpeedDelay = Math.getRandomFloat(0.25, 0.6)
 	View.lookSpeedDelayTimer = Timer:new():start()
@@ -102,10 +106,10 @@ function View.initFields()
 	View.recoilControl = 2
 	View.useCooldown = Timer:new():startThenElapse()
 	View.velocity = Angle:new()
-	View.velocityBoundary = 20
-	View.velocityGainModifier = 0.7
-	View.velocityResetSpeed = 100
-	View.viewAngles = Client.getCameraAngles()
+	View.velocityBoundary = 16
+	View.velocityGainModifier = 0.55
+	View.velocityResetSpeed = 120
+	View.viewAngles = LocalPlayer.getCameraAngles()
 	View.lastIdleAngle = Angle:new()
 	View.viewPitchOffset = 0
 	View.pitchFine = 0
@@ -119,6 +123,10 @@ function View.initFields()
 	View.buildupCooldownTime = 0
 	View.buildupCooldownTimer = Timer:new():startThenElapse()
 	View.blockMouseControlTimer = Timer:new():startThenElapse()
+	View.mode = Config.virtualMouseMode
+
+	-- Original working dynamics.
+	View.dynamic = SecondOrderDynamics:new(2, 3.4, 0, 0.22, Angle, LocalPlayer.getCameraAngles() or Angle:new())
 
 	View.setNoiseType(ViewNoiseType.none)
 end
@@ -157,7 +165,7 @@ end
 --- @return void
 function View.setViewAngles()
 	if not View.blockMouseControlTimer:isElapsed(1) then
-		local cameraAngles = Client.getCameraAngles()
+		local cameraAngles = LocalPlayer.getCameraAngles()
 
 		View.viewAngles = cameraAngles
 		View.lookAtAngles = cameraAngles
@@ -172,7 +180,7 @@ function View.setViewAngles()
 
 	-- Match camera angles to AI view angles.
 	if View.viewAngles then
-		Client.setCameraAngles(View.lookAtAngles)
+		LocalPlayer.setCameraAngles(View.lookAtAngles)
 	end
 
 	-- Apply movement recorder angles.
@@ -204,7 +212,7 @@ function View.setViewAngles()
 	-- View angles we want to look at.
 	-- It's overriden by AI behaviours, look ahead of the active path, or rest.
 	--- @type Angle
-	local idealViewAngles = Client.getCameraAngles()
+	local idealViewAngles = LocalPlayer.getCameraAngles()
 	local smoothingCutoffThreshold = 0
 
 	if Pathfinder.isObstructedByObstacle or Pathfinder.isObstructedByDoor then
@@ -219,7 +227,12 @@ function View.setViewAngles()
 		-- AI wants to look at something particular.
 		View.setIdealOverride(idealViewAngles)
 
-		smoothingCutoffThreshold = 0.6
+		if LocalPlayer:m_bIsScoped() == 1 then
+			smoothingCutoffThreshold = 0.2
+		else
+			smoothingCutoffThreshold = 0.35
+
+		end
 	elseif Pathfinder.isOnValidPath() then
 		-- Handle the "buildup" of mouse movement delta that would result in the virtual mouse leaving the mousemat.
 		View.handleBuildup()
@@ -241,9 +254,11 @@ function View.setViewAngles()
 	--- @type Angle
 	local targetViewAngles = idealViewAngles
 
-	-- Apply velocity on angles. Creates the effect of "over-shooting" the target point
-	-- when moving the mouse far and fast.
-	View.setTargetVelocity(targetViewAngles)
+	if View.mode == "rigid" then
+		View.setTargetVelocity(targetViewAngles)
+	elseif View.mode == "dynamic" then
+		View.setTargetDynamic(targetViewAngles)
+	end
 
 	-- Makes the crosshair have noise.
 	View.setTargetNoise(targetViewAngles)
@@ -251,7 +266,7 @@ function View.setViewAngles()
 	if View.isCrosshairSmoothed then
 		View.isCrosshairSmoothed = false
 	else
-		local cameraAngles = Client.getCameraAngles()
+		local cameraAngles = LocalPlayer.getCameraAngles()
 
 		-- Prevent smoothing all the way down to 0 delta.
 		-- Real humans don't smoothly move their mouse directly and precisely onto the exact point
@@ -285,7 +300,7 @@ function View.handleBuildup()
 		return
 	end
 
-	local cameraAngles = Client.getCameraAngles()
+	local cameraAngles = LocalPlayer.getCameraAngles()
 
 	if not View.buildupLastAngles then
 		View.buildupLastAngles = cameraAngles
@@ -436,6 +451,12 @@ end
 
 --- @param targetViewAngles Angle
 --- @return void
+function View.setTargetDynamic(targetViewAngles)
+	targetViewAngles:setFromAngle(View.dynamic:thinkNormalize(targetViewAngles))
+end
+
+--- @param targetViewAngles Angle
+--- @return void
 function View.setTargetVelocity(targetViewAngles)
 	if not View.isCrosshairUsingVelocity then
 		View.isCrosshairUsingVelocity = false
@@ -443,7 +464,7 @@ function View.setTargetVelocity(targetViewAngles)
 		return
 	end
 
-	local cameraAngles = Client.getCameraAngles()
+	local cameraAngles = LocalPlayer.getCameraAngles()
 
 	-- Velocity increase is the difference between the last time we checked the camera angles and now.
 	View.velocity = View.velocity + View.lastCameraAngles:getDiff(cameraAngles) * View.velocityGainModifier
@@ -589,7 +610,7 @@ function View.setIdealLookAhead(idealViewAngles)
 	-- We want to look roughly head height of the goal.
 	lookOrigin:offset(0, 0, 46)
 
-	local lookAngle = Client.getEyeOrigin():getAngle(lookOrigin)
+	local lookAngle = LocalPlayer.getEyeOrigin():getAngle(lookOrigin)
 
 	if currentNode.isJump then
 		lookAngle.p = 0
@@ -628,7 +649,7 @@ function View.setIdealWatchCorner(idealViewAngles)
 		return
 	end
 
-	idealViewAngles:setFromAngle(Client.getEyeOrigin():getAngle(View.watchCornerOrigin))
+	idealViewAngles:setFromAngle(LocalPlayer.getEyeOrigin():getAngle(View.watchCornerOrigin))
 
 	View.setNoiseType(ViewNoiseType.moving)
 
@@ -643,7 +664,7 @@ end
 function View.setIdealRemoveObstructions(idealViewAngles)
 	local clientOrigin = LocalPlayer:getOrigin()
 	local node = Pathfinder.path.node
-	local maxDiff = Client.getCameraAngles():getMaxDiff(node.direction)
+	local maxDiff = LocalPlayer.getCameraAngles():getMaxDiff(node.direction)
 
 	idealViewAngles:setFromAngle(node.direction)
 
@@ -723,7 +744,7 @@ function View.lookAtLocation(origin, speed, noise, note)
 		return
 	end
 
-	View.overrideViewAngles = Client.getEyeOrigin():getAngle(origin)
+	View.overrideViewAngles = LocalPlayer.getEyeOrigin():getAngle(origin)
 	View.lookSpeedIdeal = speed
 	View.lastLookAtLocationOrigin = origin
 	View.lookState = note

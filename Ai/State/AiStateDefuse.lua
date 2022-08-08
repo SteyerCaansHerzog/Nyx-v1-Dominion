@@ -185,7 +185,7 @@ function AiStateDefuse:think(cmd)
     end
 
     if LocalPlayer:m_bIsDefusing() == 1 then
-        View.lookAlongAngle(Client.getCameraAngles(), 4, View.noise.none, "Defuse keep current angles")
+        View.lookAlongAngle(LocalPlayer.getCameraAngles(), 4, View.noise.none, "Defuse keep current angles")
     elseif distance < 256 then
        View.lookAtLocation(bombOrigin:clone():offset(5, -3, 14), 4.5, View.noise.moving, "Defuse look at bomb")
     end
@@ -213,7 +213,7 @@ function AiStateDefuse:think(cmd)
            View.lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 6, View.noise.moving, "Defuse look to drop smoke")
 
             if LocalPlayer:isAbleToAttack() then
-                if Client.getCameraAngles().p > 22 then
+                if LocalPlayer.getCameraAngles().p > 22 then
                     self.inThrowTimer:ifPausedThenStart()
                 end
 

@@ -538,6 +538,10 @@ end
 --- @param renderable AiClientInfoRenderable
 --- @return AiClientInfoRenderable
 function AiProcessInfo:getSerializedRenderable(renderable)
+	if not renderable.origin then
+		return
+	end
+
 	--- @type AiClientInfoRenderable
 	local serialized = {}
 

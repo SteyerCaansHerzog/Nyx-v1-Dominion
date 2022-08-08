@@ -41,7 +41,7 @@ end
 --- @return void
 function AiStateEvade:__init()
     self.shotBoltActionRifleTimer = Timer:new():startThenElapse()
-    self.evadeLookAtAngles = Client.getCameraAngles()
+    self.evadeLookAtAngles = LocalPlayer.getCameraAngles()
     self.changeAngleTimer = Timer:new():startThenElapse()
     self.changeAngleTime = 1
     self.hurtTimer = Timer:new():startThenElapse()
@@ -115,7 +115,7 @@ function AiStateEvade:assess()
         return AiPriority.EVADE_ACTIVE
     end
 
-    local eyeOrigin = Client.getEyeOrigin()
+    local eyeOrigin = LocalPlayer.getEyeOrigin()
 
     -- Retreat due to injury.
     if not AiUtility.plantedBomb and not LocalPlayer.hasBomb() and not self.hurtTimer:isElapsed(7.5) and AiUtility.timeData.roundtime_remaining > 40 then

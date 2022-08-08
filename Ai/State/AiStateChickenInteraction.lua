@@ -92,7 +92,7 @@ function AiStateChickenInteraction:assess()
         if not self.blacklist[chicken.eid] then
             local chickenOrigin = chicken:m_vecOrigin()
             local distance = playerOrigin:getDistance(chickenOrigin)
-            local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), chickenOrigin)
+            local fov = LocalPlayer.getCameraAngles():getFov(LocalPlayer.getEyeOrigin(), chickenOrigin)
 
             if fov < 40 and distance < 300 and distance < closestChickenDistance then
                 closestChicken = chicken
@@ -175,7 +175,7 @@ function AiStateChickenInteraction:think(cmd)
         View.lookAtLocation(chickenOrigin, 5.5, View.noise.minor, "ChickenInteraction look at chicken")
     end
 
-    local fov = Client.getCameraAngles():getFov(Client.getEyeOrigin(), chickenOrigin)
+    local fov = LocalPlayer.getCameraAngles():getFov(LocalPlayer.getEyeOrigin(), chickenOrigin)
 
     if distance < 64 and fov < 22 then
         self.ai.routines.lookAwayFromFlashbangs:block()
@@ -211,7 +211,10 @@ function AiStateChickenInteraction:move()
     Pathfinder.moveToLocation(self.targetChicken:m_vecOrigin():clone():offset(0, 0, 30), {
         task = task,
         onFailedToFindPath = function()
-            self.blacklist[self.targetChicken.eid] = true
+            if self.targetChicken then
+                self.blacklist[self.targetChicken.eid] = true
+            end
+
             self.targetChicken = nil
         end
     })

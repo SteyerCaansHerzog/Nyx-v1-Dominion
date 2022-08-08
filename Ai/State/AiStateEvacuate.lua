@@ -83,6 +83,17 @@ function AiStateEvacuate:assess()
             return AiPriority.SAVE_ROUND
         end
     elseif LocalPlayer:isTerrorist() then
+        -- Do not leave the bombsite if the CTs are near the site and could potentially defuse.
+        if AiUtility.plantedBomb then
+            local bombOrigin = AiUtility.plantedBomb:m_vecOrigin()
+
+            for _, enemy in pairs(AiUtility.enemies) do
+                if enemy:getOrigin():getDistance(bombOrigin) < 1000 then
+                    return AiPriority.IGNORE
+                end
+            end
+        end
+
         -- We should save.
         if self:isRoundWinProbabilityLow()then
             self.isSaving = true

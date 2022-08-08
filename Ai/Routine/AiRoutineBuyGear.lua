@@ -14,6 +14,7 @@ local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBas
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --}}}
 
@@ -113,6 +114,10 @@ function AiRoutineBuyGear:__init()
 		end
 
 		if AiUtility.gameRules:m_bFreezePeriod() == 0 then
+			return
+		end
+
+		if not MenuGroup.enableAi:get() then
 			return
 		end
 

@@ -10,6 +10,7 @@ local Player = require "gamesense/Nyx/v1/Api/Player"
 local Shorthand = require "gamesense/Nyx/v1/Api/Shorthand"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Time = require "gamesense/Nyx/v1/Api/Time"
+local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
@@ -18,6 +19,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBase"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
@@ -64,6 +66,7 @@ function AiChatCommandEval:invoke(ai, sender, args)
         ang = Angle,
         sf = string.format,
         t = Time,
+        tr = Trace,
         v2 = Vector2,
         v3 = Vector3,
         pr = function(...)
@@ -83,11 +86,19 @@ function AiChatCommandEval:invoke(ai, sender, args)
                 b = Color.BLUE
             }
 
+            local color
+
+            if colorCode == "team" then
+                color = LocalPlayer:isTerrorist() and ColorList.TERRORIST or ColorList.COUNTER_TERRORIST
+            else
+                color = colors[colorCode] or colors.w
+            end
+
             colorCode = colorCode or "w"
 
             ai.processes.info:addRenderable({
                 origin = origin,
-                color = colors[colorCode] or colors.w,
+                color = color,
                 radius = radius
             })
         end

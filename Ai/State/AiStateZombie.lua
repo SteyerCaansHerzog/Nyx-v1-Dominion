@@ -88,7 +88,7 @@ function AiStateZombie:think(cmd)
 
     self.activity = "Attacking prey"
 
-    local clientOrigin = Client.getOrigin()
+    local clientOrigin = LocalPlayer:getOrigin()
     local targetOrigin = AiUtility.closestEnemy:getOrigin()
 
     if AiUtility.visibleEnemies[AiUtility.closestEnemy.eid] then
@@ -97,7 +97,7 @@ function AiStateZombie:think(cmd)
 
     if clientOrigin:getDistance2(targetOrigin) < 350 then
         local traceRun = Trace.getHullToPosition(
-            Client.getEyeOrigin(),
+            LocalPlayer.getEyeOrigin(),
             AiUtility.closestEnemy:getEyeOrigin(),
             Vector3:newBounds(Vector3.align.CENTER, 8),
             AiUtility.traceOptionsPathfinding,
@@ -105,7 +105,7 @@ function AiStateZombie:think(cmd)
         )
 
         local traceJump = Trace.getHullToPosition(
-            Client.getEyeOrigin(),
+            LocalPlayer.getEyeOrigin(),
             targetOrigin:offset(0, 0, 32),
             Vector3:newBounds(Vector3.align.CENTER, 16),
             AiUtility.traceOptionsPathfinding,

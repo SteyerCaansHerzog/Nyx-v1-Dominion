@@ -170,9 +170,9 @@ function AiStateSeekHostage:think(cmd)
         if distance < 40 then
             self.activity = "Picking up hostage"
 
-            local angles = Client.getEyeOrigin():getAngle(lookAtOrigin)
+            local angles = LocalPlayer.getEyeOrigin():getAngle(lookAtOrigin)
 
-            if Client.getCameraAngles():getMaxDiff(angles) < 40 then
+            if LocalPlayer.getCameraAngles():getMaxDiff(angles) < 40 then
                 cmd.in_use = true
             end
         else

@@ -144,6 +144,8 @@ function AiStateGrenadeBase:assess()
         if self.isInThrow then
             return self.priorityThrow
         end
+
+        return self.priorityThrow
     end
 
     -- Find all possible line-ups.
@@ -333,6 +335,13 @@ function AiStateGrenadeBase:think(cmd)
         return
     end
 
+    -- Force AI to abort if majorly threatened, even when about to throw.
+    if AiUtility.isClientThreatenedMajor then
+        self:reset()
+
+        return
+    end
+
     if self.throwHoldTimer:isNotElapsedThenStop(0.4) then
         if self.node.isRun then
             Pathfinder.moveAtAngle(self.node.direction)
@@ -382,7 +391,7 @@ function AiStateGrenadeBase:think(cmd)
         Pathfinder.blockTeammateAvoidance()
         Pathfinder.counterStrafe()
 
-        local delta = self.node.direction:getMaxDiff(Client.getCameraAngles())
+        local delta = self.node.direction:getMaxDiff(LocalPlayer.getCameraAngles())
 
         if delta < 15 then
             self.isInThrow = true
