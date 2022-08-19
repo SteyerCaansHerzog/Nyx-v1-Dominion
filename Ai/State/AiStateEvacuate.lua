@@ -228,7 +228,7 @@ function AiStateEvacuate:think(cmd)
 
     self.activity = "Going to hide"
 
-    local trace = Trace.getLineToPosition(LocalPlayer:getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateEvacuate.think<FindSpotVisible>")
+    local findSpotVisibleTrace = Trace.getLineToPosition(LocalPlayer:getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateEvacuate.think<FindSpotVisible>")
     local distance = LocalPlayer:getOrigin():getDistance(self.node.origin)
 
     Pathfinder.canRandomlyJump()
@@ -237,7 +237,7 @@ function AiStateEvacuate:think(cmd)
         Pathfinder.duck()
     end
 
-    if not trace.isIntersectingGeometry and distance < 200 then
+    if not findSpotVisibleTrace.isIntersectingGeometry and distance < 200 then
         self.activity = "Hiding"
 
         self.ai.routines.manageGear:block()
@@ -245,9 +245,9 @@ function AiStateEvacuate:think(cmd)
         LocalPlayer.equipAvailableWeapon()
 
         local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
-        local trace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding, "AiStateEvacuate.think<FindLookAngle>")
+        local findLookAngleTrace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding, "AiStateEvacuate.think<FindLookAngle>")
 
-       View.lookAtLocation(trace.endPosition, 4, View.noise.none, "Evacuate look at angle")
+       View.lookAtLocation(findLookAngleTrace.endPosition, 4, View.noise.none, "Evacuate look at angle")
     end
 
     if not self.isAtDestination and Pathfinder.isIdle() then

@@ -63,6 +63,9 @@ function AiRoutineHandleOccluderTraversal:think(cmd)
 			end
 		end
 	end
+
+	self:handleInferno()
+	self:handleSmoke()
 end
 
 --- @return void
