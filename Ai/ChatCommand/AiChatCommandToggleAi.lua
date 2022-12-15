@@ -42,7 +42,7 @@ function AiChatCommandToggleAi:invoke(ai, sender, args)
         ai.reaper.isAiEnabled = false
         ai.antiAfkEnabled = false
 
-        Logger.console(2, Localization.cmdToggleAiOff)
+        Logger.console(Logger.WARNING, Localization.cmdToggleAiOff)
 
         return
     end

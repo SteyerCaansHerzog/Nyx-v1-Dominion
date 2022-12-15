@@ -335,7 +335,7 @@ function NodeTypeBase:renderTopText(color, ...)
         return
     end
 
-    drawPos:offset(0, -(15 * self.iRenderTopLines))
+    drawPos:offset(0, -(18 * self.iRenderTopLines))
     drawPos:drawSurfaceText(Font.SMALL, color, "c", string.format(...))
 
     self.iRenderTopLines = self.iRenderTopLines + 1
@@ -353,7 +353,7 @@ function NodeTypeBase:renderBottomText(color, ...)
         return
     end
 
-    drawPos:offset(0, (15 * self.iRenderBottomLines))
+    drawPos:offset(0, (18 * self.iRenderBottomLines))
     drawPos:drawSurfaceText(Font.SMALL, color, "c", string.format(...))
 
     self.iRenderBottomLines = self.iRenderBottomLines + 1
@@ -718,7 +718,7 @@ function NodeTypeBase:onSetup(nodegraph)
         self.pathOffset = offset
     end
 
-    -- Set look at data for directional nodes.
+    -- Set look-at data for directional nodes. Hints the AI with crosshair placement information.
     if self.isDirectional then
         self:setLookAtOrigin()
     end

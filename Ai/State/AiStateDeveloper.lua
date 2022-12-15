@@ -21,13 +21,6 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 
 --{{{ AiStateDeveloper
 --- @class AiStateDeveloper : AiStateBase
---- @field origin Vector3
---- @field angles Angle
---- @field timerA Timer
---- @field timerB Timer
---- @field isTrue boolean
---- @field nodes NodeTypeBase[]
---- @field idx number
 local AiStateDeveloper = {
     name = "Developer"
 }
@@ -39,14 +32,7 @@ function AiStateDeveloper:new(fields)
 end
 
 --- @return void
-function AiStateDeveloper:__init()
-    self.origin = Vector3:new()
-    self.angles = Angle:new()
-    self.timerA = Timer:new():startThenElapse()
-    self.timerB = Timer:new():startThenElapse()
-
-    self.isTrue = false
-end
+function AiStateDeveloper:__init() end
 
 --- @return void
 function AiStateDeveloper:assess()
@@ -63,12 +49,6 @@ function AiStateDeveloper:reset() end
 --- @return void
 function AiStateDeveloper:think(cmd)
     self.activity = "Under maintenance"
-
-    local angle = Angle:new()
-
-    Client.draw(Vector3.drawCircle, LocalPlayer.getEyeOrigin():offsetByVector(angle:getForward() * 128), 2, Color)
-
-    View.lookAlongAngle(angle, 4, View.noise.special, "Developer look in test direction")
 end
 
 --- @return void

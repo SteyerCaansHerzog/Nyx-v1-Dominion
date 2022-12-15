@@ -26,7 +26,6 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field isHurt boolean
 --- @field hurtTimer Timer
 --- @field isLookingAtPathfindingDirection boolean
---- @field forceEquipWeaponTimer Timer
 local AiStateEvade = {
     name = "Evade",
     isLockable = false
@@ -45,28 +44,15 @@ function AiStateEvade:__init()
     self.changeAngleTimer = Timer:new():startThenElapse()
     self.changeAngleTime = 1
     self.hurtTimer = Timer:new():startThenElapse()
-    self.forceEquipWeaponTimer = Timer:new():startThenElapse()
-
-    Callbacks.setupCommand(function()
-        if not self.ai.isEnabled then
-            return
-        end
-
-        if not self.forceEquipWeaponTimer:isElapsed(3) then
-            self.ai.routines.manageGear:block()
-
-            LocalPlayer.equipAvailableWeapon()
-        end
-    end)
 
     Callbacks.weaponFire(function(e)
-        if e.player:isClient() and e.player:isHoldingSniper() then
+        if e.player:isLocalPlayer() and e.player:isHoldingSniper() then
             self.shotBoltActionRifleTimer:restart()
         end
     end)
 
     Callbacks.playerHurt(function(e)
-        if e.victim:isClient() and e.health < 20 then
+        if e.victim:isLocalPlayer() and e.health < 20 then
             self.hurtTimer:restart()
         end
     end)
@@ -143,7 +129,6 @@ end
 function AiStateEvade:think()
     self.activity = "Seeking cover"
 
-    self.forceEquipWeaponTimer:restart()
     self.ai.routines.manageGear:block()
 
     if not self.isLookingAtPathfindingDirection then

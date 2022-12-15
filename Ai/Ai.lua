@@ -49,19 +49,21 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 
 --{{{ Ai
 --- @class Ai : Class
---- @field isEnabled boolean
 --- @field chatbots AiChatbot
 --- @field client DominionClient
 --- @field commands AiChatCommand
 --- @field currentState AiStateBase
+--- @field ditherHistories AiStateDitherHistory[]
+--- @field ditherHistoryMax number
+--- @field ditherThreshold number
+--- @field isAllowedToBuyGear boolean
+--- @field isEnabled boolean
 --- @field lastPriority number
 --- @field lockStateTimer Timer
 --- @field processes AiProcess
 --- @field routines AiRoutine
 --- @field states AiStateList
 --- @field voice AiVoice
---- @field ditherHistories AiStateDitherHistory[]
---- @field ditherHistoryMax number
 local Ai = {}
 
 --- @param fields Ai
@@ -75,17 +77,20 @@ function Ai:__init()
 	self:initFields()
 	self:initEvents()
 
-	Logger.console(0, Localization.aiReady)
+	Logger.console(Logger.OK, Localization.aiReady)
 end
 
 --- @return void
 function Ai:initFields()
+	self:initMenu()
+
 	AiUtility.ai = self
 
 	self.isAntiAfkEnabled = false
 	self.lockStateTimer = Timer:new():startThenElapse()
 	self.ditherHistories = {}
-	self.ditherHistoryMax = 24
+	self.ditherHistoryMax = 16
+	self.ditherThreshold = 8
 
 	if Config.isLiveClient and not Config.isAdministrator(Client.xuid) then
 		self.client = DominionClient:new()
@@ -117,7 +122,9 @@ function Ai:initFields()
 	local chatbots = {}
 
 	for id, chatbot in pairs(AiChatbot) do
-		chatbots[id] = chatbot:new()
+		chatbots[id] = chatbot:new({
+			ai = self
+		})
 	end
 
 	self.chatbots = chatbots
@@ -160,15 +167,13 @@ function Ai:initFields()
 		states[id] = object
 
 		if isEnabled  then
-			Logger.console(0, Localization.aiStateLoaded, state.name)
+			Logger.console(Logger.OK, Localization.aiStateLoaded, state.name)
 		else
-			Logger.console(2, Localization.aiStateNotLoaded, state.name, err)
+			Logger.console(Logger.WARNING, Localization.aiStateNotLoaded, state.name, err)
 		end
 	until true end
 
 	self.states = states
-
-	self:initMenu()
 
 	self.voice = AiVoice:new()
 end
@@ -188,7 +193,8 @@ function Ai:initMenu()
 	end)
 
 	MenuGroup.enableAutoBuy = MenuGroup.group:addCheckbox("    | Buy Weapons"):addCallback(function(item)
-		self.routines.buyGear.isEnabled = item:get()
+		-- This is here because setting isEnabled on the routine is self-referential.
+		self.isAllowedToBuyGear = item:get()
 	end):setParent(MenuGroup.enableAi)
 
 	MenuGroup.visualiseAi = MenuGroup.group:addCheckbox("    | Visualise AI"):setParent(MenuGroup.enableAi)
@@ -200,7 +206,7 @@ end
 function Ai:initEvents()
 	Callbacks.levelInit(function()
 		if not Server.isIngame() then
-			Logger.console(2, Localization.aiNotInGame)
+			Logger.console(Logger.WARNING, Localization.aiNotInGame)
 
 			return
 		end
@@ -225,9 +231,9 @@ function Ai:initEvents()
 			state.isEnabled = isEnabled
 
 			if isEnabled  then
-				Logger.console(0, Localization.aiStateLoaded, state.name)
+				Logger.console(Logger.OK, Localization.aiStateLoaded, state.name)
 			else
-				Logger.console(2, Localization.aiStateNotLoaded, state.name, err)
+				Logger.console(Logger.WARNING, Localization.aiStateNotLoaded, state.name, err)
 			end
 		end
 	end)
@@ -251,7 +257,7 @@ function Ai:initEvents()
 			if self.debugPost then
 				self:debugPost(cmd)
 			end
-		end)
+		end, false)
 	end)
 
 	Callbacks.roundStart(function()
@@ -295,7 +301,7 @@ function Ai:handleChatCommands(e)
 	local rejection = command:getRejectionError(self, e.sender, args)
 
 	if rejection then
-		Logger.console(3, Localization.chatCommandRejected, cmd, e.sender:getName(), rejection)
+		Logger.console(Logger.ALERT, Localization.chatCommandRejected, cmd, e.sender:getName(), rejection)
 
 		return
 	end
@@ -304,15 +310,15 @@ function Ai:handleChatCommands(e)
 	local ignored = command:invoke(self, e.sender, args)
 
 	if ignored then
-		Logger.console(3, Localization.chatCommandIgnored, cmd, e.sender:getName(), ignored)
+		Logger.console(Logger.ALERT, Localization.chatCommandIgnored, cmd, e.sender:getName(), ignored)
 
 		return
 	end
 
 	if argsImploded == "" then
-		Logger.console(0, Localization.chatCommandExecutedNoArgs, cmd, e.sender:getName())
+		Logger.console(Logger.OK, Localization.chatCommandExecutedNoArgs, cmd, e.sender:getName())
 	else
-		Logger.console(0, Localization.chatCommandExecutedArgs, cmd, e.sender:getName(), argsImploded)
+		Logger.console(Logger.OK, Localization.chatCommandExecutedArgs, cmd, e.sender:getName(), argsImploded)
 	end
 end
 
@@ -571,52 +577,38 @@ function Ai:debugPost(cmd) end
 
 --- @return void
 function Ai:preventDithering()
+	-- Cap the histories.
 	if #self.ditherHistories >= self.ditherHistoryMax then
 		table.remove(self.ditherHistories, 1)
 	end
 
-	local logA = self.ditherHistories[1]
-	local logB = self.ditherHistories[2]
+	local currentState = self.ditherHistories[1]
+	local count = 1
 
-	if not logA or not logB or not self.ditherHistories[3] then
-		return
-	end
+	for i = 2, #self.ditherHistories do
+		local testState = self.ditherHistories[i]
 
-	local repeats = 0
-
-	for i = 3, #self.ditherHistories do repeat
-		local logC = self.ditherHistories[i]
-
-		if logC.timer:isElapsed(12) then
-			break
+		if currentState.state.__classid  == testState.state.__classid then
+			count = count + 1
 		end
+	end
 
-		local classid = logC.state.__classid
-
-		if i % 2 == 0 then
-			if classid == logB.state.__classid then
-				repeats = repeats + 1
-			elseif classid == logA.state.__classid then
-				repeats = repeats + 1
-			end
-		end
-	until true end
-
-	if repeats <= 4 then
+	-- Did not dither enough.
+	if count < self.ditherThreshold then
 		return
 	end
 
-	local highestPriority = logA.state.priority > logB.state.priority and logA.state or logB.state
-
-	if not highestPriority.isLockable then
+	-- Not permitted to lock. This state is critical to AI survivability.
+	-- Would have to fix dithering through state logic.
+	if not currentState.state.isLockable then
 		return
 	end
 
-	highestPriority.abuseLockTimer:restart()
+	currentState.state.abuseLockTimer:restart()
 
 	self.ditherHistories = {}
 
-	Logger.console(1, Localization.aiDitherLocked, highestPriority.name)
+	Logger.console(Logger.ERROR, Localization.aiDitherLocked, currentState.state.name)
 end
 
 --- @param cmd SetupCommandEvent
@@ -681,7 +673,7 @@ function Ai:selectState(cmd)
 
 			currentState:activate()
 
-			Logger.console(3, Localization.aiStateReactivating, currentState.name, highestPriority)
+			Logger.console(Logger.ALERT, Localization.aiStateReactivating, currentState.name, highestPriority)
 		end
 
 		if self.lastPriority ~= highestPriority then
@@ -701,7 +693,7 @@ function Ai:selectState(cmd)
 			end
 
 			if isActivatable then
-				Logger.console(3, Localization.aiStateChanged, currentState.name, highestPriority)
+				Logger.console(Logger.ALERT, Localization.aiStateChanged, currentState.name, highestPriority)
 
 				View.lookState = currentState.name
 				View.isLookSpeedDelayed = currentState.isMouseDelayAllowed

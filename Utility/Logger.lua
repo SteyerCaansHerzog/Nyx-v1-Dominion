@@ -2,6 +2,7 @@
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Chat = require "gamesense/Nyx/v1/Api/Chat"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 --}}}
 
@@ -83,7 +84,7 @@ function Logger.stopBenchmark()
 	local delta = (client.timestamp() - Logger.benchmarkStartedAt) / 1000
 	local ticks = delta / globals.tickinterval()
 
-	Logger.console(0, Localization.benchmark, Logger.benchmarkName, delta, ticks)
+	Logger.console(Logger.OK, Localization.benchmark, Logger.benchmarkName, delta, ticks)
 
 	Logger.benchmarkName = nil
 	Logger.benchmarkStartedAt = nil
@@ -225,6 +226,17 @@ function Logger.credits(version, date)
 	Client.writeManyConsole({
 		{
 			color = ColorList.FONT_MUTED,
+			text = "| Discord: "
+		},
+		{
+			color = ColorList.WARNING,
+			text = "discord.gg/nyx"
+		}
+	})
+
+	Client.writeManyConsole({
+		{
+			color = ColorList.FONT_MUTED,
 			text = "| "
 		},
 		{
@@ -272,6 +284,23 @@ function Logger.credits(version, date)
 			text = "."
 		},
 	})
+
+	if Config.isAdministrator(Panorama.MyPersonaAPI.GetXuid()) then
+		Client.writeManyConsole({
+			{
+				color = ColorList.FONT_MUTED,
+				text = "| "
+			},
+			{
+				color = ColorList.INFO,
+				text = Localization.splashIsAdministrator
+			},
+			{
+				color = ColorList.FONT_MUTED,
+				text = "."
+			}
+		})
+	end
 
 	Client.writeBlankLines(3)
 end

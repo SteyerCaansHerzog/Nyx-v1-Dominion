@@ -22,7 +22,11 @@ local English = {
 	aiStateReactivating = "Re-activating AI state '%s' [%i].", -- state name
 	aiUtilityNewRound = "Beginning round #%i.", -- round number
 	benchmark = "Benchmark '%s' finished. Time: %.4fs (%.1f ticks).", -- benchmark name
+	buyGearAnySetFailed = "Tried to purchase from any set, except there was no set to buy. The buy set may be misconfigured.",
+	buyGearAttemptingSet = "Purchasing a set from '%s' with a balance of $%i.",
+	buyGearBestSetFailed = "Tried to purchase from best set, except there was no best set to buy. The buy set may be misconfigured.",
 	buyGearPurchased = "Purchased [%i] '%s'.", -- index, item
+	chatbotPersonaLoaded = "Loaded persona '%s'.", -- persona name
 	chatCommandExecutedArgs = "Executed chat command '/%s' from '%s' with '%s'.", -- command name, invoker, arguments
 	chatCommandExecutedNoArgs = "Executed chat command '/%s' from '%s'.", -- command name, invoker
 	chatCommandIgnored = "Ignoring chat command '/%s' from '%s': %s.", -- command name, invoke, reason
@@ -87,113 +91,18 @@ local English = {
 	splashBuild = "Current build: ",
 	splashCopyright = "Copyright Nyx.to ©%i-%i, all rights reserved.",
 	splashDevelopedBy = "Developed and maintained by ",
+	splashIsAdministrator = "This account is an administrator",
 	splashLanguage = "Current language: ",
 	splashLicense = "%02d/%02d/%i. Your license to this software: ",
 	splashLicenseNeverExpires = "does not expire",
 	splashMotto = "Competitive CS:GO AI built for official servers.",
 	viewFreezePrevention = "Client freeze prevention (View.setIdealLookAhead).",
 	viewNewState = "New mouse control state: '%s'.", -- mouse state
+
 }
-
---- @type Localization
-local Versaikr = {
-	aiDitherLocked = "AI haaþruppet '%s' an klossand for śœfenerre",
-	aiNoAssessMethod = "AI haaþruppet '%s' harkim funkśrnen ':assess()'",
-	aiNoPriority = "AI haaþruppet '%s' bussaidim vissygr-numen",
-	aiNotInGame = "Seber æ vin pa serven. Den varte va buköde serven assor væ zeme AI haaþrupper",
-	aiReady = "Den AI an radan",
-	aiStateChanged = "Goþantagt haaþruppet til '%s' [%i]",
-	aiStateGamemodesRequired = "Domte senirstorser an vaśtaasand: %s",
-	aiStateLoaded = "AI haaþruppet '%s' an upplardand",
-	aiStateNodesRequired =  "Domte gnaster an vaśtaasand neu kamaaŋet: %s",
-	aiStateNotLoaded = "AI haaþruppet '%s' an vin upplardand. %s",
-	aiStateReactivating = "Aktivade ehhen AI haaþruppet '%s' [%i]",
-	aiUtilityNewRound = "Ćære venauoke rond #%i",
-	benchmark = "Vereiklanset '%s' an fœkommarand. Bereit: %.4fs (%.1f tiker)",
-	buyGearPurchased = "Śoppagt [%i] '%s'",
-	chatCommandExecutedArgs = "",
-	chatCommandExecutedNoArgs = "",
-	chatCommandIgnored = "",
-	chatCommandRejected = "",
-	cmdRejectionAlreadyNearBombsite = "",
-	cmdRejectionArgsMissing = "",
-	cmdRejectionBombIsPlanted = "",
-	cmdRejectionClientIsDead = "",
-	cmdRejectionCommandIsDeprecated = "",
-	cmdRejectionFreezetime = "",
-	cmdRejectionGamemodeIsNotDemolition = "",
-	cmdRejectionGamemodeIsNotHostage = "",
-	cmdRejectionLiveClientRequired = "",
-	cmdRejectionLuaError = "",
-	cmdRejectionNoBomb = "",
-	cmdRejectionNoEnemiesAlive = "",
-	cmdRejectionNotAdmin = "",
-	cmdRejectionNotAskingUs = "",
-	cmdRejectionNoValidArguments = "",
-	cmdRejectionNoValidSpawnOrBombsite = "",
-	cmdRejectionOnlyCounterTerrorist = "",
-	cmdRejectionOnlyTerrorist = "",
-	cmdRejectionReaperIsActive = "",
-	cmdRejectionSelfInvoked = "",
-	cmdRejectionSenderIsDead = "",
-	cmdRejectionSenderIsNotTeammate = "",
-	cmdRejectionSenderIsOutOfRange = "",
-	cmdSkillSet = "",
-	cmdToggleAiOff = "",
-	editorBeginIntegrityTest = "",
-	editorObjectiveNodeRequired = "",
-	editorReady = "Gnastemarkon an radan",
-	language = "Den Versaikr",
-	logAlert =      "[ATANT]     ",
-	logError =      "[GENUUG]    ",
-	logInfo =       "[NOOÞ]      ",
-	logInternal =   "[NADAŊ]     ",
-	logOk =         "[RAND]      ",
-	logWarning =    "[VAANERAN]  ",
-	manageEconomyEco = "",
-	manageEconomyEcoRush = "",
-	manageEconomyForceBuy = "",
-	manageEconomyFullBuy = "",
-	nodegraphLoaded = "",
-	nodegraphMissingFile = "",
-	nodegraphReady = "",
-	nodegraphSaved = "",
-	pathfinderFailed = "",
-	pathfinderFailedGuessGoal = "",
-	pathfinderFailedKnownGoal = "",
-	pathfinderMovementDisabled = "",
-	pathfinderNewTask = "",
-	pathfinderNoOrigin = "",
-	pathfinderNoOrigin = "",
-	pathfinderObstructed = "",
-	pathfinderReady = "Maavegon an radan",
-	reaperAccountRestarted = "",
-	reaperIsEnabled = "",
-	reaperIsNotEnabled = "",
-	reaperMissingManifest = "",
-	reaperNewAccount = "",
-	splashBuild = "Domte Versonr: ",
-	splashCopyright = "Kopyprotektr ©%i-%i. Al protekterader an forssanćand",
-	splashDevelopedBy = "Markand ohh gannsigerrand plau ",
-	splashLanguage = "Fersæmr: ",
-	splashLicense = "%02d/%02d/%i. Sebet graþaŋr na domte softvar: ",
-	splashLicenseNeverExpires = "nær ekomplette",
-	splashMotto = "Kompetitiv CS:GO AI markim na pa śafkarre-servyr",
-	viewFreezePrevention = "",
-	viewNewState = "",
-}
-
---- @type Localization
-local Russian = {}
-
---- @type Localization
-local German = {}
 
 local Languages = {
-	English = English,
-	Versaikr = Versaikr,
-	Russian = Russian,
-	German = German
+	English = English
 }
 --}}}
 
@@ -212,7 +121,11 @@ local Languages = {
 --- @field aiStateReactivating string
 --- @field aiUtilityNewRound string
 --- @field benchmark string
+--- @field buyGearAnySetFailed string
+--- @field buyGearAttemptingSet string
+--- @field buyGearBestSetFailed string
 --- @field buyGearPurchased string
+--- @field chatbotPersonaLoaded string
 --- @field chatCommandExecutedArgs string
 --- @field chatCommandExecutedNoArgs string
 --- @field chatCommandIgnored string
@@ -277,6 +190,7 @@ local Languages = {
 --- @field splashBuild string
 --- @field splashCopyright string
 --- @field splashDevelopedBy string
+--- @field splashIsAdministrator string
 --- @field splashLanguage string
 --- @field splashLicense string
 --- @field splashLicenseNeverExpires string

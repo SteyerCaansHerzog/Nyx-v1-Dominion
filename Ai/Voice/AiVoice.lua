@@ -208,7 +208,7 @@ function AiVoice:__init()
     end)
 
     Callbacks.playerDeath(function(e)
-        Client.onNextTick(function()
+        Client.fireAfter(0.1, function()
             if Entity.getGameRules():m_bWarmupPeriod() == 1 then
                 return
             end
@@ -219,28 +219,28 @@ function AiVoice:__init()
                 return
             end
 
-            if e.attacker:isClient() then
+            if e.attacker:isLocalPlayer() then
                 if e.victim:isEnemy() then
                     self.pack:speakEnemyKilledByClient(e)
 
                     return
                 end
 
-                if e.victim:isTeammate() and not e.victim:isClient() then
+                if e.victim:isTeammate() and not e.victim:isLocalPlayer() then
                     self.pack:speakTeammateKilledByClient(e)
 
                     return
                 end
             end
 
-            if e.victim:isClient() then
+            if e.victim:isLocalPlayer() then
                 if e.attacker:isEnemy() then
                     self.pack:speakClientKilledByEnemy(e)
 
                     return
                 end
 
-                if e.attacker:isTeammate() and not e.victim:isClient() then
+                if e.attacker:isTeammate() and not e.attacker:isLocalPlayer() then
                     self.pack:speakClientKilledByTeammate(e)
 
                     return
@@ -255,7 +255,7 @@ function AiVoice:__init()
                 return
             end
 
-            if e.attacker:isClient() then
+            if e.attacker:isLocalPlayer() then
                 if e.victim:isEnemy() then
                     self.pack:speakEnemyHurtByClient(e)
 
@@ -269,7 +269,7 @@ function AiVoice:__init()
                 end
             end
 
-            if e.victim:isClient() then
+            if e.victim:isLocalPlayer() then
                 if e.attacker:isEnemy() then
                     self.pack:speakClientHurtByEnemy(e)
 
@@ -290,7 +290,7 @@ function AiVoice:__init()
             return
         end
 
-        if e.player:isClient() then
+        if e.player:isLocalPlayer() then
             self.pack:speakClientDefusingBomb()
         end
 
@@ -304,7 +304,7 @@ function AiVoice:__init()
             return
         end
 
-        if e.player:isClient() then
+        if e.player:isLocalPlayer() then
             self.pack:speakClientPlantingBomb()
         end
 
@@ -318,7 +318,7 @@ function AiVoice:__init()
             return
         end
 
-        if e.player:isClient() then
+        if e.player:isLocalPlayer() then
             local methods = {
                 weapon_flashbang = "speakClientThrowingFlashbang",
                 weapon_hegrenade = "speakClientThrowingHeGrenade",

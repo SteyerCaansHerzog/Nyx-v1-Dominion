@@ -113,14 +113,6 @@ function AiRoutineManageEconomy:determineEconomy()
 		local fullBuys = 0
 		local fullBuyBalance = economy.balance
 
-		if teammate:isEnemy() then
-			print("IS ENEMY!!")
-		end
-
-		if not teammate:m_iAccount() then
-			print(teammate.eid)
-		end
-
 		if fullBuyBalance > fullBuyThreshold then
 			fullBuys = 1 + math.floor((economy.balance - fullBuyThreshold) / rifleBuyThreshold)
 		end
@@ -204,21 +196,21 @@ function AiRoutineManageEconomy:handleEconomy()
 	local forceBuyThresholdForceCriterion = totalPlayers - forceBuyThresholdFullCriterion
 
 	if playersWhoCanFullBuy == totalPlayers then
-		Logger.console(3, Localization.manageEconomyFullBuy)
+		Logger.console(Logger.ALERT, Localization.manageEconomyFullBuy)
 	elseif playersWhoCanFullBuy >= forceBuyThresholdFullCriterion and (playersWhoCanForceBuy + playersWhoCanBuyArmor) >= forceBuyThresholdForceCriterion then
 		self:determineForceBuyOrDrop()
 
-		Logger.console(3, Localization.manageEconomyForceBuy)
+		Logger.console(Logger.ALERT, Localization.manageEconomyForceBuy)
 	else
 		-- Randomly decide to eco-rush instead of a standard save.
 		if self:getPredictableChance(2) then
 			self.ai.routines.buyGear:ecoRush()
 
-			Logger.console(3, Localization.manageEconomyEcoRush)
+			Logger.console(Logger.ALERT, Localization.manageEconomyEcoRush)
 		else
 			self.ai.routines.buyGear:save()
 
-			Logger.console(3, Localization.manageEconomyEco)
+			Logger.console(Logger.ALERT, Localization.manageEconomyEco)
 		end
 	end
 end

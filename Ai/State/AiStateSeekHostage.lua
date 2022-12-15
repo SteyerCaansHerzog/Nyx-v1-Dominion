@@ -70,6 +70,10 @@ function AiStateSeekHostage:assess()
         return AiPriority.IGNORE
     end
 
+    if LocalPlayer:m_hCarriedHostage() ~= nil then
+        return AiPriority.IGNORE
+    end
+
     -- Find a hostage to rescue.
     self:findHostage()
 
@@ -163,7 +167,7 @@ function AiStateSeekHostage:think(cmd)
         local lookAtOrigin = self.hostageOrigin:clone():offset(0, 0, 40)
         local distance = clientOrigin:getDistance(self.hostageOrigin)
 
-        if distance < 250 then
+        if distance < 300 then
             View.lookAtLocation(lookAtOrigin, 5, View.noise.none, "Seek hostage look at hostage")
         end
 

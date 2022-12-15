@@ -27,6 +27,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field patrollingOnBehalfOf Player
 --- @field hasNotifiedTeamOfBomb boolean
 --- @field cooldownTimer Timer
+--- @field isAtPatrolArea boolean
 local AiStatePatrol = {
     name = "Patrol",
     patrolRadius = 512
@@ -47,7 +48,7 @@ function AiStatePatrol:__init()
     end)
 
     Callbacks.playerDeath(function(e)
-        if e.victim:isClient() then
+        if e.victim:isLocalPlayer() then
             self:reset()
         end
 
@@ -95,7 +96,7 @@ function AiStatePatrol:assess()
     end
 
     if self.isBeginningPatrol or self.isOnPatrol then
-        if LocalPlayer:getOrigin():getDistance(self.patrolOrigin) > 1000 then
+        if not self.isAtPatrolArea and LocalPlayer:getOrigin():getDistance(self.patrolOrigin) > 1000 then
             return AiPriority.PATROL_MOVE_TO_ZONE
         else
             return AiPriority.PATROL
@@ -117,12 +118,13 @@ function AiStatePatrol:reset()
     self.patrolNode = nil
     self.hasNotifiedTeamOfBomb = false
     self.hasFoundBomb = false
+    self.isAtPatrolArea = false
 end
 
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStatePatrol:think(cmd)
-    self.activity = "Going to patrol bomb"
+    self.activity = "Going to patrol area"
 
     if self.priority == AiPriority.PATROL_BOMB then
         if not self.hasNotifiedTeamOfBomb then
@@ -156,7 +158,8 @@ function AiStatePatrol:think(cmd)
         local origin = LocalPlayer:getOrigin()
 
         if origin:getDistance(self.patrolOrigin) < 1024 then
-            self.activity = "Patrolling bomb"
+            self.isAtPatrolArea = true
+            self.activity = "Patrolling area"
 
             Pathfinder.walk()
 
@@ -171,6 +174,7 @@ end
 function AiStatePatrol:move()
     self.isBeginningPatrol = false
     self.isOnPatrol = true
+    self.isAtPatrolArea = false
 
     self.patrolNode = self:getPatrolNode()
 

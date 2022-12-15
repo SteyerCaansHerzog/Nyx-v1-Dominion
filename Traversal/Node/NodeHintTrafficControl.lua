@@ -24,7 +24,7 @@ local NodeHintTrafficControl = {
         "- Used with NodeSpotTrafficQueue to tell the AI where to wait",
         "    when the zone is occupied.",
         "- It is only triggered if the AI's path enters the zone. At least",
-        "   one traversal node must be  within the occupancy radius."
+        "   one traversal node must be within the occupancy radius."
     },
     colorPrimary = Color:hsla(15, 0.8, 0.45)
 }

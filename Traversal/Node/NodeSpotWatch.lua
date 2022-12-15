@@ -15,7 +15,7 @@ local NodeTypeSpot = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeS
 local NodeSpotWatch = {
     name = "Watch",
     description = {
-        "Informs the T AI of random map angles it can hold.",
+        "Informs the AI of random map angles it can hold.",
         "",
         "- The AI will use these randomly to hold down map angles."
     },

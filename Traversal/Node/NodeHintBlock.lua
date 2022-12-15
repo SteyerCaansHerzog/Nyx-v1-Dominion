@@ -16,10 +16,10 @@ local NodeTypeHint = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeH
 --- @field isActivatedByChance boolean
 --- @field blockedNodes NodeTypeTraverse[]
 local NodeHintBlock = {
-    name = "Block",
+    name = "Block (Round Start)",
     description = {
         "Deactivates all nodes around it at the start of the game and will",
-        "reactive them after the given time.",
+        "reactivate them after the specified duration.",
         "",
         "- Use to block dangerous paths from spawn areas."
     },

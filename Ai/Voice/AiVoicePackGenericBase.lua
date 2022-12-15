@@ -606,12 +606,12 @@ end
 --- @return void
 function AiVoicePackGenericBase:speakLastAlive()
 	self:speak(self:getGroupDynamic("LastAlive"), {
-		chance = 2,
+		chance = 1,
 		interrupt = false,
 		lock = false,
 		ignoreLock = true,
 		minDelay = 1,
-		maxDelay = 4,
+		maxDelay = 3,
 		condition = function()
 			return not AiUtility.isRoundOver and LocalPlayer:isAlive()
 		end

@@ -68,6 +68,8 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field isEnemyVisible boolean
 --- @field isHostageCarriedByEnemy boolean
 --- @field isHostageCarriedByTeammate boolean
+--- @field isHostageBeingPickedUpByEnemy boolean
+--- @field isHostageBeingPickedUpByTeammate boolean
 --- @field isInsideSmoke boolean
 --- @field isLastAlive boolean
 --- @field isPerformingCalculations boolean
@@ -175,7 +177,11 @@ function AiUtility:initFields()
     }
 
     AiUtility.traceOptionsAttacking = {
-        skip = function(eid)
+        skip = function(eid, contents)
+            if bit.band(Trace.contents.WINDOW, contents) == Trace.contents.WINDOW then
+                return true
+            end
+
             local entity = Entity:create(eid)
 
             if solidAttackingEntities[entity.classname] then
@@ -232,7 +238,7 @@ function AiUtility:initEvents()
             return
         end
 
-        Logger.console(3, Localization.aiUtilityNewRound, roundsPlayed + 1)
+        Logger.console(Logger.ALERT, Localization.aiUtilityNewRound, roundsPlayed + 1)
     end)
 
     Callbacks.roundPrestart(function(e)
@@ -248,7 +254,7 @@ function AiUtility:initEvents()
     Callbacks.bombBeginPlant(function(e)
         AiUtility.bombsiteBeingPlantedAt = AiUtility.getBombsiteFromIdx(e.site)
 
-        if e.player:isClient() then
+        if e.player:isLocalPlayer() then
             AiUtility.isClientPlanting = true
         elseif e.player:isTeammate() then
             AiUtility.isBombBeingPlantedByTeammate = true
@@ -261,7 +267,7 @@ function AiUtility:initEvents()
     Callbacks.bombAbortPlant(function(e)
         AiUtility.bombsiteBeingPlantedAt = nil
 
-        if e.player:isClient() then
+        if e.player:isLocalPlayer() then
             AiUtility.isClientPlanting = false
         elseif e.player:isTeammate() then
             AiUtility.isBombBeingPlantedByTeammate = false
@@ -282,11 +288,11 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombBeginDefuse(function(e)
-        if e.player:isClient() then
+        if e.player:isLocalPlayer() then
             AiUtility.defuseTimer:start()
         end
 
-        if not e.player:isClient() and e.player:isTeammate() then
+        if not e.player:isLocalPlayer() and e.player:isTeammate() then
             AiUtility.isBombBeingDefusedByTeammate = true
         elseif e.player:isEnemy() then
             AiUtility.isBombBeingDefusedByEnemy = true
@@ -296,11 +302,11 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombAbortDefuse(function(e)
-        if e.player:isClient() then
+        if e.player:isLocalPlayer() then
             AiUtility.defuseTimer:stop()
         end
 
-        if not e.player:isClient() and e.player:isTeammate() then
+        if not e.player:isLocalPlayer() and e.player:isTeammate() then
             AiUtility.isBombBeingDefusedByTeammate = false
         elseif e.player:isEnemy() then
             AiUtility.isBombBeingDefusedByEnemy = false
@@ -308,11 +314,11 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombDefused(function(e)
-        if e.player:isClient() then
+        if e.player:isLocalPlayer() then
             AiUtility.defuseTimer:stop()
         end
 
-        if not e.player:isClient() and e.player:isTeammate() then
+        if not e.player:isLocalPlayer() and e.player:isTeammate() then
             AiUtility.isBombBeingDefusedByTeammate = false
         elseif e.player:isEnemy() then
             AiUtility.isBombBeingDefusedByEnemy = false
@@ -322,7 +328,7 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.playerDeath(function(e)
-        if e.victim:isClient() then
+        if e.victim:isLocalPlayer() then
             AiUtility.canDefuse = nil
             AiUtility.visibleEnemies = {}
             AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
@@ -398,7 +404,7 @@ function AiUtility.updateMisc()
     end) do
         i = i + 1
 
-        if player:isClient() then
+        if player:isLocalPlayer() then
             AiUtility.position = i
 
             break
@@ -430,12 +436,14 @@ function AiUtility.updateAllPlayers()
     AiUtility.bombCarrier = nil
     AiUtility.closestTeammate = nil
     AiUtility.closestTeammateDistance = nil
-    AiUtility.isLastAlive = true
+    AiUtility.isLastAlive = false
     AiUtility.enemies = {}
     AiUtility.visibleEnemies = {}
     AiUtility.closestEnemy = nil
     AiUtility.closestEnemyDistance = nil
     AiUtility.isEnemyVisible = false
+    AiUtility.isHostageBeingPickedUpByEnemy = false
+    AiUtility.isHostageBeingPickedUpByTeammate = false
 
     local clientOrigin = LocalPlayer:getOrigin()
     local closestTeammate
@@ -473,9 +481,13 @@ function AiUtility.updateAllPlayers()
             -- Disable GS's braindead AA detection.
             plist.set(eid, "Correction active", false)
 
-            if Player:m_hCarriedHostage() ~= nil then
+            if player:m_hCarriedHostage() ~= nil then
                 AiUtility.isHostageCarriedByEnemy = true
                 AiUtility.hostageCarriers[eid] = player
+            end
+
+            if player:m_bIsGrabbingHostage() == 1 then
+                AiUtility.isHostageBeingPickedUpByEnemy = true
             end
         else
             AiUtility.teammatesTotal = AiUtility.teammatesTotal + 1
@@ -487,15 +499,19 @@ function AiUtility.updateAllPlayers()
             AiUtility.teammatesAndClient[player.eid] = player
             AiUtility.teammatesAlive = AiUtility.teammatesAlive + 1
 
-            if player:isClient() then
+            if player:isLocalPlayer() then
                 break
             end
 
             AiUtility.teammates[player.eid] = player
 
-            if Player:m_hCarriedHostage() ~= nil then
+            if player:m_hCarriedHostage() ~= nil then
                 AiUtility.isHostageCarriedByTeammate = true
                 AiUtility.hostageCarriers[eid] = player
+            end
+
+            if player:m_bIsGrabbingHostage() == 1 then
+                AiUtility.isHostageBeingPickedUpByTeammate = true
             end
 
             local distance = player:getOrigin():getDistance(clientOrigin)
@@ -512,8 +528,9 @@ function AiUtility.updateAllPlayers()
         AiUtility.closestTeammateDistance = closestTeammateDistance
     end
 
-    if AiUtility.teammatesAlive > 0 then
-        AiUtility.isLastAlive = false
+    -- We remove 1 to remove the local player. Then check if more than 1 teammate is alive.
+    if LocalPlayer:isAlive() and (AiUtility.teammatesAlive - 1) == 0 then
+        AiUtility.isLastAlive = true
     end
 end
 

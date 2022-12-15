@@ -108,11 +108,11 @@ function AiSentenceSayKills:replyToPlayerDeath(e)
         return
     end
 
-    if e.attacker:isClient() and e.victim:isTeammate() then
+    if e.attacker:isLocalPlayer() and e.victim:isTeammate() then
         self:speak("KILL_SORRY")
     end
 
-    if e.attacker:isClient() and not e.victim:isTeammate() then
+    if e.attacker:isLocalPlayer() and not e.victim:isTeammate() then
         if e.weapon == "hegrenade" then
             self:speak("KILL_KOBE")
         elseif e.weapon == "inferno" or (e.penetrated > 0 and e.headshot) then
@@ -122,7 +122,7 @@ function AiSentenceSayKills:replyToPlayerDeath(e)
         return
     end
 
-    if e.victim:isClient() and e.attacker:isEnemy() then
+    if e.victim:isLocalPlayer() and e.attacker:isEnemy() then
         if e.weapon == "knife" then
             self:speak("DEATH_WP")
         elseif e.weapon == "p90" or e.weapon == "scar20" or e.weapon == "g3sg1" then
@@ -138,7 +138,7 @@ function AiSentenceSayKills:replyToPlayerDeath(e)
         end
     end
 
-    if e.victim:isClient() and e.attacker:isTeammate() then
+    if e.victim:isLocalPlayer() and e.attacker:isTeammate() then
         self:speak("DEATH_BY_TEAMMATE")
     end
 

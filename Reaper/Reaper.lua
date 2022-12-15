@@ -122,9 +122,9 @@ function ReaperManifest:__init()
 	self.isEnabled = manifest.isEnabled
 
 	if self.isEnabled then
-		Logger.console(3, DominionLocalization.reaperIsEnabled)
+		Logger.console(Logger.ALERT, DominionLocalization.reaperIsEnabled)
 	elseif not self.isEnabled then
-		Logger.console(3, DominionLocalization.reaperIsNotEnabled)
+		Logger.console(Logger.ALERT, DominionLocalization.reaperIsNotEnabled)
 
 		return
 	end
@@ -198,7 +198,7 @@ function ReaperManifest:verifyManifest()
 		if not self.steamId64Map[steamId64] then
 			isReaperStale = true
 
-			Logger.console(0, Localization.reaperNewAccount)
+			Logger.console(Logger.OK, Localization.reaperNewAccount)
 
 			break
 		end
@@ -206,7 +206,7 @@ function ReaperManifest:verifyManifest()
 		if not self.windowHandleMap[windowHandle] then
 			isReaperStale = true
 
-			Logger.console(0, Localization.reaperAccountRestarted)
+			Logger.console(Logger.OK, Localization.reaperAccountRestarted)
 
 			break
 		end
@@ -316,7 +316,7 @@ function Reaper:initEvents()
 	end
 
 	Callbacks.shutdown(function()
-		Client.setInput(true)
+		Client.setInputEnabled(true)
 		Client.setTextMode(false)
 	end)
 end
@@ -331,7 +331,7 @@ function Reaper:render()
 		end
 
 		-- Enable input if the console has been opened.
-		Client.setInput(Client.isConsoleOpen())
+		Client.setInputEnabled(Client.isConsoleOpen())
 
 		if Server.isIngame() then
 			local screenCenter = Client.getScreenDimensionsCenter()
@@ -781,7 +781,7 @@ function Reaper:think()
 			isWarmup = Entity.getGameRules():m_bWarmupPeriod() == 1
 			map = globals.mapname()
 			team = LocalPlayer:m_iTeamNum()
-			isBombCarrier = AiUtility.bombCarrier and AiUtility.bombCarrier:isClient()
+			isBombCarrier = AiUtility.bombCarrier and AiUtility.bombCarrier:isLocalPlayer()
 
 			if AiUtility.timeData then
 				phase = AiUtility.timeData.gamephase
@@ -874,7 +874,7 @@ function Reaper:think()
 
 	-- Allow input outside of games.
 	if not isInGame then
-		Client.setInput(true)
+		Client.setInputEnabled(true)
 	end
 
 	if not self.isActive and self.keyForceSwap:wasPressed() then
@@ -1038,7 +1038,7 @@ function Reaper:think()
 				MenuGroup.standaloneQuickStopRef:set(false)
 			end
 
-			Client.setInput(true)
+			Client.setInputEnabled(true)
 
 			MenuGroup.visualiseAimbot:set(false)
 		else
@@ -1055,7 +1055,7 @@ function Reaper:think()
 			MenuGroup.visualiseAimbot:set(true)
 
 			-- Ensure input is turned on or off when tabbing, so we cannot accidentally press keys in spectator mode.
-			Client.setInput(false)
+			Client.setInputEnabled(false)
 		end
 	end
 end

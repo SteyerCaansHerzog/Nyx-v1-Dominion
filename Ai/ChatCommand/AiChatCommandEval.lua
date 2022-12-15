@@ -20,6 +20,7 @@ local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiCh
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
+local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
@@ -51,6 +52,7 @@ function AiChatCommandEval:invoke(ai, sender, args)
         ai = ai,
         aip = AiPriority,
         aiu = AiUtility,
+        cfg = Config,
         col = Color,
         cl = Client,
         ca = Callbacks,
@@ -107,8 +109,8 @@ function AiChatCommandEval:invoke(ai, sender, args)
     local result = Shorthand.evaluate(evalStr, exposedModules)
 
     if not result.isOk then
-        Logger.console(1, "Evaluation failed with: %s", result.error)
-        Logger.console(1, "Tried to evaluate: %s", result.expanded)
+        Logger.console(Logger.ERROR, "Evaluation failed with: %s", result.error)
+        Logger.console(Logger.ERROR, "Tried to evaluate: %s", result.expanded)
 
         return Localization.cmdRejectionLuaError
     end

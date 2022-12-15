@@ -1,10 +1,8 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local CsgoWeapons = require "gamesense/csgo_weapons"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Table = require "gamesense/Nyx/v1/Api/Table"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local Weapons = require "gamesense/Nyx/v1/Api/Weapons"

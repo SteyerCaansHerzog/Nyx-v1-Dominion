@@ -41,11 +41,11 @@ function AiStateGraffiti:__init()
     self.graffitiDelayTimer = Timer:new()
 
     Callbacks.playerDeath(function(e)
-        if not e.attacker:isClient() or e.victim:isTeammate() then
+        if not e.attacker:isLocalPlayer() or e.victim:isTeammate() then
             return
         end
 
-        if e.victim:isClient() then
+        if e.victim:isLocalPlayer() then
             self.killCount = 0
         end
 

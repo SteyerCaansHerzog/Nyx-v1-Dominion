@@ -35,6 +35,7 @@ function AiChatCommandFollow:invoke(ai, sender, args)
 
     Client.fireAfterRandom(0.5, 1.5, function()
         if sender:isAlive() then
+            ai.states.patrol:reset()
             ai.states.follow:follow(sender)
         end
     end)

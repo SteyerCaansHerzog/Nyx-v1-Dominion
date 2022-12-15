@@ -5,6 +5,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --{{{ AiChatbotBase
 --- @class AiChatbotBase : Class
 --- @field isEnabled boolean
+--- @field ai Ai
 local AiChatbotBase = {
 	isEnabled = false
 }

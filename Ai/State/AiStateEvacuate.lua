@@ -1,10 +1,9 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
-local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 --}}}
@@ -125,16 +124,27 @@ function AiStateEvacuate:isRoundWinProbabilityLow()
     end
 
     -- Prevent sitting in a corner and being murdered.
-    if self.isAtDestination and AiUtility.isClientThreatenedMinor then
+    if self.isAtDestination and AiUtility.isClientThreatenedMajor then
         return false
     end
 
     local roundsPlayed = Entity.getGameRules():m_totalRoundsPlayed()
     local maxRounds = cvar.mp_maxrounds:get_int()
     local halfTime = math.ceil(maxRounds / 2)
+    local clinch = halfTime
+    local scoreData = Table.fromPanorama(Panorama.GameStateAPI.GetScoreDataJSO())
+    local tWins = scoreData.teamdata.TERRORIST.score
+    local ctWins = scoreData.teamdata.CT.score
+    local enemyWins = 0
+
+    if LocalPlayer:isTerrorist() then
+        enemyWins = ctWins
+    elseif LocalPlayer:isCounterTerrorist() then
+        enemyWins = tWins
+    end
 
     -- First round, last round of half, last round of game.
-    if roundsPlayed == 0 or roundsPlayed == (maxRounds - 1) or roundsPlayed == (halfTime - 1) then
+    if roundsPlayed == 0 or roundsPlayed == (maxRounds - 1) or roundsPlayed == (halfTime - 1) or roundsPlayed == halfTime or enemyWins == clinch then
         return false
     end
 

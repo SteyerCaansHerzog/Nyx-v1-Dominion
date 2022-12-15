@@ -30,10 +30,10 @@ function AiChatCommandRush:invoke(ai, sender, args)
     ai.routines.buyGear:blockThisRound()
 
     Client.fireAfterRandom(0, 1, function()
-        ai.routines.buyGear:ecoRush()
-
         if LocalPlayer:isCounterTerrorist() then
+            ai.states.patrol:reset()
             ai.states.check:invoke("T")
+            ai.routines.buyGear:ecoRush()
         end
     end)
 end

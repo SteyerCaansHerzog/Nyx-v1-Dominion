@@ -14,6 +14,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --- @field isEmulatingRealUserInput boolean
 --- @field isLiveClient boolean
 --- @field isRandomizingCrosshair boolean
+--- @field isResolvingTextToCommands boolean
 --- @field isTextModeAllowed boolean
 --- @field language string
 --- @field openAiApiKey string
@@ -21,7 +22,16 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --- @field virtualMouseMode string ridid | dynamic
 local Config = {
     administrators = {
-        "76561198138748363", -- List of SteamIDs that are allowed to run admin-only chat commands.
+        -- Friends
+        "76561198138748363", -- Adrian
+        "76561198080048177", -- Fanta
+        -- Main accounts
+        "76561198105632069", -- Kotton
+        "76561198339559079", -- Data
+        "76561198971897854", -- Standup
+
+        --"76561199064257338", -- Incident
+        "76561199138080686" -- IKEA Desk
     },
     clientConfigs = {
         normal = "Nyx-v1-Dominion", -- GS config to load when in normal mode.
@@ -34,9 +44,10 @@ local Config = {
     isEmulatingRealUserInput = true, -- Enable this to emulate mouse-keyboard. Results in less accurate movement. Avoids potential bot detection.
     isLiveClient = false, -- Enable this when running on the Dominion Service.
     isRandomizingCrosshair = false, -- Create random crosshair every time Dominion is initialised.
+    isResolvingTextToCommands = false, -- Try to resolve chat into commands. This is expensive.
     isTextModeAllowed = true, -- Enable this to disable Source engine rendering when applicable.
     language = "English", -- Language localization for logs and other text.
-    openAiApiKey = "XXXX", -- Set this to provide an API key for use with the Open AI chatbot.
+    openAiApiKey = "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", -- Set this to provide an API key for use with the Open AI chatbot.
     projectDirectory = "lua/gamesense/Nyx/v1/Dominion/%s", -- Root project directory for the Dominion folder. Must have /%s at the end.
     virtualMouseMode = "dynamic" -- "rigid" for old method, "dynamic" for smoother new method.
 }

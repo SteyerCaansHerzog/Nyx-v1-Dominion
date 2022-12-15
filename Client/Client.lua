@@ -219,11 +219,11 @@ function DominionClient:__init()
     end)
 
     Callbacks.playerHurt(function(e)
-        if e.victim:isClient() and e.attacker:isTeammate() then
+        if e.victim:isLocalPlayer() and e.attacker:isTeammate() then
             self.griefHurtAmount = self.griefHurtAmount + e.dmg_health
         end
 
-        if e.attacker:isClient() and e.weapon == "inferno" and e.victim:isTeammate() then
+        if e.attacker:isLocalPlayer() and e.weapon == "inferno" and e.victim:isTeammate() then
             self.griefHurtAmount = self.griefHurtAmount + e.dmg_health
         end
     end)

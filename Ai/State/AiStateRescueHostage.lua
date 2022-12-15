@@ -53,6 +53,8 @@ function AiStateRescueHostage:think(cmd)
     self.activity = "Rescuing hostage"
 
     self.ai.routines.manageGear:block()
+
+    LocalPlayer.equipAvailableWeapon()
 end
 
 return Nyx.class("AiStateRescueHostage", AiStateRescueHostage, AiStateBase)

@@ -37,6 +37,8 @@ function AiChatCommandBomb:invoke(ai, sender, args)
         return Localization.cmdRejectionNoBomb
     end
 
+    ai.states.patrol:reset()
+
     ai.states.drop:dropGear(sender, "bomb", false)
 end
 

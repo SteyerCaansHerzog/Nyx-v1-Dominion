@@ -1,15 +1,11 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local Client = require "gamesense/Nyx/v1/Api/Client"
-local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local NadePredictor = require("gamesense/nade_prediction")
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
-local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
-
 
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
@@ -18,7 +14,6 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
@@ -82,7 +77,7 @@ function AiStateGrenadeBase:__init()
     end)
 
     Callbacks.grenadeThrown(function(e)
-        if e.player:isClient() then
+        if e.player:isLocalPlayer() then
             self.isInThrow = false
             self.node = nil
 

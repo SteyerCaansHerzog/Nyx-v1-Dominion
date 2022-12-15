@@ -98,7 +98,7 @@ function AiStatePickupItems:__init()
 
     Callbacks.itemPickup(function(e)
         Client.onNextTick(function()
-            if e.player:isClient() then
+            if e.player:isLocalPlayer() then
                 self.item = nil
             end
         end)

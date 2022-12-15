@@ -30,6 +30,10 @@ function AiRoutineHandleOccluderTraversal:__init() end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiRoutineHandleOccluderTraversal:think(cmd)
+	-- Yes, it is dumb that this is here.
+	Pathfinder.isInsideInferno = false
+	Pathfinder.isInsideSmoke = false
+
 	self.infernoInsideOf = nil
 	self.smokeInsideOf = nil
 	self.isWaitingOnOccluder = false
@@ -49,6 +53,10 @@ function AiRoutineHandleOccluderTraversal:think(cmd)
 		end
 	end
 
+	if self.infernoInsideOf then
+		Pathfinder.isInsideInferno = true
+	end
+
 	-- Find an inferno that we're probably inside of.
 	for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
 		local smokeTick = smoke:m_nFireEffectTickBegin()
@@ -62,6 +70,10 @@ function AiRoutineHandleOccluderTraversal:think(cmd)
 				break
 			end
 		end
+	end
+
+	if self.smokeInsideOf then
+		Pathfinder.isInsideSmoke = true
 	end
 
 	self:handleInferno()
@@ -98,7 +110,6 @@ function AiRoutineHandleOccluderTraversal:handleInferno()
 		break
 	until true end
 
-	-- No molotov.
 	if not isTraversingMolotov then
 		return
 	end
@@ -120,6 +131,24 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 		return
 	end
 
+	if AiUtility.plantedBomb then
+		if LocalPlayer:isTerrorist() and AiUtility.isBombBeingDefusedByEnemy then
+			return
+		end
+
+		if LocalPlayer:isCounterTerrorist() and AiUtility.isBombBeingPlantedByEnemy then
+			return
+		end
+
+		if AiUtility.bombDetonationTime < 25 then
+			return
+		end
+
+		if AiUtility.bombDetonationTime < 30 and AiUtility.teammatesAlive >= 3 then
+			return
+		end
+	end
+
 	local isTraversingSmoke = false
 
 	for _, node in pairs(Pathfinder.path.nodes) do if isTraversingSmoke then break end repeat
@@ -138,7 +167,6 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 		break
 	until true end
 
-	-- No molotov.
 	if not isTraversingSmoke then
 		return
 	end

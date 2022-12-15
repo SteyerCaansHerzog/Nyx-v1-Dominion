@@ -39,7 +39,7 @@ function AiStateDefendHostageCarrier:__init()
     end)
 
     Callbacks.playerDeath(function(e)
-        if e.victim:isClient() then
+        if e.victim:isLocalPlayer() then
             self:reset()
         end
 

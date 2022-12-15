@@ -44,7 +44,7 @@ function Nodegraph.__setup()
     Nodegraph.initFields()
     Nodegraph.initEvents()
 
-    Logger.console(0, Localization.nodegraphReady)
+    Logger.console(Logger.OK, Localization.nodegraphReady)
 end
 
 --- @return void
@@ -385,7 +385,7 @@ function Nodegraph.getClosestBombsiteByHeight(origin)
         upper = bombsiteA
     end
 
-    local upperZ = upper.origin.z - 128
+    local upperZ = upper.origin.z - 175
 
     if origin.z < upperZ then
         return lower
@@ -893,7 +893,7 @@ function Nodegraph.load(filename)
 
     Nodegraph.isLoaded = true
 
-    Logger.console(0, Localization.nodegraphLoaded, filename)
+    Logger.console(Logger.OK, Localization.nodegraphLoaded, filename)
 end
 
 --- @param filename string

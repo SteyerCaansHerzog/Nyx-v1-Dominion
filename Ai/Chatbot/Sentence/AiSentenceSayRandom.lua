@@ -139,11 +139,6 @@ local AiSentenceTemplate = {
             "i fuck dogs"
         },
         {
-            "śtatnasfoiyr æ vim csenzand",
-            "se leer lass go oþrplaaz",
-            "set dellane antsaveihht"
-        },
-        {
             "achoo!",
             "fuck.",
             "sorry",

@@ -27,11 +27,11 @@ function AiRoutineManageWeaponScope:__init()
 	self.unscopeTimer = Timer:new():startThenElapse()
 
 	Callbacks.weaponFire(function(e)
-		if not e.player:isClient() then
+		if not e.player:isLocalPlayer() then
 			return
 		end
 
-		if not LocalPlayer:isHoldingSniper() then
+		if not LocalPlayer:isHoldingBoltActionRifle() then
 			return
 		end
 

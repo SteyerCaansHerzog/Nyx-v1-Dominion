@@ -39,7 +39,7 @@ function AiStateLurkT:__init()
 	Callbacks.roundPrestart(function()
 		self:reset()
 
-		self.isActive = Math.getChance(10)
+		self.isActive = Math.getChance(8)
 
 		self:invokeAndSetOppositeBombsite(AiUtility.randomBombsite)
 	end)

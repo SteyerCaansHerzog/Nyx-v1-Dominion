@@ -64,7 +64,7 @@ end
 --- @param e PlayerDeathEvent
 --- @return void
 function AiSentenceReplyCommend:replyToPlayerDeath(e)
-    if not e.attacker:isClient() or e.victim:isTeammate() then
+    if not e.attacker:isLocalPlayer() or e.victim:isTeammate() then
         return
     end
 

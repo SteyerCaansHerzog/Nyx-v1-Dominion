@@ -42,7 +42,7 @@ function AiChatCommandSkill:invoke(ai, sender, args)
 
     ai.states.engage:setAimSkill(skill)
 
-    Logger.console(0, Localization.cmdSkillSet, skill)
+    Logger.console(Logger.OK, Localization.cmdSkillSet, skill)
 end
 
 return Nyx.class("AiChatCommandSkill", AiChatCommandSkill, AiChatCommandBase)

@@ -61,7 +61,7 @@ function AiStatePlant:__init()
     end)
 
     Callbacks.bombBeginPlant(function(e)
-        if not e.player:isClient() then
+        if not e.player:isLocalPlayer() then
             return
         end
 
@@ -69,7 +69,7 @@ function AiStatePlant:__init()
     end)
 
     Callbacks.bombAbortPlant(function(e)
-        if not e.player:isClient() then
+        if not e.player:isLocalPlayer() then
             return
         end
 

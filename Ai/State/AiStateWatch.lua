@@ -43,7 +43,7 @@ function AiStateWatch:__init()
     self.watchTimer = Timer:new()
 
     Callbacks.roundStart(function()
-        self.watchTime = Math.getRandomFloat(8, 16)
+        self.watchTime = Math.getRandomFloat(6, 18)
 
     	self:reset()
     end)
@@ -83,7 +83,7 @@ function AiStateWatch:assess()
 
     -- Other weapons.
     if not LocalPlayer:hasPrimary() or LocalPlayer:hasRifle() then
-        local node = self:getWatchNode(Node.spotWatch.weaponsOthers, 3)
+        local node = self:getWatchNode(Node.spotWatch.weaponsOthers, 0.75)
 
         if node then
             self.node = node
@@ -94,7 +94,7 @@ function AiStateWatch:assess()
 
     -- Snipers only.
     if LocalPlayer:hasSniper() then
-        local node = self:getWatchNode(Node.spotWatch.weaponsSnipers, 0.75)
+        local node = self:getWatchNode(Node.spotWatch.weaponsSnipers, 0.85)
 
         if node then
             self.node = node

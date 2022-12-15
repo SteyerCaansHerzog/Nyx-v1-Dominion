@@ -85,7 +85,7 @@ function AiStateDefend:__init()
         end) do
             slot = slot + 1
 
-            if teammate:isClient() then
+            if teammate:isLocalPlayer() then
                 break
             end
         end
@@ -111,7 +111,7 @@ function AiStateDefend:__init()
     end)
 
     Callbacks.playerHurt(function(e)
-        if not e.victim:isTeammate() or e.victim:isClient() then
+        if not e.victim:isTeammate() or e.victim:isLocalPlayer() then
             return
         end
 
@@ -134,7 +134,7 @@ function AiStateDefend:__init()
             return
         end
 
-        if AiUtility.bombCarrier:isClient() then
+        if AiUtility.bombCarrier:isLocalPlayer() then
             return
         end
 
@@ -165,7 +165,7 @@ function AiStateDefend:assess()
         return AiPriority.IGNORE
     end
 
-    if AiUtility.gamemode == "demolition" or AiUtility.gamemode == "wingman" then
+    if AiUtility.gamemode == AiUtility.gamemodes.DEMOLITION or AiUtility.gamemode == AiUtility.gamemodes.WINGMAN then
         return self:assessDemolition()
     elseif AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
         return self:assessHostage()
@@ -319,6 +319,7 @@ function AiStateDefend:isEnemyHoldable()
     local cameraAngles = LocalPlayer.getCameraAngles()
     local eyeOrigin = LocalPlayer.getEyeOrigin()
     local clientOrigin = LocalPlayer.getEyeOrigin()
+    local isAnyEnemies = false
 
     for _, enemy in pairs(AiUtility.enemies) do
         isAnyEnemies = true

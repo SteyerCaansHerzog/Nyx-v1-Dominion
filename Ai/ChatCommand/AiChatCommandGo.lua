@@ -49,12 +49,14 @@ function AiChatCommandGo:invoke(ai, sender, args)
     ai.states.engage.tellGoTimer:restart()
 
     Client.fireAfterRandom(1, 2, function()
+        ai.states.patrol:reset()
+
         if objective == "CT" or objective == "T" then
             ai.states.check:invoke(objective)
             ai.voice.pack:speakAgreement()
 
         elseif objective == "A" or objective == "B" then
-            if sender:isClient() then
+            if sender:isLocalPlayer() then
                 ai.states.defend.bombsite = objective
                 ai.states.defend.isSpecificNodeSet = false
                 ai.states.plant.bombsite = objective

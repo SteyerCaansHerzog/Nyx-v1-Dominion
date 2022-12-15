@@ -114,7 +114,7 @@ end
 
 --- @param range number
 --- @param target Player
---- @return Node
+--- @return NodeTypeBase
 function AiStateBase:getCoverNode(range, target)
     local clientOrigin = LocalPlayer:getOrigin()
     --- @type Angle
@@ -150,7 +150,7 @@ function AiStateBase:getCoverNode(range, target)
     for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do
         local distance = closestOrigin:getDistance(node.origin)
 
-        if distance > farthestDistance and clientOrigin:getDistance(node.origin) < range and coverAngle:getFov(clientOrigin, node.origin) > 75 then
+        if not node.isOccludedByInferno and distance > farthestDistance and clientOrigin:getDistance(node.origin) < range and coverAngle:getFov(clientOrigin, node.origin) > 60 then
             i = i + 1
 
             if i > 50 then

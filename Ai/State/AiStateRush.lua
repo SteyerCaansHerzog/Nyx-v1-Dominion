@@ -36,7 +36,7 @@ end
 --- @return void
 function AiStateRush:__init()
     Callbacks.roundStart(function()
-        self.isRushing = Math.getChance(8)
+        self.isRushing = Math.getChance(6)
     end)
 end
 

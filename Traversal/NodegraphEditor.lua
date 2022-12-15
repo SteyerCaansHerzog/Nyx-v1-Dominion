@@ -110,7 +110,7 @@ function NodegraphEditor:__init()
     self:initFields()
     self:initEvents()
 
-    Logger.console(0, Localization.editorReady)
+    Logger.console(Logger.OK, Localization.editorReady)
 end
 
 --- @return void
@@ -283,12 +283,12 @@ function NodegraphEditor:testPathfinding()
         or Nodegraph.getBombsite("B")
 
     if not originNode then
-        Logger.console(1, Localization.editorObjectiveNodeRequired)
+        Logger.console(Logger.ERROR, Localization.editorObjectiveNodeRequired)
 
         return
     end
 
-    Logger.console(2, Localization.editorBeginIntegrityTest)
+    Logger.console(Logger.WARNING, Localization.editorBeginIntegrityTest)
 
     self.pathfindTestNodes = {}
     self.groups = {

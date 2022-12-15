@@ -68,7 +68,7 @@ function AiStateLurkWithBomb:assess()
 		return AiPriority.IGNORE
 	end
 
-	if not AiUtility.bombCarrier:isClient() then
+	if not AiUtility.bombCarrier:isLocalPlayer() then
 		return AiPriority.IGNORE
 	end
 

@@ -1,8 +1,6 @@
 --{{{ Dependencies
 local Animate = require "gamesense/Nyx/v1/Api/Animate"
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local Client = require "gamesense/Nyx/v1/Api/Client"
-local Color = require "gamesense/Nyx/v1/Api/Color"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -62,7 +60,6 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --- @field lookState string
 --- @field lookState string
 --- @field lookStateCached string
---- @field mode string rigid | dynamic
 --- @field nodegraph Nodegraph
 --- @field noise ViewNoiseType
 --- @field overrideViewAngles Angle
@@ -123,7 +120,6 @@ function View.initFields()
 	View.buildupCooldownTime = 0
 	View.buildupCooldownTimer = Timer:new():startThenElapse()
 	View.blockMouseControlTimer = Timer:new():startThenElapse()
-	View.mode = Config.virtualMouseMode
 
 	-- Original working dynamics.
 	View.dynamic = SecondOrderDynamics:new(2, 3.4, 0, 0.22, Angle, LocalPlayer.getCameraAngles() or Angle:new())
@@ -195,7 +191,7 @@ function View.setViewAngles()
 
 	if View.lookState ~= View.lookStateCached then
 		if Debug.isLoggingLookState then
-			Logger.console(-1, Localization.viewNewState, View.lookState)
+			Logger.console(Logger.INFO, Localization.viewNewState, View.lookState)
 		end
 
 		View.delayMovement()
@@ -254,9 +250,9 @@ function View.setViewAngles()
 	--- @type Angle
 	local targetViewAngles = idealViewAngles
 
-	if View.mode == "rigid" then
+	if Config.virtualMouseMode == "rigid" then
 		View.setTargetVelocity(targetViewAngles)
-	elseif View.mode == "dynamic" then
+	elseif Config.virtualMouseMode == "dynamic" then
 		View.setTargetDynamic(targetViewAngles)
 	end
 
@@ -568,7 +564,7 @@ function View.setIdealLookAhead(idealViewAngles)
 		i = i + 1
 
 		if i > 50 then
-			Logger.console(1, Localization.viewFreezePrevention)
+			Logger.console(Logger.ERROR, Localization.viewFreezePrevention)
 
 			return
 		end
@@ -664,6 +660,11 @@ end
 function View.setIdealRemoveObstructions(idealViewAngles)
 	local clientOrigin = LocalPlayer:getOrigin()
 	local node = Pathfinder.path.node
+
+	if not node.direction then
+		return
+	end
+
 	local maxDiff = LocalPlayer.getCameraAngles():getMaxDiff(node.direction)
 
 	idealViewAngles:setFromAngle(node.direction)

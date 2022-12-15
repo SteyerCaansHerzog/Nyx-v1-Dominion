@@ -108,6 +108,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field isAllowedToDuck boolean
 --- @field isAllowedToJump boolean
 --- @field isAllowedToMove boolean
+--- @field isAllowedToRandomlyJump boolean
 --- @field isAllowedToWalk boolean
 --- @field isAscendingLadder boolean
 --- @field isAvoidingTeammate boolean
@@ -115,6 +116,8 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field isDescendingLadder boolean
 --- @field isDucking boolean
 --- @field isEnabled boolean
+--- @field isInsideInferno boolean
+--- @field isInsideSmoke boolean
 --- @field isJumping boolean
 --- @field isLoggingEnabled boolean
 --- @field isObstructedByDoor boolean
@@ -135,7 +138,6 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field pathDebug PathfinderPathDebug
 --- @field pathfindInterval number
 --- @field pathfindIntervalTimer Timer
---- @field isAllowedToRandomlyJump boolean
 --- @field randomJumpIntervalTime number
 --- @field randomJumpIntervalTimer Timer
 local Pathfinder = {}
@@ -146,7 +148,7 @@ function Pathfinder.__setup()
 	Pathfinder.initEvents()
 	Pathfinder.initMenu()
 
-	Logger.console(0, Localization.pathfinderReady)
+	Logger.console(Logger.OK, Localization.pathfinderReady)
 end
 
 --- @return void
@@ -192,7 +194,7 @@ function Pathfinder.initEvents()
 		end
 
 		Pathfinder.handleLastRequest()
-		Pathfinder.handleBlockRotate()
+		Pathfinder.handleBlockedRoutes()
 		Pathfinder.resetMoveParameters()
 	end, false)
 
@@ -220,7 +222,13 @@ function Pathfinder.initEvents()
 	Callbacks.bombSpawned(function(e)
 		local bombsite = Nodegraph.getClosestBombsite(e.bomb:m_vecOrigin())
 
-		Pathfinder.blockRotate(bombsite)
+		Pathfinder.blockRoute(bombsite)
+	end)
+
+	Callbacks.hostageFollows(function(e)
+		if e.player:isLocalPlayer() then
+			Pathfinder.blockRoute()
+		end
 	end)
 
 	Callbacks.smokeGrenadeDetonate(function(e)
@@ -283,19 +291,23 @@ end
 
 --- @param bombsite NodeTypeObjective
 --- @return void
-function Pathfinder.blockRotate(bombsite)
+function Pathfinder.blockRoute(bombsite)
 	if not LocalPlayer:isCounterTerrorist() then
 		return
 	end
 
-	-- Execute all retake blocks for the planted-at bombsite.
-	Node.hintBlockRotate.block(Nodegraph, bombsite.bombsite)
+	-- Run all block nodes.
+	Node.hintBlockRoute.block(Nodegraph, bombsite and bombsite.bombsite or nil)
 
 	Pathfinder.blockedBombsite = bombsite
+
+	Pathfinder.retryLastRequest()
 end
 
 --- @return void
-function Pathfinder.handleBlockRotate()
+function Pathfinder.handleBlockedRoutes()
+	-- This may be legacy code at this point.
+	-- Doesn't handle the hostage gamemode.
 	if not Pathfinder.blockedBombsite then
 		return
 	end
@@ -304,7 +316,8 @@ function Pathfinder.handleBlockRotate()
 		return
 	end
 
-	for _, node in pairs(Nodegraph.get(Node.hintBlockRotate)) do
+	-- Reactivate blocked nodes if the AI is near the bombsite.
+	for _, node in pairs(Nodegraph.get(Node.hintBlockRoute)) do
 		for _, blockedNode in pairs(node.blockedNodes) do
 			blockedNode:activate()
 		end
@@ -855,10 +868,12 @@ function Pathfinder.createPath()
 	end
 
 	Pathfinder.clearLastRequest()
-	Pathfinder.incrementPath("remove start")
+
+	-- We're already on the start goal. We can ignore it.
+	Pathfinder.incrementPath("remove start goal")
 
 	if Pathfinder.isLoggingEnabled then
-		Logger.console(-1, Localization.pathfinderNewTask, pathfinderOptions.task)
+		Logger.console(Logger.INFO, Localization.pathfinderNewTask, pathfinderOptions.task)
 	end
 end
 
@@ -919,6 +934,10 @@ end
 
 --- @return void
 function Pathfinder.flushPathDebug()
+	if not Pathfinder.pathDebug.nodes then
+		return
+	end
+
 	local filename = string.format(Config.getPath("Resource/Data/PathfinderPathDebug_%s.json"), LocalPlayer:getSteamId64())
 
 	--- @type PathfinderPathDebug
@@ -947,7 +966,7 @@ function Pathfinder.loadPathDebug(steamid64)
 	if steamid64 == nil and Pathfinder.pathDebug ~= nil then
 		Pathfinder.pathDebug = nil
 
-		Logger.console(0, "Unloaded previously stored failed path.")
+		Logger.console(Logger.OK, "Unloaded previously stored failed path.")
 
 		return
 	end
@@ -956,7 +975,7 @@ function Pathfinder.loadPathDebug(steamid64)
 	local filedata = readfile(filename)
 
 	if not filedata then
-		Logger.console(1, "Cannot load stored failed path for SteamID64 '%s' as the file does not exist.", steamid64)
+		Logger.console(Logger.ERROR, "Cannot load stored failed path for SteamID64 '%s' as the file does not exist.", steamid64)
 
 		return
 	end
@@ -983,7 +1002,7 @@ function Pathfinder.loadPathDebug(steamid64)
 		end
 	end
 
-	Logger.console(0, "[%s] Loaded previously stored failed path for [%s] '%s': %s.", data.dateTimeFormatted, steamid64, data.username, data.task)
+	Logger.console(Logger.OK, "[%s] Loaded previously stored failed path for [%s] '%s': %s.", data.dateTimeFormatted, steamid64, data.username, data.task)
 end
 
 --- @param start NodeTypeGoal
@@ -1060,8 +1079,14 @@ function Pathfinder.getPath(start, goal, options)
 			end
 		end
 
-		if not node.isRecorder and (neighbor.isRecorder and neighbor:is(Node.traverseRecorderEnd)) then
+		if node.isRecorder and not options.isAllowedToTraverseRecorders then
 			Pathfinder.pathDebug.nodes[idx].error = "IS RECORDER AND NOT ALLOWED"
+
+			return false
+		end
+
+		if not node.isRecorder and (neighbor.isRecorder and neighbor:is(Node.traverseRecorderEnd)) then
+			Pathfinder.pathDebug.nodes[idx].error = "IS RECORDER END"
 
 			return false
 		end
@@ -1101,6 +1126,9 @@ function Pathfinder.correctGoalOrigin(node)
 	node.origin:setFromVector(trace.endPosition)
 end
 
+--- This code was written through a process of trial and error that lasted several months. I do not want to refactor it.
+--- Otherwise I will more than likely break the AI.
+---
 --- @param cmd SetupCommandEvent
 --- @return void
 function Pathfinder.traverseActivePath(cmd)
@@ -1116,7 +1144,7 @@ function Pathfinder.traverseActivePath(cmd)
 	Pathfinder.isReplayingMovementRecording = false
 	Pathfinder.movementRecorderAngle = nil
 
-	if not Pathfinder.isAllowedToMove then
+	if not Pathfinder.isAllowedToMove and not Pathfinder.isInsideInferno then
 		return
 	end
 
@@ -1161,22 +1189,23 @@ function Pathfinder.traverseActivePath(cmd)
 	local currentNode = Pathfinder.path.node
 	local previousNode = Pathfinder.path.nodes[Pathfinder.path.idx - 1]
 
+	-- todo test if works better
 	if not pathfinderOptions.isAllowedToTraverseInactives and not currentNode.isActive then
-		Pathfinder.retryLastRequest()
+		--Pathfinder.retryLastRequest()
 
-		return
+		--return
 	end
 
 	if not pathfinderOptions.isAllowedToTraverseSmokes and currentNode.isOccludedBySmoke then
-		Pathfinder.retryLastRequest()
+		--Pathfinder.retryLastRequest()
 
-		return
+		--return
 	end
 
 	if not pathfinderOptions.isAllowedToTraverseInfernos and currentNode.isOccludedByInferno then
-		Pathfinder.retryLastRequest()
+		--Pathfinder.retryLastRequest()
 
-		return
+		--return
 	end
 
 	local clientOrigin = LocalPlayer:getOrigin()
@@ -1460,19 +1489,19 @@ function Pathfinder.traverseActivePath(cmd)
 	Pathfinder.handleMovementOptions(cmd)
 
 	if AiUtility.gameRules:m_bFreezePeriod() ~= 1 then
-		if clientSpeed < 50 then
+		if clientSpeed < 64 then
 			Pathfinder.moveObstructedTimer:ifPausedThenStart()
 		else
 			Pathfinder.moveObstructedTimer:stop()
 		end
 
-		if Pathfinder.moveObstructedTimer:isElapsedThenStop(0.66) then
+		if Pathfinder.moveObstructedTimer:isElapsedThenStop(1.5) then
 			if MenuGroup.enableMovement:get()  then
-				Logger.console(2, Localization.pathfinderObstructed)
+				Logger.console(Logger.WARNING, Localization.pathfinderObstructed)
 
 				Pathfinder.retryLastRequest()
 			else
-				Logger.console(2, Localization.pathfinderMovementDisabled)
+				Logger.console(Logger.WARNING, Localization.pathfinderMovementDisabled)
 			end
 
 		end

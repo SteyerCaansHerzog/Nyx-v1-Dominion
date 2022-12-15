@@ -128,7 +128,7 @@ function AiRoutineBuyGear:__init()
 	end)
 
 	Callbacks.roundStart(function()
-		if not self.isEnabled then
+		if not self.ai.isAllowedToBuyGear then
 			return
 		end
 
@@ -162,11 +162,18 @@ function AiRoutineBuyGear:__init()
 	end)
 end
 
+--- @return void
+function AiRoutineBuyGear:logSetPurchase(set)
+	Logger.console(Logger.INFO, Localization.buyGearAttemptingSet, set, LocalPlayer:m_iAccount())
+end
+
 --- @return boolean
-function AiRoutineBuyGear:isAlreadyGearedUpAndBuyMisc()
+function AiRoutineBuyGear:isAlreadyGearedUpThenBuyMisc()
 	local isGearedUp = LocalPlayer:hasWeapons(WeaponInfo.primaries)
 
 	if isGearedUp then
+		self:logSetPurchase("AlreadyGearedUpAndBuyMisc")
+
 		self:equipFullArmor()
 
 		if LocalPlayer:isCounterTerrorist() then
@@ -243,7 +250,7 @@ function AiRoutineBuyGear:createBuyQueue()
 		table.insert(self.buyQueue, {
 			buy = function()
 				Client.execute("buy %s", item)
-				Logger.console(-1, Localization.buyGearPurchased, j, item)
+				Logger.console(Logger.INFO, Localization.buyGearPurchased, j, item)
 			end,
 			after = Math.getRandomFloat(intervalMin, intervalMax)
 		})
@@ -257,7 +264,7 @@ end
 
 --- @return void
 function AiRoutineBuyGear:processBuyQueue()
-	if not self.isProcessingQueue then
+	if not self.isProcessingQueue or Table.isEmpty(self.buyQueue) then
 		return
 	end
 
@@ -306,7 +313,7 @@ function AiRoutineBuyGear:activateHighestChanceFrom(gearSets)
 		return
 	until true end
 
-	Logger.console(1, "Tried to purchase from best set, except there was no best set to buy.")
+	Logger.console(Logger.ERROR, Localization.buyGearBestSetFailed)
 end
 
 --- @param gearSets GearSet[]
@@ -340,7 +347,7 @@ function AiRoutineBuyGear:activateAnyPassingFrom(gearSets)
 	local randomSet = not Table.isEmpty(passingSets) and Table.getRandom(passingSets) or bestOneInOneSet
 
 	if not randomSet then
-		Logger.console(1, "Tried to purchase from any set, except there was no set to buy.")
+		Logger.console(Logger.ERROR, Localization.buyGearAnySetFailed)
 
 		return
 	end
@@ -361,10 +368,13 @@ function AiRoutineBuyGear:buyRoundStart()
 		return
 	end
 
+	-- Buy force round.
 	if self.isForcing then
 		self.isForcing = false
 
-		self:buyCounterTerroristForceRound()
+		self:buyForceRound()
+
+		return
 	end
 
 	-- Buy from custom items list.
@@ -437,12 +447,15 @@ end
 
 --- @return void
 function AiRoutineBuyGear:buyTerroristFromDrop()
+	self:logSetPurchase("TerroristFromDrop")
 	self:equipFullArmor()
 	self:equipRandomGrenades(nil, 4)
 end
 
 --- @return void
 function AiRoutineBuyGear:buyTerroristPistolRound()
+	self:logSetPurchase("TerroristPistolRound")
+
 	self:activateHighestChanceFrom({
 		{
 			balance = 0,
@@ -484,6 +497,8 @@ function AiRoutineBuyGear:buyTerroristPostPistolRound()
 
 		return
 	end
+
+	self:logSetPurchase("TerroristPostPistolRound")
 
 	self:activateHighestChanceFrom({
 		{
@@ -536,7 +551,7 @@ end
 
 --- @return void
 function AiRoutineBuyGear:buyTerroristForceRound()
-	if self:isAlreadyGearedUpAndBuyMisc() then
+	if self:isAlreadyGearedUpThenBuyMisc() then
 		return
 	end
 
@@ -545,9 +560,11 @@ end
 
 --- @return void
 function AiRoutineBuyGear:buyTerroristEcoRushRound()
-	if self:isAlreadyGearedUpAndBuyMisc() then
+	if self:isAlreadyGearedUpThenBuyMisc() then
 		return
 	end
+
+	self:logSetPurchase("TerroristEcoRushRound")
 
 	self:activateHighestChanceFrom({
 		{
@@ -579,9 +596,15 @@ end
 
 --- @return void
 function AiRoutineBuyGear:buyTerroristFullBuyRound()
-	if self:isAlreadyGearedUpAndBuyMisc() then
+	if self:isAlreadyGearedUpThenBuyMisc() then
 		return
 	end
+
+	if not self.balance >= BuyCriteria.TERRORIST_FULL_BUY then
+		return
+	end
+
+	self:logSetPurchase("TerroristFullBuyRound")
 
 	self:activateAnyPassingFrom({
 		{
@@ -620,6 +643,7 @@ end
 
 --- @return void
 function AiRoutineBuyGear:buyCounterTerroristFromDrop()
+	self:logSetPurchase("CounterTerroristFromDrop")
 	self:equipFullArmor()
 
 	self:equipRandomGrenades({
@@ -636,6 +660,8 @@ end
 
 --- @return void
 function AiRoutineBuyGear:buyCounterTerroristPistolRound()
+	self:logSetPurchase("CounterTerroristPistolRound")
+
 	self:activateHighestChanceFrom({
 		{
 			balance = 0,
@@ -694,6 +720,8 @@ function AiRoutineBuyGear:buyCounterTerroristPostPistolRound()
 		return
 	end
 
+	self:logSetPurchase("CounterTerroristPostPistolRound")
+
 	self:activateHighestChanceFrom({
 		{
 			balance = 2150,
@@ -745,7 +773,7 @@ end
 
 --- @return void
 function AiRoutineBuyGear:buyCounterTerroristForceRound()
-	if self:isAlreadyGearedUpAndBuyMisc() then
+	if self:isAlreadyGearedUpThenBuyMisc() then
 		return
 	end
 
@@ -754,9 +782,11 @@ end
 
 --- @return void
 function AiRoutineBuyGear:buyCounterTerroristEcoRushRound()
-	if self:isAlreadyGearedUpAndBuyMisc() then
+	if self:isAlreadyGearedUpThenBuyMisc() then
 		return
 	end
+
+	self:logSetPurchase("CounterTerroristEcoRushRound")
 
 	self:activateHighestChanceFrom({
 		{
@@ -781,9 +811,15 @@ end
 
 --- @return void
 function AiRoutineBuyGear:buyCounterTerroristFullBuyRound()
-	if self:isAlreadyGearedUpAndBuyMisc() then
+	if self:isAlreadyGearedUpThenBuyMisc() then
 		return
 	end
+
+	if not self.balance >= BuyCriteria.COUNTER_TERRORIST_FULL_BUY then
+		return
+	end
+
+	self:logSetPurchase("CounterTerroristFullBuyRound")
 
 	self:activateAnyPassingFrom({
 		{
