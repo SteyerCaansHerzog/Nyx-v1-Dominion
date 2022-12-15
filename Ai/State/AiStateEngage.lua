@@ -65,7 +65,9 @@ local WeaponMode = {
 --- @field hitboxOffset Vector3
 --- @field hitboxOffsetTimer Timer
 --- @field ignorePlayerAfter number
+--- @field isAboutToBeVisibleToBestTarget boolean
 --- @field isAimEnabled boolean
+--- @field isAllowedToJiggleHold boolean
 --- @field isAllowedToNoscope boolean
 --- @field isBackingUp boolean
 --- @field isBestTargetVisible boolean
@@ -82,9 +84,15 @@ local WeaponMode = {
 --- @field isTargetEasilyShot boolean
 --- @field isUpdatingDefendingLookAt boolean
 --- @field isVisibleToBestTarget boolean
---- @field jiggleDirection string
---- @field jiggleTime number
---- @field jiggleTimer Timer
+--- @field jiggleHoldCount number
+--- @field jiggleHoldDirection Angle
+--- @field jiggleHoldCooldownTimer Timer
+--- @field jiggleHoldThreshold number
+--- @field jiggleHoldTime number
+--- @field jiggleHoldTimer Timer
+--- @field jiggleShootDirection string
+--- @field jiggleShootTime number
+--- @field jiggleShootTimer Timer
 --- @field lastBestTargetOrigin Vector3
 --- @field lastMoveDirection Vector3
 --- @field lastSeenTimers Timer[]
@@ -177,9 +185,9 @@ function AiStateEngage:initFields()
     self.ignorePlayerAfter = 20
     self.isIgnoringDormancy = false
     self.isSneaking = false
-    self.jiggleDirection = "Left"
-    self.jiggleTime = Math.getRandomFloat(0.33, 0.66)
-    self.jiggleTimer = Timer:new():startThenElapse()
+    self.jiggleShootDirection = "Left"
+    self.jiggleShootTime = Math.getRandomFloat(0.33, 0.66)
+    self.jiggleShootTimer = Timer:new():startThenElapse()
     self.lastSoundTimer = Timer:new():start()
     self.noticedPlayerTimers = {}
     self.noticedPlayerLastKnownOrigin = {}
@@ -216,6 +224,12 @@ function AiStateEngage:initFields()
     self.pingEnemyTimer = Timer:new():startThenElapse()
     self.fov = 0
     self.isAllowedToNoscope = false
+    self.jiggleHoldTimer = Timer:new():startThenElapse()
+    self.jiggleHoldTime = 0.3
+    self.jiggleHoldCount = 0
+    self.jiggleHoldCooldownTimer = Timer:new():startThenElapse()
+    self.jiggleHoldThreshold = 4
+    self.isAllowedToJiggleHold = true
 
     for i = 1, 64 do
         self.noticedPlayerTimers[i] = Timer:new()
@@ -284,7 +298,7 @@ function AiStateEngage:initEvents()
         self:reset()
 
         self.isIgnoringDormancy = true
-        self.jiggleTime = Math.getRandomFloat(0.33, 0.66)
+        self.jiggleShootTime = Math.getRandomFloat(0.33, 0.66)
     end)
 
     Callbacks.runCommand(function()
@@ -318,33 +332,39 @@ function AiStateEngage:initEvents()
             return
         end
 
+        self.jiggleHoldCooldownTimer:restart()
+
         self:noticeEnemy(e.attacker, Vector3.MAX_DISTANCE, true, "Shot by")
     end)
 
     Callbacks.playerFootstep(function(e)
-        self:noticeEnemy(e.player, 1000, false, "Stepped")
+        self:noticeEnemy(e.player, 1350, false, "Stepped")
     end)
 
     Callbacks.playerJump(function(e)
-        self:noticeEnemy(e.player, 650, false, "Jumped")
+        self:noticeEnemy(e.player, 750, false, "Jumped")
     end)
 
     Callbacks.weaponZoom(function(e)
-        self:noticeEnemy(e.player, 600, false, "Scoped")
+        self:noticeEnemy(e.player, 700, false, "Scoped")
     end)
 
     Callbacks.weaponReload(function(e)
-        self:noticeEnemy(e.player, 800, false, "Reloaded")
+        self:noticeEnemy(e.player, 950, false, "Reloaded")
     end)
 
     Callbacks.weaponFire(function(e)
+        if e.player:isLocalPlayer() or e.player:is(self.bestTarget) then
+            self.jiggleHoldCooldownTimer:restart()
+        end
+
         if CsgoWeapons[e.weapon].is_melee_weapon then
             self:noticeEnemy(e.player, 600, true, "Knifed")
 
             return
         end
 
-        local range = 1600
+        local range = 2250
 
         if AiUtility.visibleEnemies[e.player.eid] then
             range = Vector3.MAX_DISTANCE
@@ -362,7 +382,7 @@ function AiStateEngage:initEvents()
 
         local rayIntersection = eyeOrigin:getRayClosestPoint(e.shooter:getEyeOrigin(), e.origin)
 
-        if eyeOrigin:getDistance(rayIntersection) > 300 then
+        if eyeOrigin:getDistance(rayIntersection) > 450 then
             return
         end
 
@@ -386,7 +406,7 @@ function AiStateEngage:initEvents()
     end)
 
     Callbacks.grenadeThrown(function(e)
-        self:noticeEnemy(e.player, 500, false, "Threw grenade")
+        self:noticeEnemy(e.player, 750, true, "Threw grenade")
     end)
 
     Callbacks.playerDeath(function(e)
@@ -396,12 +416,16 @@ function AiStateEngage:initEvents()
             return
         end
 
+        if e.victim:is(self.bestTarget) then
+            self.isAllowedToJiggleHold = Math.getChance(2)
+        end
+
         if e.attacker:isLocalPlayer() and e.victim:isEnemy() then
             self.blockTimer:start()
         end
 
         if e.victim:isTeammate() and LocalPlayer:getOrigin():getDistance(e.victim:getOrigin()) < 1250 then
-            self:noticeEnemy(e.attacker, 1600, true, "Teammate killed")
+            self:noticeEnemy(e.attacker, 2000, true, "Teammate killed")
         end
 
         if e.victim:isEnemy() and self.noticedPlayerTimers[e.victim.eid] then
@@ -542,10 +566,8 @@ function AiStateEngage:think(cmd)
         return
     end
 
-    -- todo re-ordered walk
     self:moveOnBestTarget(cmd)
     self:walk()
-    --self:attackBestTarget(cmd)
     self:handleCommunications()
 end
 
@@ -1298,8 +1320,6 @@ function AiStateEngage:renderTimer(title, uiPos, timer, time, color)
 
     uiPos:offset(0, offset)
 end
-local jiggleHoldTimer = Timer:new():startThenElapse()
-local jiggleHoldDirection
 
 --- @param cmd SetupCommandEvent
 --- @return void
@@ -1311,67 +1331,80 @@ function AiStateEngage:moveOnBestTarget(cmd)
     end
 
     local eyeOrigin = LocalPlayer.getEyeOrigin()
-    local enemyEyeOrigin = self.bestTarget:getEyeOrigin()
-    local angleToEnemy = eyeOrigin:getAngle(enemyEyeOrigin)
-    local left = eyeOrigin + angleToEnemy:getLeft() * 64
-    local right = eyeOrigin + angleToEnemy:getRight() * 64
+    local enemyEyeOrigin = self.bestTarget:getOrigin():offset(0, 0, 64)
 
-    if not jiggleHoldTimer:isElapsed(0.3) then
-        Pathfinder.moveAtAngle(eyeOrigin:getAngle(jiggleHoldDirection))
+    -- Jiggle baiting angles.
+    local isJiggleBaiting = true
+
+    if self.jiggleHoldCount >= self.jiggleHoldThreshold then
+        self.jiggleHoldCount = 0
+        self.jiggleHoldThreshold = Math.getRandomInt(1, 6)
+        self.jiggleHoldCooldownTimer:restart()
+    end
+
+    if not self.bestTarget:isHoldingGun() then
+        isJiggleBaiting = false
+    end
+
+    if self.bestTarget:isHoldingSniper() and self.bestTarget:m_bIsScoped() == 0 then
+        isJiggleBaiting = false
+    end
+
+    if not self.jiggleHoldCooldownTimer:isElapsed(2) then
+        isJiggleBaiting = false
+    end
+
+    if LocalPlayer:getOrigin():getDistance(self.bestTarget:getOrigin()) < 400 then
+        isJiggleBaiting = false
+    end
+
+    local enemyCameraAngles = self.bestTarget:getCameraAngles()
+
+    if enemyCameraAngles and enemyCameraAngles:getFov(enemyEyeOrigin, eyeOrigin) > 15 then
+        isJiggleBaiting = false
+    end
+
+    if isJiggleBaiting and not self.jiggleHoldTimer:isElapsed(self.jiggleHoldTime) then
+        Pathfinder.moveAtAngle(eyeOrigin:getAngle(self.jiggleHoldDirection))
 
         return
     end
 
-    if self.isVisibleToBestTarget then
+    if isJiggleBaiting and self.isVisibleToBestTarget or self.isAboutToBeVisibleToBestTarget then
+        local angleToEnemy = eyeOrigin:getAngle(enemyEyeOrigin)
+        local left = eyeOrigin + angleToEnemy:getLeft() * 32
+        local right = eyeOrigin + angleToEnemy:getRight() * 32
         local leftTrace = Trace.getLineToPosition(left, enemyEyeOrigin, AiUtility.traceOptionsAttacking)
-
-        if not leftTrace.isIntersectingGeometry then
-            jiggleHoldTimer:restart()
-
-            jiggleHoldDirection = right
-        end
-
         local rightTrace = Trace.getLineToPosition(right, enemyEyeOrigin, AiUtility.traceOptionsAttacking)
 
-        if not rightTrace.isIntersectingGeometry then
-            jiggleHoldTimer:restart()
+        if not leftTrace.isStartSolid and not rightTrace.isStartSolid then
+            if not leftTrace.isIntersectingGeometry then
+                self.jiggleHoldTimer:restart()
 
-            jiggleHoldDirection = left
+                self.jiggleHoldDirection = right
+                self.jiggleHoldTime = Math.getRandomFloat(0.2, 0.6)
+                self.jiggleHoldCount = self.jiggleHoldCount + 1
+            end
+
+            if not rightTrace.isIntersectingGeometry then
+                self.jiggleHoldTimer:restart()
+
+                self.jiggleHoldDirection = left
+                self.jiggleHoldTime = Math.getRandomFloat(0.2, 0.6)
+                self.jiggleHoldCount = self.jiggleHoldCount + 1
+            end
         end
     end
+
+    self:attackBestTarget(cmd)
 
     local clientOrigin = LocalPlayer:getOrigin()
     local isAbleToDefend = true
     --- @type NodeTypeDefend
     local defendNode
 
-    local enemyEyeOrigin = self.bestTarget:getEyeOrigin()
-
-    if enemyEyeOrigin then
-        local clientHitboxes = LocalPlayer:getHitboxPositions({
-            Player.hitbox.HEAD,
-            Player.hitbox.PELVIS,
-            Player.hitbox.LEFT_LOWER_ARM,
-            Player.hitbox.RIGHT_LOWER_ARM,
-            Player.hitbox.LEFT_LOWER_LEG,
-            Player.hitbox.RIGHT_LOWER_LEG
-        })
-
-        local isVisible = false
-
-        for _, hitbox in pairs(clientHitboxes) do
-            local trace = Trace.getLineToPosition(enemyEyeOrigin, hitbox, AiUtility.traceOptionsAttacking, "AiStateEngage.attackBestTarget<FindClientVisibleHitbox>")
-
-            if not trace.isIntersectingGeometry then
-                isVisible = true
-
-                break
-            end
-        end
-
-        if isVisible then
-            isAbleToDefend = false
-        end
+    if self.isVisibleToBestTarget or self.isAboutToBeVisibleToBestTarget then
+        isAbleToDefend = false
     end
 
     if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
@@ -1609,7 +1642,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
         if self.isHoldingAngleDucked then
             cmd.in_duck = true
         else
-            self:actionJiggle(self.jiggleTime)
+            self:actionJiggle(self.jiggleShootTime)
         end
 
         return
@@ -2065,21 +2098,33 @@ function AiStateEngage:setIsVisibleToBestTarget()
     end
 
     self.isVisibleToBestTarget = false
+    self.isAboutToBeVisibleToBestTarget = false
 
     local enemyEyeOrigin = self.bestTarget:getEyeOrigin()
+    local hitboxes = LocalPlayer:getOrigin():offset(0, 0, 48):getBox(Vector3.align.CENTER, 16, 16, 16)
 
-    for _, hitbox in pairs(LocalPlayer:getHitboxPositions({
-        Player.hitbox.HEAD,
-        Player.hitbox.PELVIS,
-        Player.hitbox.LEFT_LOWER_LEG,
-        Player.hitbox.RIGHT_LOWER_ARM,
-        Player.hitbox.LEFT_LOWER_ARM,
-        Player.hitbox.RIGHT_LOWER_LEG,
-    })) do
-        local trace = Trace.getLineToPosition(enemyEyeOrigin, hitbox, AiUtility.traceOptionsAttacking, "AiStateBase.getCoverNode<FindClientVisibleToEnemy>")
+    for _, hitbox in pairs(hitboxes) do
+        local trace = Trace.getLineToPosition(enemyEyeOrigin, hitbox, AiUtility.traceOptionsAttacking, "AiStateBase.setIsVisibleToBestTarget<FindClientVisibleToEnemy>")
 
         if not trace.isIntersectingGeometry then
             self.isVisibleToBestTarget = true
+            self.isAboutToBeVisibleToBestTarget = true
+
+            break
+        end
+    end
+
+    local velocity = LocalPlayer:m_vecVelocity() * 0.075
+
+    for id, hitbox in pairs(hitboxes) do
+        hitboxes[id] = hitbox + velocity
+    end
+
+    for _, hitbox in pairs(hitboxes) do
+        local trace = Trace.getLineToPosition(enemyEyeOrigin, hitbox, AiUtility.traceOptionsAttacking, "AiStateBase.setIsVisibleToBestTarget<FindClientVisibleToEnemy>")
+
+        if not trace.isIntersectingGeometry then
+            self.isAboutToBeVisibleToBestTarget = true
 
             break
         end
@@ -2252,7 +2297,7 @@ function AiStateEngage:walk()
         canWalk = false
     end
 
-    if not jiggleHoldTimer:isElapsed(0.3) then
+    if not self.jiggleHoldTimer:isElapsed(self.jiggleHoldTime + 1) then
         canWalk = false
     end
 
@@ -2458,7 +2503,7 @@ function AiStateEngage:fireWeapon(cmd)
     end
 
     -- Try calling an unsafe CMD function instead of safe cmd override.
-    --View.fireWeapon()
+    View.fireWeapon()
 end
 
 --- @param cmd SetupCommandEvent
@@ -2473,7 +2518,7 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
     if distance > 600 then
         cmd.in_duck = true
     elseif not self.isRunAndShootAllowed then
-        self:actionJiggle(self.jiggleTime * 0.33)
+        self:actionJiggle(self.jiggleShootTime * 0.33)
 
         isVelocityOk = LocalPlayer:m_vecVelocity():getMagnitude() < 100
     elseif AiUtility.totalThreats > 1 then
@@ -2712,14 +2757,14 @@ end
 --- @return void
 function AiStateEngage:actionJiggle(period)
     -- Alternate movement directions.
-    if self.jiggleTimer:isElapsedThenRestart(period) then
-        self.jiggleDirection = self.jiggleDirection == "Left" and "Right" or "Left"
+    if self.jiggleShootTimer:isElapsedThenRestart(period) then
+        self.jiggleShootDirection = self.jiggleShootDirection == "Left" and "Right" or "Left"
     end
 
     --- @type Vector3
     local direction
 
-    if self.jiggleDirection == "Left" then
+    if self.jiggleShootDirection == "Left" then
         direction = LocalPlayer.getCameraAngles():getLeft()
     else
         direction = LocalPlayer.getCameraAngles():getRight()
@@ -3004,7 +3049,7 @@ function AiStateEngage:preAimAboutCorners()
 
     self.preAimAboutCornersLastOrigin = enemyOrigin
 
-    if not self.bestTarget:getFlag(Player.flags.FL_ONGROUND) then
+    if not self.bestTarget:getFlag(Player.flags.FL_ONGROUND) and self.preAimAboutCornersCenterOriginZ then
         self.preAimAboutCornersCenterOrigin.z = self.preAimAboutCornersCenterOriginZ
     end
 

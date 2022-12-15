@@ -492,7 +492,7 @@ end
 
 --- @return void
 function AiRoutineBuyGear:buyTerroristPostPistolRound()
-	if self.balance > BuyCriteria.TERRORIST_FULL_BUY then
+	if self.balance >= BuyCriteria.TERRORIST_FULL_BUY then
 		self:buyTerroristFullBuyRound()
 
 		return
@@ -600,7 +600,7 @@ function AiRoutineBuyGear:buyTerroristFullBuyRound()
 		return
 	end
 
-	if not self.balance >= BuyCriteria.TERRORIST_FULL_BUY then
+	if self.balance < BuyCriteria.TERRORIST_FULL_BUY then
 		return
 	end
 
@@ -815,7 +815,7 @@ function AiRoutineBuyGear:buyCounterTerroristFullBuyRound()
 		return
 	end
 
-	if not self.balance >= BuyCriteria.COUNTER_TERRORIST_FULL_BUY then
+	if self.balance < BuyCriteria.COUNTER_TERRORIST_FULL_BUY then
 		return
 	end
 

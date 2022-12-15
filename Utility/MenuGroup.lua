@@ -45,6 +45,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --- @field standaloneQuickStopRef MenuItem
 --- @field dormantRef MenuItem
 --- @field autoKnifeRef MenuItem
+--- @field thirdpersonRef MenuItem
 local MenuGroup = {}
 
 --- @return MenuGroup
@@ -57,6 +58,7 @@ function MenuGroup.__setup()
     MenuGroup.dormantRef = Menu.reference("visuals", "player esp", "dormant")
     MenuGroup.standaloneQuickStopRef = Menu.reference("misc", "movement", "standalone quick stop")
     MenuGroup.autoKnifeRef = Menu.reference("misc", "miscellaneous", "knifebot")
+    MenuGroup.thirdpersonRef = Menu.reference("visuals", "effects", "force third person (alive)")
 
     local menu = Menu:new("config", "presets")
 
