@@ -23,6 +23,10 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field isActive boolean
 local AiStateLurkT = {
 	name = "Lurk",
+	requiredGamemodes = {
+		AiUtility.gamemodes.DEMOLITION,
+		AiUtility.gamemodes.WINGMAN,
+	},
 	requiredNodes = {
 		Node.spotLurkT
 	}

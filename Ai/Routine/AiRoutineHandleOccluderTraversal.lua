@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
@@ -16,6 +17,11 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --- @field infernoInsideOf Entity
 --- @field smokeInsideOf Entity
 --- @field isWaitingOnOccluder boolean
+--- @field jiggleTimer Timer
+--- @field jiggleTime number
+--- @field jiggleCooldownTimer Timer
+--- @field jiggleCooldownTime number
+--- @field jiggleDirection string
 local AiRoutineHandleOccluderTraversal = {}
 
 --- @param fields AiRoutineHandleOccluderTraversal
@@ -25,7 +31,12 @@ function AiRoutineHandleOccluderTraversal:new(fields)
 end
 
 --- @return void
-function AiRoutineHandleOccluderTraversal:__init() end
+function AiRoutineHandleOccluderTraversal:__init()
+	self.jiggleTimer = Timer:new():startThenElapse()
+	self.jiggleCooldownTimer = Timer:new():startThenElapse()
+	self.jiggleTime = 0
+	self.jiggleCooldownTime = 0
+end
 
 --- @param cmd SetupCommandEvent
 --- @return void
@@ -61,14 +72,10 @@ function AiRoutineHandleOccluderTraversal:think(cmd)
 	for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
 		local smokeTick = smoke:m_nFireEffectTickBegin()
 
-		if smokeTick and smokeTick > 0 and clientOrigin:getDistance(smoke:m_vecOrigin()) < 115 then
-			local distance = clientOrigin:getDistance(smoke:m_vecOrigin())
+		if smokeTick and smokeTick > 0 and clientOrigin:getDistance(smoke:m_vecOrigin()) < 200 then
+			self.smokeInsideOf = smoke
 
-			if distance < 200 then
-				self.smokeInsideOf = smoke
-
-				break
-			end
+			break
 		end
 	end
 
@@ -93,6 +100,8 @@ function AiRoutineHandleOccluderTraversal:handleInferno()
 	end
 
 	local isTraversingMolotov = false
+	--- @type NodeTypeBase
+	local infernoNode
 
 	for _, node in pairs(Pathfinder.path.nodes) do if isTraversingMolotov then break end repeat
 		if not node.isOccludedByInferno then
@@ -106,6 +115,7 @@ function AiRoutineHandleOccluderTraversal:handleInferno()
 		end
 
 		isTraversingMolotov = true
+		infernoNode = node
 
 		break
 	until true end
@@ -116,7 +126,7 @@ function AiRoutineHandleOccluderTraversal:handleInferno()
 
 	self.isWaitingOnOccluder = true
 
-	Pathfinder.standStill()
+	self:jiggle(infernoNode)
 end
 
 --- @return void
@@ -150,6 +160,8 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 	end
 
 	local isTraversingSmoke = false
+	--- @type NodeTypeBase
+	local smokeNode
 
 	for _, node in pairs(Pathfinder.path.nodes) do if isTraversingSmoke then break end repeat
 		if not node.isOccludedBySmoke then
@@ -163,6 +175,7 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 		end
 
 		isTraversingSmoke = true
+		smokeNode = node
 
 		break
 	until true end
@@ -177,7 +190,36 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 
 	self.isWaitingOnOccluder = true
 
-	Pathfinder.standStill()
+	self:jiggle(smokeNode)
+end
+
+--- @param node NodeTypeBase
+--- @return void
+function AiRoutineHandleOccluderTraversal:jiggle(node)
+	local clientOrigin = LocalPlayer:getOrigin()
+
+	if not self.jiggleCooldownTimer:isElapsed(self.jiggleCooldownTime) then
+		Pathfinder.standStill()
+
+		return
+	end
+
+	if self.jiggleTimer:isElapsedThenRestart(self.jiggleTime) then
+		if Math.getChance(3) then
+			self.jiggleCooldownTime = Math.getRandomFloat(0.1, 2)
+			self.jiggleCooldownTimer:restart()
+		end
+
+		self.jiggleTime = Math.getRandomFloat(0.1, 0.4)
+		self.jiggleDirection = self.jiggleDirection == "left" and "right" or "left"
+	else
+		local directions = {
+			left = clientOrigin:getAngle(node.origin):offset(0, -90),
+			right = clientOrigin:getAngle(node.origin):offset(0, 90)
+		}
+
+		Pathfinder.moveAtAngle(directions[self.jiggleDirection], true)
+	end
 end
 
 return Nyx.class("AiRoutineHandleOccluderTraversal", AiRoutineHandleOccluderTraversal, AiRoutineBase)

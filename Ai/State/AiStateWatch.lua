@@ -44,6 +44,7 @@ function AiStateWatch:__init()
 
     Callbacks.roundStart(function()
         self.watchTime = Math.getRandomFloat(6, 18)
+        self.blacklist = {}
 
     	self:reset()
     end)
@@ -147,12 +148,13 @@ function AiStateWatch:activate()
     Pathfinder.moveToNode(self.node, {
         task = "Watch angle"
     })
+
+    self.blacklist[self.node.id] = true
 end
 
 --- @return void
 function AiStateWatch:reset()
     self.node = nil
-    self.blacklist = {}
     self.isWatching = false
 
     self.watchTimer:stop()
@@ -165,7 +167,7 @@ function AiStateWatch:think(cmd)
         return
     end
 
-    self.activity = "Watching area"
+    self.activity = "Going to watch area"
 
     if AiUtility.plantedBomb then
         self:reset()
@@ -203,6 +205,8 @@ function AiStateWatch:think(cmd)
     end
 
     if distance < 100 then
+        self.activity = "Watching area"
+
         Pathfinder.counterStrafe()
         Pathfinder.blockTeammateAvoidance()
 

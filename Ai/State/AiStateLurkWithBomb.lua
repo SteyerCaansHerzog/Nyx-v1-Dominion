@@ -26,6 +26,10 @@ local AiStateLurkWithBomb = {
 	name = "Lurk with Bomb",
 	requiredNodes = {
 		Node.spotLurkWithBomb
+	},
+	requiredGamemodes = {
+		AiUtility.gamemodes.DEMOLITION,
+		AiUtility.gamemodes.WINGMAN,
 	}
 }
 

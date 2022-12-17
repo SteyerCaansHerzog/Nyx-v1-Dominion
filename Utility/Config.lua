@@ -31,7 +31,8 @@ local Config = {
         "76561198971897854", -- Standup
 
         --"76561199064257338", -- Incident
-        "76561199138080686" -- IKEA Desk
+        "76561199138080686", -- IKEA Desk
+        "76561199124428396" -- Combine
     },
     clientConfigs = {
         normal = "Nyx-v1-Dominion", -- GS config to load when in normal mode.

@@ -49,10 +49,12 @@ local AiStateDefend = {
         Node.defendSiteT,
         Node.defendBombCt,
         Node.defendBombT,
+        Node.defendHostageT
     },
     requiredGamemodes = {
         AiUtility.gamemodes.DEMOLITION,
         AiUtility.gamemodes.WINGMAN,
+        AiUtility.gamemodes.HOSTAGE
     }
 }
 
@@ -589,13 +591,17 @@ function AiStateDefend:setActivityNode(bombsite)
 
         if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
             class = Node.defendHostageT
-        elseif self.priority == AiPriority.DEFEND_PLANTER then
-            class = Node.defendBombT
-        else
-            class = Node.defendSiteT
-        end
 
-        self.node = Nodegraph.getRandomForBombsite(class, bombsite)
+            self.node = Nodegraph.getRandom(class)
+        elseif AiUtility.gamemode == AiUtility.gamemodes.DEMOLITION or AiUtility.gamemode == AiUtility.gamemodes.WINGMAN then
+            if self.priority == AiPriority.DEFEND_PLANTER then
+                class = Node.defendBombT
+            else
+                class = Node.defendSiteT
+            end
+
+            self.node = Nodegraph.getRandomForBombsite(class, bombsite)
+        end
     end
 end
 

@@ -60,26 +60,6 @@ end
 
 --- @return string
 function AiStateBase:getError()
-    if self.requiredNodes then
-        local isNodeAvailable = true
-        local unavailableNodes = {}
-
-        for _, node in pairs(self.requiredNodes) do
-            if not Nodegraph.isNodeAvailable(node) then
-                isNodeAvailable = false
-
-                table.insert(unavailableNodes, node.name)
-            end
-        end
-
-        if not isNodeAvailable then
-            return string.format(
-                Localization.aiStateNodesRequired,
-                Table.getImplodedTable(unavailableNodes, ", ")
-            )
-        end
-    end
-
     if self.requiredGamemodes then
         local isValidGamemode = false
 
@@ -95,6 +75,24 @@ function AiStateBase:getError()
             return string.format(
                 Localization.aiStateGamemodesRequired,
                 Table.getImplodedTable(self.requiredGamemodes, ", ")
+            )
+        end
+    end
+
+    if self.requiredNodes then
+        local unavailableNodes = {}
+        local totalRequiredNodes  = #self.requiredNodes
+
+        for _, node in pairs(self.requiredNodes) do
+            if not Nodegraph.isNodeAvailable(node) then
+                table.insert(unavailableNodes, node.name)
+            end
+        end
+
+        if #unavailableNodes == totalRequiredNodes then
+            return string.format(
+                Localization.aiStateNodesRequired,
+                Table.getImplodedTable(unavailableNodes, ", ")
             )
         end
     end

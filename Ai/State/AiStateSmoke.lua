@@ -22,6 +22,7 @@ local AiStateSmoke = {
     nodeExecuteT = Node.grenadeSmokeExecuteT,
     nodeRetakeCt = Node.grenadeSmokeRetakeCt,
     weapons = {Weapons.SMOKE},
+    isSmoke = true,
     equipFunction = LocalPlayer.equipSmoke,
     rangeThreshold = 3000,
     isCheckingEnemiesRequired = false,

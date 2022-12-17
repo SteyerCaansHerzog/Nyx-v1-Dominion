@@ -36,6 +36,7 @@ local AiStateList = {
 	seekHostage = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSeekHostage",
 	smoke = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSmoke",
 	sweep = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateSweep",
+	teabag = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateTeabag",
 	trafficControl = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateTrafficControl",
 	wait = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWait",
 	watch = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateWatch",

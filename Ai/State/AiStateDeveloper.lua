@@ -17,6 +17,10 @@ local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
+--}}}
+
+--{{{ Vars
 --}}}
 
 --{{{ AiStateDeveloper

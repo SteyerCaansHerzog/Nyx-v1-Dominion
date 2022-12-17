@@ -53,6 +53,10 @@ local LoggerCode = {
 --- @class Logger : Class
 --- @field benchmarkName string
 --- @field benchmarkStartedAt number
+--- @field errorsCache string[]
+--- @field warningsCache string[]
+--- @field lastErrorTimer Timer
+--- @field lastWarningError Timer
 local Logger = {
 	INFO = -1,
 	OK = 0,
@@ -64,6 +68,9 @@ local Logger = {
 
 --- @return void
 function Logger.__setup()
+	Logger.errorsCache = {}
+	Logger.warningsCache = {}
+
 	if Debug.isFilteringConsole then
 		cvar.con_filter_enable:set_int(1)
 		cvar.con_filter_text:set_string("Dominion")
@@ -112,6 +119,7 @@ end
 function Logger.console(code, ...)
 	code = code or -1
 
+	local message = string.format(...)
 	local codeData = LoggerCode[code]
 	local time = Time.getDateTime()
 
@@ -123,9 +131,15 @@ function Logger.console(code, ...)
 		codeData,
 		{
 			color = codeData.color:clone():desaturate(0.7):darken(0.05),
-			text = string.format(...)
+			text = message
 		}
 	})
+
+	if code == Logger.ERROR then
+		table.insert(Logger.errorsCache, message)
+	elseif code == Logger.WARNING then
+		table.insert(Logger.warningsCache, message)
+	end
 end
 
 --- @param version string

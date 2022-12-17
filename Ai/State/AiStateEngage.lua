@@ -75,6 +75,7 @@ local WeaponMode = {
 --- @field isHoldingAngle boolean
 --- @field isHoldingAngleDucked boolean
 --- @field isIgnoringDormancy boolean
+--- @field isInJiggleHold boolean
 --- @field isPreAimViableForHoldingAngle boolean
 --- @field isRcsEnabled boolean
 --- @field isRefreshingAttackPath boolean
@@ -84,9 +85,9 @@ local WeaponMode = {
 --- @field isTargetEasilyShot boolean
 --- @field isUpdatingDefendingLookAt boolean
 --- @field isVisibleToBestTarget boolean
+--- @field jiggleHoldCooldownTimer Timer
 --- @field jiggleHoldCount number
 --- @field jiggleHoldDirection Angle
---- @field jiggleHoldCooldownTimer Timer
 --- @field jiggleHoldThreshold number
 --- @field jiggleHoldTime number
 --- @field jiggleHoldTimer Timer
@@ -316,7 +317,7 @@ function AiStateEngage:initEvents()
 
         if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE and AiUtility.isHostageCarriedByEnemy then
             for _, enemy in pairs(AiUtility.hostageCarriers) do
-                self:noticeEnemy(enemy, 4096, true, "Carrying hostage")
+                self:noticeEnemy(enemy, Vector3.MAX_DISTANCE, true, "Carrying hostage")
             end
         end
 
@@ -338,19 +339,19 @@ function AiStateEngage:initEvents()
     end)
 
     Callbacks.playerFootstep(function(e)
-        self:noticeEnemy(e.player, 1350, false, "Stepped")
+        self:noticeEnemy(e.player, 1150, false, "Stepped")
     end)
 
     Callbacks.playerJump(function(e)
-        self:noticeEnemy(e.player, 750, false, "Jumped")
+        self:noticeEnemy(e.player, 700, false, "Jumped")
     end)
 
     Callbacks.weaponZoom(function(e)
-        self:noticeEnemy(e.player, 700, false, "Scoped")
+        self:noticeEnemy(e.player, 650, false, "Scoped")
     end)
 
     Callbacks.weaponReload(function(e)
-        self:noticeEnemy(e.player, 950, false, "Reloaded")
+        self:noticeEnemy(e.player, 800, false, "Reloaded")
     end)
 
     Callbacks.weaponFire(function(e)
@@ -364,7 +365,7 @@ function AiStateEngage:initEvents()
             return
         end
 
-        local range = 2250
+        local range = 2000
 
         if AiUtility.visibleEnemies[e.player.eid] then
             range = Vector3.MAX_DISTANCE
@@ -539,6 +540,7 @@ function AiStateEngage:reset()
     self.watchTimer:stop()
     self.watchOrigin = nil
     self.bestTarget = nil
+    self.lastBestTargetOrigin = nil
 
     self.noticedPlayerTimers = {}
 
@@ -567,6 +569,7 @@ function AiStateEngage:think(cmd)
     end
 
     self:moveOnBestTarget(cmd)
+    self:attackBestTarget(cmd)
     self:walk()
     self:handleCommunications()
 end
@@ -1342,6 +1345,36 @@ function AiStateEngage:moveOnBestTarget(cmd)
         self.jiggleHoldCooldownTimer:restart()
     end
 
+    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+        if LocalPlayer:isCounterTerrorist() then
+            if AiUtility.timeData.roundtime_remaining <= 20 then
+                isJiggleBaiting = false
+            end
+        elseif LocalPlayer:isTerrorist() then
+            if AiUtility.isHostageBeingPickedUpByEnemy or AiUtility.isHostageCarriedByEnemy then
+                isJiggleBaiting = false
+            end
+        end
+    else
+        if LocalPlayer:isCounterTerrorist() then
+            if AiUtility.isBombBeingPlantedByEnemy then
+                isJiggleBaiting = false
+            end
+
+            if AiUtility.plantedBomb and AiUtility.bombDetonationTime <= 15 then
+                isJiggleBaiting = false
+            end
+        elseif LocalPlayer:isTerrorist() then
+            if AiUtility.isBombBeingDefusedByEnemy then
+                isJiggleBaiting = false
+            end
+
+            if AiUtility.timeData.roundtime_remaining <= 20 then
+                isJiggleBaiting = false
+            end
+        end
+    end
+
     if not self.bestTarget:isHoldingGun() then
         isJiggleBaiting = false
     end
@@ -1365,10 +1398,14 @@ function AiStateEngage:moveOnBestTarget(cmd)
     end
 
     if isJiggleBaiting and not self.jiggleHoldTimer:isElapsed(self.jiggleHoldTime) then
+        self.isInJiggleHold = true
+
         Pathfinder.moveAtAngle(eyeOrigin:getAngle(self.jiggleHoldDirection))
 
         return
     end
+
+    self.isInJiggleHold = false
 
     if isJiggleBaiting and self.isVisibleToBestTarget or self.isAboutToBeVisibleToBestTarget then
         local angleToEnemy = eyeOrigin:getAngle(enemyEyeOrigin)
@@ -1395,8 +1432,6 @@ function AiStateEngage:moveOnBestTarget(cmd)
             end
         end
     end
-
-    self:attackBestTarget(cmd)
 
     local clientOrigin = LocalPlayer:getOrigin()
     local isAbleToDefend = true
@@ -1756,8 +1791,6 @@ end
 --- @return void
 function AiStateEngage:moveToLocation(origin)
     if not origin then
-        self:moveToClosestNode(Nodegraph.getClosest(origin, Node.traverseGeneric))
-
         return
     end
 
@@ -2081,7 +2114,7 @@ function AiStateEngage:attackBestTarget(cmd)
     end
 
     -- React to visible enemy.
-    if self:hasNoticedEnemy(enemy) and self.visibleReactionTimer:isElapsed(self.currentReactionTime) and AiUtility.visibleEnemies[enemy.eid] then
+    if not self.isInJiggleHold and self:hasNoticedEnemy(enemy) and self.visibleReactionTimer:isElapsed(self.currentReactionTime) and AiUtility.visibleEnemies[enemy.eid] then
         self.sprayTimer:start()
         self.watchTimer:start()
         self.lastSeenTimers[enemy.eid]:start()
@@ -2349,6 +2382,9 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
 
     -- Prevent jumping obstacles. This can kill us.
     self.ai.routines.lookAwayFromFlashbangs:block()
+
+    -- Prevent the occluder traversal routine overriding our movement.
+    self.ai.routines.handleOccluderTraversal:block()
 
     local distance = LocalPlayer:getOrigin():getDistance(aimAtBaseOrigin)
 

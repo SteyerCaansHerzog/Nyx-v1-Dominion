@@ -1,5 +1,6 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
+local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local NadePredictor = require("gamesense/nade_prediction")
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -33,6 +34,8 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field rangeThreshold number
 --- @field weapons string[]
 --- @field isDamaging boolean
+--- @field isInferno boolean
+--- @field isSmoke boolean
 ---
 --- @field cooldownTimer Timer
 --- @field inBehaviorTimer Timer
@@ -103,6 +106,11 @@ function AiStateGrenadeBase:assess()
         return AiPriority.IGNORE
     end
 
+    -- Do not throw smokes etc. when the round has just begun.
+    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE and AiUtility.timeData.roundtime_elapsed <= 10 then
+        return AiPriority.IGNORE
+    end
+
     -- We're on a cooldown from using the current type of grenade.
     if not self.cooldownTimer:isElapsed(self.cooldown) then
         return AiPriority.IGNORE
@@ -125,6 +133,16 @@ function AiStateGrenadeBase:assess()
         return AiPriority.IGNORE
     end
 
+    -- Enemy is interacting with hostages.
+    if AiUtility.isHostageCarriedByEnemy or AiUtility.isHostageBeingPickedUpByEnemy then
+        return AiPriority.IGNORE
+    end
+
+    -- Enemy is interacting with the bomb.
+    if AiUtility.isBombBeingDefusedByEnemy or AiUtility.isBombBeingPlantedByEnemy then
+        return AiPriority.IGNORE
+    end
+
     -- We already have a line-up.
     -- Only exit here if we're in throw, because we need to ensure teammates don't occupy our line-up
     -- after we've picked it.
@@ -140,7 +158,7 @@ function AiStateGrenadeBase:assess()
             return self.priorityThrow
         end
 
-        return self.priorityThrow
+        return self.priorityLineup
     end
 
     -- Find all possible line-ups.
@@ -371,7 +389,7 @@ function AiStateGrenadeBase:think(cmd)
     end
 
     if distance < 250 then
-        self.activity = string.format("Throwing %s", self.name)
+        self.activity = string.format("About to throw %s", self.name)
 
         self.ai.routines.manageGear:block()
         self.ai.routines.lookAwayFromFlashbangs:block()
@@ -398,6 +416,8 @@ function AiStateGrenadeBase:think(cmd)
             and LocalPlayer:isAbleToAttack()
             and ((not self.startThrowTimer:isStarted() and distance2 < 5) or self.startThrowTimer:isStarted())
         then
+            self.activity = string.format("Throwing %s", self.name)
+
             local isThrowable = true
             local isOnGround = LocalPlayer:getFlag(Player.flags.FL_ONGROUND)
             local velocity = LocalPlayer:m_vecVelocity()
@@ -445,6 +465,17 @@ function AiStateGrenadeBase:think(cmd)
                                 self.usedNodes[self.node.id]:restart()
 
                                 return
+                            end
+                        end
+
+                        -- Do not throw molotovs onto smokes, or resmoke a smoked spot.
+                        if self.isInferno or self.isSmoke then
+                            for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
+                                if predictionEndPosition:getDistance(smoke:m_vecOrigin()) < 450 then
+                                    self.usedNodes[self.node.id]:restart()
+
+                                    return
+                                end
                             end
                         end
                     end

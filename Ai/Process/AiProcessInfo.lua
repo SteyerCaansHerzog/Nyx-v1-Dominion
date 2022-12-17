@@ -30,7 +30,9 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
+local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
+local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --}}}
 
 --{{{ Definitions
@@ -45,6 +47,11 @@ local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --- @field steamid64 string
 --- @field threatLevel number
 --- @field userdata string[]
+--- @field currentTarget number
+--- @field pathGoal Vector3
+--- @field errors string[]
+--- @field warnings string[]
+--- @field task string
 
 --- @class AiClientInfoRenderable
 --- @field color Color
@@ -56,13 +63,16 @@ local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 
 --{{{ AiProcessInfo
 --- @class AiProcessInfo : AiProcessBase
---- @field isEnabled boolean
+--- @field isAiEnabled boolean
+--- @field isLoggingEnabled boolean
 --- @field syncInfoTimer Timer
 --- @field infoPath string
 --- @field userdata string[]
 --- @field renderables AiClientInfoRenderable[]
 --- @field cachedInfo AiClientInfo[]
 --- @field animations SecondOrderDynamics[]
+--- @field errorsCache table<number, string[]>
+--- @field warningCache table<number, string[]>
 local AiProcessInfo = {
 	infoPath = Config.getPath("Resource/Data/AiClientInfo_%s.json")
 }
@@ -75,11 +85,14 @@ end
 
 --- @return void
 function AiProcessInfo:__init()
-	self.isEnabled = true
+	self.isAiEnabled = true
+	self.isLoggingEnabled = false -- todo false
 	self.syncInfoTimer = Timer:new():startThenElapse()
 	self.userdata = {}
 	self.renderables = {}
 	self.cachedInfo = {}
+	self.errorsCache = {}
+	self.warningCache = {}
 
 	self.animations = Table.populateForMaxPlayers(function(eid)
 		return SecondOrderDynamics:new(0.178, 0.45, 0, 0.12, Vector3, Player:new(eid):getOrigin())
@@ -283,6 +296,36 @@ function AiProcessInfo:renderSpectator()
 		for i, item in pairs(info.userdata) do
 			drawPosBottomAnimated:drawSurfaceText(Font.TINY, colorNormal, "l", item)
 			drawPosBottomAnimated:offset(0, i * 12)
+		end
+
+		-- Render current target.
+		if info.currentTarget then
+			local target = Player:new(info.currentTarget)
+			local offset = Vector3:new()
+
+			if player:isCounterTerrorist() then
+				offset:offset(0, 0, 4)
+			end
+
+			local fromOrigin = player:getOrigin() + offset
+			local toOrigin = target:getOrigin() + offset
+
+			fromOrigin:drawLine(toOrigin, colorTeam, 0.5)
+			toOrigin:drawCircle3D(32, colorTeam, 1, 4)
+		end
+
+		if info.pathGoal then
+			local fromOrigin = player:getOrigin()
+			local toOrigin = Vector3:newFromTable(info.pathGoal):offset(0, 0, -18)
+			local toOrigin2d = toOrigin:getVector2()
+
+			fromOrigin:drawLine(toOrigin, ColorList.FONT_NORMAL, 0.5)
+			toOrigin:drawCircle3D(8, ColorList.FONT_NORMAL, 1, 2)
+
+			if toOrigin2d then
+				toOrigin2d:drawSurfaceText(Font.TINY, colorTeam, "c", player:getName())
+				toOrigin2d:offset(0, 12):drawSurfaceText(Font.TINY_BOLD, ColorList.FONT_NORMAL, "c", info.task)
+			end
 		end
 	until true end
 end
@@ -494,10 +537,19 @@ end
 
 --- @return void
 function AiProcessInfo:think()
+	if not self.isLoggingEnabled then
+		return
+	end
+
 	local activity
 	local behavior
 	local priority
 	local threatLevel = 0
+	local currentTarget
+	local errors = {}
+	local warnings = {}
+	local pathGoal
+	local task
 
 	if Server.isIngame() then
 		if self.ai.currentState then
@@ -510,6 +562,28 @@ function AiProcessInfo:think()
 			elseif AiUtility.isClientThreatenedMinor then
 				threatLevel = 1
 			end
+
+			if self.ai.currentState.name == "Engage" and self.ai.states.engage.bestTarget then
+				currentTarget = self.ai.states.engage.bestTarget.eid
+			end
+		end
+
+		if not Table.isEmpty(Logger.errorsCache) then
+			errors = Logger.errorsCache
+		end
+
+		if not Table.isEmpty(Logger.warningsCache) then
+			warnings = Logger.warningsCache
+		end
+
+		if Pathfinder.path and Pathfinder.path.endGoal then
+			pathGoal = {
+				x = Pathfinder.path.endGoal.origin.x,
+				y = Pathfinder.path.endGoal.origin.y,
+				z = Pathfinder.path.endGoal.origin.z
+			}
+
+			task = Pathfinder.path.task
 		end
 	end
 
@@ -517,7 +591,7 @@ function AiProcessInfo:think()
 
 	--- @type AiClientInfo
 	local info = {
-		isEnabled = self.isEnabled,
+		isEnabled = self.isAiEnabled,
 		isOk = priority ~= nil,
 		activity = activity,
 		behavior = behavior,
@@ -526,7 +600,12 @@ function AiProcessInfo:think()
 		userdata = self.userdata,
 		renderables = self.renderables,
 		steamid64 = steamid,
-		lastUpdateAt = Time.getUnixTimestamp()
+		lastUpdateAt = Time.getUnixTimestamp(),
+		currentTarget = currentTarget,
+		errors = errors,
+		warnings = warnings,
+		pathGoal = pathGoal,
+		task = task
 	}
 
 	writefile(string.format(self.infoPath, steamid), json.stringify(info))

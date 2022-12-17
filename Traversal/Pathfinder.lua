@@ -300,8 +300,6 @@ function Pathfinder.blockRoute(bombsite)
 	Node.hintBlockRoute.block(Nodegraph, bombsite and bombsite.bombsite or nil)
 
 	Pathfinder.blockedBombsite = bombsite
-
-	Pathfinder.retryLastRequest()
 end
 
 --- @return void
@@ -1191,21 +1189,21 @@ function Pathfinder.traverseActivePath(cmd)
 
 	-- todo test if works better
 	if not pathfinderOptions.isAllowedToTraverseInactives and not currentNode.isActive then
-		--Pathfinder.retryLastRequest()
+		Pathfinder.retryLastRequest()
 
-		--return
+		return
 	end
 
 	if not pathfinderOptions.isAllowedToTraverseSmokes and currentNode.isOccludedBySmoke then
-		--Pathfinder.retryLastRequest()
+		Pathfinder.retryLastRequest()
 
-		--return
+		return
 	end
 
 	if not pathfinderOptions.isAllowedToTraverseInfernos and currentNode.isOccludedByInferno then
-		--Pathfinder.retryLastRequest()
+		Pathfinder.retryLastRequest()
 
-		--return
+		return
 	end
 
 	local clientOrigin = LocalPlayer:getOrigin()
@@ -1702,7 +1700,7 @@ function Pathfinder.avoidGeometry(cmd)
 	local moveAngle = Pathfinder.lastMovementAngle
 	local moveAngleForward = moveAngle:getForward()
 	local boundsOrigin = origin + moveAngleForward * 20
-	local bounds = Vector3:newBounds(Vector3.align.UP, 6, 6, isDucking and 18 or 27)
+	local bounds = Vector3:newBounds(Vector3.align.UP, 8, 8, isDucking and 18 or 27)
 	local directions = {
 		Left = Angle.getLeft,
 		Right = Angle.getRight
