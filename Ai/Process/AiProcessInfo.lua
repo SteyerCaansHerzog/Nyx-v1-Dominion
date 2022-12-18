@@ -86,7 +86,7 @@ end
 --- @return void
 function AiProcessInfo:__init()
 	self.isAiEnabled = true
-	self.isLoggingEnabled = false -- todo false
+	self.isLoggingEnabled = true -- todo false
 	self.syncInfoTimer = Timer:new():startThenElapse()
 	self.userdata = {}
 	self.renderables = {}

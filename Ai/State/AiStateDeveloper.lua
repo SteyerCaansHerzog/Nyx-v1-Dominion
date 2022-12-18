@@ -21,6 +21,8 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --}}}
 
 --{{{ Vars
+--- @type NodeTypeDefend
+local node
 --}}}
 
 --{{{ AiStateDeveloper
@@ -40,11 +42,17 @@ function AiStateDeveloper:__init() end
 
 --- @return void
 function AiStateDeveloper:assess()
-    return AiPriority.IGNORE
+    return AiPriority.DEVELOPER
 end
 
 --- @return void
-function AiStateDeveloper:activate() end
+function AiStateDeveloper:activate()
+    node = Nodegraph.getById(805)
+
+    Pathfinder.moveToNode(node, {
+        task = "Developing"
+    })
+end
 
 --- @return void
 function AiStateDeveloper:reset() end
@@ -53,6 +61,10 @@ function AiStateDeveloper:reset() end
 --- @return void
 function AiStateDeveloper:think(cmd)
     self.activity = "Under maintenance"
+
+    if LocalPlayer:getOrigin():getDistance(node.origin) < 200 then
+        View.lookAtLocation(node.lookAtOrigin, 4, View.noise.idle)
+    end
 end
 
 --- @return void

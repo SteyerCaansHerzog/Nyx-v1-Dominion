@@ -121,8 +121,7 @@ function View.initFields()
 	View.buildupCooldownTimer = Timer:new():startThenElapse()
 	View.blockMouseControlTimer = Timer:new():startThenElapse()
 
-	-- Original working dynamics.
-	View.dynamic = SecondOrderDynamics:new(2, 3.4, 0, 0.22, Angle, LocalPlayer.getCameraAngles() or Angle:new())
+	View.dynamic = SecondOrderDynamics:new(2, 4.4, 0, 0.22, Angle, LocalPlayer.getCameraAngles() or Angle:new())
 
 	View.setNoiseType(ViewNoiseType.none)
 end
@@ -250,14 +249,14 @@ function View.setViewAngles()
 	--- @type Angle
 	local targetViewAngles = idealViewAngles
 
+	-- Makes the crosshair have noise.
+	View.setTargetNoise(targetViewAngles)
+
 	if Config.virtualMouseMode == "rigid" then
 		View.setTargetVelocity(targetViewAngles)
 	elseif Config.virtualMouseMode == "dynamic" then
 		View.setTargetDynamic(targetViewAngles)
 	end
-
-	-- Makes the crosshair have noise.
-	View.setTargetNoise(targetViewAngles)
 
 	if View.isCrosshairSmoothed then
 		View.isCrosshairSmoothed = false
@@ -286,6 +285,9 @@ end
 function View.resetViewParameters()
 	View.overrideViewAngles = nil
 	View.isFiringWeapon = false
+
+	-- Reset noise. Defaults to none at all.
+	View.setNoiseType(ViewNoiseType.none)
 end
 
 --- @return void
@@ -358,6 +360,7 @@ end
 function View.setTargetNoise(targetViewAngles)
 	-- Noise is NONE or not worth calculating.
 	if View.currentNoise.timeExponent == 0 then
+		print(":(")
 		return
 	end
 
@@ -377,7 +380,6 @@ function View.setTargetNoise(targetViewAngles)
 					View.pitchFine + View.pitchSoft,
 					View.yawFine + View.yawSoft
 				)
-
 			else
 				View.currentNoise.togglePeriod = Math.getRandomFloat(View.currentNoise.togglePeriodMin, View.currentNoise.togglePeriodMax)
 
@@ -583,13 +585,13 @@ function View.setIdealLookAhead(idealViewAngles)
 	local isLookingDirectlyAhead = false
 
 	if Pathfinder.path.node.isJump then
-		-- isLookingDirectlyAhead = true
+		-- isLookingDirectlyAhead = true todo
 	end
 
 	local previousNode = Pathfinder.path.nodes[Pathfinder.path.idx - 1]
 
 	if previousNode and previousNode.isJump then
-		-- isLookingDirectlyAhead = true
+		-- isLookingDirectlyAhead = true todo
 	end
 
 	-- Look in direction of jumps to increase accuracy.
@@ -719,9 +721,6 @@ function View.think(cmd)
 
 	cmd.pitch = correctedViewAngles.p
 	cmd.yaw = correctedViewAngles.y
-
-	-- Reset noise. Defaults to none at all.
-	View.setNoiseType(ViewNoiseType.none)
 
 	if View.isInAttack then
 		View.isInAttack = false

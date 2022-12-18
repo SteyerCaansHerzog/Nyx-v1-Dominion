@@ -322,6 +322,11 @@ function AiStateGrenadeBase:activate()
 end
 
 --- @return void
+function AiStateGrenadeBase:deactivate()
+    self:reset()
+end
+
+--- @return void
 function AiStateGrenadeBase:reset()
     self.isInThrow = false
     self.node = nil

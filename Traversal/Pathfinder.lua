@@ -1408,49 +1408,58 @@ function Pathfinder.traverseActivePath(cmd)
 			end
 		end
 	elseif currentNode:is(Node.traverseRecorderStart) then
-		if not Pathfinder.isReadyToReplayMovementRecording and distance2d > 20 then
-			Pathfinder.movementRecorderTimer:stop()
-		end
+		--- @type NodeTraverseRecorderStart
+		local recorderStart = currentNode
+		local nextNode = Pathfinder.path.nodes[Pathfinder.path.idx + 1]
 
-		if not Pathfinder.isReadyToReplayMovementRecording and distance2d < 10 then
-			Pathfinder.counterStrafe()
-			Pathfinder.walk()
-		end
-
-		if distance2d < 2 then
-			Pathfinder.movementRecorderTimer:ifPausedThenStart()
-
-			if Pathfinder.movementRecorderTimer:isElapsed(0.2) then
-				Pathfinder.isReadyToReplayMovementRecording = true
+		-- We do not want to use a recorder if the next node is not the end of the recorder.
+		if nextNode and recorderStart.endPoint.id == nextNode.id then
+			if not Pathfinder.isReadyToReplayMovementRecording and distance2d > 20 then
+				Pathfinder.movementRecorderTimer:stop()
 			end
-		else
-			Pathfinder.movementRecorderTimer:stop()
-		end
 
-		if distance2d < 70 then
-			Pathfinder.movementRecorderAngle = currentNode.direction
-		end
+			if not Pathfinder.isReadyToReplayMovementRecording and distance2d < 10 then
+				Pathfinder.counterStrafe()
+				Pathfinder.walk()
+			end
 
-		if Pathfinder.isReadyToReplayMovementRecording then
-			--- @type NodeTraverseRecorderStart
-			local node = currentNode
-			local tick = node:getNextTick()
+			if distance2d < 2 then
+				Pathfinder.movementRecorderTimer:ifPausedThenStart()
 
-			if tick then
-				Pathfinder.isReplayingMovementRecording = true
-				Pathfinder.movementRecorderAngle = Angle:new(tick.pitch, tick.yaw)
-
-				for field, value in pairs(tick) do
-					cmd[field] = value
+				if Pathfinder.movementRecorderTimer:isElapsed(0.2) then
+					Pathfinder.isReadyToReplayMovementRecording = true
 				end
 			else
-				Pathfinder.isReadyToReplayMovementRecording = false
-
-				Pathfinder.incrementPath("finish recorder")
-				Pathfinder.incrementPath("finish recorder")
+				Pathfinder.movementRecorderTimer:stop()
 			end
 
-			return
+			if distance2d < 70 then
+				Pathfinder.movementRecorderAngle = currentNode.direction
+			end
+
+			if Pathfinder.isReadyToReplayMovementRecording then
+				--- @type NodeTraverseRecorderStart
+				local node = currentNode
+				local tick = node:getNextTick()
+
+				if tick then
+					Pathfinder.isReplayingMovementRecording = true
+					Pathfinder.movementRecorderAngle = Angle:new(tick.pitch, tick.yaw)
+
+					for field, value in pairs(tick) do
+						cmd[field] = value
+					end
+				else
+					Pathfinder.isReadyToReplayMovementRecording = false
+
+					Pathfinder.incrementPath("finish recorder")
+					Pathfinder.incrementPath("finish recorder")
+				end
+
+				return
+			end
+		elseif distance2d < 20 then
+			Pathfinder.incrementPath("skip recorder")
 		end
 	else
 		local clearDistance

@@ -188,7 +188,6 @@ function Ai:initMenu()
 		AiUtility.isPerformingCalculations = bool
 		self.lastPriority = nil
 		self.currentState = nil
-		MenuGroup.thirdpersonRef:set(bool)
 
 		Pathfinder.clearActivePathAndLastRequest()
 	end)
