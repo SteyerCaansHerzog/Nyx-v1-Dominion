@@ -36,6 +36,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --- @field visualiseAimbot MenuItem
 --- @field enableMouseControl MenuItem
 --- @field visualiseOtherAiMode MenuItem
+--- @field visualiseExtraInfo MenuItem
 ---
 --- @field enableMicrophone MenuItem
 --- @field voicePack MenuItem
@@ -81,6 +82,9 @@ function MenuGroup.__setup()
     MenuGroup.autoClosePopups = menu:addCheckbox("> Auto-close Popups"):setParent(MenuGroup.master)
     MenuGroup.useChatCommands = menu:addCheckbox("> Use Chat Commands"):set(true):setParent(MenuGroup.master)
     MenuGroup.visualiseOtherAiMode = menu:addDropdown("> Visualise Other AI", {"Off", "Competitive", "Spectator"}):setParent(MenuGroup.master)
+    MenuGroup.visualiseExtraInfo = menu:addCheckbox("    > Visualise Extra Info"):setParent(MenuGroup.visualiseOtherAiMode, function()
+    	return MenuGroup.visualiseOtherAiMode:get() ~= "Off"
+    end)
 
     MenuGroup.group:addLabel("----------------------------------------"):setParent(MenuGroup.master)
 

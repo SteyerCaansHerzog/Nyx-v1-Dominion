@@ -86,7 +86,7 @@ end
 --- @return void
 function AiProcessInfo:__init()
 	self.isAiEnabled = true
-	self.isLoggingEnabled = true -- todo false
+	self.isLoggingEnabled = Config.isVisualiserEnabled
 	self.syncInfoTimer = Timer:new():startThenElapse()
 	self.userdata = {}
 	self.renderables = {}
@@ -137,6 +137,7 @@ end
 
 --- @return void
 function AiProcessInfo:renderSpectator()
+	local isDisplayingExtraInfo = MenuGroup.visualiseExtraInfo:get()
 	local threatLevelColors = {
 		[0] = ColorList.BACKGROUND_1,
 		[1] = Color:rgba(95, 40, 40, 255),
@@ -298,33 +299,36 @@ function AiProcessInfo:renderSpectator()
 			drawPosBottomAnimated:offset(0, i * 12)
 		end
 
-		-- Render current target.
-		if info.currentTarget then
-			local target = Player:new(info.currentTarget)
-			local offset = Vector3:new()
+		if isDisplayingExtraInfo then
+			-- Render current target.
+			if info.currentTarget then
+				local target = Player:new(info.currentTarget)
+				local offset = Vector3:new()
 
-			if player:isCounterTerrorist() then
-				offset:offset(0, 0, 4)
+				if player:isCounterTerrorist() then
+					offset:offset(0, 0, 4)
+				end
+
+				local fromOrigin = player:getOrigin() + offset
+				local toOrigin = target:getOrigin() + offset
+
+				fromOrigin:drawLine(toOrigin, colorBase, 0.5)
+				toOrigin:drawCircle3D(32, colorBase, 1, 4)
 			end
 
-			local fromOrigin = player:getOrigin() + offset
-			local toOrigin = target:getOrigin() + offset
+			-- Render path goal.
+			if info.pathGoal then
+				local fromOrigin = player:getOrigin()
+				local toOrigin = Vector3:newFromTable(info.pathGoal):offset(0, 0, -18)
+				local toOrigin2d = toOrigin:getVector2()
 
-			fromOrigin:drawLine(toOrigin, colorTeam, 0.5)
-			toOrigin:drawCircle3D(32, colorTeam, 1, 4)
-		end
+				fromOrigin:drawLine(toOrigin, ColorList.FONT_NORMAL, 0.5)
+				toOrigin:drawCircle3D(8, ColorList.FONT_NORMAL, 1, 2)
 
-		if info.pathGoal then
-			local fromOrigin = player:getOrigin()
-			local toOrigin = Vector3:newFromTable(info.pathGoal):offset(0, 0, -18)
-			local toOrigin2d = toOrigin:getVector2()
-
-			fromOrigin:drawLine(toOrigin, ColorList.FONT_NORMAL, 0.5)
-			toOrigin:drawCircle3D(8, ColorList.FONT_NORMAL, 1, 2)
-
-			if toOrigin2d then
-				toOrigin2d:drawSurfaceText(Font.TINY, colorTeam, "c", player:getName())
-				toOrigin2d:offset(0, 12):drawSurfaceText(Font.TINY_BOLD, ColorList.FONT_NORMAL, "c", info.task)
+				if toOrigin2d then
+					toOrigin2d:drawSurfaceText(Font.TINY, colorBase, "c", player:getName())
+					toOrigin2d:offset(0, 12):drawSurfaceText(Font.TINY_BOLD, ColorList.FONT_NORMAL, "c", info.task)
+				end
 			end
 		end
 	until true end

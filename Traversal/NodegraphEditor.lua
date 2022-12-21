@@ -679,7 +679,7 @@ function NodegraphEditor:processSwitchNodeType()
     if self.keyPrevious:isHeld() then
         self.nextNodeTimer:ifPausedThenStart()
 
-        if self.nextNodeTimer:isElapsedThenRestart(0.08) then
+        if self.nextNodeTimer:isElapsedThenRestart(0.1) then
             local iNode = self.iNode - 1
 
             if iNode == 0 then

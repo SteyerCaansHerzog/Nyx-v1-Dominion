@@ -124,7 +124,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateLurkT:think(cmd)
-	self.activity = string.format("Lurking near %s", self.bombsite)
+	self.activity = string.format("Going to lurk near %s", self.bombsite)
 
 	if AiUtility.isClientThreatenedMajor then
 		self.isSpotted = true
@@ -134,6 +134,8 @@ function AiStateLurkT:think(cmd)
 	local distance = clientOrigin:getDistance(self.node.origin)
 
 	if distance < 150 then
+		self.activity = string.format("Lurking near %s", self.bombsite)
+
 		self.ai.routines.manageGear:block()
 
 		LocalPlayer.equipAvailableWeapon()

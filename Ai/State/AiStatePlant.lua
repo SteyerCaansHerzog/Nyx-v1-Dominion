@@ -75,30 +75,6 @@ function AiStatePlant:__init()
 
         self.isPlanting = false
     end)
-
-    Callbacks.setupCommand(function()
-        if not LocalPlayer.hasBomb() then
-            return
-        end
-
-        if not self.bombsite then
-            return
-        end
-
-        local origin = LocalPlayer:getOrigin()
-
-        if MenuGroup.enableAi:get() and not AiUtility.isLastAlive and not self.ai.reaper.isActive and MenuGroup.useChatCommands:get() and self.tellSiteTimer:isElapsedThenRestart(50) then
-            self.ai.commands.go:bark(self.bombsite:lower())
-
-            local distanceToSite = origin:getDistance(Nodegraph.getClosestBombsite(origin).origin)
-
-            Client.fireAfter(1, function()
-                if not AiUtility.isLastAlive and distanceToSite > 800 then
-                    self.ai.voice.pack:speakRequestTeammatesToPush(self.bombsite)
-                end
-            end)
-        end
-    end)
 end
 
 --- @return void
@@ -118,11 +94,15 @@ function AiStatePlant:assess()
     local isVeryNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 350
     local closestEnemyDistance = AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin())
 
-    if AiUtility.isLastAlive and closestEnemyDistance and closestEnemyDistance < 1000 then
+    if AiUtility.isClientThreatenedMinor and closestEnemyDistance and closestEnemyDistance < 250 then
         return AiPriority.IGNORE
     end
 
-    if AiUtility.isClientThreatenedMinor and closestEnemyDistance and closestEnemyDistance < 125 then
+    if self.isPlanting then
+        return AiPriority.PLANT_EXPEDITE
+    end
+
+    if AiUtility.isLastAlive and closestEnemyDistance and closestEnemyDistance < 1000 then
         return AiPriority.IGNORE
     end
 
@@ -212,7 +192,19 @@ function AiStatePlant:think(cmd)
         end
     end
 
-    Pathfinder.ifIdleThenRetryLastRequest()
+    local origin = LocalPlayer:getOrigin()
+
+    if not AiUtility.isLastAlive and not self.ai.reaper.isActive and MenuGroup.useChatCommands:get() and self.tellSiteTimer:isElapsedThenRestart(50) then
+        self.ai.commands.go:bark(self.bombsite:lower())
+
+        local distanceToSite = origin:getDistance(Nodegraph.getClosestBombsite(origin).origin)
+
+        Client.fireAfter(1, function()
+            if not AiUtility.isLastAlive and distanceToSite > 800 then
+                self.ai.voice.pack:speakRequestTeammatesToPush(self.bombsite)
+            end
+        end)
+    end
 end
 
 --- @param site string

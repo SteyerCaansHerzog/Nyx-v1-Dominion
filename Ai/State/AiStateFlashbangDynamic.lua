@@ -60,6 +60,11 @@ end
 
 --- @return void
 function AiStateFlashbangDynamic:assess()
+    -- Do not waste time with nades when bomb is close to detonation.
+    if AiUtility.plantedBomb and AiUtility.bombDetonationTime <= 18 and LocalPlayer:isCounterTerrorist() then
+        return AiPriority.IGNORE
+    end
+
     -- AI is threatened. Don't try to throw a flashbang.
     if AiUtility.isClientThreatenedMajor then
         self.threatCooldownTimer:restart()

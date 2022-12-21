@@ -59,8 +59,9 @@ function AiChatCommandRotate:invoke(ai, sender, args)
         return Localization.cmdRejectionAlreadyNearBombsite
     end
 
-    ai.states.patrol:reset()
+    Pathfinder.blockRoute(Nodegraph.getBombsite(objective))
 
+    ai.states.patrol:reset()
     ai.states.rotate:invoke(objective)
 
     ai.states.defend.defendingSite = objective
@@ -68,8 +69,6 @@ function AiChatCommandRotate:invoke(ai, sender, args)
     ai.states.plant.bombsite = objective
     ai.states.lurkWithBomb.bombsite = objective
     ai.states.defend.isSpecificNodeSet = false
-
-    Pathfinder.blockRoute(Nodegraph.getBombsite(objective))
 end
 
 return Nyx.class("AiChatCommandRotate", AiChatCommandRotate, AiChatCommandBase)

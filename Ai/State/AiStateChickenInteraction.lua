@@ -148,6 +148,12 @@ function AiStateChickenInteraction:think(cmd)
         return
     end
 
+    if not self.targetChicken then
+        self:reset()
+
+        return
+    end
+
     local chickenOrigin = self.targetChicken:m_vecOrigin()
 
     if not chickenOrigin or chickenOrigin:isZero() then
@@ -206,6 +212,10 @@ function AiStateChickenInteraction:move()
         task = "Intercept hostile poultry"
     elseif self.interaction == "collect" then
         task = "Pick up birds"
+    end
+
+    if not self.targetChicken then
+        return
     end
 
     Pathfinder.moveToLocation(self.targetChicken:m_vecOrigin():clone():offset(0, 0, 30), {

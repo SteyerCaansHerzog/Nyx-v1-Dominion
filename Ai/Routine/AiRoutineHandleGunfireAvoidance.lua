@@ -95,7 +95,7 @@ function AiRoutineHandleGunfireAvoidance:think(cmd)
 		end
 	end
 
-	if not Pathfinder.path then
+	if not Pathfinder.isOnValidPath() then
 		return
 	end
 

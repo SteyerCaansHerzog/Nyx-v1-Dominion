@@ -4,11 +4,15 @@ local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
+local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
+
+local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
 
 --{{{ Modules
 local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --}}}
 
@@ -68,7 +72,7 @@ function AiRoutineHandleOccluderTraversal:think(cmd)
 		Pathfinder.isInsideInferno = true
 	end
 
-	-- Find an inferno that we're probably inside of.
+	-- Find a smoke that we're probably inside of.
 	for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
 		local smokeTick = smoke:m_nFireEffectTickBegin()
 
@@ -205,12 +209,12 @@ function AiRoutineHandleOccluderTraversal:jiggle(node)
 	end
 
 	if self.jiggleTimer:isElapsedThenRestart(self.jiggleTime) then
-		if Math.getChance(3) then
-			self.jiggleCooldownTime = Math.getRandomFloat(0.1, 2)
+		if Math.getChance(4) then
+			self.jiggleCooldownTime = Math.getRandomFloat(0.2, 2)
 			self.jiggleCooldownTimer:restart()
 		end
 
-		self.jiggleTime = Math.getRandomFloat(0.1, 0.4)
+		self.jiggleTime = Math.getRandomFloat(0.25, 0.5)
 		self.jiggleDirection = self.jiggleDirection == "left" and "right" or "left"
 	else
 		local directions = {
@@ -218,7 +222,7 @@ function AiRoutineHandleOccluderTraversal:jiggle(node)
 			right = clientOrigin:getAngle(node.origin):offset(0, 90)
 		}
 
-		Pathfinder.moveAtAngle(directions[self.jiggleDirection], true)
+		Pathfinder.moveAtAngle(directions[self.jiggleDirection])
 	end
 end
 

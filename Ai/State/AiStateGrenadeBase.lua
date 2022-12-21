@@ -2,7 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
-local NadePredictor = require("gamesense/nade_prediction")
+local NadePredictor = require "gamesense/nade_prediction"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -48,6 +48,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field usedNodes Timer[]
 --- @field throwHoldTimer Timer
 --- @field isThrown boolean
+--- @field selectedLineup boolean
 local AiStateGrenadeBase = {
     name = "GrenadeBase",
     delayedMouseMin = 0,
@@ -91,9 +92,19 @@ end
 
 --- @return void
 function AiStateGrenadeBase:assess()
+    -- Stick to the selected lineup and not select another one prematurely.
+    if self.selectedLineup and self.selectedLineup ~= self.__classid then
+        return AiPriority.IGNORE
+    end
+
     -- Hold a throw. Used for making run line-ups work correctly.
     if self.throwHoldTimer:isNotElapsed(0.5) then
         return self.priorityThrow
+    end
+
+    -- Do not waste time with nades when bomb is close to detonation.
+    if AiUtility.plantedBomb and AiUtility.bombDetonationTime <= 18 and LocalPlayer:isCounterTerrorist() then
+        return AiPriority.IGNORE
     end
 
     -- No need to use grenades.
@@ -107,7 +118,7 @@ function AiStateGrenadeBase:assess()
     end
 
     -- Do not throw smokes etc. when the round has just begun.
-    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE and AiUtility.timeData.roundtime_elapsed <= 10 then
+    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE and AiUtility.timeData.roundtime_elapsed <= 15 then
         return AiPriority.IGNORE
     end
 
@@ -307,6 +318,7 @@ end
 --- @return void
 function AiStateGrenadeBase:activate()
     self.isAtDestination = false
+    self.selectedLineup = self.__classid
 
    Pathfinder.moveToNode(self.node, {
        task = string.format("Throw %s [%i]", self.name:lower(), self.node.id),
@@ -332,6 +344,7 @@ function AiStateGrenadeBase:reset()
     self.node = nil
     self.isAtDestination = false
     self.isThrown = false
+    self.selectedLineup = nil
 
     self.startThrowTimer:stop()
     self.throwHoldTimer:stop()
@@ -399,7 +412,12 @@ function AiStateGrenadeBase:think(cmd)
         self.ai.routines.manageGear:block()
         self.ai.routines.lookAwayFromFlashbangs:block()
 
-        self.equipFunction()
+        -- Try not to break obstacles with our HE grenade or molotov.
+        if Pathfinder.isObstructedByObstacle then
+            LocalPlayer.equipAvailableWeapon()
+        else
+            self.equipFunction()
+        end
     end
 
     if distance < 200 then
@@ -451,16 +469,16 @@ function AiStateGrenadeBase:think(cmd)
             end
 
             if isThrowable and not self.isThrown then
-                if self.isDamaging then
-                    local predictor = NadePredictor.create()
+                local predictor = NadePredictor.create()
 
-                    predictor:init(LocalPlayer.eid)
+                predictor:init(LocalPlayer.eid)
 
-                    local prediction = predictor:predict()
+                local prediction = predictor:predict()
 
-                    if prediction then
-                        local predictionEndPosition = Vector3:new(prediction.end_pos.x, prediction.end_pos.y, prediction.end_pos.z)
+                if prediction then
+                    local predictionEndPosition = Vector3:new(prediction.end_pos.x, prediction.end_pos.y, prediction.end_pos.z)
 
+                    if self.isDamaging then
                         -- We're most likely going to annoy our teammates if we throw this lineup right now.
                         -- See: https://en.wikipedia.org/wiki/Griefer
                         for _, teammate in pairs(AiUtility.teammates) do
@@ -472,15 +490,15 @@ function AiStateGrenadeBase:think(cmd)
                                 return
                             end
                         end
+                    end
 
-                        -- Do not throw molotovs onto smokes, or resmoke a smoked spot.
-                        if self.isInferno or self.isSmoke then
-                            for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
-                                if predictionEndPosition:getDistance(smoke:m_vecOrigin()) < 450 then
-                                    self.usedNodes[self.node.id]:restart()
+                    -- Do not throw molotovs onto smokes, or resmoke a smoked spot.
+                    if self.isInferno or self.isSmoke then
+                        for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
+                            if predictionEndPosition:getDistance(smoke:m_vecOrigin()) < 450 then
+                                self.usedNodes[self.node.id]:restart()
 
-                                    return
-                                end
+                                return
                             end
                         end
                     end

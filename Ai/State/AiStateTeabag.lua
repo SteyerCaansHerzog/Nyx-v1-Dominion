@@ -26,6 +26,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field duckTimer Timer
 --- @field duckInterval number
 --- @field duckHoldTime number
+--- @field isAllowedToTeabag boolean
 local AiStateTeabag = {
     name = "Teabag"
 }
@@ -44,6 +45,8 @@ function AiStateTeabag:__init()
 
     Callbacks.roundStart(function()
     	self:reset()
+
+        self.isAllowedToTeabag = Math.getChance(2)
     end)
 
     Callbacks.init(function()
@@ -59,6 +62,10 @@ function AiStateTeabag:__init()
     end)
 
     Callbacks.playerDeath(function(e)
+        if not self.isAllowedToTeabag then
+            return
+        end
+
         if not e.attacker:isLocalPlayer() then
             return
         end

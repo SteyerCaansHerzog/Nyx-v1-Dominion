@@ -360,7 +360,6 @@ end
 function View.setTargetNoise(targetViewAngles)
 	-- Noise is NONE or not worth calculating.
 	if View.currentNoise.timeExponent == 0 then
-		print(":(")
 		return
 	end
 

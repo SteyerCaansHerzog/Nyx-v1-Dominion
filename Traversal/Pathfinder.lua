@@ -249,10 +249,6 @@ function Pathfinder.initEvents()
 			for _, node in pairs(pool) do
 				node.isOccludedBySmoke = false
 			end
-
-			if Pathfinder.isOnValidPath() then
-				Pathfinder.retryLastRequest()
-			end
 		end)
 	end)
 
@@ -273,10 +269,6 @@ function Pathfinder.initEvents()
 		Client.fireAfter(7, function()
 			for _, node in pairs(pool) do
 				node.isOccludedByInferno = false
-			end
-
-			if Pathfinder.isOnValidPath() then
-				Pathfinder.retryLastRequest()
 			end
 		end)
 	end)
@@ -566,7 +558,7 @@ function Pathfinder.ifIdleThenRetryLastRequest()
 		return false
 	end
 
-	if LocalPlayer:getOrigin():getDistance2(Pathfinder.cachedLastRequest.endOrigin) < Pathfinder.cachedLastRequest.options.goalReachedRadius * 1.25 then
+	if LocalPlayer:getOrigin():getDistance2(Pathfinder.cachedLastRequest.endOrigin) <= Pathfinder.cachedLastRequest.options.goalReachedRadius then
 		return
 	end
 
@@ -662,6 +654,10 @@ function Pathfinder.createPath()
 		isPathfindingToNearestNodeOnFailure = false,
 		task = "Unnamed task",
 	})
+
+	-- todo refactor so these options are unavailable.
+	pathfinderOptions.isAllowedToTraverseInfernos = true
+	pathfinderOptions.isAllowedToTraverseSmokes = true
 
 	Pathfinder.lastRequest.startOrigin = LocalPlayer:getOrigin()
 	Pathfinder.lastRequest.options = pathfinderOptions
@@ -1189,19 +1185,19 @@ function Pathfinder.traverseActivePath(cmd)
 
 	-- todo test if works better
 	if not pathfinderOptions.isAllowedToTraverseInactives and not currentNode.isActive then
-		Pathfinder.retryLastRequest()
+		--Pathfinder.retryLastRequest()
 
 		return
 	end
 
 	if not pathfinderOptions.isAllowedToTraverseSmokes and currentNode.isOccludedBySmoke then
-		Pathfinder.retryLastRequest()
+		--Pathfinder.retryLastRequest()
 
 		return
 	end
 
 	if not pathfinderOptions.isAllowedToTraverseInfernos and currentNode.isOccludedByInferno then
-		Pathfinder.retryLastRequest()
+		--Pathfinder.retryLastRequest()
 
 		return
 	end

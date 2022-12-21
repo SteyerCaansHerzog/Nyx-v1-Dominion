@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local Color = require "gamesense/Nyx/v1/Api/Color"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
@@ -9,6 +10,9 @@ local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
+local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
+
+local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
 
 --{{{ Modules
@@ -70,7 +74,7 @@ function AiStateDefend:__init()
     self.defendTimer = Timer:new()
     self.getToSiteTimer = Timer:new()
     self.jiggleDirection = "Left"
-    self.jiggleTime = Math.getRandomFloat(0.25, 0.6)
+    self.jiggleTime = Math.getRandomFloat(0.2, 0.5)
     self.jiggleTimer = Timer:new():start()
     self.teammateInTroubleTimer = Timer:new():startThenElapse()
     self.bombsite = AiUtility.randomBombsite
@@ -318,6 +322,10 @@ function AiStateDefend:isEnemyHoldable()
         return false
     end
 
+    if Table.isEmpty(AiUtility.enemies) then
+        return false
+    end
+
     local cameraAngles = LocalPlayer.getCameraAngles()
     local eyeOrigin = LocalPlayer.getEyeOrigin()
     local clientOrigin = LocalPlayer.getEyeOrigin()
@@ -546,11 +554,6 @@ function AiStateDefend:think(cmd)
 
             Pathfinder.moveInDirection(direction)
         end
-    end
-
-    -- Repathfind.
-    if not self.isAtDestination and Pathfinder.isIdle() then
-        Pathfinder.retryLastRequest()
     end
 
     -- Reached destination.

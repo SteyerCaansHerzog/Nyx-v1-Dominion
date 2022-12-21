@@ -16,6 +16,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --- @field isRandomizingCrosshair boolean
 --- @field isResolvingTextToCommands boolean
 --- @field isTextModeAllowed boolean
+--- @field isVisualiserEnabled boolean
 --- @field language string
 --- @field openAiApiKey string
 --- @field projectDirectory string
@@ -47,6 +48,7 @@ local Config = {
     isRandomizingCrosshair = false, -- Create random crosshair every time Dominion is initialised.
     isResolvingTextToCommands = false, -- Try to resolve chat into commands. This is expensive.
     isTextModeAllowed = true, -- Enable this to disable Source engine rendering when applicable.
+    isVisualiserEnabled = true, -- Enable this to see AI visualisation information.
     language = "English", -- Language localization for logs and other text.
     openAiApiKey = "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", -- Set this to provide an API key for use with the Open AI chatbot.
     projectDirectory = "lua/gamesense/Nyx/v1/Dominion/%s", -- Root project directory for the Dominion folder. Must have /%s at the end.

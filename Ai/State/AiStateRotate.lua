@@ -100,6 +100,8 @@ function AiStateRotate:invoke(site)
     self.node = Nodegraph.getBombsite(site)
     self.bounds = self.node.origin:getBounds(Vector3.align.CENTER, 800, 800, 128)
 
+    Pathfinder.blockRoute(self.node)
+
     self:queueForReactivation()
 end
 

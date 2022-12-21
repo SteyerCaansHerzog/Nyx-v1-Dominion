@@ -21,6 +21,8 @@ local NodeTypeTraverse = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeT
 --- @field isActivatedForBombsiteA boolean
 --- @field isActivatedForBombsiteB boolean
 --- @field weight number
+---
+--- @field isBlockActive boolean
 local NodeHintBlockRoute = {
     name = "Block (Route)",
     description = {
@@ -54,6 +56,7 @@ function NodeHintBlockRoute:__init()
     Callbacks.roundPrestart(function()
     	NodeHintBlockRoute.isActivatedForBombsiteA = false
     	NodeHintBlockRoute.isActivatedForBombsiteB = false
+        NodeHintBlockRoute.isBlockActive = false
     end)
 end
 
@@ -193,6 +196,8 @@ function NodeHintBlockRoute.block(nodegraph, bombsite)
             node:setBlockedNodes(nodegraph)
         end
     end
+
+    NodeHintBlockRoute.isBlockActive = true
 end
 
 --- @param nodegraph Nodegraph

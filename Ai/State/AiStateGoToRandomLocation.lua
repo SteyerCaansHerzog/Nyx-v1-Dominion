@@ -35,8 +35,10 @@ function AiStateGoToRandomLocation:assess()
         return AiPriority.IGNORE
     end
 
-    if AiUtility.isBombPlanted() and not AiUtility.isBombDefused() then
-        return AiPriority.IGNORE
+    if AiUtility.isBombPlanted() then
+        if not AiUtility.isBombDefused() and AiUtility.enemiesAlive > 0 then
+            return AiPriority.IGNORE
+        end
     end
 
     return AiPriority.GO_TO_RANDOM_LOCATION
