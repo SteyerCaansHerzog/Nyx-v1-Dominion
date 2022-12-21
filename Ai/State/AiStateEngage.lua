@@ -394,7 +394,6 @@ function AiStateEngage:initEvents()
         end
 
         local eyeOrigin = LocalPlayer.getEyeOrigin()
-
         local rayIntersection = eyeOrigin:getRayClosestPoint(e.shooter:getEyeOrigin(), e.origin)
 
         if eyeOrigin:getDistance(rayIntersection) > 450 then

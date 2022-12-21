@@ -192,14 +192,14 @@ function Ai:initMenu()
 		Pathfinder.clearActivePathAndLastRequest()
 	end)
 
-	MenuGroup.enableAutoBuy = MenuGroup.group:addCheckbox("    | Buy Weapons"):addCallback(function(item)
-		-- This is here because setting isEnabled on the routine is self-referential.
+	MenuGroup.enableAutoBuy = MenuGroup.group:addCheckbox("    > Buy Weapons"):addCallback(function(item)
+		-- This is here because setting isEnabled on the routine is circular-referential.
 		self.isAllowedToBuyGear = item:get()
 	end):setParent(MenuGroup.enableAi)
 
-	MenuGroup.visualiseAi = MenuGroup.group:addCheckbox("    | Visualise AI"):setParent(MenuGroup.enableAi)
-	MenuGroup.enableAimbot = MenuGroup.group:addCheckbox("    | Enable Aim System"):setParent(MenuGroup.enableAi)
-	MenuGroup.visualiseAimbot = MenuGroup.group:addCheckbox("        | Visualise Aimbot"):setParent(MenuGroup.enableAimbot)
+	MenuGroup.visualiseAi = MenuGroup.group:addCheckbox("    > Visualise AI"):setParent(MenuGroup.enableAi)
+	MenuGroup.enableAimbot = MenuGroup.group:addCheckbox("    > Enable Aim System"):setParent(MenuGroup.enableAi)
+	MenuGroup.visualiseAimbot = MenuGroup.group:addCheckbox("        > Visualise Aimbot"):setParent(MenuGroup.enableAimbot)
 end
 
 --- @return void
