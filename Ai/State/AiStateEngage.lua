@@ -50,12 +50,16 @@ local WeaponMode = {
 --- @field aimSpeed number
 --- @field anticipateTime number
 --- @field bestTarget Player
+--- @field blockMovementAfterPlantTimer Timer
 --- @field blockTime number
 --- @field blockTimer Timer
 --- @field canWallbang boolean
 --- @field currentReactionTime number
+--- @field defendActionTime number
+--- @field defendActionTimer Timer
 --- @field defendingAtNode NodeTypeDefend
 --- @field defendingLookAt Vector3
+--- @field defendLookAtOffset Vector3
 --- @field enemySpottedCooldown Timer
 --- @field enemyVisibleTime number
 --- @field enemyVisibleTimer Timer
@@ -71,11 +75,13 @@ local WeaponMode = {
 --- @field isAllowedToNoscope boolean
 --- @field isBackingUp boolean
 --- @field isBestTargetVisible boolean
+--- @field isCrouchingOnDefend boolean
 --- @field isDefending boolean
 --- @field isHoldingAngle boolean
 --- @field isHoldingAngleDucked boolean
 --- @field isIgnoringDormancy boolean
 --- @field isInJiggleHold boolean
+--- @field isJigglingOnDefend boolean
 --- @field isPreAimViableForHoldingAngle boolean
 --- @field isRcsEnabled boolean
 --- @field isRefreshingAttackPath boolean
@@ -151,11 +157,6 @@ local WeaponMode = {
 --- @field watchTime number
 --- @field watchTimer Timer
 --- @field weaponMode number
---- @field isJigglingOnDefend boolean
---- @field isCrouchingOnDefend boolean
---- @field defendActionTimer Timer
---- @field defendActionTime number
---- @field defendLookAtOffset Vector3
 local AiStateEngage = {
     name = "Engage",
     isMouseDelayAllowed = false,
@@ -239,6 +240,7 @@ function AiStateEngage:initFields()
     self.defendActionTimer = Timer:new():startThenElapse()
     self.defendActionTime = 1
     self.defendLookAtOffset = Vector3:new()
+    self.blockMovementAfterPlantTimer = Timer:new():startThenElapse()
 
     for i = 1, 64 do
         self.noticedPlayerTimers[i] = Timer:new()
@@ -353,7 +355,9 @@ function AiStateEngage:initEvents()
     end)
 
     Callbacks.playerFootstep(function(e)
-        self:noticeEnemy(e.player, 1150, false, "Stepped")
+        local isLoud = LocalPlayer:getOrigin():getDistance(e.player:getOrigin()) < 450
+
+        self:noticeEnemy(e.player, 1100, isLoud, "Stepped")
     end)
 
     Callbacks.playerJump(function(e)
@@ -451,6 +455,14 @@ function AiStateEngage:initEvents()
 
     Callbacks.overrideView(function(view)
     	self.fov = view.fov
+    end)
+
+    Callbacks.bombPlanted(function(e)
+        if not e.player:isLocalPlayer() then
+            return
+        end
+
+        self.blockMovementAfterPlantTimer:restart()
     end)
 end
 
@@ -1338,6 +1350,13 @@ function AiStateEngage:moveOnBestTarget(cmd)
         return
     end
 
+    if AiUtility.isClientThreatenedMajor and not self.blockMovementAfterPlantTimer:isElapsed(1.5) then
+        Pathfinder.duck()
+        Pathfinder.standStill()
+
+        return
+    end
+
     -- todo this is a stupid fucking idea
     if not AiUtility.isClientThreatenedMajor and AiUtility.bombCarrier and AiUtility.bombCarrier:isLocalPlayer() then
         local clientOrigin = LocalPlayer:getOrigin()
@@ -1884,7 +1903,11 @@ function AiStateEngage:attackBestTarget(cmd)
             View.lookAtLocation(self.defendingLookAt, 6, View.noise.moving, "Engage defend against enemy")
 
             self:addVisualizer("defending", function()
-                self.defendingLookAtdrawCircleOutline(24, 2, Color:hsla(250, 1, 0.75, 200))
+                if not self.defendingLookAt then
+                    return
+                end
+
+                self.defendingLookAt:drawCircleOutline(24, 2, Color:hsla(250, 1, 0.75, 200))
             end)
         end
 
@@ -2207,7 +2230,7 @@ function AiStateEngage:setIsVisibleToBestTarget()
         end
     end
 
-    local velocity = LocalPlayer:m_vecVelocity() * 0.075
+    local velocity = LocalPlayer:m_vecVelocity() * 0.11
 
     for id, hitbox in pairs(hitboxes) do
         hitboxes[id] = hitbox + velocity
@@ -2247,7 +2270,7 @@ function AiStateEngage:canHoldAngle()
         distance = 200
     })
 
-    local losTrace = Trace.getHullToPosition(clientEyeOrigin, LocalPlayer.getCameraAngles(), Vector3:newBounds(Vector3.align.CENTER, 8), traceOptions, "AiStateEngage.canHoldAngle<FindLos>")
+    local losTrace = Trace.getHullAtAngle(clientEyeOrigin, LocalPlayer.getCameraAngles(), Vector3:newBounds(Vector3.align.CENTER, 8), traceOptions, "AiStateEngage.canHoldAngle<FindLos>")
 
     -- Line of sight is facing too close to a wall.
     if losTrace.isIntersectingGeometry then

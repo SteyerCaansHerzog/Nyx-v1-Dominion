@@ -25,6 +25,7 @@ local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 --- @class AiProcessClient : AiProcessBase
 --- @field isEnabled boolean
 --- @field lastAppFocused boolean
+--- @field isInGame boolean
 local AiProcessClient = {}
 
 --- @param fields AiProcessClient
@@ -53,6 +54,13 @@ function AiProcessClient:__init()
 
 		self:setMenuStates()
 		self:setAppFocusedFps()
+		self:handleForceDisconnect()
+	end)
+
+	Callbacks.frame(function()
+		if Server.isIngame() then
+			self.isInGame = true
+		end
 	end)
 end
 
@@ -178,6 +186,15 @@ function AiProcessClient:setCvars()
 	cvar.voice_enable:set_int(1)
 	cvar.cl_mute_all_but_friends_and_party:set_int(0)
 	cvar.cl_mute_enemy_team:set_int(0)
+end
+
+--- @return void
+function AiProcessClient:handleForceDisconnect()
+	if Config.isForceDisconnectingOnMapChange and not Server.isIngame() and self.isInGame then
+		self.isInGame = false
+
+		Client.execute("disconnect")
+	end
 end
 
 return Nyx.class("AiProcessClient", AiProcessClient, AiProcessBase)

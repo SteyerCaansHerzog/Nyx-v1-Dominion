@@ -212,11 +212,11 @@ function AiProcessInfo:renderSpectator()
 			end
 		end
 
+		self.cachedInfo[player.eid] = info
+
 		if not info.isOk then
 			break
 		end
-
-		self.cachedInfo[player.eid] = info
 
 		-- SteamIDs don't match. Player isn't in server.
 		if player:getSteamId64() ~= info.steamid64 then
@@ -591,12 +591,13 @@ function AiProcessInfo:think()
 		end
 	end
 
+	local isOk = behavior ~= nil
 	local steamid = LocalPlayer:getSteamId64()
 
 	--- @type AiClientInfo
 	local info = {
 		isEnabled = self.isAiEnabled,
-		isOk = priority ~= nil,
+		isOk = isOk,
 		activity = activity,
 		behavior = behavior,
 		priority = priority,

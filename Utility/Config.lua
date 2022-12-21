@@ -12,6 +12,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --- @field isClearingSteamFriends boolean
 --- @field isDebugging boolean
 --- @field isEmulatingRealUserInput boolean
+--- @field isForceDisconnectingOnMapChange boolean
 --- @field isLiveClient boolean
 --- @field isRandomizingCrosshair boolean
 --- @field isResolvingTextToCommands boolean
@@ -44,6 +45,7 @@ local Config = {
     isClearingSteamFriends = false, -- Clear the AI's Steam friend list and any requests.
     isDebugging = false, -- Enables debugging features.
     isEmulatingRealUserInput = true, -- Enable this to emulate mouse-keyboard. Results in less accurate movement. Avoids potential bot detection.
+    isForceDisconnectingOnMapChange = true, -- Auto-disconnects instead of loading map. Prevents computer crashes when running many bots.
     isLiveClient = false, -- Enable this when running on the Dominion Service.
     isRandomizingCrosshair = false, -- Create random crosshair every time Dominion is initialised.
     isResolvingTextToCommands = false, -- Try to resolve chat into commands. This is expensive.

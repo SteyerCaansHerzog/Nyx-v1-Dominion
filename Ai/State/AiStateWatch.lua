@@ -180,7 +180,9 @@ function AiStateWatch:think(cmd)
 
     if not self.isWatching then
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance(self.node.origin) < 100 then
+            if teammate:getOrigin():getDistance(self.node.origin) < 64 then
+                self.blacklist[self.node.id] = true
+
                 self:reset()
 
                 break

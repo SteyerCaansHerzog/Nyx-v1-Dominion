@@ -95,6 +95,11 @@ function AiRoutineHandleGunfireAvoidance:think(cmd)
 		end
 	end
 
+	-- Do not bait nearby teammates.
+	if AiUtility.closestTeammate and AiUtility.closestTeammateDistance < 100 then
+		return
+	end
+
 	if not Pathfinder.isOnValidPath() then
 		return
 	end
