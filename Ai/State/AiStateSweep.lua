@@ -40,7 +40,7 @@ end
 function AiStateSweep:think(cmd)
     self.activity = "Sweeping the map"
 
-    if Pathfinder.isIdle() then
+    if not Pathfinder.isOnValidPath() then
         self:move()
     end
 end

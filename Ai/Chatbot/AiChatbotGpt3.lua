@@ -130,6 +130,12 @@ end
 
 --- @return void
 function AiChatbotGpt3:__init()
+	if Config.openAiApiKey == "" then
+		Logger.console(Logger.WARNING, Localization.chatbotGpt3NoApiKey)
+
+		return
+	end
+
 	self.history = {}
 	self.clearHistoryTimer = Timer:new()
 	self.cooldownTimer = Timer:new():startThenElapse()
@@ -141,11 +147,9 @@ function AiChatbotGpt3:__init()
 
 	Logger.console(Logger.INFO, Localization.chatbotPersonaLoaded, personaName)
 
-	if Config.openAiApiKey ~= "" then
-		Callbacks.playerChat(function(e)
-			self:processChatMessage(e)
-		end)
-	end
+	Callbacks.playerChat(function(e)
+		self:processChatMessage(e)
+	end)
 end
 
 --- @param e PlayerChatEvent
@@ -318,7 +322,12 @@ function AiChatbotGpt3:requestConversationalReply(sender, text, isTeamChat)
 			end
 		end
 
-		for _, message in pairs(messages) do
+		for _, message in pairs(messages) do repeat
+			-- The AI is trying to send a blank message.
+			if message == " " or message == "" then
+				break
+			end
+
 			-- Create a natural delay before replying to the sender.
 			delay = delay + Math.getRandomFloat(1, 2) + (message:len() * Math.getRandomFloat(0.06, 0.1))
 
@@ -334,7 +343,7 @@ function AiChatbotGpt3:requestConversationalReply(sender, text, isTeamChat)
 					Messenger.send(message, isTeamChat)
 				end
 			end)
-		end
+		until true end
 	end)
 end
 

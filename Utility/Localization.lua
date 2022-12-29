@@ -26,6 +26,7 @@ local English = {
 	buyGearAttemptingSet = "Purchasing a set from '%s' with a balance of $%i.",
 	buyGearBestSetFailed = "Tried to purchase from best set, except there was no best set to buy. The buy set may be misconfigured.",
 	buyGearPurchased = "Purchased [%i] '%s'.", -- index, item
+	chatbotGpt3NoApiKey = "No API key was provided for the GP3 chatbot. Please set it with 'Config.openAiApiKey'.",
 	chatbotPersonaLoaded = "Loaded persona '%s'.", -- persona name
 	chatCommandExecutedArgs = "Executed chat command '/%s' from '%s' with '%s'.", -- command name, invoker, arguments
 	chatCommandExecutedNoArgs = "Executed chat command '/%s' from '%s'.", -- command name, invoker
@@ -74,6 +75,7 @@ local English = {
 	nodegraphMissingFile = "Cannot load graph from '%s'. File does not exist.", -- filename
 	nodegraphReady = "Nodegraph is ready.",
 	nodegraphSaved = "Saved graph to '%s'.", -- filename
+	pathfinderEndGoalIsZero = "Trying to pathfind to 0,0,0 (world origin). This may be a bug.",
 	pathfinderFailed = "Pathfind task '%s' failed: %s.", -- task name, reason
 	pathfinderFailedGuessGoal = "Pathfind task '%s' failed: %s. Presumed closest target node: [%i] %s (%s).", -- task name, reason, goal name
 	pathfinderFailedKnownGoal = "Pathfind task '%s' failed: %s. Target node: [%i] %s.", -- task name, reason, goal name
@@ -125,6 +127,7 @@ local Languages = {
 --- @field buyGearAttemptingSet string
 --- @field buyGearBestSetFailed string
 --- @field buyGearPurchased string
+--- @field chatbotGpt3NoApiKey string
 --- @field chatbotPersonaLoaded string
 --- @field chatCommandExecutedArgs string
 --- @field chatCommandExecutedNoArgs string
@@ -173,6 +176,7 @@ local Languages = {
 --- @field nodegraphMissingFile string
 --- @field nodegraphReady string
 --- @field nodegraphSaved string
+--- @field pathfinderEndGoalIsZero string
 --- @field pathfinderFailed string
 --- @field pathfinderFailedGuessGoal string
 --- @field pathfinderFailedKnownGoal string

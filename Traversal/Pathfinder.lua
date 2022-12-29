@@ -36,11 +36,6 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @class PathfinderOptions
 --- @field goalReachedRadius number
 --- @field isAllowedToTraverseInactives boolean
---- @field isAllowedToTraverseInfernos boolean
---- @field isAllowedToTraverseJumps boolean
---- @field isAllowedToTraverseLadders boolean
---- @field isAllowedToTraverseRecorders boolean
---- @field isAllowedToTraverseSmokes boolean
 --- @field isCachingRequest boolean
 --- @field isClearingActivePath boolean
 --- @field isCorrectingGoalZ boolean
@@ -639,11 +634,6 @@ function Pathfinder.createPath()
 	Table.setMissing(pathfinderOptions, {
 		goalReachedRadius = 15,
 		isAllowedToTraverseInactives = false,
-		isAllowedToTraverseInfernos = true,
-		isAllowedToTraverseJumps = true,
-		isAllowedToTraverseLadders = true,
-		isAllowedToTraverseRecorders = true,
-		isAllowedToTraverseSmokes = true,
 		isCachingRequest = true,
 		isClearingActivePath = true,
 		isCorrectingGoalZ = true,
@@ -655,10 +645,6 @@ function Pathfinder.createPath()
 		task = "Unnamed task",
 	})
 
-	-- todo refactor so these options are unavailable.
-	pathfinderOptions.isAllowedToTraverseInfernos = true
-	pathfinderOptions.isAllowedToTraverseSmokes = true
-
 	Pathfinder.lastRequest.startOrigin = LocalPlayer:getOrigin()
 	Pathfinder.lastRequest.options = pathfinderOptions
 
@@ -667,9 +653,16 @@ function Pathfinder.createPath()
 		origin = pathfinderOptions.startOriginOverride and pathfinderOptions.startOriginOverride or Pathfinder.lastRequest.startOrigin:clone():offset(0, 0, 18)
 	})
 
+	local endGoalOrigin = Pathfinder.lastRequest.endOrigin
+
+	-- Emit a warning, we may be trying to pathfind to a blank vector.
+	if endGoalOrigin:isZero() then
+		Logger.console(Logger.WARNING, Localization.pathfinderEndGoalIsZero)
+	end
+
 	-- Path end.
 	local endGoal = Node.goalEnd:new({
-		origin = Pathfinder.lastRequest.endOrigin:clone():offset(0, 0,  18)
+		origin = endGoalOrigin:clone():offset(0, 0, 18)
 	})
 
 	-- Ensure nodes comply with human collision hull.
@@ -1031,33 +1024,7 @@ function Pathfinder.getPath(start, goal, options)
 			return false
 		end
 
-		if not options.isAllowedToTraverseSmokes and neighbor.isOccludedBySmoke then
-			Pathfinder.pathDebug.nodes[idx].error = "IS OCCLUDED BY SMOKE"
-
-			return false
-		end
-
-		if not options.isAllowedToTraverseInfernos and neighbor.isOccludedByInferno then
-			Pathfinder.pathDebug.nodes[idx].error = "IS OCCLUDED BY INFERNO"
-
-			return false
-		end
-
-		if not options.isAllowedToTraverseLadders
-			and (neighbor:is(Node.traverseLadderBottom) or neighbor:is(Node.traverseLadderTop))
-		then
-			Pathfinder.pathDebug.nodes[idx].error = "IS LADDER AND NOT ALLOWED"
-
-			return false
-		end
-
 		if neighbor.isJump then
-			if not options.isAllowedToTraverseJumps then
-				Pathfinder.pathDebug.nodes[idx].error = "IS JUMP AND NOT ALLOWED"
-
-				return false
-			end
-
 			local zDelta = neighbor.origin.z - node.origin.z
 
 			if zDelta > neighbor.zDeltaThreshold then
@@ -1071,12 +1038,6 @@ function Pathfinder.getPath(start, goal, options)
 
 				return false
 			end
-		end
-
-		if node.isRecorder and not options.isAllowedToTraverseRecorders then
-			Pathfinder.pathDebug.nodes[idx].error = "IS RECORDER AND NOT ALLOWED"
-
-			return false
 		end
 
 		if not node.isRecorder and (neighbor.isRecorder and neighbor:is(Node.traverseRecorderEnd)) then
@@ -1183,21 +1144,8 @@ function Pathfinder.traverseActivePath(cmd)
 	local currentNode = Pathfinder.path.node
 	local previousNode = Pathfinder.path.nodes[Pathfinder.path.idx - 1]
 
-	-- todo test if works better
 	if not pathfinderOptions.isAllowedToTraverseInactives and not currentNode.isActive then
-		--Pathfinder.retryLastRequest()
-
-		return
-	end
-
-	if not pathfinderOptions.isAllowedToTraverseSmokes and currentNode.isOccludedBySmoke then
-		--Pathfinder.retryLastRequest()
-
-		return
-	end
-
-	if not pathfinderOptions.isAllowedToTraverseInfernos and currentNode.isOccludedByInferno then
-		--Pathfinder.retryLastRequest()
+		Pathfinder.retryLastRequest()
 
 		return
 	end
@@ -1369,6 +1317,7 @@ function Pathfinder.traverseActivePath(cmd)
 		local zDelta = clientOrigin.z - ladderTop.origin.z
 
 		if zDelta > 0 then
+			-- Pass over both ladder nodes as we held onto the bottom.
 			Pathfinder.incrementPath("ascend ladder")
 			Pathfinder.incrementPath("ascend ladder")
 		end
@@ -1398,6 +1347,7 @@ function Pathfinder.traverseActivePath(cmd)
 				if zDelta < 150 then
 					cmd.in_jump = true
 
+					-- Pass over both ladder nodes as we held onto the top.
 					Pathfinder.incrementPath("descend ladder")
 					Pathfinder.incrementPath("descend ladder")
 				end

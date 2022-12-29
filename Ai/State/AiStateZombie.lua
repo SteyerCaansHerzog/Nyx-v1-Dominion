@@ -147,7 +147,6 @@ function AiStateZombie:pathfindToEnemy()
         task = "Move to target",
         isPathfindingToNearestNodeOnFailure = true,
         isAllowedToTraverseInactives = true,
-        isAllowedToTraverseSmokes = true
     })
 end
 

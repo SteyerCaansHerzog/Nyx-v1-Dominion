@@ -31,6 +31,20 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
+--{{{ Definitions
+--- @class AiStateEngageWeaponStats
+--- @field name string
+--- @field ranges table
+--- @field firerates table
+--- @field runAtCloseRange boolean
+--- @field priorityHitbox number
+--- @field isBoltAction boolean
+--- @field isRcsEnabled table
+--- @field weaponMode number
+--- @field evaluate fun(): boolean
+--- @field fov number
+--}}}
+
 --{{{ Enums
 local WeaponMode = {
     PISTOL = 1,
@@ -101,10 +115,11 @@ local WeaponMode = {
 --- @field jiggleShootTime number
 --- @field jiggleShootTimer Timer
 --- @field lastBestTargetOrigin Vector3
+--- @field lastBestTargetValidOrigin Vector3
 --- @field lastMoveDirection Vector3
 --- @field lastSeenTimers Timer[]
 --- @field lastSoundTimer Timer
---- @field lookAtOccludedOrigin Vector3
+--- @field lookAtBackingUpOrigin Vector3
 --- @field noticedLoudPlayerTimers Timer[]
 --- @field noticedPlayerLastKnownOrigin Vector3[]
 --- @field noticedPlayerTimers Timer[]
@@ -470,10 +485,6 @@ end
 function AiStateEngage:assess()
     self:setBestTarget()
 
-    if self.overrideBestTarget then
-        return AiPriority.ENGAGE_ACTIVE
-    end
-
     self.sprayTimer:isElapsedThenStop(self.sprayTime)
     self.watchTimer:isElapsedThenStop(self.watchTime)
 
@@ -494,6 +505,10 @@ function AiStateEngage:assess()
         return AiPriority.ENGAGE_PANIC
     end
 
+    if self.overrideBestTarget then
+        return AiPriority.ENGAGE_ACTIVE
+    end
+
     -- Engage enemies.
     for _, enemy in pairs(AiUtility.enemies) do
         if AiUtility.visibleEnemies[enemy.eid] and self:isEnemySensed(enemy) then
@@ -506,9 +521,11 @@ function AiStateEngage:assess()
     end
 
     if self.sprayTimer:isStarted() then
+        print(self.sprayTimer:get())
         return AiPriority.ENGAGE_ACTIVE
     end
 
+    -- todo this will definitely cause the AI to become stuck if we do not handle pathfinding when the defuser is dormant.
     if AiUtility.isBombBeingDefusedByEnemy then
         return AiPriority.ENGAGE_ACTIVE
     end
@@ -521,6 +538,7 @@ function AiStateEngage:assess()
         return AiPriority.ENGAGE_ACTIVE
     end
 
+    -- Makes the AI faster when the bomb is down.
     if not AiUtility.plantedBomb then
         if self.reactionTimer:isStarted() then
             return AiPriority.ENGAGE_PASSIVE
@@ -593,10 +611,10 @@ function AiStateEngage:think(cmd)
         return
     end
 
-    self:moveOnBestTarget(cmd)
-    self:attackBestTarget(cmd)
-    self:walk()
+    self:handleMovement()
+    self:handleAttacking(cmd)
     self:handleCommunications()
+    self:walk()
 end
 
 --- @return void
@@ -820,6 +838,20 @@ function AiStateEngage:setBestTarget()
     end
 
     if self.setBestTargetTimer:isElapsedThenRestart(1) or isUrgent then
+        if self.bestTarget and selectedEnemy then
+            -- Clear last valid origin as it's no longer for the same target.
+            if selectedEnemy:is(self.bestTarget) then
+                self.lastBestTargetValidOrigin = nil
+            end
+
+            local targetOrigin = self.bestTarget:getOrigin()
+
+            -- Update the last valid origin if it is not zero.
+            if targetOrigin and not targetOrigin:isZero() then
+                self.lastBestTargetValidOrigin = targetOrigin
+            end
+        end
+
         self.bestTarget = selectedEnemy
     end
 
@@ -831,18 +863,6 @@ function AiStateEngage:setBestTarget()
     self:setIsVisibleToBestTarget()
 end
 
---- @class AiStateEngageWeaponStats
---- @field name string
---- @field ranges table
---- @field firerates table
---- @field runAtCloseRange boolean
---- @field priorityHitbox number
---- @field isBoltAction boolean
---- @field isRcsEnabled table
---- @field weaponMode number
---- @field evaluate fun(): boolean
---- @field fov number
----
 --- @param enemy Player
 --- @return void
 function AiStateEngage:setWeaponStats(enemy)
@@ -1341,22 +1361,101 @@ function AiStateEngage:renderTimer(title, uiPos, timer, time, color)
     uiPos:offset(0, offset)
 end
 
---- @param cmd SetupCommandEvent
 --- @return void
-function AiStateEngage:moveOnBestTarget(cmd)
-    self.activity = "Enemy contact"
+function AiStateEngage:handleMovement()
+    self.activity = "About to contact enemy"
 
     if not self.bestTarget then
         return
     end
 
-    if AiUtility.isClientThreatenedMajor and not self.blockMovementAfterPlantTimer:isElapsed(1.5) then
-        Pathfinder.duck()
-        Pathfinder.standStill()
+    if self:movementHoldAfterPlant() then
+        return
+    end
+
+    if self:movementPlantSpot() then
+        return
+    end
+
+    if self:movementJiggleBait() then
+        return
+    end
+
+    if self:movementDefensivePosition() then
+        return
+    end
+
+    if self.seekCoverTimer:isElapsed(1.5) and Table.isEmpty(AiUtility.visibleEnemies) then
+        self:movementBackUpFromThreats()
+        self:movementAvoidSmokes()
+    end
+
+    if self.isBackingUp then
+        if not self.hasBackupCover then
+            self:actionBackUp()
+        end
 
         return
     end
 
+    if self:movementHoldAngle() then
+        return
+    end
+
+    self:movementToTarget()
+end
+
+--- @return boolean
+function AiStateEngage:movementHoldAngle()
+    -- Don't peek the angle. Hold it.
+    if self:canHoldAngle() then
+        self.activity = "Holding enemy"
+
+        if Pathfinder.isOnValidPath() then
+            self.isHoldingAngle = Math.getChance(1)
+            self.isHoldingAngleDucked = LocalPlayer:hasSniper() or Math.getChance(4)
+
+            if self.isHoldingAngle then
+                Pathfinder.clearActivePathAndLastRequest()
+            end
+        end
+
+        self.patienceTimer:ifPausedThenStart()
+
+        -- Jiggling whilst scoped might look stupid.
+        if LocalPlayer:isHoldingSniper() and LocalPlayer:m_bIsScoped() == 0 then
+            LocalPlayer.scope()
+        end
+
+        if self.isHoldingAngleDucked then
+            Pathfinder.duck()
+        else
+            self:actionJiggle(self.jiggleShootTime)
+        end
+
+        return true
+    end
+
+    return false
+end
+
+--- @return boolean
+function AiStateEngage:movementHoldAfterPlant()
+    if AiUtility.isClientThreatenedMajor
+        and not self.isVisibleToBestTarget
+        and not self.blockMovementAfterPlantTimer:isElapsed(1.5)
+    then
+        Pathfinder.duck()
+        Pathfinder.standStill()
+
+        return true
+    end
+
+    return false
+end
+
+--- @return boolean
+function AiStateEngage:movementPlantSpot()
     -- todo this is a stupid fucking idea
     if not AiUtility.isClientThreatenedMajor and AiUtility.bombCarrier and AiUtility.bombCarrier:isLocalPlayer() then
         local clientOrigin = LocalPlayer:getOrigin()
@@ -1366,15 +1465,19 @@ function AiStateEngage:moveOnBestTarget(cmd)
             Pathfinder.moveToNode(Nodegraph.getClosest(clientOrigin, Node.spotPlant), {
                 task = "Engage enemy via plant spot",
                 isAllowedToTraverseInactives = true,
-                isAllowedToTraverseRecorders = false,
                 isPathfindingToNearestNodeIfNoConnections = true,
                 isPathfindingToNearestNodeOnFailure = true
             })
         end
 
-        return
+        return true
     end
 
+    return false
+end
+
+--- @return boolean
+function AiStateEngage:movementJiggleBait()
     local eyeOrigin = LocalPlayer.getEyeOrigin()
     local enemyEyeOrigin = self.bestTarget:getOrigin():offset(0, 0, 64)
 
@@ -1440,11 +1543,12 @@ function AiStateEngage:moveOnBestTarget(cmd)
     end
 
     if isJiggleBaiting and not self.jiggleHoldTimer:isElapsed(self.jiggleHoldTime) then
+        self.activity = "Baiting enemy"
         self.isInJiggleHold = true
 
         Pathfinder.moveAtAngle(eyeOrigin:getAngle(self.jiggleHoldDirection))
 
-        return
+        return true
     end
 
     self.isInJiggleHold = false
@@ -1475,6 +1579,139 @@ function AiStateEngage:moveOnBestTarget(cmd)
         end
     end
 
+    return false
+end
+
+--- @return void
+function AiStateEngage:movementAvoidSmokes()
+    local clientOrigin = LocalPlayer:getOrigin()
+    local isAvoidingSmokes = true
+
+    if AiUtility.timeData.roundtime_remaining < 30 then
+        isAvoidingSmokes = false
+    elseif AiUtility.plantedBomb and AiUtility.bombDetonationTime < 25 then
+        isAvoidingSmokes = false
+    elseif AiUtility.isBombBeingDefusedByEnemy or AiUtility.isBombBeingPlantedByTeammate then
+        isAvoidingSmokes = false
+    elseif AiUtility.isHostageCarriedByTeammate or AiUtility.isHostageCarriedByEnemy then
+        isAvoidingSmokes = false
+    elseif AiUtility.totalThreats == 0 then
+        isAvoidingSmokes = false
+    end
+
+    if isAvoidingSmokes then
+        --- @type Entity
+        local nearSmoke
+
+        for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
+            if clientOrigin:getDistance(smoke:m_vecOrigin()) < 400 then
+                nearSmoke = smoke
+
+                break
+            end
+        end
+
+        if nearSmoke then
+            self.activity = "Backing up from smoke"
+            self.lookAtBackingUpOrigin = Trace.getLineAlongCrosshair(AiUtility.traceOptionsAttacking).endPosition
+            self.isBackingUp = true
+
+            self.seekCoverTimer:restart()
+
+            local cover = self:getCoverNode(800, self.bestTarget)
+
+            if cover then
+                self.hasBackupCover = true
+
+                Pathfinder.moveToNode(cover, {
+                    task = "Back up from threats",
+                    isAllowedToTraverseInactives = true,
+                    goalReachedRadius = 64
+                })
+            else
+                self.hasBackupCover = false
+            end
+        else
+            nearSmoke = nil
+        end
+    end
+end
+
+--- @return void
+function AiStateEngage:movementBackUpFromThreats()
+    self.lookAtBackingUpOrigin = nil
+
+    -- Avoid too many threats.
+    local isBackingUp = true
+
+    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+        if AiUtility.totalThreats < 2 then
+            isBackingUp = false
+        elseif self.isStrafePeeking then
+            isBackingUp = false
+        elseif LocalPlayer:isCounterTerrorist() then
+            isBackingUp = false
+        elseif AiUtility.isHostageCarriedByTeammate or AiUtility.isHostageCarriedByEnemy or AiUtility.isHostageBeingPickedUpByEnemy then
+            isBackingUp = false
+        end
+    else
+        if AiUtility.totalThreats < 2 then
+            isBackingUp = false
+        elseif self.isStrafePeeking then
+            isBackingUp = false
+        elseif LocalPlayer:isCounterTerrorist() then
+            if AiUtility.plantedBomb or AiUtility.isBombBeingPlantedByEnemy then
+                isBackingUp = false
+            end
+
+            local bombsiteA = Nodegraph.getBombsite("A")
+            local bombsiteB = Nodegraph.getBombsite("B")
+
+            for _, enemy in pairs(AiUtility.enemies) do
+                local enemyOrigin = enemy:getOrigin()
+
+                if enemyOrigin:getDistance(bombsiteA.origin) < 800 or enemyOrigin:getDistance(bombsiteB.origin) < 800 then
+                    isBackingUp = false
+
+                    break
+                end
+            end
+        elseif LocalPlayer:isTerrorist() then
+            if AiUtility.timeData.roundtime_remaining < 40  then
+                isBackingUp = false
+            elseif not AiUtility.plantedBomb or AiUtility.isBombBeingDefusedByEnemy then
+                isBackingUp = false
+            end
+        end
+    end
+
+    self.isBackingUp = false
+
+    if isBackingUp then
+        self.activity = "Backing up from enemies"
+        self.lookAtBackingUpOrigin = Trace.getLineAlongCrosshair(AiUtility.traceOptionsAttacking).endPosition
+        self.isBackingUp = true
+
+        self.seekCoverTimer:restart()
+
+        local cover = self:getCoverNode(500, self.bestTarget)
+
+        if cover then
+            self.hasBackupCover = true
+
+            Pathfinder.moveToNode(cover, {
+                task = "Back up from threats",
+                isAllowedToTraverseInactives = true,
+                goalReachedRadius = 64
+            })
+        else
+            self.hasBackupCover = false
+        end
+    end
+end
+
+--- @return boolean
+function AiStateEngage:movementDefensivePosition()
     local clientOrigin = LocalPlayer:getOrigin()
     local isAbleToDefend = true
     --- @type NodeTypeDefend
@@ -1539,7 +1776,6 @@ function AiStateEngage:moveOnBestTarget(cmd)
             Pathfinder.moveToNode(node, {
                 task = "Engage enemy via defensive position",
                 isAllowedToTraverseInactives = true,
-                isAllowedToTraverseRecorders = false,
                 isPathfindingToNearestNodeIfNoConnections = true,
                 isPathfindingToNearestNodeOnFailure = true
             })
@@ -1555,178 +1791,17 @@ function AiStateEngage:moveOnBestTarget(cmd)
     if self.isDefending then
         self.activity = string.format("Holding enemy on %s", self.ai.states.defend.bombsite)
 
-        return
+        return true
     end
 
-    if self.seekCoverTimer:isElapsed(1.5) and Table.isEmpty(AiUtility.visibleEnemies) then
-        self.lookAtOccludedOrigin = nil
+    return false
+end
 
-        -- Avoid too many threats.
-        local isBackingUp = true
-
-        if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
-            if AiUtility.totalThreats < 2 then
-                isBackingUp = false
-            elseif self.isStrafePeeking then
-                isBackingUp = false
-            elseif LocalPlayer:isCounterTerrorist() then
-                isBackingUp = false
-            elseif AiUtility.isHostageCarriedByTeammate or AiUtility.isHostageCarriedByEnemy or AiUtility.isHostageBeingPickedUpByEnemy then
-                isBackingUp = false
-            end
-        else
-            if AiUtility.totalThreats < 2 then
-                isBackingUp = false
-            elseif self.isStrafePeeking then
-                isBackingUp = false
-            elseif LocalPlayer:isCounterTerrorist() then
-                if AiUtility.plantedBomb or AiUtility.isBombBeingPlantedByEnemy then
-                    isBackingUp = false
-                end
-
-                local bombsiteA = Nodegraph.getBombsite("A")
-                local bombsiteB = Nodegraph.getBombsite("B")
-
-                for _, enemy in pairs(AiUtility.enemies) do
-                    local enemyOrigin = enemy:getOrigin()
-
-                    if enemyOrigin:getDistance(bombsiteA.origin) < 800 or enemyOrigin:getDistance(bombsiteB.origin) < 800 then
-                        isBackingUp = false
-
-                        break
-                    end
-                end
-            elseif LocalPlayer:isTerrorist() then
-                if AiUtility.timeData.roundtime_remaining < 40  then
-                    isBackingUp = false
-                elseif not AiUtility.plantedBomb or AiUtility.isBombBeingDefusedByEnemy then
-                    isBackingUp = false
-                end
-            end
-        end
-
-        self.isBackingUp = false
-
-        if isBackingUp then
-            self.activity = "Backing up from enemies"
-            self.lookAtOccludedOrigin = Trace.getLineAlongCrosshair(AiUtility.traceOptionsAttacking).endPosition
-            self.isBackingUp = true
-
-            self.seekCoverTimer:restart()
-
-            local cover = self:getCoverNode(500, self.bestTarget)
-
-            if cover then
-                self.hasBackupCover = true
-
-                Pathfinder.moveToNode(cover, {
-                    task = "Back up from threats",
-                    isAllowedToTraverseInactives = true,
-                    isAllowedToTraverseLadders = false,
-                    isAllowedToTraverseRecorders = false,
-                    goalReachedRadius = 64
-                })
-            else
-                self.hasBackupCover = false
-            end
-        end
-
-        -- Avoid smokes.
-        local isAvoidingSmokes = true
-
-        if AiUtility.timeData.roundtime_remaining < 30 then
-            isAvoidingSmokes = false
-        elseif AiUtility.plantedBomb and AiUtility.bombDetonationTime < 25 then
-            isAvoidingSmokes = false
-        elseif AiUtility.isBombBeingDefusedByEnemy or AiUtility.isBombBeingPlantedByTeammate then
-            isAvoidingSmokes = false
-        elseif AiUtility.isHostageCarriedByTeammate or AiUtility.isHostageCarriedByEnemy then
-            isAvoidingSmokes = false
-        elseif AiUtility.totalThreats == 0 then
-            isAvoidingSmokes = false
-        end
-
-        if isAvoidingSmokes then
-            --- @type Entity
-            local nearSmoke
-
-            for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
-                if clientOrigin:getDistance(smoke:m_vecOrigin()) < 400 then
-                    nearSmoke = smoke
-
-                    break
-                end
-            end
-
-            if nearSmoke then
-                self.activity = "Backing up from smoke"
-                self.lookAtOccludedOrigin = Trace.getLineAlongCrosshair(AiUtility.traceOptionsAttacking).endPosition
-                self.isBackingUp = true
-
-                self.seekCoverTimer:restart()
-
-                local cover = self:getCoverNode(800, self.bestTarget)
-
-                if cover then
-                    self.hasBackupCover = true
-
-                    Pathfinder.moveToNode(cover, {
-                        task = "Back up from threats",
-                        isAllowedToTraverseInactives = true,
-                        isAllowedToTraverseLadders = false,
-                        isAllowedToTraverseRecorders = false,
-                        goalReachedRadius = 64
-                    })
-                else
-                    self.hasBackupCover = false
-                end
-            else
-                nearSmoke = nil
-            end
-        end
-    end
-
-    if self.isBackingUp then
-        if not self.hasBackupCover then
-            self:actionBackUp()
-        end
-
-        return
-    end
-
-    local targetOrigin = self.bestTarget:getOrigin()
-
-    -- Don't peek the angle. Hold it.
-    if self:canHoldAngle() then
-        self.activity = "Holding enemy"
-
-        if Pathfinder.isOnValidPath() then
-            self.isHoldingAngle = Math.getChance(1)
-            self.isHoldingAngleDucked = LocalPlayer:hasSniper() or Math.getChance(4)
-
-            if self.isHoldingAngle then
-                Pathfinder.clearActivePathAndLastRequest()
-            end
-        end
-
-        self.patienceTimer:ifPausedThenStart()
-
-        -- Jiggling whilst scoped might look stupid.
-        if LocalPlayer:isHoldingSniper() then
-            LocalPlayer.scope()
-        end
-
-        if self.isHoldingAngleDucked then
-            cmd.in_duck = true
-        else
-            self:actionJiggle(self.jiggleShootTime)
-        end
-
-        return
-    end
-
+--- @return boolean
+function AiStateEngage:movementToTarget()
     self.activity = "Moving on enemy"
 
+    local targetOrigin = self.bestTarget:getOrigin()
     local isEnemyDisplaced = false
 
     if self.isRefreshingAttackPath then
@@ -1739,8 +1814,8 @@ function AiStateEngage:moveOnBestTarget(cmd)
         isEnemyDisplaced = true
     end
 
-    if Pathfinder.isIdle() or isEnemyDisplaced then
-        local targetEyeOrigin = self.bestTarget:getEyeOrigin()
+    if not Pathfinder.isOnValidPath() or isEnemyDisplaced then
+        local targetEyeOrigin = targetOrigin:clone():offset(0, 0, 64)
 
         --- @type NodeTypeTraverse[]
         local selectedNodes = {}
@@ -1760,10 +1835,10 @@ function AiStateEngage:moveOnBestTarget(cmd)
             end
 
             -- Find a visible node nearby.
-            if distance < 1000 and Math.getChance(0.66) then
+            if distance < 1000 then
                 i = i + 1
 
-                if i > 50 then
+                if i > 32 then
                     break
                 end
 
@@ -1793,7 +1868,7 @@ function AiStateEngage:moveOnBestTarget(cmd)
 
         -- We can pathfind to a node visible to the enemy.
         if isPushingToEnemyPosition then
-            self:moveToLocation(self.bestTarget:getOrigin())
+            self:moveToLocation(self.lastBestTargetValidOrigin)
         else
             self:moveToRandomNodeFrom(selectedNodes, closestNode)
         end
@@ -1817,7 +1892,6 @@ function AiStateEngage:moveToRandomNodeFrom(nodes, closest)
     Pathfinder.moveToNode(node, {
         task = "Engage enemy via random position",
         isAllowedToTraverseInactives = true,
-        isAllowedToTraverseRecorders = false,
         isPathfindingToNearestNodeIfNoConnections = true,
         onFailedToFindPath = function()
             self:moveToRandomNodeFrom(nodes)
@@ -1831,7 +1905,6 @@ function AiStateEngage:moveToClosestNode(node)
     Pathfinder.moveToNode(node, {
         task = "Engage enemy via nearest position",
         isAllowedToTraverseInactives = true,
-        isAllowedToTraverseRecorders = false,
         isPathfindingToNearestNodeIfNoConnections = true,
         isPathfindingToNearestNodeOnFailure = true
     })
@@ -1847,7 +1920,6 @@ function AiStateEngage:moveToLocation(origin)
     Pathfinder.moveToLocation(origin, {
         task = "Engage enemy at their exact location",
         isAllowedToTraverseInactives = true,
-        isAllowedToTraverseRecorders = false,
         isPathfindingToNearestNodeIfNoConnections = true,
         isPathfindingToNearestNodeOnFailure = true
     })
@@ -1855,7 +1927,7 @@ end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function AiStateEngage:attackBestTarget(cmd)
+function AiStateEngage:handleAttacking(cmd)
     if not MenuGroup.master:get() or not MenuGroup.enableAi:get() then
         return
     end
@@ -1919,7 +1991,7 @@ function AiStateEngage:attackBestTarget(cmd)
                 self.isCrouchingOnDefend = Math.getChance(3)
             end
 
-            if LocalPlayer:isHoldingSniper() then
+            if LocalPlayer:isHoldingSniper() and LocalPlayer:m_bIsScoped() == 0 then
                 LocalPlayer.scope()
             end
 
@@ -1947,8 +2019,8 @@ function AiStateEngage:attackBestTarget(cmd)
     end
 
     -- Look at occluded origin.
-    if self.lookAtOccludedOrigin and not AiUtility.clientThreatenedFromOrigin then
-        View.lookAtLocation(self.lookAtOccludedOrigin, 4, View.noise.moving, "Engage look-at occlusion")
+    if self.lookAtBackingUpOrigin and not AiUtility.clientThreatenedFromOrigin then
+        View.lookAtLocation(self.lookAtBackingUpOrigin, 4, View.noise.moving, "Engage look-at backing up position")
     end
 
     -- Spray.
@@ -2161,7 +2233,7 @@ function AiStateEngage:attackBestTarget(cmd)
     end
 
     -- Get target hitbox.
-    local hitbox, visibleHitboxCount = self:getHitbox(enemy)
+    local hitbox, visibleHitboxCount = self:getTargetHitbox(enemy)
 
     -- Pre-aim angle.
     -- Pre-aim hitbox when peeking.
@@ -2623,7 +2695,6 @@ function AiStateEngage:fireWeapon(cmd)
         return
     end
 
-    -- Try calling an unsafe CMD function instead of safe cmd override.
     View.fireWeapon()
 end
 
@@ -2802,7 +2873,7 @@ end
 
 --- @param enemy Player
 --- @return Vector3, number
-function AiStateEngage:getHitbox(enemy)
+function AiStateEngage:getTargetHitbox(enemy)
     --- @type Vector3
     local targetHitbox
     local hitboxes = {

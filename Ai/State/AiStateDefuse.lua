@@ -154,7 +154,6 @@ function AiStateDefuse:activate()
 
     Pathfinder.moveToLocation(bombOrigin, {
         task = "Defuse the bomb",
-        isAllowedToTraverseSmokes = true
     })
 end
 

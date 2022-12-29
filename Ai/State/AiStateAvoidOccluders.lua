@@ -122,7 +122,6 @@ function AiStateAvoidOccluders:move()
 
     Pathfinder.moveToNode(node, {
         task = "Get out of inferno",
-        isAllowedToTraverseInfernos = true,
         isAllowedToTraverseInactives = true,
         isPathfindingFromNearestNodeIfNoConnections = true,
         isPathfindingToNearestNodeIfNoConnections = true,
@@ -149,7 +148,6 @@ function AiStateAvoidOccluders:moveToRandom()
         return distanceToClient > 400 and distanceToClient < distanceToOccluder
     end), {
         task = "Get out of inferno (random node)",
-        isAllowedToTraverseInfernos = true,
         isAllowedToTraverseInactives = true,
         isPathfindingFromNearestNodeIfNoConnections = true,
         isPathfindingToNearestNodeIfNoConnections = true,

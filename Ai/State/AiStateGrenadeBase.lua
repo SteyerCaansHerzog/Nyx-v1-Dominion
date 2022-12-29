@@ -3,6 +3,7 @@ local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local NadePredictor = require "gamesense/nade_prediction"
+local GrenadePrediction = require "gamesense/Nyx/v1/Api/GrenadePrediction"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -317,6 +318,22 @@ end
 
 --- @return void
 function AiStateGrenadeBase:activate()
+    if not self:isAllowedToThrow() then
+        AiStateGrenadeBase.usedNodes[self.node.id]:restart()
+
+        return
+    end
+
+    local bounds = self.node.origin:getBounds(Vector3.align.BOTTOM, 500, 500, 64)
+
+    -- The AI can cling onto lineups since we select the node in assess, but may not run the think afterwards.
+    -- This just checks if we're within the bounds when we try to run this state. If not we probably don't want to run this at all.
+    if not LocalPlayer:getOrigin():offset(0, 0, 48):isInBounds(bounds) then
+        AiStateGrenadeBase.usedNodes[self.node.id]:restart()
+
+        return
+    end
+
     self.isAtDestination = false
     self.selectedLineup = self.__classid
 
@@ -331,11 +348,6 @@ function AiStateGrenadeBase:activate()
        isPathfindingToNearestNodeIfNoConnections = false,
        isPathfindingToNearestNodeOnFailure = false,
    })
-end
-
---- @return void
-function AiStateGrenadeBase:deactivate()
-    self:reset()
 end
 
 --- @return void
@@ -384,6 +396,12 @@ function AiStateGrenadeBase:think(cmd)
     local distance2 = clientOrigin:getDistance2(self.node.origin)
 
     if distance2 < 60 then
+        if not self:isAllowedToThrow() then
+            AiStateGrenadeBase.usedNodes[self.node.id]:restart()
+
+            return
+        end
+
         self.inBehaviorTimer:ifPausedThenStart()
     end
 
@@ -469,41 +487,6 @@ function AiStateGrenadeBase:think(cmd)
             end
 
             if isThrowable and not self.isThrown then
-                local predictor = NadePredictor.create()
-
-                predictor:init(LocalPlayer.eid)
-
-                local prediction = predictor:predict()
-
-                if prediction then
-                    local predictionEndPosition = Vector3:new(prediction.end_pos.x, prediction.end_pos.y, prediction.end_pos.z)
-
-                    if self.isDamaging then
-                        -- We're most likely going to annoy our teammates if we throw this lineup right now.
-                        -- See: https://en.wikipedia.org/wiki/Griefer
-                        for _, teammate in pairs(AiUtility.teammates) do
-                            local teammatePredictedOrigin = teammate:getOrigin() + teammate:m_vecVelocity() * 0.4
-
-                            if teammatePredictedOrigin:getDistance(predictionEndPosition) < 350 then
-                                self.usedNodes[self.node.id]:restart()
-
-                                return
-                            end
-                        end
-                    end
-
-                    -- Do not throw molotovs onto smokes, or resmoke a smoked spot.
-                    if self.isInferno or self.isSmoke then
-                        for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
-                            if predictionEndPosition:getDistance(smoke:m_vecOrigin()) < 450 then
-                                self.usedNodes[self.node.id]:restart()
-
-                                return
-                            end
-                        end
-                    end
-                end
-
                 self.throwHoldTimer:ifPausedThenStart()
 
                 cmd.in_attack = true
@@ -511,6 +494,50 @@ function AiStateGrenadeBase:think(cmd)
             end
         end
     end
+end
+
+function AiStateGrenadeBase:isAllowedToThrow()
+    local predictor = GrenadePrediction.create()
+
+    predictor:setupArbitrary(
+        LocalPlayer.eid,
+        self.weapons[1], -- this will assume an incendiary is a molotov as per the implementation for molotovs.
+        self.node.origin:clone():offset(0, 0, 64),
+        self.node.direction
+    )
+
+    local prediction = predictor:predict()
+
+    if prediction then
+        local predictionEndPosition = Vector3:new(prediction.end_pos.x, prediction.end_pos.y, prediction.end_pos.z)
+
+        if self.isDamaging then
+            -- We're most likely going to annoy our teammates if we throw this lineup right now.
+            -- See: https://en.wikipedia.org/wiki/Griefer
+            for _, teammate in pairs(AiUtility.teammates) do
+                local teammatePredictedOrigin = teammate:getOrigin() + teammate:m_vecVelocity() * 0.4
+
+                if teammatePredictedOrigin:getDistance(predictionEndPosition) < 300 then
+                    self.usedNodes[self.node.id]:restart()
+
+                    return false
+                end
+            end
+        end
+
+        -- Do not throw molotovs onto smokes, or resmoke a smoked spot.
+        if self.isInferno or self.isSmoke then
+            for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
+                if predictionEndPosition:getDistance(smoke:m_vecOrigin()) < 350 then
+                    self.usedNodes[self.node.id]:restart()
+
+                    return false
+                end
+            end
+        end
+    end
+
+    return true
 end
 
 --- @return NodeTypeGrenade[]

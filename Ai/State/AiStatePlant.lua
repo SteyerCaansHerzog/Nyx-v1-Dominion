@@ -110,27 +110,20 @@ function AiStatePlant:assess()
         return AiPriority.IGNORE
     end
 
+    -- Violating encapsulation.
     if self.ai.states.evacuate.isSaving then
         return AiPriority.IGNORE
     end
 
     local clientOrigin = LocalPlayer:getOrigin()
     local isTeammateNearby = AiUtility.closestTeammate and clientOrigin:getDistance(AiUtility.closestTeammate:getOrigin()) < 400
-    local isAtPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 75
-    local isNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 700
-    local isVeryNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 350
+    local isAtPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 100
+    local isNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 950
+    local isVeryNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 400
     local closestEnemyDistance = AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin())
 
     if AiUtility.isClientThreatenedMinor and closestEnemyDistance and closestEnemyDistance < 250 then
         return AiPriority.IGNORE
-    end
-
-    if isAtPlantSpot and not AiUtility.isEnemyVisible then
-        return AiPriority.PLANT_EXPEDITE
-    end
-
-    if self.isPlanting then
-        return AiPriority.PLANT_EXPEDITE
     end
 
     if AiUtility.isLastAlive and closestEnemyDistance and closestEnemyDistance < 600 then
@@ -145,8 +138,16 @@ function AiStatePlant:assess()
         return AiPriority.PLANT_COVERED
     end
 
-    if isVeryNearPlantSpot and isTeammateNearby and closestEnemyDistance and closestEnemyDistance > 350 then
+    if isVeryNearPlantSpot and isTeammateNearby and closestEnemyDistance and closestEnemyDistance > 250 then
         return AiPriority.PLANT_COVERED
+    end
+
+    if isAtPlantSpot and not AiUtility.isEnemyVisible then
+        return AiPriority.PLANT_EXPEDITE
+    end
+
+    if self.isPlanting then
+        return AiPriority.PLANT_EXPEDITE
     end
 
     if isNearPlantSpot and isTeammateNearby then
