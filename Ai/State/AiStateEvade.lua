@@ -104,7 +104,7 @@ function AiStateEvade:assess()
     local eyeOrigin = LocalPlayer.getEyeOrigin()
 
     -- Retreat due to injury.
-    if not AiUtility.plantedBomb and not LocalPlayer.hasBomb() and not self.hurtTimer:isElapsed(7.5) and AiUtility.timeData.roundtime_remaining > 40 then
+    if not AiUtility.plantedBomb and not LocalPlayer.isCarryingBomb() and not self.hurtTimer:isElapsed(7.5) and AiUtility.timeData.roundtime_remaining > 40 then
         self.isLookingAtPathfindingDirection = true
 
         return AiPriority.EVADE_PASSIVE

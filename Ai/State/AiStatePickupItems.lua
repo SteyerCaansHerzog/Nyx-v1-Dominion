@@ -338,6 +338,10 @@ function AiStatePickupItems:move()
         task = "Pick up item",
         isConnectingGoalByCollisionLine = true,
         onFailedToFindPath = function()
+            if not self.item then
+                return
+            end
+
             self.entityBlacklist[self.item.eid] = true
 
             self.item = nil

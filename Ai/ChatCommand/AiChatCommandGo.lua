@@ -46,8 +46,6 @@ function AiChatCommandGo:invoke(ai, sender, args)
         return Localization.cmdRejectionNoValidSpawnOrBombsite
     end
 
-    ai.states.engage.tellGoTimer:restart()
-
     Client.fireAfterRandom(1, 2, function()
         ai.states.patrol:reset()
 
@@ -59,7 +57,6 @@ function AiChatCommandGo:invoke(ai, sender, args)
             if sender:isLocalPlayer() then
                 ai.states.defend.bombsite = objective
                 ai.states.defend.isSpecificNodeSet = false
-                ai.states.plant.bombsite = objective
                 ai.states.lurkWithBomb.bombsite = objective
             else
                 ai.states.defend:invoke(objective)

@@ -11,7 +11,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --{{{ NodeTypeDefend
 --- @class NodeTypeDefend : NodeTypeBase
 --- @field pairedWith NodeTypeDefend
---- @field isAllowedToDuck boolean
+--- @field isAllowedToDuckAt boolean
 local NodeTypeDefend = {
 	type = "Defend",
 	isDirectional = true,
@@ -72,7 +72,7 @@ function NodeTypeDefend:onSetup(nodegraph)
 	local lookFromOrigin = self.lookFromOrigin:clone():offset(0, 0, -18)
 	local trace = Trace.getLineToPosition(lookFromOrigin, self.lookAtOrigin, AiUtility.traceOptionsAttacking, "NodeTypeDefend.onSetup<FindIsDuckableSpot>")
 
-	self.isAllowedToDuck = not trace.isIntersectingGeometry
+	self.isAllowedToDuckAt = not trace.isIntersectingGeometry
 
 	local nodes = nodegraph.get(self)
 

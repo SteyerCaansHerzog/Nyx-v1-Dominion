@@ -6,10 +6,8 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
 
 --{{{ Modules
-local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
-local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --}}}
 
@@ -19,10 +17,6 @@ local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --- @field requiredArgs number
 --- @field isAdminOnly boolean
 --- @field isValidIfSelfInvoked boolean
---- @field NO_VALID_ARGUMENTS string
---- @field SENDER_IS_DEAD string
---- @field CLIENT_IS_DEAD string
---- @field SENDER_IS_OUT_OF_RANGE string
 local AiChatCommandBase = {
     BOMB_IS_PLANTED = Localization.cmdRejectionBombIsPlanted,
     CLIENT_IS_DEAD = Localization.cmdRejectionClientIsDead,

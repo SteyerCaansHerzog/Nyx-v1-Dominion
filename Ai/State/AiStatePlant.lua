@@ -31,6 +31,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field pickRandomSiteTimer Timer
 local AiStatePlant = {
     name = "Plant",
+    isLockable = false,
     requiredNodes = {
         Node.spotPlant
     },
@@ -78,7 +79,7 @@ function AiStatePlant:__init()
     end)
 
     Callbacks.setupCommand(function()
-        if not self.bombsite or not AiUtility.bombCarrier or not AiUtility.bombCarrier:isLocalPlayer() then
+        if not self.bombsite or not LocalPlayer.isCarryingBomb() then
             return
         end
 
@@ -95,7 +96,7 @@ function AiStatePlant:__init()
 
             local distanceToSite = origin:getDistance(Nodegraph.getClosestBombsite(origin).origin)
 
-            Client.fireAfter(1, function()
+            Client.fireAfterRandom(0, 1, function()
                 if not AiUtility.isLastAlive and distanceToSite > 800 then
                     self.ai.voice.pack:speakRequestTeammatesToPush(self.bombsite)
                 end
@@ -106,7 +107,7 @@ end
 
 --- @return void
 function AiStatePlant:assess()
-    if AiUtility.gameRules:m_bFreezePeriod() == 1 or not LocalPlayer.hasBomb() then
+    if AiUtility.gameRules:m_bFreezePeriod() == 1 or not LocalPlayer.isCarryingBomb() then
         return AiPriority.IGNORE
     end
 
@@ -115,16 +116,16 @@ function AiStatePlant:assess()
         return AiPriority.IGNORE
     end
 
-    local clientOrigin = LocalPlayer:getOrigin()
-    local isTeammateNearby = AiUtility.closestTeammate and clientOrigin:getDistance(AiUtility.closestTeammate:getOrigin()) < 400
-    local isAtPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 100
-    local isNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 950
-    local isVeryNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 400
-    local closestEnemyDistance = AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin())
+    -- Set plant node every tick.
+    -- Before it would only set if this behaviour activated, but this assess logic relies on a plant node to be set.
+    self:setPlantNode(self.bombsite)
 
-    if AiUtility.isClientThreatenedMinor and closestEnemyDistance and closestEnemyDistance < 250 then
-        return AiPriority.IGNORE
-    end
+    local clientOrigin = LocalPlayer:getOrigin()
+    local isTeammateNearby = AiUtility.closestTeammate and clientOrigin:getDistance(AiUtility.closestTeammate:getOrigin()) < 450
+    local isAtPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 100
+    local isNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 600
+    local isVeryNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 300
+    local closestEnemyDistance = AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin())
 
     if AiUtility.isLastAlive and closestEnemyDistance and closestEnemyDistance < 600 then
         return AiPriority.IGNORE
@@ -139,7 +140,7 @@ function AiStatePlant:assess()
     end
 
     if isVeryNearPlantSpot and isTeammateNearby and closestEnemyDistance and closestEnemyDistance > 250 then
-        return AiPriority.PLANT_COVERED
+        return AiPriority.PLANT_EXPEDITE
     end
 
     if isAtPlantSpot and not AiUtility.isEnemyVisible then
@@ -162,7 +163,7 @@ function AiStatePlant:assess()
         return AiPriority.PLANT_ACTIVE
     end
 
-    if AiUtility.timeData.roundtime_remaining < 35 then
+    if AiUtility.timeData.roundtime_remaining < 40 then
         return AiPriority.PLANT_ACTIVE
     end
 
@@ -171,8 +172,6 @@ end
 
 --- @return void
 function AiStatePlant:activate()
-    self:setPlantNode(self.bombsite)
-
     Pathfinder.moveToNode(self.node, {
         task = string.format("Plant the bomb at bombsite %s", self.bombsite),
         isCounterStrafingOnGoal = true
@@ -230,11 +229,7 @@ end
 function AiStatePlant:setPlantNode(site)
     local clientOrigin = LocalPlayer:getOrigin()
 
-    if clientOrigin:getDistance(Nodegraph.getOne(Node.objectiveBombsiteA).origin) < 1024 then
-        site = "A"
-    elseif clientOrigin:getDistance(Nodegraph.getOne(Node.objectiveBombsiteB).origin) < 1024 then
-        site = "B"
-    else
+    if not site then
         site = AiUtility.randomBombsite
     end
 

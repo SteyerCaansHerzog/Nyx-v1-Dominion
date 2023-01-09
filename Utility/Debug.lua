@@ -6,9 +6,10 @@ local Debug = {
 	isDisplayingConnectionCollisions = false,
 	isDisplayingGapCollisions = false,
 	isLoggingLookState = false,
-	isLoggingStatePriorities = false,
+	isLoggingStatePriorities = true,
 	isFilteringConsole = true,
-	isLoggingPathfinderMoveOntoNextNode =  false
+	isLoggingPathfinderMoveOntoNextNode =  false,
+	highlightStates = {}
 }
 
 return Debug

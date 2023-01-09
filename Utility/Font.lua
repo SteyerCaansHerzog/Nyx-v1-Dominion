@@ -3,6 +3,7 @@ local ISurface = require "gamesense/Nyx/v1/Api/ISurface"
 --}}}
 
 return {
+    EXTRA_TINY = ISurface.createFont("Yu Gothic UI", 13, ISurface.WEIGHT_NORMAL, bit.bor(ISurface.FLAG_ANTIALIAS, ISurface.FLAG_DROPSHADOW)),
     TINY = ISurface.createFont("Yu Gothic UI", 18, ISurface.WEIGHT_NORMAL, bit.bor(ISurface.FLAG_ANTIALIAS, ISurface.FLAG_DROPSHADOW)),
     TINY_BOLD = ISurface.createFont("Yu Gothic UI", 18, ISurface.WEIGHT_BOLD, bit.bor(ISurface.FLAG_ANTIALIAS, ISurface.FLAG_DROPSHADOW)),
     SMALL = ISurface.createFont("Yu Gothic UI", 21, ISurface.WEIGHT_NORMAL, bit.bor(ISurface.FLAG_ANTIALIAS, ISurface.FLAG_DROPSHADOW)),

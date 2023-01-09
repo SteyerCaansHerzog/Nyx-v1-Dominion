@@ -1,6 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
+local GrenadePrediction = require "gamesense/Nyx/v1/Api/GrenadePrediction"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -16,8 +17,6 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
-local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
@@ -66,7 +65,7 @@ function AiStateFlashbangDynamic:assess()
     end
 
     -- AI is threatened. Don't try to throw a flashbang.
-    if AiUtility.isClientThreatenedMajor then
+    if AiUtility.isClientThreatenedMajor or AiUtility.isEnemyVisible then
         self.threatCooldownTimer:restart()
 
         return AiPriority.IGNORE
@@ -104,30 +103,37 @@ function AiStateFlashbangDynamic:assess()
     -- Angle to try our mentally handicapped flash prediction with.
     local predictionAngles = Angle:new(Math.getRandomFloat(-85, 25), Math.getRandomFloat(-180, 180))
 
-    -- I literally threw a flash into the sky and asked God for the approximate distance it flew before going off.
-    local predictionDistance = 700
+    local predictor = GrenadePrediction.create()
 
-    -- Oh Source, do tell us where this stray nade "prediction" went?
-    local impactTrace = Trace.getHullAtAngle(clientEyeOrigin, predictionAngles, bounds, {
-        skip = LocalPlayer.eid,
-        mask = Trace.mask.SHOT_HULL,
-        distance = predictionDistance
-    }, "AiStateFlashbangDynamic.assess<FindFlashbangDetonatePoint>")
+    predictor:setupArbitrary(
+        LocalPlayer.eid,
+        Weapons.FLASHBANG,
+        LocalPlayer.getEyeOrigin(),
+        predictionAngles
+    )
+
+    local prediction = predictor:predict()
+
+    if not prediction then
+        return AiPriority.IGNORE
+    end
+
+    local predictionEndPosition = Vector3:new(prediction.end_pos.x, prediction.end_pos.y, prediction.end_pos.z)
 
     -- Throw away traces that end too close to us because they're useless and will just blind the AI.
     -- Although, the AI would probably want to be blind if it pulled up its own hood and found this demented-ass logic.
-    if clientEyeOrigin:getDistance(impactTrace.endPosition) < 400 then
+    if clientEyeOrigin:getDistance(predictionEndPosition) < 300 then
         return AiPriority.IGNORE
     end
 
     -- Oh boy, which of our opponents is gonna get to see the worst thrown flashbang of their lives?
     -- If you've never seen a do repeat until true loop before it's because Lua couldn't be bothered to implement "continue".
     for _, enemy in pairs(AiUtility.enemies) do repeat
-        local enemyTestOrigin = enemy:getOrigin():offset(0, 0, 72)
+        local enemyTestOrigin = enemy:getOrigin():offset(0, 0, 64)
 
         -- Does our super accurate "detonate" spot trace have line of sight to the approximate enemy's eyeballs?
         -- Not using getHitboxPosition because getOrigin works on dormancy. That and CSGO's hitbox positions are more demented than this code.
-        local blindTrace = Trace.getHullToPosition(impactTrace.endPosition, enemyTestOrigin, bounds, {
+        local blindTrace = Trace.getHullToPosition(predictionEndPosition, enemyTestOrigin, bounds, {
             skip = enemy.eid,
             mask = Trace.mask.VISIBLE
         }, "AiStateFlashbangDynamic.assess<FindEnemyVisibleToFlashbang>")
@@ -145,28 +151,24 @@ function AiStateFlashbangDynamic:assess()
         end
 
         -- Check if we're going to throw it into a wall at close range.
-        local nearTrace = Trace.getLineAtAngle(clientEyeOrigin, predictionAngles:clone():offset(-12), {
+        local nearTrace = Trace.getHullAtAngle(clientEyeOrigin, predictionAngles:clone():offset(-12), bounds, {
             skip = LocalPlayer.eid,
             mask = Trace.mask.VISIBLE,
             distance = 200
         }, "AiStateFlashbangDynamic.assess<FindWallTooClose>")
 
         -- We're gonna try these angles. Pray on God.
-        self.throwAngles = clientEyeOrigin:getAngle(impactTrace.endPosition)
+        self.throwAngles = predictionAngles
 
         -- Try not to throw the flash at the wall in front of us.
         if nearTrace.isIntersectingGeometry then
             self.throwAngles:offset(0, 6)
         end
 
+        -- Target to blind.
         self.targetPlayer = enemy
 
-        local jumpEyeOrigin = clientEyeOrigin:clone():offset(0, 0, 60)
-        local trace = Trace.getLineToPosition(jumpEyeOrigin, enemyTestOrigin, AiUtility.traceOptionsAttacking, "AiStateFlashbangDynamic.assess<FindJumpVisibleToEnemy>")
-        local isVisibleWhenJumping = not trace.isIntersectingGeometry
-
         -- Determine if we want to jump-throw the flashbang.
-        self.canJumpThrow = not isVisibleWhenJumping and predictionAngles.p < -40 and predictionAngles.p > -70
         self.throwFromOrigin = LocalPlayer:getOrigin()
 
         -- Forgot why this needed to be on the next tick. Probably because of other bad code I have written.
@@ -196,7 +198,6 @@ end
 
 --- @return void
 function AiStateFlashbangDynamic:reset()
-    self.canJumpThrow = false
     self.isActivated = false
     self.isThrowing = false
     self.targetPlayer = nil

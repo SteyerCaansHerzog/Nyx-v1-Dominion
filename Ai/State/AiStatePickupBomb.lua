@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
@@ -10,10 +11,7 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
-local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --}}}
 
 --{{{ AiStatePickupBomb
@@ -21,6 +19,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field ignorePickup boolean
 --- @field pickupBombFails number
 --- @field pickupBombTimer Timer
+--- @field pickupBombTime number
 local AiStatePickupBomb = {
     name = "Pickup Bomb",
     requiredGamemodes = {
@@ -39,6 +38,7 @@ end
 function AiStatePickupBomb:__init()
     self.pickupBombFails = 0
     self.pickupBombTimer = Timer:new()
+    self.pickupBombTime = Math.getRandomFloat(0.25, 3)
 
     Callbacks.roundStart(function(e)
         self.ignorePickup = false
@@ -84,7 +84,7 @@ function AiStatePickupBomb:assess()
     if not owner and bomb:m_vecVelocity():getMagnitude() <= 10 then
         self.pickupBombTimer:ifPausedThenStart()
 
-        if self.pickupBombTimer:isElapsed(2) then
+        if self.pickupBombTimer:isElapsed(self.pickupBombTime) then
             return AiPriority.PICKUP_BOMB
         end
     end
@@ -120,8 +120,6 @@ end
 --- @return void
 function AiStatePickupBomb:think()
     self.activity = "Going to pick up bomb"
-
-    Pathfinder.ifIdleThenRetryLastRequest()
 end
 
 return Nyx.class("AiStatePickupBomb", AiStatePickupBomb, AiStateBase)

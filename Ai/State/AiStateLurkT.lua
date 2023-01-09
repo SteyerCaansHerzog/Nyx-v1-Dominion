@@ -63,7 +63,7 @@ function AiStateLurkT:assess()
 		return AiPriority.IGNORE
 	end
 
-	if LocalPlayer.hasBomb() then
+	if LocalPlayer.isCarryingBomb() then
 		return AiPriority.IGNORE
 	end
 

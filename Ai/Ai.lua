@@ -26,6 +26,7 @@ local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 
 -- Other.
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
+local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiVoice = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoice"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
@@ -53,6 +54,7 @@ local View = require "gamesense/Nyx/v1/Dominion/View/View"
 --- @field client DominionClient
 --- @field commands AiChatCommand
 --- @field currentState AiStateBase
+--- @field debugPriorities table<string, string>
 --- @field ditherHistories AiStateDitherHistory[]
 --- @field ditherHistoryMax number
 --- @field ditherThreshold number
@@ -91,6 +93,7 @@ function Ai:initFields()
 	self.ditherHistories = {}
 	self.ditherHistoryMax = 16
 	self.ditherThreshold = 8
+	self.debugPriorities = {}
 
 	if Config.isLiveClient and not Config.isAdministrator(Client.xuid) then
 		self.client = DominionClient:new()
@@ -492,9 +495,7 @@ function Ai:renderUi()
 		))
 
 		uiPos:offset(0, offset)
-	end
 
-	if self.currentState then
 		local activity = self.currentState.activity and self.currentState.activity or "Unknown"
 
 		uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(
@@ -503,6 +504,14 @@ function Ai:renderUi()
 		))
 
 		uiPos:offset(0, offset)
+	else
+		uiPos:drawSurfaceText(Font.TINY, ColorList.FONT_MUTED_EXTRA, "l", "State: NONE")
+		uiPos:offset(0, offset)
+
+		uiPos:drawSurfaceText(Font.TINY, ColorList.FONT_MUTED_EXTRA, "l", "Priority: NONE")
+		uiPos:offset(0, offset)
+
+		uiPos:drawSurfaceText(Font.TINY, ColorList.FONT_MUTED_EXTRA, "l", "Activity: NONE")
 	end
 
 	if Pathfinder.path then
@@ -510,14 +519,6 @@ function Ai:renderUi()
 			uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(
 				"Task: %s",
 				Pathfinder.path.task
-			))
-
-			uiPos:offset(0, offset)
-
-			uiPos:drawSurfaceText(Font.TINY, Pathfinder.path.node.colorPrimary, "l", string.format(
-				"Next Node: [%i] %s",
-				Pathfinder.path.node.id,
-				Pathfinder.path.node.name
 			))
 
 			uiPos:offset(0, offset)
@@ -529,6 +530,10 @@ function Ai:renderUi()
 
 			uiPos:offset(0, offset)
 		end
+	else
+		uiPos:drawSurfaceText(Font.TINY, ColorList.FONT_MUTED_EXTRA, "l", "Task: NONE")
+
+		uiPos:offset(0, offset)
 	end
 
 	uiPos:clone():offset(-5, 5):drawSurfaceRectangle(spacerDimensions, spacerColor)
@@ -536,6 +541,27 @@ function Ai:renderUi()
 
 	if MenuGroup.enableAi:get() and AiUtility.clientThreatenedFromOrigin then
 		Client.draw(Vector3.drawCircleOutline, AiUtility.clientThreatenedFromOrigin, 30, 3, Color:hsla(0, 1, 1, 75))
+	end
+
+	-- Debug priorities
+	if not Table.isEmpty(self.debugPriorities) then
+		for stateName, priority in Table.sortedPairs(self.debugPriorities, function(a, b)
+			return a > b
+		end) do
+			local priorityColor = fontColor
+
+			if Debug.highlightStates[stateName] then
+				priorityColor = ColorList.OK
+			end
+
+			uiPos:drawSurfaceText(Font.EXTRA_TINY, priorityColor, "l", string.format(
+				"%s (%s)",
+				stateName,
+				AiStateBase.priorityMap[priority]
+			))
+
+			uiPos:offset(0, 14)
+		end
 	end
 end
 
@@ -617,7 +643,7 @@ function Ai:selectState(cmd)
 	--- @type AiStateBase
 	local currentState
 	local highestPriority = -1
-	local debugPriority = {}
+	local debugPriorities = {}
 
 	--- @param state AiStateBase
 	for _, state in pairs(self.states) do repeat
@@ -648,7 +674,7 @@ function Ai:selectState(cmd)
 		end
 
 		if Debug.isLoggingStatePriorities and priority > -1 then
-			debugPriority[state.name] = priority
+			debugPriorities[state.name] = priority
 		end
 
 		if priority > highestPriority then
@@ -658,11 +684,7 @@ function Ai:selectState(cmd)
 	until true end
 
 	if Debug.isLoggingStatePriorities then
-		for name, priority in Table.sortedPairs(debugPriority, function(a, b)
-			return a < b
-		end) do
-			Client.drawIndicatorTick(Color, "%s = %i", name, priority)
-		end
+		self.debugPriorities = debugPriorities
 	end
 
 	if currentState and ((self.lastPriority and self.lastPriority > highestPriority) or self.lockStateTimer:isElapsed(0.15))then

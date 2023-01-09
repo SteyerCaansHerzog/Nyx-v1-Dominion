@@ -182,7 +182,7 @@ end
 
 --- @return number
 function AiStateDefend:assessDemolition()
-    if LocalPlayer.hasBomb() then
+    if LocalPlayer.isCarryingBomb() then
         return AiPriority.IGNORE
     end
 
@@ -471,7 +471,7 @@ function AiStateDefend:think(cmd)
         self.defendTimer:ifPausedThenStart()
 
         -- Duck when holding this node.
-        if self.isAllowedToDuckAtNode and distance < 32 and self.node.isAllowedToDuck then
+        if self.isAllowedToDuckAtNode and distance < 32 and self.node.isAllowedToDuckAt then
             Pathfinder.duck()
         end
 

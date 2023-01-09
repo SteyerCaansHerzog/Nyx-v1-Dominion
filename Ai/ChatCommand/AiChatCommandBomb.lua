@@ -33,7 +33,7 @@ function AiChatCommandBomb:invoke(ai, sender, args)
         return self.SENDER_IS_OUT_OF_RANGE
     end
 
-    if not LocalPlayer.hasBomb() then
+    if not LocalPlayer.isCarryingBomb() then
         return Localization.cmdRejectionNoBomb
     end
 

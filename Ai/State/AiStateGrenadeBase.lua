@@ -2,7 +2,6 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
-local NadePredictor = require "gamesense/nade_prediction"
 local GrenadePrediction = require "gamesense/Nyx/v1/Api/GrenadePrediction"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Player = require "gamesense/Nyx/v1/Api/Player"
@@ -93,6 +92,11 @@ end
 
 --- @return void
 function AiStateGrenadeBase:assess()
+    -- They suck at throwing nade lineups during retakes. We're just going to ban it as a quick fix.
+    if AiUtility.plantedBomb then
+        return AiPriority.IGNORE
+    end
+
     -- Stick to the selected lineup and not select another one prematurely.
     if self.selectedLineup and self.selectedLineup ~= self.__classid then
         return AiPriority.IGNORE

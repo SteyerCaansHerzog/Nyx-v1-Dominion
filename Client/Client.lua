@@ -243,11 +243,11 @@ end
 
 --- @return void
 function DominionClient:checkIsValveDs()
-    local gameRules = Entity.getGameRules()
-
     if not self.allocation then
         return
     end
+
+    local gameRules = Entity.getGameRules()
 
     if gameRules:m_bIsValveDS() == 0 then
         Client.execute("disconnect")
@@ -357,6 +357,7 @@ function DominionClient:checkValidLobbySettings()
     if settings.options.server ~= "official" then
         error = "Only official Valve servers are supported"
 
+        -- Forces the bots to not join the server as a cancel will also disconnect them.
         self.server:transmit(CancelMatch:new({
             reason = "attempted to play on local server"
         }))

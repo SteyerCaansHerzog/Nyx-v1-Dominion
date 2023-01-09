@@ -17,7 +17,7 @@ local AiChatCommandSkipMatch = {
 --- @param ai Ai
 --- @param sender PlayerChatEvent
 --- @param args string[]
---- @return void
+--- @return string|nil
 function AiChatCommandSkipMatch:invoke(ai, sender, args)
     if ai.client and ai.client.allocation then
         ai.client:skipMatch()
