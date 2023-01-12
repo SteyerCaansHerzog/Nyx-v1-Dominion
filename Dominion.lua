@@ -1,4 +1,4 @@
---- Copyright ©2021-2022, Steyer Caans Herzog <kessie@nyx.to>
+--- Copyright ©2021-2023, Steyer Caans Herzog <kessie@nyx.to>
 --- All rights reserved.
 ---
 --- Dependencies:
