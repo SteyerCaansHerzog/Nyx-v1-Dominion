@@ -222,6 +222,7 @@ function AiRoutineHandleOccluderTraversal:jiggle(node)
 			right = clientOrigin:getAngle(node.origin):offset(0, 90)
 		}
 
+		Pathfinder.walk()
 		Pathfinder.moveAtAngle(directions[self.jiggleDirection])
 	end
 end

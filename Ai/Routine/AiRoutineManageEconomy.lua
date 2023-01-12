@@ -76,23 +76,6 @@ function AiRoutineManageEconomy:__init()
 	end)
 end
 
---- Use this at round start. Don't use this elsewhere, thanks in advance.
----
---- @return void
-function AiRoutineManageEconomy:getPredictableChance(chance)
-	local rng = 0
-
-	for _, player in Player.findAll() do
-		rng = rng + player:m_iKills()
-		rng = rng + player:m_iDeaths()
-		rng = rng + player:m_iAssists()
-	end
-
-	rng = rng + AiUtility.gameRules:m_totalRoundsPlayed()
-
-	return rng % chance == 0
-end
-
 --- @return void
 function AiRoutineManageEconomy:determineEconomy()
 	--- @type PlayerEconomy[]
@@ -203,7 +186,7 @@ function AiRoutineManageEconomy:handleEconomy()
 		Logger.console(Logger.ALERT, Localization.manageEconomyForceBuy)
 	else
 		-- Randomly decide to eco-rush instead of a standard save.
-		if self:getPredictableChance(2) then
+		if AiUtility.getPredictableChance(2) then
 			self.ai.routines.buyGear:ecoRush()
 
 			Logger.console(Logger.ALERT, Localization.manageEconomyEcoRush)

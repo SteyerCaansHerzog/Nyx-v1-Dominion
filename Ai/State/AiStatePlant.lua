@@ -54,6 +54,24 @@ function AiStatePlant:__init()
     self.tellSiteTimer = Timer:new():startThenElapse()
     self.pickRandomSiteTimer = Timer:new()
 
+    Callbacks.bombPickup(function(e)
+        if not e.player:isLocalPlayer() then
+            return
+        end
+
+        if AiUtility.timeData.roundtime_elapsed < 10 then
+            return
+        end
+
+        local bombsite = Nodegraph.getClosestBombsite(LocalPlayer:getOrigin())
+
+        if LocalPlayer:getOrigin():getDistance(bombsite.origin) > 1500 then
+            return
+        end
+
+        self.bombsite = bombsite.bombsite
+    end)
+
     Callbacks.roundPrestart(function()
         self.bombsite = AiUtility.randomBombsite
         self.isPlanting = false

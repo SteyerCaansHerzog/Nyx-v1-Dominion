@@ -46,7 +46,7 @@ function AiStateTeabag:__init()
     Callbacks.roundStart(function()
     	self:reset()
 
-        self.isAllowedToTeabag = Math.getChance(2)
+        self.isAllowedToTeabag = Math.getChance(6)
     end)
 
     Callbacks.init(function()

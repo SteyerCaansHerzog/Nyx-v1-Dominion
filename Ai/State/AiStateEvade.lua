@@ -134,7 +134,7 @@ function AiStateEvade:think()
     if not self.isLookingAtPathfindingDirection then
         if AiUtility.clientThreatenedFromOrigin then
             View.lookAtLocation(AiUtility.clientThreatenedFromOrigin, 2.5, View.noise.minor, "Evade look at threat origin")
-        elseif  View.lastLookAtLocationOrigin then
+        elseif View.lastLookAtLocationOrigin then
             View.lookAtLocation( View.lastLookAtLocationOrigin, 2.5, View.noise.minor, "Evade look at last spot")
         end
     end

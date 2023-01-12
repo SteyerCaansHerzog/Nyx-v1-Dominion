@@ -424,6 +424,8 @@ function AiStateGrenadeBase:think(cmd)
 
     self.ai.states.evade:block()
 
+    View.blockBuildup()
+
     if distance < 150 then
         View.lookAlongAngle(self.node.direction, 15, View.noise.none, "Grenade look at line-up")
     end

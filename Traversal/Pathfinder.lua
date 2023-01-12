@@ -1278,7 +1278,7 @@ function Pathfinder.traverseActivePath(cmd)
 	elseif currentNode:is(Node.traverseBreakObstacle) then
 		Pathfinder.detectObstacles(currentNode)
 
-		if not Pathfinder.isObstructedByObstacle and distance2d < 35 then
+		if not Pathfinder.isObstructedByObstacle and distance2d < 40 then
 			Pathfinder.incrementPath("obstacle broken")
 		end
 	elseif currentNode:is(Node.traverseDoor) then

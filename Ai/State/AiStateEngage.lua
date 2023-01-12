@@ -1382,7 +1382,7 @@ function AiStateEngage:handleMovement()
         return
     end
 
-    if self:movementDefensivePosition() then
+    if self:movementDefending() then
         return
     end
 
@@ -1713,7 +1713,7 @@ function AiStateEngage:movementBackUpFromThreats()
 end
 
 --- @return boolean
-function AiStateEngage:movementDefensivePosition()
+function AiStateEngage:movementDefending()
     local clientOrigin = LocalPlayer:getOrigin()
     local isAbleToDefend = true
     --- @type NodeTypeDefend
@@ -1754,7 +1754,7 @@ function AiStateEngage:movementDefensivePosition()
             elseif AiUtility.bombCarrier then
                 local bombOrigin = AiUtility.bombCarrier:getOrigin()
 
-                if bombOrigin:getDistance(Nodegraph.getClosestBombsite(bombOrigin).origin) < 800 then
+                if bombOrigin:getDistance(Nodegraph.getClosestBombsite(bombOrigin).origin) < 650 then
                     isAbleToDefend = false
                 end
             end
@@ -1762,13 +1762,26 @@ function AiStateEngage:movementDefensivePosition()
     end
 
     if isAbleToDefend and not self.isDefending then
-        local node
+        local nodes = {}
 
         if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
-            node = Nodegraph.getRandom(defendNode, clientOrigin, 1750)
+            nodes = Nodegraph.getWithin(clientOrigin, 1750, defendNode)
         else
-            node = Nodegraph.getRandomForBombsite(defendNode, self.ai.states.defend.bombsite)
+            nodes = Nodegraph.getForBombsite(defendNode, self.ai.states.defend.bombsite)
         end
+
+        local targetEyeOrigin = self.bestTarget:getEyeOrigin()
+        local selectedNodes = {}
+
+        for _, node in pairs(nodes) do
+            local fov = node.direction:getFov(node.lookFromOrigin, targetEyeOrigin)
+
+            if fov < 85 then
+                table.insert(selectedNodes, node)
+            end
+        end
+
+        local node = Table.getRandom(selectedNodes)
 
         if node then
             self.isDefending = true
@@ -1840,7 +1853,7 @@ function AiStateEngage:movementToTarget()
             if distance < 1000 then
                 i = i + 1
 
-                if i > 32 then
+                if i > 50 then
                     break
                 end
 
@@ -1930,8 +1943,8 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:handleAttacking(cmd)
-    self:attackingEquipWeapon()
     self:attackingBlockRoutines()
+    self:attackingEquipWeapon()
     self:attackingDefending()
     self:attackingLookAtBackupOrigin()
     self:attackingSprayWeapon(cmd)
@@ -1995,74 +2008,75 @@ end
 
 --- @return void
 function AiStateEngage:attackingDefending()
-    -- Look at defend angles when holding enemies.
-    if self.isDefending then
-        local clientOrigin = LocalPlayer:getOrigin()
-        --- @type Vector3
-        local targetOrigin
-        local distance = clientOrigin:getDistance(self.defendingAtNode.origin)
+    if not self.isDefending then
+        return
+    end
 
-        -- If we can pre-aim, we should do that.
-        if self.preAimAboutCornersAimOrigin then
+    local clientOrigin = LocalPlayer:getOrigin()
+    --- @type Vector3
+    local targetOrigin
+    local distance = clientOrigin:getDistance(self.defendingAtNode.origin)
+
+    -- If we can pre-aim, we should do that.
+    if self.preAimAboutCornersAimOrigin then
+        self.isUpdatingDefendingLookAt = true
+
+        targetOrigin = self.preAimAboutCornersAimOrigin
+    elseif self.bestTarget then
+        -- We need to update the look at because we're too close to it.
+        if self.defendingLookAt and clientOrigin:getDistance(self.defendingLookAt) < 450 then
             self.isUpdatingDefendingLookAt = true
-
-            targetOrigin = self.preAimAboutCornersAimOrigin
-        elseif self.bestTarget then
-            -- We need to update the look at because we're too close to it.
-            if self.defendingLookAt and clientOrigin:getDistance(self.defendingLookAt) < 450 then
-                self.isUpdatingDefendingLookAt = true
-            end
-
-            -- We can look along the defend node's angles.
-            if distance < 400 then
-                self.defendingLookAt = self.defendingAtNode.lookAtOrigin
-            else
-                targetOrigin = self.bestTarget:getOrigin():offset(0, 0, 64):offsetByVector(self.defendLookAtOffset)
-
-                local eyeOrigin = LocalPlayer.getEyeOrigin()
-
-                targetOrigin.z = Math.getClamped(targetOrigin.z, eyeOrigin.z - 48, eyeOrigin.z + 48)
-            end
         end
 
-        -- We're allowed to update the defend angle.
-        if self.isUpdatingDefendingLookAt and targetOrigin and not targetOrigin:isZero() then
-            self.isUpdatingDefendingLookAt = false
-            self.defendingLookAt = targetOrigin
+        -- We can look along the defend node's angles.
+        if distance < 250 then
+            self.defendingLookAt = self.defendingAtNode.lookAtOrigin
+        else
+            targetOrigin = self.bestTarget:getOrigin():offset(0, 0, 64):offsetByVector(self.defendLookAtOffset)
+
+            local eyeOrigin = LocalPlayer.getEyeOrigin()
+
+            targetOrigin.z = Math.getClamped(targetOrigin.z, eyeOrigin.z - 48, eyeOrigin.z + 48)
+        end
+    end
+
+    -- We're allowed to update the defend angle.
+    if self.isUpdatingDefendingLookAt and targetOrigin and not targetOrigin:isZero() then
+        self.isUpdatingDefendingLookAt = false
+        self.defendingLookAt = targetOrigin
+    end
+
+    -- Look at the defend angle.
+    if self.defendingLookAt then
+        View.lookAtLocation(self.defendingLookAt, 6, View.noise.moving, "Engage defend against enemy")
+
+        self:addVisualizer("defending", function()
+            if not self.defendingLookAt then
+                return
+            end
+
+            self.defendingLookAt:drawCircleOutline(24, 2, Color:hsla(250, 1, 0.75, 200))
+        end)
+    end
+
+    -- Random actions. Don't perform them when actually in a fight or they override shoot actions.
+    if not self.isVisibleToBestTarget and not self.isAboutToBeVisibleToBestTarget and distance < 100 and not Pathfinder.isOnValidPath() then
+        if self.defendActionTimer:isElapsedThenRestart(self.defendActionTime) then
+            self.defendActionTime = Math.getRandomFloat(1, 6)
+            self.isJigglingOnDefend = Math.getChance(2)
+            self.isCrouchingOnDefend = Math.getChance(3)
         end
 
-        -- Look at the defend angle.
-        if self.defendingLookAt then
-            View.lookAtLocation(self.defendingLookAt, 6, View.noise.moving, "Engage defend against enemy")
-
-            self:addVisualizer("defending", function()
-                if not self.defendingLookAt then
-                    return
-                end
-
-                self.defendingLookAt:drawCircleOutline(24, 2, Color:hsla(250, 1, 0.75, 200))
-            end)
+        if LocalPlayer:isHoldingSniper() and LocalPlayer:m_bIsScoped() == 0 then
+            LocalPlayer.scope()
         end
 
-        -- Random actions. Don't perform them when actually in a fight or they override shoot actions.
-        if not self.isVisibleToBestTarget and not self.isAboutToBeVisibleToBestTarget and distance < 100 and not Pathfinder.isOnValidPath() then
-            if self.defendActionTimer:isElapsedThenRestart(self.defendActionTime) then
-                self.defendActionTime = Math.getRandomFloat(1, 6)
-                self.isJigglingOnDefend = Math.getChance(2)
-                self.isCrouchingOnDefend = Math.getChance(3)
-            end
+        if self.isJigglingOnDefend then
+            self:actionJiggle(0.25, self.defendingAtNode.direction)
+        end
 
-            if LocalPlayer:isHoldingSniper() and LocalPlayer:m_bIsScoped() == 0 then
-                LocalPlayer.scope()
-            end
-
-            if self.isJigglingOnDefend then
-                self:actionJiggle(0.4, self.defendingAtNode.direction)
-            end
-
-            if self.isCrouchingOnDefend and self.defendingAtNode.isAllowedToDuckAt then
-                Pathfinder.duck()
-            end
+        if self.isCrouchingOnDefend and self.defendingAtNode.isAllowedToDuckAt then
+            Pathfinder.duck()
         end
     end
 end
@@ -2082,6 +2096,8 @@ function AiStateEngage:attackingBlockRoutines()
     if self.watchTimer:isStarted() and not self.watchTimer:isElapsed(self.watchTime) then
         self.ai.routines.manageWeaponReload:block()
     end
+
+    View.blockBuildup()
 end
 
 --- @return void
@@ -2901,6 +2917,8 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
     -- Create a "flick" effect when aiming.
     if isNoscoping or self.scopedTimer:isElapsed(fireDelay * 0.4) then
         View.lookAtLocation(aimAtOrigin, self.aimSpeed * 3, self.aimNoise, "Engage look-at target")
+    else
+        View.lookAtLocation(aimAtOrigin, self.aimSpeed, self.aimNoise, "Engage look-at target")
     end
 
     if not isNoscoping and fov < self.shootWithinFov * 2.5 then
@@ -3229,7 +3247,7 @@ function AiStateEngage:preAimThroughCorners()
     })
 
     -- Determine if we're about to peek the target.
-    local testOrigin = LocalPlayer.getEyeOrigin() + (clientVelocity * 0.4)
+    local testOrigin = LocalPlayer.getEyeOrigin() + (clientVelocity * 0.5)
     local isPeeking = false
 
     for _, hitbox in pairs(hitboxes) do
@@ -3275,12 +3293,12 @@ function AiStateEngage:preAimThroughCorners()
             Math.getRandomFloat(-offsetRange, offsetRange),
             Math.getRandomFloat(-offsetRange, offsetRange),
             Math.getRandomFloat(-8, 2)
-        )
+        ) - (clientVelocity:clone():set(nil, nil, 0) * 0.15)
     end
 
     self.preAimTarget = self.bestTarget
 
-   View.lookAtLocation(self.preAimThroughCornersOrigin, 6, View.noise.moving, "Engage look through corner")
+   View.lookAtLocation(self.preAimThroughCornersOrigin, 12, View.noise.moving, "Engage look through corner")
 
     self:addVisualizer("pre through", function()
         self.preAimThroughCornersOrigin:drawCircleOutline(16, 2, Color:hsla(100, 1, 0.5, 150))

@@ -1,6 +1,8 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
+local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Server = require "gamesense/Nyx/v1/Api/Server"
 --}}}
 
 --{{{ Modules
@@ -77,6 +79,12 @@ function AiChatbotNormal:__init()
 
         for _, sentence in pairs(self.sentences) do
             sentence:replyOnTick()
+        end
+    end)
+
+    Callbacks.frameGlobal(function()
+        if not Server.isIngame() then
+            Messenger.reset()
         end
     end)
 end

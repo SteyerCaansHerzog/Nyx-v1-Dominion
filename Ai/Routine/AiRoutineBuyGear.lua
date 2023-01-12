@@ -672,7 +672,7 @@ function AiRoutineBuyGear:buyCounterTerroristPistolRound()
 		},
 		{
 			balance = 0,
-			chance = 4,
+			chance = 10,
 			queue = function()
 				self:equipWeapon(Buy.ELITE)
 				self:equipRandomGrenades({Buy.FLASHBANG, Buy.SMOKEGRENADE})
@@ -680,7 +680,7 @@ function AiRoutineBuyGear:buyCounterTerroristPistolRound()
 		},
 		{
 			balance = 0,
-			chance = 3,
+			chance = 8,
 			queue = function()
 				self:equipWeapon(Buy.ELITE)
 				self:equipDefuseKit()

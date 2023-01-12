@@ -6,6 +6,7 @@ local Math = require "gamesense/Nyx/v1/Api/Math"
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
+local Server = require "gamesense/Nyx/v1/Api/Server"
 local String = require "gamesense/Nyx/v1/Api/String"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -149,6 +150,12 @@ function AiChatbotGpt3:__init()
 
 	Callbacks.playerChat(function(e)
 		self:processChatMessage(e)
+	end)
+
+	Callbacks.frameGlobal(function()
+		if not Server.isIngame() then
+			Messenger.reset()
+		end
 	end)
 end
 

@@ -35,7 +35,8 @@ local Config = {
         "76561199064257338", -- Incident
         "76561199138080686", -- IKEA Desk
         "76561199124428396", -- Combine
-        "76561199081972961" -- Ice
+        "76561199081972961", -- Ice
+        "76561199087305425" -- John Redgrove
     }, -- List of SteamID64 strings for accounts allowed to use admin chat commands.
     clientConfigs = {
         normal = "Nyx-v1-Dominion", -- GS config to load when in normal mode.

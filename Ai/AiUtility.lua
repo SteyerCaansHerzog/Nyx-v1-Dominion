@@ -174,18 +174,19 @@ function AiUtility:initFields()
         CFuncBrush = true,
         CBaseEntity = true,
         CPropDoorRotating = true,
+        CFuncBrush = true
     }
 
     AiUtility.traceOptionsAttacking = {
         skip = function(eid, contents)
-            if bit.band(Trace.contents.WINDOW, contents) == Trace.contents.WINDOW then
-                return true
-            end
-
             local entity = Entity:create(eid)
 
             if solidAttackingEntities[entity.classname] then
                 return false
+            end
+
+            if bit.band(Trace.contents.WINDOW, contents) == Trace.contents.WINDOW then
+                return true
             end
 
             if entity.classname ~= "CWorld" then
@@ -798,6 +799,24 @@ function AiUtility.getBombsiteFromIdx(idx)
     local distanceToA, distanceToB = center:getDistance(centerA), center:getDistance(centerB)
 
     return distanceToB > distanceToA and "A" or "B"
+end
+
+--- Use this at round start. Don't use this elsewhere, thanks in advance.
+---
+--- @param chance number
+--- @return boolean
+function AiUtility.getPredictableChance(chance)
+    local rng = 0
+
+    for _, player in Player.findAll() do
+        rng = rng + player:m_iKills()
+        rng = rng + player:m_iDeaths()
+        rng = rng + player:m_iAssists()
+    end
+
+    rng = rng + AiUtility.gameRules:m_totalRoundsPlayed()
+
+    return rng % chance == 0
 end
 
 return Nyx.class("AiUtility", AiUtility)

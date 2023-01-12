@@ -196,7 +196,7 @@ function AiVoicePackGenericBase:speakRequestTeammatesToRotate(bombsite)
 		chance = 2,
 		interrupt = true,
 		lock = true,
-		ignoreLock = true,
+		ignoreLock = false,
 		minDelay = 0.33,
 		maxDelay = 1,
 		condition = function()
@@ -222,7 +222,7 @@ function AiVoicePackGenericBase:speakRequestTeammatesToPush(bombsite)
 		chance = 1,
 		interrupt = true,
 		lock = true,
-		ignoreLock = true,
+		ignoreLock = false,
 		minDelay = 0.33,
 		maxDelay = 1,
 		condition = function()
@@ -472,7 +472,7 @@ function AiVoicePackGenericBase:speakClientDefusingBomb()
 		chance = 1,
 		interrupt = true,
 		lock = true,
-		ignoreLock = true,
+		ignoreLock = false,
 		minDelay = 0.33,
 		maxDelay = 1,
 		condition = function()
@@ -487,7 +487,7 @@ function AiVoicePackGenericBase:speakEnemyDefusingBomb()
 		chance = 1,
 		interrupt = true,
 		lock = true,
-		ignoreLock = true,
+		ignoreLock = false,
 		minDelay = 0.33,
 		maxDelay = 0.5,
 		condition = function()
@@ -517,7 +517,7 @@ function AiVoicePackGenericBase:speakClientPlantingBomb()
 		chance = 1,
 		interrupt = true,
 		lock = true,
-		ignoreLock = true,
+		ignoreLock = false,
 		minDelay = 0.33,
 		maxDelay = 1,
 		condition = function()
@@ -609,7 +609,7 @@ function AiVoicePackGenericBase:speakLastAlive()
 		chance = 1,
 		interrupt = false,
 		lock = false,
-		ignoreLock = true,
+		ignoreLock = false,
 		minDelay = 1,
 		maxDelay = 3,
 		condition = function()

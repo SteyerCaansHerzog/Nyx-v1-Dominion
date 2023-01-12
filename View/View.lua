@@ -40,7 +40,6 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/View/ViewNoiseType"
 --- @field isCrosshairUsingVelocity boolean
 --- @field isEnabled boolean
 --- @field isFiringWeapon boolean
---- @field isInAttack boolean
 --- @field isInUse boolean
 --- @field isLookSpeedDelayed boolean
 --- @field isRcsEnabled boolean
@@ -285,19 +284,21 @@ end
 function View.resetViewParameters()
 	View.overrideViewAngles = nil
 	View.isFiringWeapon = false
+	View.isInUse = false
 
 	-- Reset noise. Defaults to none at all.
 	View.setNoiseType(ViewNoiseType.none)
 end
 
 --- @return void
+function View.blockBuildup()
+	View.buildup = 0
+
+	View.buildupCooldownTimer:elapse()
+end
+
+--- @return void
 function View.handleBuildup()
-	if AiUtility.isClientThreatenedMinor then
-		View.buildup = 0
-
-		return
-	end
-
 	local cameraAngles = LocalPlayer.getCameraAngles()
 
 	if not View.buildupLastAngles then
@@ -314,7 +315,7 @@ function View.handleBuildup()
 	end
 
 	View.buildup = 0
-	View.buildupThreshold = Math.getRandomFloat(90,  125)
+	View.buildupThreshold = Math.getRandomFloat(125,  165)
 	View.buildupCooldownTime = Math.getRandomFloat(0.25, 0.8)
 
 	View.buildupCooldownTimer:restart()
@@ -677,7 +678,7 @@ function View.setIdealRemoveObstructions(idealViewAngles)
 
 	if clientOrigin:getDistance2(node.origin) < 35 and maxDiff < 35 and View.useCooldown:isElapsedThenRestart(1) then
 		if Pathfinder.isObstructedByObstacle then
-			View.isInAttack = true
+			View.isFiringWeapon = true
 		elseif Pathfinder.isObstructedByDoor then
 			View.isInUse = true
 		end
@@ -705,6 +706,10 @@ function View.think(cmd)
 		cmd.in_attack = true
 	end
 
+	if View.isInUse then
+		cmd.in_use = true
+	end
+
 	local aimPunchAngles = LocalPlayer:m_aimPunchAngle()
 
 	if View.isRcsEnabled then
@@ -720,18 +725,6 @@ function View.think(cmd)
 
 	cmd.pitch = correctedViewAngles.p
 	cmd.yaw = correctedViewAngles.y
-
-	if View.isInAttack then
-		View.isInAttack = false
-
-		cmd.in_attack = true
-	end
-
-	if View.isInUse then
-		View.isInUse = false
-
-		cmd.in_use = true
-	end
 end
 
 --- @param origin Vector3

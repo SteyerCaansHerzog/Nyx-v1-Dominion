@@ -245,12 +245,8 @@ function AiStateDefend:assessDemolition()
             local bombsite = Nodegraph.getClosestBombsite(bombCarrierOrigin)
             local distance = bombCarrierOrigin:getDistance(bombsite.origin)
 
-            if AiUtility.isBombBeingPlantedByTeammate or distance < 750 then
+            if AiUtility.isBombBeingPlantedByTeammate or distance < 900 then
                 return AiPriority.DEFEND_PLANTER
-            end
-
-            if distance < 900 then
-                return AiPriority.DEFEND_PASSIVE
             end
         end
 
