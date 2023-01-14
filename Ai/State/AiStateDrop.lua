@@ -12,7 +12,7 @@ local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateDrop
@@ -97,7 +97,7 @@ function AiStateDrop:think(cmd)
     local isFreezeTime = AiUtility.gameRules:m_bFreezePeriod() == 1
 
     if isFreezeTime or distance < 300 then
-        View.lookAtLocation(hitbox, 9.5, View.noise.minor, "Drop look at requester")
+        VirtualMouse.lookAtLocation(hitbox, 9.5, VirtualMouse.noise.minor, "Drop look at requester")
     end
 
     if isFreezeTime or distance < 200 then

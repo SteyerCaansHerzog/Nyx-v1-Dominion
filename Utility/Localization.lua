@@ -98,7 +98,7 @@ local English = {
 	splashLicense = "%02d/%02d/%i. Your license to this software: ",
 	splashLicenseNeverExpires = "does not expire",
 	splashMotto = "Competitive CS:GO AI built for official servers.",
-	viewFreezePrevention = "Client freeze prevention (View.setIdealLookAhead).",
+	viewFreezePrevention = "Client freeze prevention (VirtualMouse.setIdealLookAhead).",
 	viewNewState = "New mouse control state: '%s'.", -- mouse state
 
 }

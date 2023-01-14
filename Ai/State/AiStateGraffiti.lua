@@ -10,7 +10,7 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateGraffiti
@@ -93,7 +93,7 @@ function AiStateGraffiti:think()
 
     local newCameraAngles = LocalPlayer.getCameraAngles():set(80)
 
-    View.lookAlongAngle(newCameraAngles, 6, View.noise.minor, "Graffiti look at floor")
+    VirtualMouse.lookAlongAngle(newCameraAngles, 6, VirtualMouse.noise.minor, "Graffiti look at floor")
 
     if LocalPlayer.getCameraAngles().p > 75 then
         self.isEnabled = false

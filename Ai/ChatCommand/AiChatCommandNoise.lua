@@ -4,7 +4,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ Modules
 local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBase"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiChatCommandNoise
@@ -29,11 +29,11 @@ function AiChatCommandNoise:invoke(ai, sender, args)
     local toggle = args[1]
 
     if toggle == "on" then
-        ai.states.engage.aimNoise = View.noise.moving
+        ai.states.engage.aimNoise = VirtualMouse.noise.moving
 
         return
     elseif toggle == "off" then
-        ai.states.engage.aimNoise = View.noise.none
+        ai.states.engage.aimNoise = VirtualMouse.noise.none
 
         return
     end

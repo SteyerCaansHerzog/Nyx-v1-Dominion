@@ -11,7 +11,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateTrafficControl
@@ -148,7 +148,7 @@ end
 function AiStateTrafficControl:think(cmd)
     self.activity = "Queuing in traffic"
 
-    View.lookAtLocation(self.trafficQueueNode.lookAtOrigin, 4, View.noise.moving, "Traffic Control watch angle")
+    VirtualMouse.lookAtLocation(self.trafficQueueNode.lookAtOrigin, 4, VirtualMouse.noise.moving, "Traffic Control watch angle")
     Pathfinder.ifIdleThenRetryLastRequest()
 
     if not self:isOccupied(self.trafficControlNode) then

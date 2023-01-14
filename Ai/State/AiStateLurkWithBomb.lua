@@ -14,7 +14,7 @@ local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateLurkWithBomb
@@ -134,7 +134,7 @@ function AiStateLurkWithBomb:think(cmd)
 		self.ai.routines.manageGear:block()
 
 		LocalPlayer.equipAvailableWeapon()
-		View.lookAtLocation(self.node.lookAtOrigin, 3, View.noise.idle, "Lurk with bomb look at angle")
+		VirtualMouse.lookAtLocation(self.node.lookAtOrigin, 3, VirtualMouse.noise.idle, "Lurk with bomb look at angle")
 	end
 end
 

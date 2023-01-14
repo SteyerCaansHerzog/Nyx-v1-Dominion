@@ -15,7 +15,7 @@ local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateSeekHostage
@@ -168,7 +168,7 @@ function AiStateSeekHostage:think(cmd)
         local distance = clientOrigin:getDistance(self.hostageOrigin)
 
         if distance < 300 then
-            View.lookAtLocation(lookAtOrigin, 5, View.noise.none, "Seek hostage look at hostage")
+            VirtualMouse.lookAtLocation(lookAtOrigin, 5, VirtualMouse.noise.none, "Seek hostage look at hostage")
         end
 
         if distance < 40 then

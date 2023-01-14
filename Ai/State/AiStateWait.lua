@@ -18,7 +18,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateWait
@@ -95,7 +95,7 @@ function AiStateWait:think(cmd)
     local distanceToNode = clientOrigin:getDistance(self.node.origin)
 
     if distanceToNode < 250 and distanceToPlayer < 250 then
-       View.lookAtLocation(self.waitingOnPlayer:getOrigin():offset(0, 0, 64), 5, View.noise.idle, "Wait look at player")
+       VirtualMouse.lookAtLocation(self.waitingOnPlayer:getOrigin():offset(0, 0, 64), 5, VirtualMouse.noise.idle, "Wait look at player")
     end
 end
 

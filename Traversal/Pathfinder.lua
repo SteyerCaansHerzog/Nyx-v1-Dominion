@@ -1040,6 +1040,12 @@ function Pathfinder.getPath(start, goal, options)
 			end
 		end
 
+		if node.isRecorder or neighbor.isRecorder then
+			Pathfinder.pathDebug.nodes[idx].error = "IS RECORDER AND CURRENTLY BLOCKED"
+
+			return false
+		end
+
 		if not node.isRecorder and (neighbor.isRecorder and neighbor:is(Node.traverseRecorderEnd)) then
 			Pathfinder.pathDebug.nodes[idx].error = "IS RECORDER END"
 

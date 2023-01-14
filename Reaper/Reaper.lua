@@ -30,7 +30,7 @@ local DominionLocalization = require "gamesense/Nyx/v1/Dominion/Utility/Localiza
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ Definitions
@@ -891,9 +891,9 @@ function Reaper:think()
 
 		-- Prevent the AI camera from snapping between the human and the AI.
 		-- This will force the AI's camera angles to match the possessed angles.
-		 View.viewAngles = cameraAngles
-		 View.lookAtAngles = cameraAngles
-		 View.lastCameraAngles = cameraAngles
+		 VirtualMouse.viewAngles = cameraAngles
+		 VirtualMouse.lookAtAngles = cameraAngles
+		 VirtualMouse.lastCameraAngles = cameraAngles
 
 		-- Current client ID.
 		local originalIndex = self.manifest.client.index

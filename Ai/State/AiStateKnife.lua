@@ -17,7 +17,7 @@ local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateKnife
@@ -138,7 +138,7 @@ function AiStateKnife:think(cmd)
     local targetOrigin = AiUtility.closestEnemy:getOrigin()
 
     if AiUtility.visibleEnemies[AiUtility.closestEnemy.eid] then
-        View.lookAtLocation(targetOrigin:clone():offset(0, 0, 64), 4, View.noise.minor, "Knife look at enemy")
+        VirtualMouse.lookAtLocation(targetOrigin:clone():offset(0, 0, 64), 4, VirtualMouse.noise.minor, "Knife look at enemy")
     end
 
     if clientOrigin:getDistance2(targetOrigin) < 100 then

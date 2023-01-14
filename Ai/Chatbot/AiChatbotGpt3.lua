@@ -399,7 +399,7 @@ Classification:]]
 		-- Lowercase and escape % characters.
 		reply = reply:lower():gsub("%%", "%%%%")
 
-		self.ai:handleChatCommands({
+		self.ai:processCommand({
 			sender = sender,
 			text = reply,
 			teamonly = true,

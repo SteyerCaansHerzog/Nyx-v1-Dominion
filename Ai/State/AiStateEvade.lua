@@ -13,7 +13,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateEvade
@@ -133,9 +133,9 @@ function AiStateEvade:think()
 
     if not self.isLookingAtPathfindingDirection then
         if AiUtility.clientThreatenedFromOrigin then
-            View.lookAtLocation(AiUtility.clientThreatenedFromOrigin, 2.5, View.noise.minor, "Evade look at threat origin")
-        elseif View.lastLookAtLocationOrigin then
-            View.lookAtLocation( View.lastLookAtLocationOrigin, 2.5, View.noise.minor, "Evade look at last spot")
+            VirtualMouse.lookAtLocation(AiUtility.clientThreatenedFromOrigin, 2.5, VirtualMouse.noise.minor, "Evade look at threat origin")
+        elseif VirtualMouse.lastLookAtLocationOrigin then
+            VirtualMouse.lookAtLocation( VirtualMouse.lastLookAtLocationOrigin, 2.5, VirtualMouse.noise.minor, "Evade look at last spot")
         end
     end
 

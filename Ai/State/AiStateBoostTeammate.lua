@@ -18,7 +18,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateBoostTeammate
@@ -145,7 +145,7 @@ function AiStateBoostTeammate:think(cmd)
                 isRunBoostReady = false
             end
 
-            View.lookAtLocation(self.boostPlayer:getHitboxPosition(Player.hitbox.NECK), 5.5, View.noise.idle, "Boost look at booster")
+            VirtualMouse.lookAtLocation(self.boostPlayer:getHitboxPosition(Player.hitbox.NECK), 5.5, VirtualMouse.noise.idle, "Boost look at booster")
         end
     end
 

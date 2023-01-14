@@ -32,7 +32,7 @@ local AiChatCommandBase = {
     REAPER_IS_ACTIVE = Localization.cmdRejectionReaperIsActive,
     SENDER_IS_DEAD = Localization.cmdRejectionSenderIsDead,
     SENDER_IS_NOT_TEAMMATE = Localization.cmdRejectionSenderIsNotTeammate,
-    SENDER_IS_OUT_OF_RANGE = Localization.cmdRejectionSenderIsOutOfRange,
+    SENDER_IS_OUT_OF_RANGE = Localization.cmdRejectionSenderIsOutOfRange
 }
 
 --- @param ai Ai
@@ -57,7 +57,7 @@ end
 --- @param ai Ai
 --- @param sender Player
 --- @param args string[]
---- @return boolean
+--- @return string|nil
 function AiChatCommandBase:getRejectionError(ai, sender, args)
     if self.requiredArgs and #args < self.requiredArgs then
         return string.format(Localization.cmdRejectionArgsMissing, self.requiredArgs, #args)
@@ -74,7 +74,9 @@ function AiChatCommandBase:getRejectionError(ai, sender, args)
         return
     end
 
-    if sender:is(LocalPlayer) then
+    local isAllowed = Config.isAllowedToSelfInvokeCommands or not sender:is(LocalPlayer)
+
+    if not isAllowed then
         return Localization.cmdRejectionSelfInvoked
     end
 

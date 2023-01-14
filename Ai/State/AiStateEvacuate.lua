@@ -15,7 +15,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateEvacuate
@@ -257,7 +257,7 @@ function AiStateEvacuate:think(cmd)
         local lookOrigin = self.node.origin:clone():offset(0, 0, 46)
         local findLookAngleTrace = Trace.getLineAtAngle(lookOrigin, self.node.direction, AiUtility.traceOptionsPathfinding, "AiStateEvacuate.think<FindLookAngle>")
 
-       View.lookAtLocation(findLookAngleTrace.endPosition, 4, View.noise.none, "Evacuate look at angle")
+       VirtualMouse.lookAtLocation(findLookAngleTrace.endPosition, 4, VirtualMouse.noise.none, "Evacuate look at angle")
     end
 
     if not self.isAtDestination and Pathfinder.isIdle() then

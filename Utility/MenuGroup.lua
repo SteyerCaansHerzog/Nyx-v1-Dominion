@@ -5,7 +5,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ DominionMenu
---- @class MenuGroup: Class
+--- @class MenuGroup : Class
 --- @field group Menu
 --- @field master MenuItem
 --- @field disableHud MenuItem

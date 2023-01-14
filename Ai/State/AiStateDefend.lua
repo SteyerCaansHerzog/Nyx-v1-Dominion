@@ -22,7 +22,7 @@ local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateDefend
@@ -433,11 +433,11 @@ function AiStateDefend:think(cmd)
     if not trace.isIntersectingGeometry then
         if AiUtility.closestEnemy and LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) < 1250 then
             if distance < 750 then
-                View.lookAtLocation(self.node.lookAtOrigin, 5.5, View.noise.moving, "Defend look at angle")
+                VirtualMouse.lookAtLocation(self.node.lookAtOrigin, 5.5, VirtualMouse.noise.moving, "Defend look at angle")
             end
         else
             if distance < 500 then
-                View.lookAtLocation(self.node.lookAtOrigin, 5, View.noise.moving, "Defend look at angle")
+                VirtualMouse.lookAtLocation(self.node.lookAtOrigin, 5, VirtualMouse.noise.moving, "Defend look at angle")
             end
         end
     end

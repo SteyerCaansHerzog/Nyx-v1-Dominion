@@ -12,7 +12,7 @@ local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateDefendHostageCarrier
@@ -109,7 +109,7 @@ function AiStateDefendHostageCarrier:think(cmd)
     end
 
     if distance < 250 then
-       View.lookAtLocation(self.hostageCarrier:getOrigin():offset(0, 0, 64), 4, View.noise.idle, "Follow look at player")
+       VirtualMouse.lookAtLocation(self.hostageCarrier:getOrigin():offset(0, 0, 64), 4, VirtualMouse.noise.idle, "Follow look at player")
     end
 end
 

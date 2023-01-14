@@ -17,7 +17,7 @@ local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateGrenadeBase
@@ -424,10 +424,10 @@ function AiStateGrenadeBase:think(cmd)
 
     self.ai.states.evade:block()
 
-    View.blockBuildup()
+    VirtualMouse.blockBuildup()
 
     if distance < 150 then
-        View.lookAlongAngle(self.node.direction, 15, View.noise.none, "Grenade look at line-up")
+        VirtualMouse.lookAlongAngle(self.node.direction, 15, VirtualMouse.noise.none, "Grenade look at line-up")
     end
 
     if distance < 250 then
@@ -445,8 +445,8 @@ function AiStateGrenadeBase:think(cmd)
     end
 
     if distance < 200 then
-        View.isCrosshairUsingVelocity = false
-        View.isCrosshairSmoothed = true
+        VirtualMouse.isCrosshairUsingVelocity = false
+        VirtualMouse.isCrosshairSmoothed = true
 
         Pathfinder.blockTeammateAvoidance()
         Pathfinder.counterStrafe()

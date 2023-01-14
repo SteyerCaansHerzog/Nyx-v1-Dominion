@@ -18,7 +18,7 @@ local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateFlashbangDynamic
@@ -67,13 +67,16 @@ function AiStateFlashbangDynamic:assess()
     -- AI is threatened. Don't try to throw a flashbang.
     if AiUtility.isClientThreatenedMajor or AiUtility.isEnemyVisible then
         self.threatCooldownTimer:restart()
-
-        return AiPriority.IGNORE
     end
 
     -- We were just threatened by an enemy, so we don't want to try again too soon.
     if not self.threatCooldownTimer:isElapsed(5) then
         return AiPriority.IGNORE
+    end
+
+    -- We already found an angle to not-blind a totally-suspecting enemy player with.
+    if self.throwAngles then
+        return AiPriority.FLASHBANG_DYNAMIC
     end
 
     -- Cooldown because the AI doesn't need to keep throwing flashbangs constantly.
@@ -90,11 +93,6 @@ function AiStateFlashbangDynamic:assess()
     -- Don't bother if we don't even have a flashbang on us.
     if not LocalPlayer:hasWeapon(Weapons.FLASHBANG) then
         return AiPriority.IGNORE
-    end
-
-    -- We already found an angle to not-blind a totally-suspecting enemy player with.
-    if self.throwAngles then
-        return AiPriority.FLASHBANG_DYNAMIC
     end
 
     local clientEyeOrigin = LocalPlayer.getEyeOrigin()
@@ -119,6 +117,9 @@ function AiStateFlashbangDynamic:assess()
     end
 
     local predictionEndPosition = Vector3:new(prediction.end_pos.x, prediction.end_pos.y, prediction.end_pos.z)
+
+    -- Vaguely correct for if the AI is moving. May need tweaking.
+    predictionEndPosition = predictionEndPosition + LocalPlayer:m_vecVelocity() * 0.075
 
     -- Throw away traces that end too close to us because they're useless and will just blind the AI.
     -- Although, the AI would probably want to be blind if it pulled up its own hood and found this demented-ass logic.
@@ -223,13 +224,6 @@ function AiStateFlashbangDynamic:think(cmd)
         return
     end
 
-    -- We've moved too far.
-    if LocalPlayer:getOrigin():getDistance(self.throwFromOrigin) > 32 then
-        self:reset()
-
-        return
-    end
-
     self.activity = "Throwing Flashbang"
 
     self.ai.states.evade:block()
@@ -240,10 +234,10 @@ function AiStateFlashbangDynamic:think(cmd)
     Pathfinder.counterStrafe()
     Pathfinder.blockTeammateAvoidance()
     LocalPlayer.equipFlashbang()
-    View.lookAlongAngle(self.throwAngles, 4.5, View.noise.none, "FlashbangDynamic look at throw angle")
+    VirtualMouse.lookAlongAngle(self.throwAngles, 4.5, VirtualMouse.noise.none, "FlashbangDynamic look at throw angle")
 
-    View.isCrosshairUsingVelocity = true
-    View.isCrosshairSmoothed = false
+    VirtualMouse.isCrosshairUsingVelocity = true
+    VirtualMouse.isCrosshairSmoothed = false
 
     local maxDiff = self.throwAngles:getMaxDiff(LocalPlayer.getCameraAngles())
 

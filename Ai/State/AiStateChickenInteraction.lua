@@ -17,7 +17,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateChickenInteraction
@@ -178,7 +178,7 @@ function AiStateChickenInteraction:think(cmd)
     end
 
     if distance < 200 then
-        View.lookAtLocation(chickenOrigin, 5.5, View.noise.minor, "ChickenInteraction look at chicken")
+        VirtualMouse.lookAtLocation(chickenOrigin, 5.5, VirtualMouse.noise.minor, "ChickenInteraction look at chicken")
     end
 
     local fov = LocalPlayer.getCameraAngles():getFov(LocalPlayer.getEyeOrigin(), chickenOrigin)

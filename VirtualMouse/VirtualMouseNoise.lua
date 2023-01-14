@@ -3,8 +3,8 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
 
---{{{ ViewNoise
---- @class ViewNoise : Class
+--{{{ VirtualMouseNoise
+--- @class VirtualMouseNoise : Class
 --- @field isBasedOnVelocity boolean
 --- @field isRandomlyToggled boolean
 --- @field name string
@@ -29,16 +29,16 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --- @field yawSoftX number
 --- @field yawSoftY number
 --- @field yawSoftZ number
-local ViewNoise = {}
+local VirtualMouseNoise = {}
 
---- @param fields ViewNoise
---- @return ViewNoise
-function ViewNoise:new(fields)
+--- @param fields VirtualMouseNoise
+--- @return VirtualMouseNoise
+function VirtualMouseNoise:new(fields)
 	return Nyx.new(self, fields)
 end
 
 --- @return void
-function ViewNoise:__init()
+function VirtualMouseNoise:__init()
 	self.toggleIntervalTimer = Timer:new():start()
 	self.togglePeriodTimer = Timer:new()
 	self.toggleInterval = 0
@@ -49,5 +49,5 @@ function ViewNoise:__init()
 	self.togglePeriodMax = 1
 end
 
-return Nyx.class("ViewNoise", ViewNoise)
+return Nyx.class("VirtualMouseNoise", VirtualMouseNoise)
 --}}}

@@ -20,7 +20,7 @@ local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateDefuse
@@ -176,7 +176,7 @@ function AiStateDefuse:think(cmd)
     local distance = LocalPlayer:getOrigin():getDistance(bombOrigin)
 
     if distance < 64 then
-        View.isCrosshairUsingVelocity = false
+        VirtualMouse.isCrosshairUsingVelocity = false
 
         self.isDefusing = true
     else
@@ -184,9 +184,9 @@ function AiStateDefuse:think(cmd)
     end
 
     if LocalPlayer:m_bIsDefusing() == 1 then
-        View.lookAlongAngle(LocalPlayer.getCameraAngles(), 4, View.noise.none, "Defuse keep current angles")
+        VirtualMouse.lookAlongAngle(LocalPlayer.getCameraAngles(), 4, VirtualMouse.noise.none, "Defuse keep current angles")
     elseif distance < 256 then
-       View.lookAtLocation(bombOrigin:clone():offset(5, -3, 14), 4.5, View.noise.moving, "Defuse look at bomb")
+       VirtualMouse.lookAtLocation(bombOrigin:clone():offset(5, -3, 14), 4.5, VirtualMouse.noise.moving, "Defuse look at bomb")
     end
 
     if self.isDefusing then
@@ -209,7 +209,7 @@ function AiStateDefuse:think(cmd)
                 LocalPlayer.equipSmoke()
             end
 
-           View.lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 6, View.noise.moving, "Defuse look to drop smoke")
+           VirtualMouse.lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 6, VirtualMouse.noise.moving, "Defuse look to drop smoke")
 
             if LocalPlayer:isAbleToAttack() then
                 if LocalPlayer.getCameraAngles().p > 22 then

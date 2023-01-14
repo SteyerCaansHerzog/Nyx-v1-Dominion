@@ -39,7 +39,7 @@ local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ Definitions
@@ -281,13 +281,29 @@ function Ai:initEvents()
 			return
 		end
 
-		self:handleChatCommands(e)
+		self:processCommand(e)
+	end)
+
+	Callbacks.consoleInput(function(e)
+		if not MenuGroup.master:get() then
+			return
+		end
+
+		--- @type PlayerChatEvent
+		local params = {
+			text = e,
+			sender = LocalPlayer,
+			teamonly = true,
+			name = LocalPlayer:getName()
+		}
+
+		self:processCommand(params)
 	end)
 end
 
 --- @param e PlayerChatEvent
 --- @return void
-function Ai:handleChatCommands(e)
+function Ai:processCommand(e)
 	if not e.text:sub(1, 1) == "/" then
 		return
 	end
@@ -717,11 +733,11 @@ function Ai:selectState(cmd)
 			if isActivatable then
 				Logger.console(Logger.ALERT, Localization.aiStateChanged, currentState.name, highestPriority)
 
-				View.lookState = currentState.name
-				View.isLookSpeedDelayed = currentState.isMouseDelayAllowed
-				View.lookSpeedDelayMin = currentState.delayedMouseMin
-				View.lookSpeedDelayMax = currentState.delayedMouseMax
-				View.lookSpeedDelay = Math.getRandomFloat(currentState.delayedMouseMin, currentState.delayedMouseMax)
+				VirtualMouse.lookState = currentState.name
+				VirtualMouse.isLookSpeedDelayed = currentState.isMouseDelayAllowed
+				VirtualMouse.lookSpeedDelayMin = currentState.delayedMouseMin
+				VirtualMouse.lookSpeedDelayMax = currentState.delayedMouseMax
+				VirtualMouse.lookSpeedDelay = Math.getRandomFloat(currentState.delayedMouseMin, currentState.delayedMouseMax)
 
 				Pathfinder.flushRequest()
 

@@ -18,7 +18,8 @@ local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 
 --{{{ AiProcessPanorama
 --- @class AiProcessPanorama : AiProcessBase
---- @field timer Timer
+--- @field activityIntervalTimer Timer
+--- @field blockAcceptingInvitesTimer Timer
 local AiProcessPanorama = {}
 
 --- @param fields AiProcessPanorama
@@ -29,7 +30,8 @@ end
 
 --- @return void
 function AiProcessPanorama:__init()
-	self.timer = Timer:new():startThenElapse()
+	self.activityIntervalTimer = Timer:new():startThenElapse()
+	self.blockAcceptingInvitesTimer = Timer:new():startThenElapse()
 
 	self:openAndEquipGraffitis()
 	self:autoAcceptMatches()
@@ -49,7 +51,7 @@ function AiProcessPanorama:__init()
 	Callbacks.frameGlobal(function()
 		self:autoAcceptAdminInvites()
 
-		if self.timer:isElapsedThenRestart(30) then
+		if self.activityIntervalTimer:isElapsedThenRestart(30) then
 			self:reconnectToOngoingMatch()
 			self:acknowledgeNewInventoryItems()
 			self:closeAllPopups()
@@ -89,26 +91,38 @@ end
 
 --- @return void
 function AiProcessPanorama:autoAcceptAdminInvites()
-	for i = 1, Panorama.PartyBrowserAPI.GetInvitesCount() do
-		local lobbyId = Panorama.PartyBrowserAPI.GetInviteXuidByIndex(i - 1)
-		local isAdminFound = false
+	local isAbleToAccept = self.blockAcceptingInvitesTimer:isElapsed(4)
+	local isLobbyFound = false
 
-		for j = 0, 5 do
-			local xuid = Panorama.PartyBrowserAPI.GetPartyMemberXuid(lobbyId, j)
+	for lobbyIdx = 0, Panorama.PartyBrowserAPI.GetInvitesCount() - 1 do repeat
+		local lobbyId = Panorama.PartyBrowserAPI.GetInviteXuidByIndex(lobbyIdx)
 
-			if Config.isAdministrator(xuid) or (self.ai.reaper.isEnabled and self.ai.reaper.manifest.steamId64Map[xuid]) then
-				Panorama.PartyBrowserAPI.ActionJoinParty(lobbyId)
+		-- We've found a lobby we can join. Clear any other lobbies so we don't try to join them too.
+		if isLobbyFound then
+			Panorama.PartyBrowserAPI.ClearInvite(lobbyId)
 
-				isAdminFound = true
-
-				break
-			end
-		end
-
-		if isAdminFound then
 			break
 		end
-	end
+
+		-- Find a party member we are allowed to join.
+		for playerIdx = 0, 5 do
+			local xuid = Panorama.PartyBrowserAPI.GetPartyMemberXuid(lobbyId, playerIdx)
+			local isJoinable = Config.isAdministrator(xuid) or (self.ai.reaper.isEnabled and self.ai.reaper.manifest.steamId64Map[xuid])
+
+			-- Join party, otherwise clear the invite.
+			if isAbleToAccept and isJoinable then
+				Panorama.PartyBrowserAPI.ActionJoinParty(lobbyId)
+
+				self.blockAcceptingInvitesTimer:restart()
+
+				isLobbyFound = true
+
+				break
+			else
+				Panorama.PartyBrowserAPI.ClearInvite(lobbyId)
+			end
+		end
+	until true end
 end
 
 --- @return void

@@ -17,7 +17,7 @@ local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateFreezetime
@@ -146,7 +146,7 @@ function AiStateFreezetime:actionLookAtTeammate(cmd)
         return
     end
 
-    View.lookAtLocation(targetOrigin, 4, View.noise.idle, "Freezetime idling")
+    VirtualMouse.lookAtLocation(targetOrigin, 4, VirtualMouse.noise.idle, "Freezetime idling")
 end
 
 --- @param cmd SetupCommandEvent
@@ -162,7 +162,7 @@ function AiStateFreezetime:actionSpinAround(cmd)
 
     self.lookAngles:offset(0, speed * Time.getDelta())
 
-    View.lookAlongAngle(self.lookAngles, 6, View.noise.idle, "Freezetime idling")
+    VirtualMouse.lookAlongAngle(self.lookAngles, 6, VirtualMouse.noise.idle, "Freezetime idling")
 end
 
 return Nyx.class("AiStateFreezetime", AiStateFreezetime, AiStateBase)

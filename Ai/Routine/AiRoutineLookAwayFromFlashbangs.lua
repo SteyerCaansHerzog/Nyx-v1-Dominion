@@ -13,7 +13,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiRoutineLookAwayFromFlashbangs
@@ -129,10 +129,10 @@ function AiRoutineLookAwayFromFlashbangs:think(cmd)
 		return
 	end
 
-	View.isLookSpeedDelayed = false
+	VirtualMouse.isLookSpeedDelayed = false
 
 	LocalPlayer.unscope()
-	View.lookAlongAngle(self.lookAngles, 10, View.noise.moving, "Look away from flashbangs")
+	VirtualMouse.lookAlongAngle(self.lookAngles, 10, VirtualMouse.noise.moving, "Look away from flashbangs")
 end
 
 return Nyx.class("AiRoutineLookAwayFromFlashbangs", AiRoutineLookAwayFromFlashbangs, AiRoutineBase)

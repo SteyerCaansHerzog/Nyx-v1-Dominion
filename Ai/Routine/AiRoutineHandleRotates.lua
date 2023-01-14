@@ -58,6 +58,14 @@ function AiRoutineHandleRotates:calloutRotate()
 		return
 	end
 
+	if AiUtility.gameRules:m_bFreezePeriod() == 1 then
+		return
+	end
+
+	if AiUtility.timeData.roundtime_elapsed < 15 then
+		return
+	end
+
 	local enemyOrigin = AiUtility.bombCarrier:getOrigin()
 	local enemyNearestBombsite = Nodegraph.getClosestBombsite(enemyOrigin)
 
@@ -81,6 +89,14 @@ end
 --- @return void
 function AiRoutineHandleRotates:calloutGo()
 	if AiUtility.enemiesAlive == 0 then
+		return
+	end
+
+	if AiUtility.gameRules:m_bFreezePeriod() == 1 then
+		return
+	end
+
+	if AiUtility.timeData.roundtime_elapsed < 15 then
 		return
 	end
 

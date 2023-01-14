@@ -28,7 +28,7 @@ local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ Definitions
@@ -233,7 +233,7 @@ function AiStateEngage:initFields()
     self.visibleReactionTimer = Timer:new()
     self.visualizerCallbacks = {}
     self.visualizerExpiryTimers = {}
-    self.aimNoise = View.noise.moving
+    self.aimNoise = VirtualMouse.noise.moving
     self.seekCoverTimer = Timer:new():startThenElapse()
     self.strafePeekTimer = Timer:new():startThenElapse()
     self.strafePeekIndex = 1
@@ -2048,7 +2048,7 @@ function AiStateEngage:attackingDefending()
 
     -- Look at the defend angle.
     if self.defendingLookAt then
-        View.lookAtLocation(self.defendingLookAt, 6, View.noise.moving, "Engage defend against enemy")
+        VirtualMouse.lookAtLocation(self.defendingLookAt, 6, VirtualMouse.noise.moving, "Engage defend against enemy")
 
         self:addVisualizer("defending", function()
             if not self.defendingLookAt then
@@ -2097,14 +2097,14 @@ function AiStateEngage:attackingBlockRoutines()
         self.ai.routines.manageWeaponReload:block()
     end
 
-    View.blockBuildup()
+    VirtualMouse.blockBuildup()
 end
 
 --- @return void
 function AiStateEngage:attackingLookAtBackupOrigin()
     -- Look at occluded origin.
     if self.lookAtBackingUpOrigin and not AiUtility.clientThreatenedFromOrigin then
-        View.lookAtLocation(self.lookAtBackingUpOrigin, 4, View.noise.moving, "Engage look-at backing up position")
+        VirtualMouse.lookAtLocation(self.lookAtBackingUpOrigin, 4, VirtualMouse.noise.moving, "Engage look-at backing up position")
     end
 end
 
@@ -2334,7 +2334,7 @@ function AiStateEngage:attackingBestTarget(cmd)
 
     -- Make sure the default mouse movement isn't active while the enemy is visible but the reaction timer hasn't elapsed.
     if AiUtility.visibleEnemies[self.bestTarget.eid] and shootFov < 60 then
-        View.lookAtLocation(hitbox, 2, View.noise.moving, "Engage prepare to react")
+        VirtualMouse.lookAtLocation(hitbox, 2, VirtualMouse.noise.moving, "Engage prepare to react")
 
         self:addVisualizer("hold", function()
             hitbox:drawCircleOutline(12, 2, Color:hsla(50, 1, 0.5, 200))
@@ -2680,11 +2680,11 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
 
     -- Set RCS parameters.
     -- RCS should be off for snipers and shotguns, and on for rifles, SMGs, and pistols.
-    View.isRcsEnabled = self.isRcsEnabled
+    VirtualMouse.isRcsEnabled = self.isRcsEnabled
 
     -- Set mouse movement parameters.
-    View.isCrosshairSmoothed = false
-    View.isCrosshairUsingVelocity = true
+    VirtualMouse.isCrosshairSmoothed = false
+    VirtualMouse.isCrosshairUsingVelocity = true
 
     -- Select which method to use to perform shooting logic.
     local shootModes = {
@@ -2766,7 +2766,7 @@ function AiStateEngage:fireWeapon(cmd)
         return
     end
 
-    View.fireWeapon()
+    VirtualMouse.fireWeapon()
 end
 
 --- @param cmd SetupCommandEvent
@@ -2794,7 +2794,7 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-   View.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
+   VirtualMouse.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
 
     if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
@@ -2817,7 +2817,7 @@ function AiStateEngage:shootLight(cmd, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-   View.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
+   VirtualMouse.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
 
     if not self.isRunAndShootAllowed then
         self:actionCounterStrafe(cmd)
@@ -2845,7 +2845,7 @@ function AiStateEngage:shootShotgun(cmd, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-   View.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
+   VirtualMouse.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
 
     if distance > 1000 then
         return
@@ -2868,7 +2868,7 @@ end
 --- @param weapon CsgoWeapon
 --- @return void
 function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
-   View.lookAtLocation(aimAtOrigin, self.aimSpeed, self.aimNoise, "Engage look-at target")
+   VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed, self.aimNoise, "Engage look-at target")
 
     if self.isTargetEasilyShot then
         self:actionCounterStrafe(cmd)
@@ -2916,9 +2916,9 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
 
     -- Create a "flick" effect when aiming.
     if isNoscoping or self.scopedTimer:isElapsed(fireDelay * 0.4) then
-        View.lookAtLocation(aimAtOrigin, self.aimSpeed * 3, self.aimNoise, "Engage look-at target")
+        VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed * 3, self.aimNoise, "Engage look-at target")
     else
-        View.lookAtLocation(aimAtOrigin, self.aimSpeed, self.aimNoise, "Engage look-at target")
+        VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed, self.aimNoise, "Engage look-at target")
     end
 
     if not isNoscoping and fov < self.shootWithinFov * 2.5 then
@@ -3110,7 +3110,7 @@ function AiStateEngage:actionWatchAngle()
         self.watchOrigin = nil
     end
 
-    View.lookAtLocation(self.watchOrigin, self.aimSpeed, View.noise.moving, "Engage watch last spot")
+    VirtualMouse.lookAtLocation(self.watchOrigin, self.aimSpeed, VirtualMouse.noise.moving, "Engage watch last spot")
 
     self:addVisualizer("watch", function()
         if self.watchOrigin then
@@ -3298,7 +3298,7 @@ function AiStateEngage:preAimThroughCorners()
 
     self.preAimTarget = self.bestTarget
 
-   View.lookAtLocation(self.preAimThroughCornersOrigin, 12, View.noise.moving, "Engage look through corner")
+   VirtualMouse.lookAtLocation(self.preAimThroughCornersOrigin, 12, VirtualMouse.noise.moving, "Engage look through corner")
 
     self:addVisualizer("pre through", function()
         self.preAimThroughCornersOrigin:drawCircleOutline(16, 2, Color:hsla(100, 1, 0.5, 150))
@@ -3328,7 +3328,7 @@ function AiStateEngage:preAimAboutCorners()
     if self.preAimAboutCornersAimOrigin then
         self.ai.routines.manageWeaponScope:block()
 
-       View.lookAtLocation(self.preAimAboutCornersAimOrigin, self.slowAimSpeed, View.noise.moving, "Engage look at corner")
+       VirtualMouse.lookAtLocation(self.preAimAboutCornersAimOrigin, self.slowAimSpeed, VirtualMouse.noise.moving, "Engage look at corner")
 
         self:addVisualizer("pre about", function()
             if self.preAimAboutCornersAimOrigin then

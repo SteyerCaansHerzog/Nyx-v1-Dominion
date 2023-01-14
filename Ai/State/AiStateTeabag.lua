@@ -16,7 +16,7 @@ local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateTeabag
@@ -121,7 +121,7 @@ function AiStateTeabag:think(cmd)
     local distance = LocalPlayer:getOrigin():getDistance(self.teabagOrigin)
 
     if distance < 250 and distance > 32 then
-        View.lookAtLocation(self.teabagOrigin, 6, View.noise.idle, "Teabag look at corpse")
+        VirtualMouse.lookAtLocation(self.teabagOrigin, 6, VirtualMouse.noise.idle, "Teabag look at corpse")
     end
 
     if distance < 32 then

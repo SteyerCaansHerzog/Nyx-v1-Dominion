@@ -21,7 +21,7 @@ local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 local WeaponInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/WeaponInfo"
 --}}}
 
@@ -287,6 +287,12 @@ function AiStatePickupItems:think(cmd)
         return
     end
 
+    if AiUtility.isClientThreatenedMajor then
+        self:reset()
+
+        return
+    end
+
     local weapon = CsgoWeapons[self.item:m_iItemDefinitionIndex()]
 
     if weapon then
@@ -324,7 +330,7 @@ function AiStatePickupItems:think(cmd)
     local distance = origin:getDistance(weaponOrigin)
 
     if self.lookAtItem and distance < 250 then
-       View.lookAtLocation(weaponOrigin, 10, View.noise.idle, "PickupItems look at item")
+       VirtualMouse.lookAtLocation(weaponOrigin, 10, VirtualMouse.noise.idle, "PickupItems look at item")
     end
 
     if distance < 128 and self.useCooldown:isElapsedThenRestart(0.1) then

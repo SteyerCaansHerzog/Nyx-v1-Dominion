@@ -16,7 +16,7 @@ local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStatePlant
@@ -225,7 +225,7 @@ function AiStatePlant:think(cmd)
     end
 
     if distance < 72 then
-        View.lookAlongAngle(self.node.direction, 5, View.noise.idle, "Plant look at angle")
+        VirtualMouse.lookAlongAngle(self.node.direction, 5, VirtualMouse.noise.idle, "Plant look at angle")
         Pathfinder.counterStrafe()
     end
 

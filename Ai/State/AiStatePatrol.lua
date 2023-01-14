@@ -15,7 +15,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local View = require "gamesense/Nyx/v1/Dominion/View/View"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStatePatrol
@@ -133,7 +133,7 @@ function AiStatePatrol:think(cmd)
             if bomb then
                 local bombOrigin = bomb:m_vecOrigin()
 
-               View.lookAtLocation(bombOrigin, 4, View.noise.minor, "Patrol look at bomb")
+               VirtualMouse.lookAtLocation(bombOrigin, 4, VirtualMouse.noise.minor, "Patrol look at bomb")
 
                 local deltaAngles = LocalPlayer.getEyeOrigin():getAngle(bombOrigin):getAbsDiff(LocalPlayer.getCameraAngles())
 

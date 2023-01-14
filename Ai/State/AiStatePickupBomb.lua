@@ -79,6 +79,10 @@ function AiStatePickupBomb:assess()
         return AiPriority.IGNORE
     end
 
+    if bomb:m_vecVelocity():getMagnitude() > 10 then
+        return AiPriority.IGNORE
+    end
+
     local owner = bomb:m_hOwnerEntity()
 
     if not owner and bomb:m_vecVelocity():getMagnitude() <= 10 then

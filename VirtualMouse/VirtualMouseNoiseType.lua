@@ -1,14 +1,14 @@
 --{{{ Modules
-local ViewNoise = require "gamesense/Nyx/v1/Dominion/View/ViewNoise"
+local VirtualMouseNoise = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouseNoise"
 --}}}
 
---- @class ViewNoiseType
---- @field none ViewNoise
---- @field idle ViewNoise
---- @field moving ViewNoise
---- @field minor ViewNoise
-local ViewNoiseType = {
-	none = ViewNoise:new({
+--- @class VirtualMouseNoiseType
+--- @field none VirtualMouseNoise
+--- @field idle VirtualMouseNoise
+--- @field moving VirtualMouseNoise
+--- @field minor VirtualMouseNoise
+local VirtualMouseNoiseType = {
+	none = VirtualMouseNoise:new({
 		name = "None",
 		timeExponent = 0,
 		isBasedOnVelocity = false,
@@ -30,7 +30,7 @@ local ViewNoiseType = {
 		yawSoftY = 0,
 		yawSoftZ = 0,
 	}),
-	idle = ViewNoise:new({
+	idle = VirtualMouseNoise:new({
 		name = "Idle",
 		timeExponent = 50,
 		isBasedOnVelocity = false,
@@ -57,7 +57,7 @@ local ViewNoiseType = {
 		yawSoftY = 0.0002,
 		yawSoftZ = 0.001,
 	}),
-	moving = ViewNoise:new({
+	moving = VirtualMouseNoise:new({
 		name = "Moving",
 		timeExponent = 80,
 		isBasedOnVelocity = true,
@@ -79,7 +79,7 @@ local ViewNoiseType = {
 		yawSoftY = 0.008,
 		yawSoftZ = 0.0008,
 	}),
-	minor = ViewNoise:new({
+	minor = VirtualMouseNoise:new({
 		name = "Minor",
 		timeExponent = 50,
 		isBasedOnVelocity = false,
@@ -101,7 +101,7 @@ local ViewNoiseType = {
 		yawSoftY = 0.0,
 		yawSoftZ = 0.0,
 	}),
-	special = ViewNoise:new({
+	special = VirtualMouseNoise:new({
 		name = "Special",
 		timeExponent = 200,
 		isBasedOnVelocity = false,
@@ -130,4 +130,4 @@ local ViewNoiseType = {
 	}),
 }
 
-return ViewNoiseType
+return VirtualMouseNoiseType
