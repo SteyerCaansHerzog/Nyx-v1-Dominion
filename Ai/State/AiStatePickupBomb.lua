@@ -5,6 +5,9 @@ local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
+local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
+
+local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
 
 --{{{ Modules
@@ -20,6 +23,7 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --- @field pickupBombFails number
 --- @field pickupBombTimer Timer
 --- @field pickupBombTime number
+--- @field lastBombOrigin Vector3
 local AiStatePickupBomb = {
     name = "Pickup Bomb",
     requiredGamemodes = {
@@ -38,28 +42,13 @@ end
 function AiStatePickupBomb:__init()
     self.pickupBombFails = 0
     self.pickupBombTimer = Timer:new()
-    self.pickupBombTime = Math.getRandomFloat(0.25, 3)
+    self.pickupBombTime = Math.getRandomFloat(2.5, 3.5)
+    self.lastBombOrigin = Vector3:new()
 
     Callbacks.roundStart(function(e)
         self.ignorePickup = false
         self.pickupBombFails = 0
         self.pickupBombTimer:stop()
-    end)
-
-    Callbacks.itemPickup(function(e)
-        if e.item == "c4" then
-            self.ignorePickup = false
-            self.pickupBombFails = 0
-            self.pickupBombTimer:stop()
-        end
-    end)
-
-    Callbacks.itemRemove(function(e)
-        if e.item == "c4" then
-            self.ignorePickup = false
-            self.pickupBombFails = 0
-            self.pickupBombTimer:stop()
-        end
     end)
 end
 
@@ -79,14 +68,21 @@ function AiStatePickupBomb:assess()
         return AiPriority.IGNORE
     end
 
-    if bomb:m_vecVelocity():getMagnitude() > 10 then
-        return AiPriority.IGNORE
-    end
-
     local owner = bomb:m_hOwnerEntity()
 
-    if not owner and bomb:m_vecVelocity():getMagnitude() <= 10 then
+    if not owner then
+        local origin = bomb:m_vecOrigin()
+        local delta = origin:getDistance(self.lastBombOrigin)
+
+        self.lastBombOrigin = origin
+
         self.pickupBombTimer:ifPausedThenStart()
+
+        if delta > 5 then
+            self.ignorePickup = false
+            self.pickupBombFails = 0
+            self.pickupBombTimer:restart()
+        end
 
         if self.pickupBombTimer:isElapsed(self.pickupBombTime) then
             return AiPriority.PICKUP_BOMB

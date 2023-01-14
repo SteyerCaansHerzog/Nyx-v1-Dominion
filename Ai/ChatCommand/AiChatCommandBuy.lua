@@ -39,8 +39,8 @@ function AiChatCommandBuy:invoke(ai, sender, args)
         end
     else
         Client.fireAfterRandom(0, 1, function()
-            ai.routines.buyGear:buyGear()
-            ai.routines.buyGear:processQueue()
+            ai.routines.buyGear:buyRoundStart()
+            ai.routines.buyGear:processBuyQueue()
         end)
     end
 end
