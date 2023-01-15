@@ -171,9 +171,9 @@ function AiStateDefend:assess()
         return AiPriority.IGNORE
     end
 
-    if AiUtility.gamemode == AiUtility.gamemodes.DEMOLITION or AiUtility.gamemode == AiUtility.gamemodes.WINGMAN then
+    if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.DEMOLITION or AiUtility.mapInfo.gamemode == AiUtility.gamemodes.WINGMAN then
         return self:assessDemolition()
-    elseif AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+    elseif AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
         return self:assessHostage()
     end
 
@@ -379,7 +379,7 @@ function AiStateDefend:move()
 
     local task
 
-    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+    if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
         task = "Defend the hostages"
     else
         task = string.format("Defend %s site", self.node.bombsite:upper())
@@ -428,7 +428,7 @@ function AiStateDefend:think(cmd)
     end
 
     local distance = AiUtility.clientNodeOrigin:getDistance(self.node.origin)
-    local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), self.node.lookFromOrigin, AiUtility.traceOptionsAttacking, "AiStateDefend.think<FindIfVisibleNode>")
+    local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), self.node.lookFromOrigin, AiUtility.traceOptionsVisible, "AiStateDefend.think<FindIfVisibleNode>")
 
     if not trace.isIntersectingGeometry then
         if AiUtility.closestEnemy and LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) < 1250 then
@@ -486,7 +486,7 @@ function AiStateDefend:think(cmd)
     end
 
     -- Set activity string.
-    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+    if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
         self.activity = "Defending hostages"
     else
         if self.priority == AiPriority.DEFEND_DEFUSER then
@@ -588,11 +588,11 @@ function AiStateDefend:setActivityNode(bombsite)
     elseif LocalPlayer:isTerrorist() then
         local class
 
-        if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+        if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
             class = Node.defendHostageT
 
             self.node = Nodegraph.getRandom(class)
-        elseif AiUtility.gamemode == AiUtility.gamemodes.DEMOLITION or AiUtility.gamemode == AiUtility.gamemodes.WINGMAN then
+        elseif AiUtility.mapInfo.gamemode == AiUtility.gamemodes.DEMOLITION or AiUtility.mapInfo.gamemode == AiUtility.gamemodes.WINGMAN then
             if self.priority == AiPriority.DEFEND_PLANTER then
                 class = Node.defendBombT
             else

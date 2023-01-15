@@ -362,7 +362,7 @@ end
 --- @return Vector3
 function NodeTypeBase:setLookAtOrigin()
     local lookFromOrigin = self.origin:clone():offset(0, 0, self.lookZOffset)
-    local lookDirectionTrace = Trace.getLineAtAngle(lookFromOrigin, self.direction, AiUtility.traceOptionsAttacking, "NodeTypeBase.setLookAtOrigin<FindLookAngle>")
+    local lookDirectionTrace = Trace.getLineAtAngle(lookFromOrigin, self.direction, AiUtility.traceOptionsVisible, "NodeTypeBase.setLookAtOrigin<FindLookAngle>")
 
     self.lookAtOrigin = lookDirectionTrace.endPosition
     self.lookFromOrigin = lookFromOrigin

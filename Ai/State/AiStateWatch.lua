@@ -53,7 +53,7 @@ end
 --- @return void
 function AiStateWatch:assess()
     -- Handle hostage gamemode.
-    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+    if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
         -- Only CTs should watch.
         if not LocalPlayer:isCounterTerrorist() then
             return AiPriority.IGNORE

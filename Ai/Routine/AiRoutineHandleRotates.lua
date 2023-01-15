@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -14,6 +15,8 @@ local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --- @class AiRoutineHandleRotates : AiRoutineBase
 --- @field callRotateCooldownTimer Timer
 --- @field callGoCooldownTimer Timer
+--- @field lastCallRotateBombsite string
+--- @field lastCallGoBombsite string
 local AiRoutineHandleRotates = {}
 
 --- @param fields AiRoutineHandleRotates
@@ -26,12 +29,17 @@ end
 function AiRoutineHandleRotates:__init()
 	self.callRotateCooldownTimer = Timer:new():startThenElapse()
 	self.callGoCooldownTimer = Timer:new():startThenElapse()
+
+	Callbacks.roundStart(function()
+		self.lastCallRotateBombsite = nil
+		self.lastCallGoBombsite = nil
+	end)
 end
 
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiRoutineHandleRotates:think(cmd)
-	if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+	if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
 		return
 	end
 
@@ -43,17 +51,16 @@ function AiRoutineHandleRotates:think(cmd)
 		return
 	end
 
-	if self.callRotateCooldownTimer:isElapsed(60) then
-		self:calloutRotate()
-	end
-
-	if self.callGoCooldownTimer:isElapsed(60) then
-		self:calloutGo()
-	end
+	self:calloutRotate()
+	self:calloutGo()
 end
 
 --- @return void
 function AiRoutineHandleRotates:calloutRotate()
+	if not self.callRotateCooldownTimer:isElapsed(8) then
+		return
+	end
+
 	if not AiUtility.bombCarrier then
 		return
 	end
@@ -66,12 +73,22 @@ function AiRoutineHandleRotates:calloutRotate()
 		return
 	end
 
-	local enemyOrigin = AiUtility.bombCarrier:getOrigin()
-	local enemyNearestBombsite = Nodegraph.getClosestBombsite(enemyOrigin)
-
-	if enemyOrigin:getDistance(enemyNearestBombsite.origin) > 1250 then
+	if AiUtility.bombCarrier:isDormant() then
 		return
 	end
+
+	local enemyOrigin = AiUtility.bombCarrier:m_vecOrigin()
+	local enemyNearestBombsite = Nodegraph.getClosestBombsite(enemyOrigin)
+
+	if enemyOrigin:getDistance(enemyNearestBombsite.origin) > AiUtility.mapInfo.bombsiteRotateRadius then
+		return
+	end
+
+	if enemyNearestBombsite.bombsite == self.lastCallRotateBombsite then
+		return
+	end
+
+	self.lastCallRotateBombsite = enemyNearestBombsite.bombsite
 
 	self.callRotateCooldownTimer:restart()
 
@@ -88,6 +105,10 @@ end
 
 --- @return void
 function AiRoutineHandleRotates:calloutGo()
+	if not self.callGoCooldownTimer:isElapsed(8) then
+		return
+	end
+
 	if AiUtility.enemiesAlive == 0 then
 		return
 	end
@@ -105,14 +126,19 @@ function AiRoutineHandleRotates:calloutGo()
 		B = 0
 	}
 
-	for _, enemy in pairs(AiUtility.enemies) do
-		local enemyOrigin = enemy:getOrigin()
+	for _, enemy in pairs(AiUtility.enemies) do repeat
+		if enemy:isDormant() then
+			break
+		end
+
+		-- Not using dormant origin as it can go stale.
+		local enemyOrigin = enemy:m_vecOrigin()
 		local nearestBombsite = Nodegraph.getClosestBombsite(enemyOrigin)
 
-		if enemyOrigin:getDistance(nearestBombsite.origin) < 1750 then
+		if enemyOrigin:getDistance(nearestBombsite.origin) < AiUtility.mapInfo.bombsiteRotateRadius * 1.2 then
 			enemiesNearBombsites[nearestBombsite.bombsite] = enemiesNearBombsites[nearestBombsite.bombsite] + 1
 		end
-	end
+	until true end
 
 	local bombsite
 	local enemiesNearBombsite
@@ -124,6 +150,12 @@ function AiRoutineHandleRotates:calloutGo()
 		bombsite = "B"
 		enemiesNearBombsite = enemiesNearBombsites.B
 	end
+
+	if self.lastCallGoBombsite == bombsite then
+		return
+	end
+
+	self.lastCallGoBombsite = bombsite
 
 	local ratio = enemiesNearBombsite / AiUtility.enemiesAlive
 

@@ -51,7 +51,7 @@ function AiChatCommandBase:bark(...)
     local args = {...}
     local argsFormatted = Table.getImplodedTable(args, " ")
 
-    Messenger.send(string.format(" %s %s", self.cmd, argsFormatted), true)
+    Messenger.send(string.format(" %s %s", self.cmd, argsFormatted), false)
 end
 
 --- @param ai Ai
@@ -70,11 +70,13 @@ function AiChatCommandBase:getRejectionError(ai, sender, args)
         return
     end
 
-    if self.isValidIfSelfInvoked then
+    local isLocalPlayer = sender:is(LocalPlayer)
+
+    if self.isValidIfSelfInvoked and isLocalPlayer then
         return
     end
 
-    local isAllowed = Config.isAllowedToSelfInvokeCommands or not sender:is(LocalPlayer)
+    local isAllowed = (Config.isAllowedToSelfInvokeCommands and isLocalPlayer) or not isLocalPlayer
 
     if not isAllowed then
         return Localization.cmdRejectionSelfInvoked

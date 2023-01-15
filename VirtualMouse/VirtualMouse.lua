@@ -231,6 +231,8 @@ function VirtualMouse.setViewAngles()
 		-- Handle the "buildup" of mouse movement delta that would result in the virtual mouse leaving the mousemat.
 		VirtualMouse.handleBuildup()
 
+
+
 		if VirtualMouse.buildupCooldownTimer:isElapsed(VirtualMouse.buildupCooldownTime) then
 			-- Perform generic look behaviour.
 			VirtualMouse.setIdealLookAhead(idealViewAngles)

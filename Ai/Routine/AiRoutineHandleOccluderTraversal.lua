@@ -4,6 +4,7 @@ local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
+local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
@@ -12,20 +13,23 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --{{{ Modules
 local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --}}}
 
 --{{{ AiRoutineHandleOccluderTraversal
 --- @class AiRoutineHandleOccluderTraversal : AiRoutineBase
 --- @field infernoInsideOf Entity
---- @field smokeInsideOf Entity
+--- @field isInfernoVisible boolean
+--- @field isNearInferno boolean
+--- @field isNearSmoke boolean
+--- @field isSmokeVisible boolean
 --- @field isWaitingOnOccluder boolean
---- @field jiggleTimer Timer
---- @field jiggleTime number
---- @field jiggleCooldownTimer Timer
 --- @field jiggleCooldownTime number
+--- @field jiggleCooldownTimer Timer
 --- @field jiggleDirection string
+--- @field jiggleTime number
+--- @field jiggleTimer Timer
+--- @field smokeInsideOf Entity
 local AiRoutineHandleOccluderTraversal = {}
 
 --- @param fields AiRoutineHandleOccluderTraversal
@@ -42,46 +46,96 @@ function AiRoutineHandleOccluderTraversal:__init()
 	self.jiggleCooldownTime = 0
 end
 
---- @param cmd SetupCommandEvent
 --- @return void
-function AiRoutineHandleOccluderTraversal:think(cmd)
+function AiRoutineHandleOccluderTraversal:think()
 	-- Yes, it is dumb that this is here.
 	Pathfinder.isInsideInferno = false
 	Pathfinder.isInsideSmoke = false
 
 	self.infernoInsideOf = nil
 	self.smokeInsideOf = nil
+	self.isNearInferno = true
+	self.isNearSmoke = false
 	self.isWaitingOnOccluder = false
+	self.isInfernoVisible = false
+	self.isSmokeVisible = false
 
 	local clientOrigin = LocalPlayer:getOrigin()
+	local clientEyeOrigin = LocalPlayer.getEyeOrigin()
 
-	-- Find an inferno that we're probably inside of.
-	for _, inferno in Entity.find("CInferno") do
-		local distance = clientOrigin:getDistance(inferno:m_vecOrigin())
+	-- if inside a fire then we have to get out of it
+	-- if a fire is visible to use, find out if we're pathfind across it and wait on it.
+	-- for smokes, maybe path away from the smoke more as standing in front of it is a death sentence.
 
-		-- We're doing a cheap way of detecting if we're inside a molotov.
-		-- May require tweaking.
-		if distance < 280 then
-			self.infernoInsideOf = inferno
+	-- Find infernos.
+	for _, inferno in Entity.find("CInferno") do repeat
+		local infernoBounds = inferno:m_vecOrigin():getBounds(Vector3.align.CENTER, 256, 256, 64)
 
+		-- Determine if we're nearby an inferno.
+		if not clientOrigin:isInBounds(infernoBounds) then
 			break
 		end
-	end
+
+		self.isNearInferno = true
+
+		local fires = inferno:getInfernoFires()
+
+		for _, fire in pairs(fires) do
+			local fireBounds = fire:getBounds(Vector3.align.CENTER, 100, 100, 48)
+
+			-- Determine if we're inside an inferno.
+			if clientOrigin:isInBounds(fireBounds) then
+				self.infernoInsideOf = inferno
+			end
+
+			local trace = Trace.getLineToPosition(clientEyeOrigin, fire:offset(0, 0, 18), AiUtility.traceOptionsVisible)
+
+			-- Determine if an inferno is visible.
+			if not trace.isIntersectingGeometry then
+				self.isInfernoVisible = true
+			end
+		end
+	until true end
 
 	if self.infernoInsideOf then
 		Pathfinder.isInsideInferno = true
 	end
 
-	-- Find a smoke that we're probably inside of.
-	for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
+	-- Find smokes.
+	for _, smoke in Entity.find("CSmokeGrenadeProjectile") do repeat
 		local smokeTick = smoke:m_nFireEffectTickBegin()
 
-		if smokeTick and smokeTick > 0 and clientOrigin:getDistance(smoke:m_vecOrigin()) < 200 then
-			self.smokeInsideOf = smoke
-
+		if not smokeTick or smokeTick == 0 then
 			break
 		end
-	end
+
+		local smokeOrigin = smoke:m_vecOrigin()
+		local smokeNearBounds = smokeOrigin:getBounds(Vector3.align.CENTER, 256, 256, 64)
+
+		-- Determine if we're nearby a smoke.
+		if not clientOrigin:isInBounds(smokeNearBounds) then
+			break
+		end
+
+		self.isNearSmoke = true
+
+		local smokeMaxBounds = Vector3:newBounds(Vector3.align.UP, 144, 144, 72)
+		local smokeVisibleBox = smoke:m_vecOrigin():offset(0, 0, 48):getBox(Vector3.align.CENTER, 72, 72, 24)
+
+		-- Determine if we're inside a smoke.
+		if clientOrigin:isInBounds(smokeMaxBounds) then
+			self.smokeInsideOf = smoke
+		end
+
+		for _, vertex in pairs(smokeVisibleBox) do
+			local trace = Trace.getLineToPosition(clientEyeOrigin, vertex, AiUtility.traceOptionsVisible)
+
+			-- Determine if a smoke is visible.
+			if not trace.isIntersectingGeometry then
+				self.isSmokeVisible = true
+			end
+		end
+	until true end
 
 	if self.smokeInsideOf then
 		Pathfinder.isInsideSmoke = true
@@ -93,9 +147,11 @@ end
 
 --- @return void
 function AiRoutineHandleOccluderTraversal:handleInferno()
-	local clientOrigin = LocalPlayer:getOrigin()
-
 	if self.infernoInsideOf then
+		return
+	end
+
+	if not self.isInfernoVisible then
 		return
 	end
 
@@ -109,12 +165,6 @@ function AiRoutineHandleOccluderTraversal:handleInferno()
 
 	for _, node in pairs(Pathfinder.path.nodes) do if isTraversingMolotov then break end repeat
 		if not node.isOccludedByInferno then
-			break
-		end
-
-		local distance = clientOrigin:getDistance(node.origin)
-
-		if distance > 500 then
 			break
 		end
 
@@ -146,14 +196,6 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 	end
 
 	if AiUtility.plantedBomb then
-		if LocalPlayer:isTerrorist() and AiUtility.isBombBeingDefusedByEnemy then
-			return
-		end
-
-		if LocalPlayer:isCounterTerrorist() and AiUtility.isBombBeingPlantedByEnemy then
-			return
-		end
-
 		if AiUtility.bombDetonationTime < 25 then
 			return
 		end
@@ -161,6 +203,18 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 		if AiUtility.bombDetonationTime < 30 and AiUtility.teammatesAlive >= 3 then
 			return
 		end
+
+		if AiUtility.isBombBeingDefusedByEnemy then
+			return
+		end
+	end
+
+	if AiUtility.isBombBeingPlantedByEnemy then
+		return
+	end
+
+	if not self.isNearSmoke then
+		return
 	end
 
 	local isTraversingSmoke = false
@@ -169,12 +223,6 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 
 	for _, node in pairs(Pathfinder.path.nodes) do if isTraversingSmoke then break end repeat
 		if not node.isOccludedBySmoke then
-			break
-		end
-
-		local distance = clientOrigin:getDistance(node.origin)
-
-		if distance > 600 then
 			break
 		end
 
@@ -188,7 +236,7 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 		return
 	end
 
-	if AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin()) > 750 then
+	if AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin()) > 650 then
 		return
 	end
 

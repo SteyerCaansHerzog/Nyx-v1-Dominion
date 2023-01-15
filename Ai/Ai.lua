@@ -246,7 +246,7 @@ function Ai:initEvents()
 			return
 		end
 
-		self:renderUi()
+		self:render()
 	end)
 
 	Client.onNextTick(function()
@@ -292,8 +292,8 @@ function Ai:initEvents()
 		--- @type PlayerChatEvent
 		local params = {
 			text = e,
-			sender = LocalPlayer,
 			teamonly = true,
+			sender = LocalPlayer,
 			name = LocalPlayer:getName()
 		}
 
@@ -342,7 +342,7 @@ function Ai:processCommand(e)
 end
 
 --- @return void
-function Ai:renderUi()
+function Ai:render()
 	if not MenuGroup.visualiseAi:get() then
 		return
 	end
@@ -528,6 +528,7 @@ function Ai:renderUi()
 		uiPos:offset(0, offset)
 
 		uiPos:drawSurfaceText(Font.TINY, ColorList.FONT_MUTED_EXTRA, "l", "Activity: NONE")
+		uiPos:offset(0, offset)
 	end
 
 	if Pathfinder.path then

@@ -42,7 +42,7 @@ end
 
 --- @return void
 function AiStateRush:assess()
-    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+    if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
         if not LocalPlayer:isTerrorist() then
             return AiPriority.IGNORE
         end

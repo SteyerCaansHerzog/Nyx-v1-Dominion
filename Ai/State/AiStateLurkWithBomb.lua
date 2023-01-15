@@ -1,16 +1,13 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
-local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
@@ -76,7 +73,7 @@ function AiStateLurkWithBomb:assess()
 		return AiPriority.IGNORE
 	end
 
-	if AiUtility.timeData.roundtime_elapsed > 45 then
+	if AiUtility.timeData.roundtime_elapsed > 40 then
 		return AiPriority.IGNORE
 	end
 
@@ -87,7 +84,7 @@ function AiStateLurkWithBomb:assess()
 	end
 
 	for _, teammate in pairs(AiUtility.teammates) do
-		if teammate:getOrigin():getDistance(bombsiteNode.origin) < 800 then
+		if teammate:getOrigin():getDistance(bombsiteNode.origin) < AiUtility.mapInfo.bombsiteRotateRadius * 1.25 then
 			return AiPriority.IGNORE
 		end
 	end

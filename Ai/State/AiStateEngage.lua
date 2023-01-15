@@ -59,7 +59,7 @@ local WeaponMode = {
 --- @class AiStateEngage : AiStateBase
 --- @field activeWeapon string
 --- @field aimInaccurateOffset number
---- @field aimNoise ViewNoise
+--- @field aimNoise VirtualMouseNoise
 --- @field aimOffset number
 --- @field aimSpeed number
 --- @field anticipateTime number
@@ -165,6 +165,7 @@ local WeaponMode = {
 --- @field visibleReactionTimer Timer
 --- @field visualizerCallbacks function[]
 --- @field visualizerExpiryTimers Timer[]
+--- @field waitForTargetVisibleTimer Timer
 --- @field walkCheckCount number
 --- @field walkCheckTimer Timer
 --- @field watchOrigin Vector3
@@ -203,7 +204,7 @@ function AiStateEngage:initFields()
     self.enemyVisibleTimer = Timer:new()
     self.equipPistolTimer = Timer:new()
     self.hitboxOffsetTimer = Timer:new():startThenElapse()
-    self.ignorePlayerAfter = 35 -- todo replace sensing
+    self.ignorePlayerAfter = 35
     self.isIgnoringDormancy = false
     self.isSneaking = false
     self.jiggleShootDirection = "Left"
@@ -253,6 +254,7 @@ function AiStateEngage:initFields()
     self.defendActionTime = 1
     self.defendLookAtOffset = Vector3:new()
     self.blockMovementAfterPlantTimer = Timer:new():startThenElapse()
+    self.waitForTargetVisibleTimer = Timer:new():startThenElapse()
 
     for i = 1, 64 do
         self.noticedPlayerTimers[i] = Timer:new()
@@ -343,7 +345,7 @@ function AiStateEngage:initEvents()
             end
         end
 
-        if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE and AiUtility.isHostageCarriedByEnemy then
+        if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE and AiUtility.isHostageCarriedByEnemy then
             for _, enemy in pairs(AiUtility.hostageCarriers) do
                 self:noticeEnemy(enemy, Vector3.MAX_DISTANCE, true, "Carrying hostage")
             end
@@ -1501,7 +1503,7 @@ function AiStateEngage:movementJiggleBait()
         self.jiggleHoldCooldownTimer:restart()
     end
 
-    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+    if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
         if LocalPlayer:isCounterTerrorist() then
             if AiUtility.timeData.roundtime_remaining <= 20 then
                 return false
@@ -1566,8 +1568,8 @@ function AiStateEngage:movementJiggleBait()
         local angleToEnemy = eyeOrigin:getAngle(enemyEyeOrigin)
         local left = eyeOrigin + angleToEnemy:getLeft() * 32
         local right = eyeOrigin + angleToEnemy:getRight() * 32
-        local leftTrace = Trace.getLineToPosition(left, enemyEyeOrigin, AiUtility.traceOptionsAttacking)
-        local rightTrace = Trace.getLineToPosition(right, enemyEyeOrigin, AiUtility.traceOptionsAttacking)
+        local leftTrace = Trace.getLineToPosition(left, enemyEyeOrigin, AiUtility.traceOptionsVisible)
+        local rightTrace = Trace.getLineToPosition(right, enemyEyeOrigin, AiUtility.traceOptionsVisible)
 
         if not leftTrace.isStartSolid and not rightTrace.isStartSolid then
             if not leftTrace.isIntersectingGeometry then
@@ -1631,7 +1633,7 @@ function AiStateEngage:movementAvoidSmokes()
         if cover then
             self.activity = "Backing up from smoke"
             self.hasBackupCover = true
-            self.lookAtBackingUpOrigin = Trace.getLineAlongCrosshair(AiUtility.traceOptionsAttacking).endPosition
+            self.lookAtBackingUpOrigin = Trace.getLineAlongCrosshair(AiUtility.traceOptionsVisible).endPosition
             self.isBackingUp = true
 
             self.seekCoverTimer:restart()
@@ -1653,7 +1655,7 @@ end
 function AiStateEngage:movementBackUpFromThreats()
     self.lookAtBackingUpOrigin = nil
 
-    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+    if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
         if AiUtility.totalThreats < 2 then
             return
         elseif self.isStrafePeeking then
@@ -1697,7 +1699,7 @@ function AiStateEngage:movementBackUpFromThreats()
     if cover then
         self.activity = "Backing up from enemies"
         self.hasBackupCover = true
-        self.lookAtBackingUpOrigin = Trace.getLineAlongCrosshair(AiUtility.traceOptionsAttacking).endPosition
+        self.lookAtBackingUpOrigin = Trace.getLineAlongCrosshair(AiUtility.traceOptionsVisible).endPosition
         self.isBackingUp = true
 
         self.seekCoverTimer:restart()
@@ -1723,7 +1725,7 @@ function AiStateEngage:movementDefending()
         isAbleToDefend = false
     end
 
-    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+    if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
         if LocalPlayer:isTerrorist() then
             defendNode = Node.defendHostageT
 
@@ -1764,7 +1766,7 @@ function AiStateEngage:movementDefending()
     if isAbleToDefend and not self.isDefending then
         local nodes = {}
 
-        if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+        if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
             nodes = Nodegraph.getWithin(clientOrigin, 1750, defendNode)
         else
             nodes = Nodegraph.getForBombsite(defendNode, self.ai.states.defend.bombsite)
@@ -1877,7 +1879,7 @@ function AiStateEngage:movementToTarget()
             isPushingToEnemyPosition = true
         end
 
-        if LocalPlayer:isTerrorist() and AiUtility.gamemode ~= AiUtility.gamemodes.HOSTAGE and AiUtility.timeData.roundtime_remaining < 25 and not AiUtility.plantedBomb then
+        if LocalPlayer:isTerrorist() and AiUtility.mapInfo.gamemode ~= AiUtility.gamemodes.HOSTAGE and AiUtility.timeData.roundtime_remaining < 25 and not AiUtility.plantedBomb then
             isPushingToEnemyPosition = true
         end
 
@@ -2259,7 +2261,7 @@ function AiStateEngage:attackingWallAndSmokeBang(cmd)
 
             local isShooting = false
             local isOccludedBySmoke = eyeOrigin:isRayIntersectingSmoke(bangOrigin)
-            local trace = Trace.getLineToPosition(eyeOrigin, bangOrigin, AiUtility.traceOptionsAttacking, "AiStateEngage.attackBestTarget<FindBangable>")
+            local trace = Trace.getLineToPosition(eyeOrigin, bangOrigin, AiUtility.traceOptionsVisible, "AiStateEngage.attackBestTarget<FindBangable>")
             local isOccludedByWall = trace.isIntersectingGeometry
 
             if isOccludedByWall then
@@ -2319,7 +2321,18 @@ function AiStateEngage:attackingBestTarget(cmd)
         return
     end
 
-    self.isTargetEasilyShot = visibleHitboxCount >= 8
+    local isTargetEasilyShot = false
+    local isSufficientHitboxesVisible = visibleHitboxCount >= 8
+
+    if not isSufficientHitboxesVisible then
+        self.waitForTargetVisibleTimer:restart()
+    end
+
+    if self.waitForTargetVisibleTimer:isElapsed(0.6) then
+        isTargetEasilyShot = true
+    end
+
+    self.isTargetEasilyShot = isTargetEasilyShot
 
     -- Begin watching last angle.
     if AiUtility.visibleEnemies[self.bestTarget.eid] then
@@ -2365,7 +2378,7 @@ function AiStateEngage:setIsVisibleToBestTarget()
     local hitboxes = LocalPlayer:getOrigin():offset(0, 0, 48):getBox(Vector3.align.CENTER, 16, 16, 16)
 
     for _, hitbox in pairs(hitboxes) do
-        local trace = Trace.getLineToPosition(enemyEyeOrigin, hitbox, AiUtility.traceOptionsAttacking, "AiStateBase.setIsVisibleToBestTarget<FindClientVisibleToEnemy>")
+        local trace = Trace.getLineToPosition(enemyEyeOrigin, hitbox, AiUtility.traceOptionsVisible, "AiStateBase.setIsVisibleToBestTarget<FindClientVisibleToEnemy>")
 
         if not trace.isIntersectingGeometry then
             self.isVisibleToBestTarget = true
@@ -2382,7 +2395,7 @@ function AiStateEngage:setIsVisibleToBestTarget()
     end
 
     for _, hitbox in pairs(hitboxes) do
-        local trace = Trace.getLineToPosition(enemyEyeOrigin, hitbox, AiUtility.traceOptionsAttacking, "AiStateBase.setIsVisibleToBestTarget<FindClientVisibleToEnemy>")
+        local trace = Trace.getLineToPosition(enemyEyeOrigin, hitbox, AiUtility.traceOptionsVisible, "AiStateBase.setIsVisibleToBestTarget<FindClientVisibleToEnemy>")
 
         if not trace.isIntersectingGeometry then
             self.isAboutToBeVisibleToBestTarget = true
@@ -2411,7 +2424,7 @@ function AiStateEngage:isAbleToHoldAngle()
 
     -- Check we're not going to hold an angle in a really dumb spot.
     local clientEyeOrigin = LocalPlayer.getEyeOrigin()
-    local traceOptions = Table.getMerged(AiUtility.traceOptionsAttacking, {
+    local traceOptions = Table.getMerged(AiUtility.traceOptionsVisible, {
         distance = 200
     })
 
@@ -2423,7 +2436,7 @@ function AiStateEngage:isAbleToHoldAngle()
     end
 
     if self.bestTarget and (not AiUtility.isBombBeingDefusedByEnemy and not AiUtility.isHostageCarriedByEnemy and not AiUtility.isHostageCarriedByTeammate) then
-        local trace = Trace.getLineToPosition(clientEyeOrigin, self.bestTarget:getEyeOrigin(), AiUtility.traceOptionsAttacking)
+        local trace = Trace.getLineToPosition(clientEyeOrigin, self.bestTarget:getEyeOrigin(), AiUtility.traceOptionsVisible)
 
         -- The enemy, from our point of view, is occluded by a smoke.
         -- We shouldn't really push smokes, so we should prefer holding the smoke instead.
@@ -2434,7 +2447,7 @@ function AiStateEngage:isAbleToHoldAngle()
 
     local clientOrigin = LocalPlayer:getOrigin()
     local bounds = Vector3:newBounds(Vector3.align.BOTTOM, 32)
-    local hullTrace = Trace.getHullAtPosition(clientOrigin:clone():offset(0, 0, 16), bounds, AiUtility.traceOptionsAttacking, "AiStateEngage.canHoldAngle<FindHull>")
+    local hullTrace = Trace.getHullAtPosition(clientOrigin:clone():offset(0, 0, 16), bounds, AiUtility.traceOptionsVisible, "AiStateEngage.canHoldAngle<FindHull>")
 
     -- Our proximity to a wall is too close.
     if hullTrace.isIntersectingGeometry then
@@ -2442,7 +2455,7 @@ function AiStateEngage:isAbleToHoldAngle()
     end
 
     -- Don't hold if the enemy is planting or has planted the bomb.
-    if LocalPlayer:isCounterTerrorist() and AiUtility.gamemode ~= AiUtility.gamemodes.HOSTAGE and not AiUtility.plantedBomb and not AiUtility.isBombBeingPlantedByEnemy then
+    if LocalPlayer:isCounterTerrorist() and AiUtility.mapInfo.gamemode ~= AiUtility.gamemodes.HOSTAGE and not AiUtility.plantedBomb and not AiUtility.isBombBeingPlantedByEnemy then
         -- If we're the closest to enemy, maybe don't permanently hold the angle.
         if self.bestTarget then
             local isClosestToEnemy = true
@@ -2468,7 +2481,7 @@ function AiStateEngage:isAbleToHoldAngle()
     end
 
     if LocalPlayer:isTerrorist() then
-        if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+        if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
             -- Ts should prefer defense in hostage.
             if not AiUtility.isHostageCarriedByEnemy and not AiUtility.isHostageBeingPickedUpByEnemy then
                 return true
@@ -2513,13 +2526,10 @@ function AiStateEngage:handleShiftWalking()
 
     if self.bestTarget and AiUtility.closestEnemy then
         local clientEyeOrigin = LocalPlayer.getEyeOrigin()
-        local predictedEyeOrigin = clientEyeOrigin + LocalPlayer:m_vecVelocity() * 0.8
         local enemyOrigin = AiUtility.closestEnemy:getOrigin()
         local distance = clientEyeOrigin:getDistance(enemyOrigin)
-        local trace = Trace.getLineToPosition(predictedEyeOrigin, self.bestTarget:getOrigin():offset(0, 0, 48), AiUtility.traceOptionsAttacking, "AiStateEngage.walk<FindPredicted>")
-        local shootFov = self:getShootFov(self.bestTarget:getCameraAngles(), self.bestTarget:getEyeOrigin(), clientEyeOrigin)
 
-        if distance < 1200 then
+        if distance < 900 then
             return
         end
 
@@ -2531,16 +2541,21 @@ function AiStateEngage:handleShiftWalking()
             end
         end
 
+        local predictedEyeOrigin = clientEyeOrigin + LocalPlayer:m_vecVelocity() * 0.8
+        local trace = Trace.getLineToPosition(predictedEyeOrigin, self.bestTarget:getOrigin():offset(0, 0, 48), AiUtility.traceOptionsVisible, "AiStateEngage.walk<FindPredicted>")
+        local shootFov = self:getShootFov(self.bestTarget:getCameraAngles(), self.bestTarget:getEyeOrigin(), clientEyeOrigin)
+
+        -- Don't walk if the enemy is facing is and we're going to peek them.
         if not trace.isIntersectingGeometry and shootFov < 20 then
             return
         end
     end
 
-    if self.walkCheckTimer:isElapsedThenRestart(0.075) then
+    if self.walkCheckTimer:isElapsedThenRestart(0.05) then
         self.walkCheckCount = Math.getClamped(self.walkCheckCount - 1, 0, 20)
     end
 
-    if self.walkCheckCount >= 15 then
+    if self.walkCheckCount >= 12 then
         return
     end
 
@@ -2560,7 +2575,7 @@ function AiStateEngage:handleShiftWalking()
         return
     end
 
-    if LocalPlayer:isTerrorist() and not AiUtility.plantedBomb and AiUtility.timeData.roundtime_remaining < 12 then
+    if LocalPlayer:isTerrorist() and not AiUtility.plantedBomb and AiUtility.timeData.roundtime_remaining < 20 then
         return
     end
 
@@ -2663,7 +2678,7 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
 
     -- We have an actual target to shoot, and not just some point in space.
     if enemy then
-        local trace = Trace.getLineToPosition(clientEyeOrigin, aimAtBaseOrigin, AiUtility.traceOptionsAttacking, "AiStateEngage.shoot<FindShootAtBehindWall>")
+        local trace = Trace.getLineToPosition(clientEyeOrigin, aimAtBaseOrigin, AiUtility.traceOptionsVisible, "AiStateEngage.shoot<FindShootAtBehindWall>")
 
         -- Enemy is behind a wall. We have other code responsible for wallbanging.
         if self.sprayTimer:isElapsed(self.sprayTime) and trace.isIntersectingGeometry then
@@ -2730,7 +2745,7 @@ function AiStateEngage:isTeammateInCrosshair(aimAtOrigin)
             break
         end
 
-        local trace = Trace.getLineToPosition(eyeOrigin, teammate:getEyeOrigin(), AiUtility.traceOptionsAttacking)
+        local trace = Trace.getLineToPosition(eyeOrigin, teammate:getEyeOrigin(), AiUtility.traceOptionsVisible)
 
         -- The teammate is behind a wall.
         if trace.isIntersectingGeometry then
@@ -2779,7 +2794,9 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
     local isVelocityOk = true
 
     if distance > 600 then
-        cmd.in_duck = true
+        Pathfinder.duck()
+    elseif distance > 900 then
+        self:actionStop(cmd)
     elseif not self.isRunAndShootAllowed then
         self:actionJiggle(self.jiggleShootTime * 0.33)
 
@@ -2794,7 +2811,7 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-   VirtualMouse.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
+   VirtualMouse.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage target")
 
     if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
@@ -2817,7 +2834,13 @@ function AiStateEngage:shootLight(cmd, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-   VirtualMouse.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
+   VirtualMouse.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage target")
+
+    if not self.isTargetEasilyShot and distance > 850 then
+        self:actionStop(cmd)
+
+        return
+    end
 
     if not self.isRunAndShootAllowed then
         self:actionCounterStrafe(cmd)
@@ -2845,7 +2868,7 @@ function AiStateEngage:shootShotgun(cmd, aimAtOrigin, fov, weapon)
         aimSpeed = self.aimSpeed * 1.5
     end
 
-   VirtualMouse.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage look-at target")
+   VirtualMouse.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage target")
 
     if distance > 1000 then
         return
@@ -2868,17 +2891,25 @@ end
 --- @param weapon CsgoWeapon
 --- @return void
 function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
-   VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed, self.aimNoise, "Engage look-at target")
+   VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed, self.aimNoise, "Engage target")
 
     if self.isTargetEasilyShot then
         self:actionCounterStrafe(cmd)
     else
+        local isStopping = false
+
         if not self:isAllowedToStrafe() then
+            isStopping = true
+        elseif LocalPlayer:getOrigin():getDistance(aimAtOrigin) > 850 then
+            isStopping = true
+        end
+
+        if isStopping then
             self:actionStop(cmd)
         end
     end
 
-    local isVelocityOk = LocalPlayer:m_vecVelocity():getMagnitude() < 120
+    local isVelocityOk = LocalPlayer:m_vecVelocity():getMagnitude() < 110
 
     if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
@@ -2916,9 +2947,9 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
 
     -- Create a "flick" effect when aiming.
     if isNoscoping or self.scopedTimer:isElapsed(fireDelay * 0.4) then
-        VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed * 3, self.aimNoise, "Engage look-at target")
+        VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed * 3, self.aimNoise, "Engage target (sniper, slow)")
     else
-        VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed, self.aimNoise, "Engage look-at target")
+        VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed, self.aimNoise, "Engage target (sniper, fast)")
     end
 
     if not isNoscoping and fov < self.shootWithinFov * 2.5 then
@@ -2941,7 +2972,7 @@ end
 
 --- @return boolean
 function AiStateEngage:isAllowedToStrafe()
-    return (self.tapFireTime - 0.15) - self.tapFireTimer:get() > 0
+    return (self.tapFireTime - 0.1) - self.tapFireTimer:get() > 0
 end
 
 --- @param enemy Player
@@ -2984,7 +3015,7 @@ function AiStateEngage:getTargetHitbox(enemy)
 
     for hitboxId, hitbox in pairs(enemy:getHitboxPositions(hitboxes)) do
         local hitboxPriority = hitboxesPriority[hitboxId]
-        local trace = Trace.getLineToPosition(eyeOrigin, hitbox, AiUtility.traceOptionsAttacking, "AiStateEngage.getHitbox<FindTargetableHitbox>")
+        local trace = Trace.getLineToPosition(eyeOrigin, hitbox, AiUtility.traceOptionsVisible, "AiStateEngage.getHitbox<FindTargetableHitbox>")
 
         if not trace.isIntersectingGeometry then
             visibleHitboxCount = visibleHitboxCount + 1
@@ -3166,7 +3197,7 @@ function AiStateEngage:actionStrafePeek()
 
     self.strafePeekIndex = self.strafePeekIndex + 1
 
-    local traceOptions = Table.getMerged(AiUtility.traceOptionsAttacking, {
+    local traceOptions = Table.getMerged(AiUtility.traceOptionsVisible, {
         distance = distance
     })
 
@@ -3185,7 +3216,7 @@ function AiStateEngage:actionStrafePeek()
             Player.hitbox.LEFT_LOWER_ARM,
             Player.hitbox.RIGHT_LOWER_LEG,
         })) do
-            local findVisibleHitboxTrace = Trace.getLineToPosition(hitbox, offsetTraceOrigin, AiUtility.traceOptionsAttacking, "AiStateEngage.strafePeek<FindVisibleHitbox>")
+            local findVisibleHitboxTrace = Trace.getLineToPosition(hitbox, offsetTraceOrigin, AiUtility.traceOptionsVisible, "AiStateEngage.strafePeek<FindVisibleHitbox>")
 
             if not findVisibleHitboxTrace.isIntersectingGeometry then
                 isVisible = true
@@ -3251,7 +3282,7 @@ function AiStateEngage:preAimThroughCorners()
     local isPeeking = false
 
     for _, hitbox in pairs(hitboxes) do
-        local trace = Trace.getLineToPosition(testOrigin, hitbox, AiUtility.traceOptionsAttacking, "AiStateEngage.preAimThroughCorners<FindVisibleEnemyHitbox>")
+        local trace = Trace.getLineToPosition(testOrigin, hitbox, AiUtility.traceOptionsVisible, "AiStateEngage.preAimThroughCorners<FindVisibleEnemyHitbox>")
 
         if not trace.isIntersectingGeometry then
             isPeeking = true
@@ -3392,10 +3423,10 @@ function AiStateEngage:preAimAboutCorners()
         for i = 1, band.points do
             local direction = Angle:new(0, vertexInterval * i) + (bandDirection)
             local vertex = self.preAimAboutCornersCenterOrigin + (direction:getForward() * band.distance)
-            local findWallCollideTrace = Trace.getLineToPosition(self.preAimAboutCornersCenterOrigin, vertex, AiUtility.traceOptionsAttacking, "AiStateEngage.preAimAboutCorners<FindWallCollidePoint>")
+            local findWallCollideTrace = Trace.getLineToPosition(self.preAimAboutCornersCenterOrigin, vertex, AiUtility.traceOptionsVisible, "AiStateEngage.preAimAboutCorners<FindWallCollidePoint>")
 
             if not findWallCollideTrace.isIntersectingGeometry then
-                local findVisibleToClientTrace = Trace.getLineToPosition(eyeOrigin, vertex, AiUtility.traceOptionsAttacking, "AiStateEngage.preAimAboutCorners<FindPointVisibleToClient>")
+                local findVisibleToClientTrace = Trace.getLineToPosition(eyeOrigin, vertex, AiUtility.traceOptionsVisible, "AiStateEngage.preAimAboutCorners<FindPointVisibleToClient>")
                 if not findVisibleToClientTrace.isIntersectingGeometry then
                     local distance = eyeOrigin:getDistance(vertex)
 

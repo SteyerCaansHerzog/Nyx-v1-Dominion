@@ -33,7 +33,6 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field bombCarrier Player
 --- @field bombDetonationTime number
 --- @field bombsiteBeingPlantedAt string
---- @field bombsiteType string
 --- @field canDefuse boolean
 --- @field client Player
 --- @field clientNodeOrigin Vector3
@@ -52,7 +51,6 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field enemyDistances number[]
 --- @field enemyFovs number[]
 --- @field enemyHitboxes table<number, Vector3[]>
---- @field gamemode string
 --- @field gamemodes GamemodeInfo
 --- @field gameRules GameRules
 --- @field hasBomb Player
@@ -66,16 +64,17 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field isClientThreatenedMajor boolean
 --- @field isClientThreatenedMinor boolean
 --- @field isEnemyVisible boolean
---- @field isHostageCarriedByEnemy boolean
---- @field isHostageCarriedByTeammate boolean
 --- @field isHostageBeingPickedUpByEnemy boolean
 --- @field isHostageBeingPickedUpByTeammate boolean
+--- @field isHostageCarriedByEnemy boolean
+--- @field isHostageCarriedByTeammate boolean
 --- @field isInsideSmoke boolean
 --- @field isLastAlive boolean
 --- @field isPerformingCalculations boolean
 --- @field isRoundOver boolean
 --- @field lastPresenceTimers Timer[]
 --- @field lastVisibleEnemyTimer Timer
+--- @field mapInfo MapInfo
 --- @field plantedBomb Entity
 --- @field position number
 --- @field randomBombsite string
@@ -89,7 +88,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field threatZs number[]
 --- @field timeData GameStateTimeData
 --- @field totalThreats number
---- @field traceOptionsAttacking TraceOptions
+--- @field traceOptionsVisible TraceOptions
 --- @field traceOptionsPathfinding TraceOptions
 --- @field visibleEnemies Player[]
 local AiUtility = {
@@ -105,7 +104,7 @@ end
 --- @return void
 function AiUtility.seedPrng()
     -- This must be executed as the very first setupCommand event that runs. Before everything else.
-    -- It is responsible for ensuring RNG between AI clients on the same server is properly randomised.
+    -- It is responsible for ensuring RNG between AI clients on the same server are properly randomised.
     if entity.get_local_player() then
         for _ = 0, entity.get_local_player() * 100 do
             client.random_float(0, 1)
@@ -170,18 +169,18 @@ function AiUtility:initFields()
         type = Trace.type.EVERYTHING
     }
 
-    local solidAttackingEntities = {
+    local solidVisibleEntities = {
         CFuncBrush = true,
         CBaseEntity = true,
         CPropDoorRotating = true,
         CFuncBrush = true
     }
 
-    AiUtility.traceOptionsAttacking = {
+    AiUtility.traceOptionsVisible = {
         skip = function(eid, contents)
             local entity = Entity:create(eid)
 
-            if solidAttackingEntities[entity.classname] then
+            if solidVisibleEntities[entity.classname] then
                 return false
             end
 
@@ -225,8 +224,7 @@ function AiUtility:initEvents()
         map = map:gsub("/", "_")
 
         if map and MapInfo[map] then
-            AiUtility.gamemode = MapInfo[map].gamemode
-            AiUtility.bombsiteType = MapInfo[map].bombsiteType
+            AiUtility.mapInfo = MapInfo[map]
         end
 
         AiUtility.timeData = Table.fromPanorama(Panorama.GameStateAPI.GetTimeDataJSO())
@@ -578,7 +576,7 @@ function AiUtility.updateEnemies()
                 Player.hitbox.RIGHT_LOWER_LEG,
             })) do
                 if not clientEyeOrigin:isRayIntersectingSmoke(hitbox) then
-                    local trace = Trace.getLineToPosition(clientEyeOrigin, hitbox, AiUtility.traceOptionsAttacking, "AiUtility.updateEnemies<FindPointVisibleToClient>")
+                    local trace = Trace.getLineToPosition(clientEyeOrigin, hitbox, AiUtility.traceOptionsVisible, "AiUtility.updateEnemies<FindPointVisibleToClient>")
 
                     if not trace.isIntersectingGeometry then
                         isVisible = true
@@ -655,7 +653,7 @@ function AiUtility.updateThreats()
     -- Prevent our own plane from clipping thin walls.
     -- It can look very wrong when pre-aiming through certain geometry.
     for id, vertex in pairs(clientPlane) do
-        local trace = Trace.getLineToPosition(eyeOrigin, vertex, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindClientPlaneWallCollidePoint>")
+        local trace = Trace.getLineToPosition(eyeOrigin, vertex, AiUtility.traceOptionsVisible, "AiUtility.updateThreats<FindClientPlaneWallCollidePoint>")
 
         clientPlane[id] = trace.endPosition
     end
@@ -710,12 +708,12 @@ function AiUtility.updateThreats()
         for _ = 1, steps do
             local collideIdealOrigin = enemyOffset + bandAngle:getForward() * traceDistance * 0.66
             local uncollideIdealOrigin = enemyOffset + bandAngle:getForward() * traceDistance
-            local findWallCollideTrace = Trace.getLineToPosition(enemyOffset, collideIdealOrigin, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindWallCollidePoint>")
+            local findWallCollideTrace = Trace.getLineToPosition(enemyOffset, collideIdealOrigin, AiUtility.traceOptionsVisible, "AiUtility.updateThreats<FindWallCollidePoint>")
 
             for _, vertex in pairs(clientPlane) do
                 -- Trace to see if we can see the previous trace.
-                local findCollidedPointVisibleToEnemyTrace = Trace.getLineToPosition(findWallCollideTrace.endPosition, vertex, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindCollidedPointVisibleToEnemy>")
-                local findUncollidedPointVisibleToEnemyTrace = Trace.getLineToPosition(uncollideIdealOrigin, vertex, AiUtility.traceOptionsAttacking, "AiUtility.updateThreats<FindUncollidedPointVisibleToEnemy>")
+                local findCollidedPointVisibleToEnemyTrace = Trace.getLineToPosition(findWallCollideTrace.endPosition, vertex, AiUtility.traceOptionsVisible, "AiUtility.updateThreats<FindCollidedPointVisibleToEnemy>")
+                local findUncollidedPointVisibleToEnemyTrace = Trace.getLineToPosition(uncollideIdealOrigin, vertex, AiUtility.traceOptionsVisible, "AiUtility.updateThreats<FindUncollidedPointVisibleToEnemy>")
                 local fov = enemyAngle:getFov(eyeOrigin, findWallCollideTrace.endPosition)
 
                 -- Find if the enemy could potentially peek us.
@@ -761,8 +759,8 @@ function AiUtility.updateThreats()
 
     if clientThreatenedFromOrigin then
         local predictedEyeOrigin = eyeOrigin + LocalPlayer:m_vecVelocity() * 0.4
-        local findVisibleTrace = Trace.getLineToPosition(eyeOrigin, clientThreatenedFromOrigin, AiUtility.traceOptionsAttacking)
-        local findPredictedVisibleTrace = Trace.getLineToPosition(predictedEyeOrigin, clientThreatenedFromOrigin, AiUtility.traceOptionsAttacking)
+        local findVisibleTrace = Trace.getLineToPosition(eyeOrigin, clientThreatenedFromOrigin, AiUtility.traceOptionsVisible)
+        local findPredictedVisibleTrace = Trace.getLineToPosition(predictedEyeOrigin, clientThreatenedFromOrigin, AiUtility.traceOptionsVisible)
 
         if not findVisibleTrace.isIntersectingGeometry or not findPredictedVisibleTrace.isIntersectingGeometry then
             AiUtility.clientThreatenedFromOrigin = clientThreatenedFromOrigin

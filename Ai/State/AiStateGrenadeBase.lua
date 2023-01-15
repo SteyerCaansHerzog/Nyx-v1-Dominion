@@ -123,7 +123,7 @@ function AiStateGrenadeBase:assess()
     end
 
     -- Do not throw smokes etc. when the round has just begun.
-    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE and AiUtility.timeData.roundtime_elapsed <= 15 then
+    if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE and AiUtility.timeData.roundtime_elapsed <= 15 then
         return AiPriority.IGNORE
     end
 
@@ -548,7 +548,7 @@ end
 
 --- @return NodeTypeGrenade[]
 function AiStateGrenadeBase:getNodes()
-    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+    if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
         if LocalPlayer:isCounterTerrorist() then
             return Nodegraph.get(self.nodeRetakeCt)
         elseif LocalPlayer:isTerrorist() then

@@ -137,8 +137,8 @@ function AiRoutineHandleGunfireAvoidance:think(cmd)
 		local predictedEnemyEyeOrigin = enemyEyeOrigin:offsetByVector(enemy:m_vecVelocity() * 0.15)
 
 		for _, vertex in pairs(skeleton) do
-			local traceEnemyEyeOrigin = Trace.getLineToPosition(enemyEyeOrigin, vertex, AiUtility.traceOptionsAttacking, "AiRoutineHandleGunfireAvoidance.think<FindVisibleLocalPlayerHitbox>")
-			local tracePredictedEnemyEyeOrigin = Trace.getLineToPosition(predictedEnemyEyeOrigin, vertex, AiUtility.traceOptionsAttacking, "AiRoutineHandleGunfireAvoidance.think<FindVisibleLocalPlayerHitbox>")
+			local traceEnemyEyeOrigin = Trace.getLineToPosition(enemyEyeOrigin, vertex, AiUtility.traceOptionsVisible, "AiRoutineHandleGunfireAvoidance.think<FindVisibleLocalPlayerHitbox>")
+			local tracePredictedEnemyEyeOrigin = Trace.getLineToPosition(predictedEnemyEyeOrigin, vertex, AiUtility.traceOptionsVisible, "AiRoutineHandleGunfireAvoidance.think<FindVisibleLocalPlayerHitbox>")
 
 			if not traceEnemyEyeOrigin.isIntersectingGeometry or not tracePredictedEnemyEyeOrigin.isIntersectingGeometry then
 				isVisible = true

@@ -335,9 +335,9 @@ end
 --- @param origin Vector3
 --- @return NodeTypeObjective
 function Nodegraph.getClosestBombsite(origin)
-    if AiUtility.bombsiteType == "distance" then
+    if AiUtility.mapInfo.bombsiteType == "distance" then
         return Nodegraph.getClosestBombsiteByDistance(origin)
-    elseif AiUtility.bombsiteType == "height" then
+    elseif AiUtility.mapInfo.bombsiteType == "height" then
         return Nodegraph.getClosestBombsiteByHeight(origin)
     end
 end
@@ -491,7 +491,7 @@ function Nodegraph.getVisible(node, origin, radius)
         local distance = origin:getDistance(search.origin)
 
         if distance < radius then
-            local trace = Trace.getLineToPosition(origin, search.origin, AiUtility.traceOptionsAttacking, "Nodegraph.getVisible<FindVisible>")
+            local trace = Trace.getLineToPosition(origin, search.origin, AiUtility.traceOptionsVisible, "Nodegraph.getVisible<FindVisible>")
 
             if not trace.isIntersectingGeometry then
                 iNodes = iNodes + 1
@@ -527,7 +527,7 @@ function Nodegraph.getVisibleOfType(node, origin, radius)
         local distance = origin:getDistance(search.origin)
 
         if distance < radius then
-            local trace = Trace.getLineToPosition(origin, search.origin, AiUtility.traceOptionsAttacking, "Nodegraph.getVisibleOfType<FindVisible>")
+            local trace = Trace.getLineToPosition(origin, search.origin, AiUtility.traceOptionsVisible, "Nodegraph.getVisibleOfType<FindVisible>")
 
             if not trace.isIntersectingGeometry then
                 iNodes = iNodes + 1

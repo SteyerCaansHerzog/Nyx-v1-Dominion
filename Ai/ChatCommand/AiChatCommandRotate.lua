@@ -30,7 +30,7 @@ function AiChatCommandRotate:invoke(ai, sender, args)
         return self.FREEZETIME
     end
 
-    if AiUtility.gamemode == "hostage" then
+    if AiUtility.mapInfo.gamemode == "hostage" then
         return self.GAMEMODE_IS_NOT_DEMOLITION
     end
 

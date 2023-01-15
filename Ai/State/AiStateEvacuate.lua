@@ -238,7 +238,7 @@ function AiStateEvacuate:think(cmd)
 
     self.activity = "Going to hide"
 
-    local findSpotVisibleTrace = Trace.getLineToPosition(LocalPlayer:getEyeOrigin(), self.node.origin, AiUtility.traceOptionsAttacking, "AiStateEvacuate.think<FindSpotVisible>")
+    local findSpotVisibleTrace = Trace.getLineToPosition(LocalPlayer:getEyeOrigin(), self.node.origin, AiUtility.traceOptionsVisible, "AiStateEvacuate.think<FindSpotVisible>")
     local distance = LocalPlayer:getOrigin():getDistance(self.node.origin)
 
     Pathfinder.canRandomlyJump()

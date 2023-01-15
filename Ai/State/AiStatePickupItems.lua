@@ -278,6 +278,11 @@ end
 --- @return void
 function AiStatePickupItems:deactivate() end
 
+--- @return void
+function AiStatePickupItems:reset()
+    self.item = nil
+end
+
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStatePickupItems:think(cmd)

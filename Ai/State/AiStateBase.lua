@@ -60,11 +60,11 @@ end
 
 --- @return string
 function AiStateBase:getError()
-    if self.requiredGamemodes then
+    if self.requiredGamemodes and AiUtility.mapInfo then
         local isValidGamemode = false
 
         for _, gamemode in pairs(self.requiredGamemodes) do
-            if AiUtility.gamemode == gamemode then
+            if AiUtility.mapInfo.gamemode == gamemode then
                 isValidGamemode = true
 
                 break
@@ -161,7 +161,7 @@ function AiStateBase:getCoverNode(range, target)
             local isVisibleToEnemy = false
 
             for _, eyeOrigin in pairs(enemyEyeOrigins) do
-                local trace = Trace.getLineToPosition(eyeOrigin, node.origin, AiUtility.traceOptionsAttacking, "AiStateBase.getCoverNode<FindNodeVisibleToEnemy>")
+                local trace = Trace.getLineToPosition(eyeOrigin, node.origin, AiUtility.traceOptionsVisible, "AiStateBase.getCoverNode<FindNodeVisibleToEnemy>")
 
                 if not trace.isIntersectingGeometry then
                     isVisibleToEnemy = true

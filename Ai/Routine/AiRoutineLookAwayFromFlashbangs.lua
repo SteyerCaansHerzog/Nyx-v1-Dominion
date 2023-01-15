@@ -112,7 +112,7 @@ function AiRoutineLookAwayFromFlashbangs:think(cmd)
 		local findIsVisibleToClientTrace = Trace.getLineToPosition(
 			eyeOrigin,
 			findPredictedFuturePositionTrace.endPosition,
-			AiUtility.traceOptionsAttacking,
+			AiUtility.traceOptionsVisible,
 			"AiRoutineLookAwayFromFlashbangs.think<FindIsVisible>"
 		)
 

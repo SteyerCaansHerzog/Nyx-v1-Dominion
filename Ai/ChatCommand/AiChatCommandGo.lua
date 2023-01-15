@@ -26,7 +26,7 @@ local AiChatCommandGo = {
 --- @param args string[]
 --- @return void
 function AiChatCommandGo:invoke(ai, sender, args)
-    if AiUtility.gamemode == AiUtility.gamemodes.HOSTAGE then
+    if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
         return self.GAMEMODE_IS_NOT_DEMOLITION
     end
 

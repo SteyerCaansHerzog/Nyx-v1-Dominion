@@ -2,7 +2,6 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Color = require "gamesense/Nyx/v1/Api/Color"
-local DrawDebug = require "gamesense/Nyx/v1/Api/DrawDebug"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
@@ -229,9 +228,10 @@ function Pathfinder.initEvents()
 	Callbacks.smokeGrenadeDetonate(function(e)
 		--- @type NodeTypeBase[]
 		local pool = {}
+		local smokeBounds = e.origin:getBounds(Vector3.align.UP, 144, 144, 72)
 
 		for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do repeat
-			if node.origin:getDistance(e.origin) > 160 then
+			if not node.origin:isInBounds(smokeBounds) then
 				break
 			end
 
@@ -250,9 +250,10 @@ function Pathfinder.initEvents()
 	Callbacks.infernoStartBurn(function(e)
 		--- @type NodeTypeBase[]
 		local pool = {}
+		local bounds = e.origin:getBounds(Vector3.align.CENTER, 128, 128, 48)
 
 		for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do repeat
-			if node.origin:getDistance(e.origin) > 200 then
+			if node.origin:isInBounds(bounds) then
 				break
 			end
 
