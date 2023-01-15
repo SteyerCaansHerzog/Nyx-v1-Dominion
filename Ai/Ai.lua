@@ -374,12 +374,12 @@ function Ai:render()
 		return
 	end
 
-	local screenBgColor = Color:rgba(0, 0, 0, 200)
+	local screenBgColor = Color:rgba(0, 0, 0, 80)
 
 	if not LocalPlayer:isAlive() then
 		name = name .. " (DEAD)"
 		nameBgColor = Color:rgba(255, 50, 50, 255)
-		screenBgColor = Color:rgba(150, 25, 25, 150)
+		screenBgColor = Color:rgba(150, 25, 25, 160)
 	end
 
 	local screenDimensions = Client.getScreenDimensions()

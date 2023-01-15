@@ -51,7 +51,7 @@ function AiChatCommandBase:bark(...)
     local args = {...}
     local argsFormatted = Table.getImplodedTable(args, " ")
 
-    Messenger.send(string.format(" %s %s", self.cmd, argsFormatted), false)
+    Messenger.send(string.format(" %s %s", self.cmd, argsFormatted), true)
 end
 
 --- @param ai Ai
