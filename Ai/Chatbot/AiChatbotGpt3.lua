@@ -16,6 +16,7 @@ local AiChatbotBase = require "gamesense/Nyx/v1/Dominion/Ai/Chatbot/AiChatbotBas
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --}}}
 
 --{{{ AiChatbotGpt3
