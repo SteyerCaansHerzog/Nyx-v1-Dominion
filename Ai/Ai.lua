@@ -201,6 +201,7 @@ function Ai:initMenu()
 	end):setParent(MenuGroup.enableAi)
 
 	MenuGroup.visualiseAi = MenuGroup.group:addCheckbox("    > Visualise AI"):setParent(MenuGroup.enableAi)
+	MenuGroup.enableDim = MenuGroup.group:addCheckbox("        > Enable Dim"):set(true):setParent(MenuGroup.visualiseAi)
 	MenuGroup.enableAimbot = MenuGroup.group:addCheckbox("    > Enable Aim System"):setParent(MenuGroup.enableAi)
 	MenuGroup.visualiseAimbot = MenuGroup.group:addCheckbox("        > Visualise Aimbot"):setParent(MenuGroup.enableAimbot)
 end
@@ -383,9 +384,10 @@ function Ai:render()
 	end
 
 	local screenDimensions = Client.getScreenDimensions()
-
-	Vector2:new():drawSurfaceRectangle(screenDimensions, screenBgColor)
-
+	
+	if MenuGroup.enableDim:get() then
+		Vector2:new():drawSurfaceRectangle(screenDimensions, screenBgColor)
+	end;
 	self.states.engage:render()
 
 	local nameWidth = ISurface.getTextSize(Font.SMALL_BOLD, name)
