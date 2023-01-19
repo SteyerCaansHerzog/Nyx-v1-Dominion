@@ -380,7 +380,6 @@ function Ai:render()
 	if not LocalPlayer:isAlive() then
 		name = name .. " (DEAD)"
 		nameBgColor = Color:rgba(255, 50, 50, 255)
-		screenBgColor = Color:rgba(150, 25, 25, 160)
 	end
 
 	local screenDimensions = Client.getScreenDimensions()
@@ -476,9 +475,15 @@ function Ai:render()
 		uiPos:offset(0, offset)
 	end
 
+	local skill = self.states.engage.skill
+
+	if skill == -1 then
+		skill = "Practice"
+	end
+
 	uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(
-		"Skill: %i",
-		self.states.engage.skill
+		"Skill: %s",
+		skill
 	))
 
 	uiPos:offset(0, offset)

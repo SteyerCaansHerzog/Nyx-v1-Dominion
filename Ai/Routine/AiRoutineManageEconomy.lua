@@ -4,7 +4,6 @@ local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
-local Player = require "gamesense/Nyx/v1/Api/Player"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
 
@@ -141,8 +140,25 @@ function AiRoutineManageEconomy:handleEconomy()
 	local tWins = scoreData.teamdata.TERRORIST.score
 	local ctWins = scoreData.teamdata.CT.score
 
-	-- Don't bother with economy on match point rounds.
-	if rounds == (halftime - 1) or tWins == halftime or ctWins == halftime or rounds == (maxRounds) then
+	local isCounterTerroristMatchPoint = ctWins == halftime
+	local isTerroristMatchPoint = tWins == halftime
+	local isOurMatchPoint = false
+	local isEnemyMatchPoint = false
+	local isLastOfHalf = rounds == (halftime - 1)
+	local isLastOfGame = rounds == maxRounds
+
+	if LocalPlayer:isCounterTerrorist() then
+		isOurMatchPoint = isCounterTerroristMatchPoint
+		isEnemyMatchPoint = isTerroristMatchPoint
+	elseif LocalPlayer:isTerrorist() then
+		isOurMatchPoint = isTerroristMatchPoint
+		isEnemyMatchPoint = isCounterTerroristMatchPoint
+	end
+
+	-- We have to buy this round.
+	if isEnemyMatchPoint or isLastOfHalf or isLastOfGame then
+		self:determineForceBuyOrDrop()
+
 		return
 	end
 

@@ -237,7 +237,7 @@ function AiStateFlashbangDynamic:think(cmd)
     VirtualMouse.lookAlongAngle(self.throwAngles, 4.5, VirtualMouse.noise.none, "FlashbangDynamic look at throw angle")
 
     VirtualMouse.isCrosshairUsingVelocity = true
-    VirtualMouse.isCrosshairSmoothed = false
+    VirtualMouse.isCrosshairLerpingToZero = true
 
     local maxDiff = self.throwAngles:getMaxDiff(LocalPlayer.getCameraAngles())
 

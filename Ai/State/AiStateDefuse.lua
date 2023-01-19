@@ -1,9 +1,7 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
-local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -17,7 +15,6 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
@@ -121,12 +118,8 @@ function AiStateDefuse:assess()
     local clientDistanceToBomb = clientOrigin:getDistance(bombOrigin)
 
     -- We're in a smoke.
-    if clientDistanceToBomb < 80 then
-        for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
-            if clientOrigin:getDistance(smoke:m_vecOrigin()) < 100 then
-                return AiPriority.DEFUSE_COVERED
-            end
-        end
+    if clientDistanceToBomb < 100 and self.ai.routines.handleOccluderTraversal.smokeInsideOf then
+        return AiPriority.DEFUSE_COVERED
     end
 
     -- We're close to the bomb and covered.
@@ -195,35 +188,55 @@ function AiStateDefuse:think(cmd)
         self.ai.routines.manageWeaponReload:block()
         cmd.in_use = true
 
-        Pathfinder.duck()
+        if AiUtility.enemiesAlive > 0 then
+            Pathfinder.duck()
+        end
 
         if LocalPlayer:hasWeapon(Weapons.SMOKE)
+            and AiUtility.enemiesAlive > 0
             and Table.isEmpty(AiUtility.visibleEnemies)
             and (not AiUtility.closestEnemy or (AiUtility.closestEnemy and LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) > 400))
         then
-            self.ai.routines.manageGear:block()
+            LocalPlayer.equipSmoke()
 
-            self.ai.states.evade:block()
+            self:dropGrenade(cmd)
+        end
 
-            if not LocalPlayer:isHoldingWeapon(Weapons.SMOKE) then
-                LocalPlayer.equipSmoke()
-            end
+        if not LocalPlayer:hasWeapon(Weapons.SMOKE)
+            and self.ai.routines.handleOccluderTraversal.smokeInsideOf
+            and LocalPlayer:hasWeapon(Weapons.FLASHBANG)
+            and AiUtility.enemiesAlive > 0
+            and Table.isEmpty(AiUtility.visibleEnemies)
+            and (not AiUtility.closestEnemy or (AiUtility.closestEnemy and LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) > 400))
+        then
+            LocalPlayer.equipFlashbang()
 
-           VirtualMouse.lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 6, VirtualMouse.noise.moving, "Defuse look to drop smoke")
-
-            if LocalPlayer:isAbleToAttack() then
-                if LocalPlayer.getCameraAngles().p > 22 then
-                    self.inThrowTimer:ifPausedThenStart()
-                end
-
-                if self.inThrowTimer:isElapsedThenStop(0.1) then
-                    cmd.in_attack2 = true
-                end
-            end
+            self:dropGrenade(cmd)
         end
     end
 
     Pathfinder.ifIdleThenRetryLastRequest()
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function AiStateDefuse:dropGrenade(cmd)
+    local bombOrigin = AiUtility.plantedBomb:m_vecOrigin()
+
+    self.ai.routines.manageGear:block()
+    self.ai.states.evade:block()
+
+    VirtualMouse.lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 6, VirtualMouse.noise.moving, "Defuse look to drop smoke")
+
+    if LocalPlayer:isAbleToAttack() then
+        if LocalPlayer.getCameraAngles().p > 22 then
+            self.inThrowTimer:ifPausedThenStart()
+        end
+
+        if self.inThrowTimer:isElapsedThenStop(0.1) then
+            cmd.in_attack2 = true
+        end
+    end
 end
 
 return Nyx.class("AiStateDefuse", AiStateDefuse, AiStateBase)

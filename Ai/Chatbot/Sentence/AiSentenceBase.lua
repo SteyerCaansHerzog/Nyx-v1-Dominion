@@ -93,7 +93,7 @@ function AiSentenceBase:speak(substructure)
     local typingDelay = message:len() * 0.1
 
     Client.fireAfter(Math.getRandomFloat(typingDelay + self.minDelay, typingDelay + self.maxDelay), function()
-        Messenger.send(message, false)
+        Messenger.send(false, message)
     end)
 end
 
@@ -112,7 +112,7 @@ function AiSentenceBase:speakMultipleRaw(messages)
         totalTypingDelay = totalTypingDelay + typingDelay
 
         Client.fireAfter(totalTypingDelay, function()
-            Messenger.send(message)
+            Messenger.send(false, message)
         end)
     end
 end
