@@ -60,7 +60,7 @@ function AiChatCommandReport:invoke(ai, sender, args)
     for idx, target in pairs(targets) do
         -- Report with a randomised delay to evade potential mass reporting detection.
         Client.fireAfter(idx + Math.getRandomFloat(0, 0.5), function()
-            --Client.reportPlayer(target, "textabuse, voiceabuse")
+            Client.reportPlayer(target, "textabuse, voiceabuse")
         end)
     end
 
