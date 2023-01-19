@@ -1,7 +1,5 @@
 --{{{ Dependencies
 local Client = require "gamesense/Nyx/v1/Api/Client"
-local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
-local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
@@ -42,7 +40,7 @@ function AiChatCommandGo:invoke(ai, sender, args)
 
     objective = objective:upper()
 
-    if not Table.contains({"CT", "T", "A", "B"}, objective) then
+    if not Table.isValueInArray({ "CT", "T", "A", "B"}, objective) then
         return Localization.cmdRejectionNoValidSpawnOrBombsite
     end
 

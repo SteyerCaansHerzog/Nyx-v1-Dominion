@@ -20,7 +20,7 @@ end
 function AiSentenceReplyBot:__init()
     self.__parent.__init(self)
 
-    self.probability = 2
+    self.probability = 5
     self.maxUses = 2
 
     self.structures = {

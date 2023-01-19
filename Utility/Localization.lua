@@ -50,7 +50,8 @@ local English = {
 	cmdRejectionNoValidSpawnOrBombsite = "no valid bombsite or spawn name",
 	cmdRejectionOnlyCounterTerrorist = "the command only applies to counter-terrorists",
 	cmdRejectionOnlyTerrorist = "the command only applies to terrorists",
-	cmdRejectionReaperIsActive = "Reaper is currently active",
+	cmdRejectionReaperIsActive = "reaper is currently active",
+	cmdRejectionReportNoTargets = "found no players with that name or one similar to it",
 	cmdRejectionSelfInvoked = "it cannot be self-invoked",
 	cmdRejectionSenderIsDead = "the invoker is not currently alive",
 	cmdRejectionSenderIsNotTeammate = "the invoker is not a teammate",
@@ -152,6 +153,7 @@ local Languages = {
 --- @field cmdRejectionOnlyCounterTerrorist string
 --- @field cmdRejectionOnlyTerrorist string
 --- @field cmdRejectionReaperIsActive string
+--- @field cmdRejectionReportNoTargets string
 --- @field cmdRejectionSelfInvoked string
 --- @field cmdRejectionSenderIsDead string
 --- @field cmdRejectionSenderIsNotTeammate string

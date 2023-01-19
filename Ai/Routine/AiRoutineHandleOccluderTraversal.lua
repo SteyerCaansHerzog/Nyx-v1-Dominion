@@ -81,7 +81,7 @@ function AiRoutineHandleOccluderTraversal:think()
 		local fires = inferno:getInfernoFires()
 
 		for _, fire in pairs(fires) do
-			local fireBounds = fire:getBounds(Vector3.align.CENTER, 100, 100, 48)
+			local fireBounds = fire:getBounds(Vector3.align.CENTER, 160, 160, 48)
 
 			-- Determine if we're inside an inferno.
 			if clientOrigin:isInBounds(fireBounds) then

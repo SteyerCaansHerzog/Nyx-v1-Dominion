@@ -75,7 +75,7 @@ function AiChatCommandEval:invoke(ai, sender, args)
             print(string.format(...))
         end,
         say = function(...)
-        	Messenger.send(string.format(...), false)
+        	Messenger.send(false, ...)
         end,
         info = function(...)
         	ai.processes.info:addInfo(string.format(...))

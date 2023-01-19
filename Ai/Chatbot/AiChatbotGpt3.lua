@@ -32,7 +32,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field url string
 --- @field validCharacters boolean[]
 local AiChatbotGpt3 = {
-	replyChance = 2,
+	replyChance = 4,
 	isEnabled = false,
 	url = "https://api.openai.com/v1/completions",
 	headers = {["Content-Type"] = "application/json", ["Authorization"] = "Bearer " .. Config.openAiApiKey},
@@ -120,6 +120,7 @@ local AiChatbotGpt3 = {
 		["Klaus the Apologist"] = "$BOT is German and a closet Nazi sympathiser. $BOT is currently playing CS:GO and '$ACTIVITY'. $BOT is speaking to $TARGET and replies with short, passive aggressive comments:",
 		["Jeremy the Brit"] = "$BOT is British and far right-wing. $BOT is currently playing CS:GO and '$ACTIVITY'. $BOT is speaking to $TARGET and replies with short, blunt comments:",
 		["Kyle the Brony"] = "$BOT is a brony who loves my little pony and his entire personality is my little pony. $BOT is currently playing CS:GO and '$ACTIVITY'. $BOT is speaking to $TARGET and replies with extra friendly, child-like language, and my little pony references:",
+		["James the Furry"] = "$BOT is a brony who loves furry and yiff and it is his whole personality. $BOT is currently playing CS:GO and '$ACTIVITY'. $BOT is speaking to $TARGET and replies with friendly comments:",
 	}
 }
 
@@ -346,8 +347,8 @@ function AiChatbotGpt3:requestConversationalReply(sender, text, isTeamChat)
 
 			Client.fireAfter(delay, function()
 				-- Ensure nobody has already said what we're about to say. Especially other AI.
-				if not Table.contains(self.repeatBlacklist, message) then
-					Messenger.send(message, isTeamChat)
+				if not Table.isValueInArray(self.repeatBlacklist, message) then
+					Messenger.send(isTeamChat, message)
 				end
 			end)
 		until true end

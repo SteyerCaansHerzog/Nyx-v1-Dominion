@@ -48,9 +48,9 @@ function AiRoutineManageWeaponReload:think(cmd)
 		elseif distance > 1000 then
 			ratio = 0.25
 		elseif distance > 500 then
-			ratio = 0.1
-		else
-			ratio = 0.0
+			ratio = 0.2
+		elseif not AiUtility.isClientThreatenedMajor then
+			ratio = 0.15
 		end
 	end
 
@@ -59,6 +59,10 @@ function AiRoutineManageWeaponReload:think(cmd)
 	local maxAmmo = weaponData.primary_clip_size
 
 	if ammo / maxAmmo > ratio then
+		return
+	end
+
+	if LocalPlayer:isHoldingKnife() then
 		return
 	end
 

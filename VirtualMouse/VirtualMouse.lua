@@ -36,7 +36,7 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMou
 --- @field currentNoise VirtualMouseNoise
 --- @field dynamic SecondOrderDynamics
 --- @field isAllowedToWatchCorners boolean
---- @field isCrosshairSmoothed boolean
+--- @field isCrosshairLerpingToZero boolean
 --- @field isCrosshairUsingVelocity boolean
 --- @field isEnabled boolean
 --- @field isFiringWeapon boolean
@@ -187,6 +187,7 @@ function VirtualMouse.setViewAngles()
 		return
 	end
 
+	-- Switching look state and resetting mouse movement delay.
 	if VirtualMouse.lookState ~= VirtualMouse.lookStateCached then
 		if Debug.isLoggingLookState then
 			Logger.console(Logger.INFO, Localization.viewNewState, VirtualMouse.lookState)
@@ -199,6 +200,7 @@ function VirtualMouse.setViewAngles()
 
 	VirtualMouse.setDelayedLookSpeed()
 
+	-- Do not spin up mouse movement speed under some conditions.
 	if not VirtualMouse.isLookSpeedDelayed or Pathfinder.movementRecorderAngle then
 		VirtualMouse.lookSpeed = VirtualMouse.lookSpeedIdeal
 	end
@@ -232,7 +234,6 @@ function VirtualMouse.setViewAngles()
 		VirtualMouse.handleBuildup()
 
 
-
 		if VirtualMouse.buildupCooldownTimer:isElapsed(VirtualMouse.buildupCooldownTime) then
 			-- Perform generic look behaviour.
 			VirtualMouse.setIdealLookAhead(idealViewAngles)
@@ -253,14 +254,16 @@ function VirtualMouse.setViewAngles()
 	-- Makes the crosshair have noise.
 	VirtualMouse.setTargetNoise(targetViewAngles)
 
+	-- Set the mouse interlopation algorithm. Rigid relies on lerp, dynamic is 2nd order dynamics.
+	-- 2OD is considerably more realistic, at the slight cost of accuracy and the occassional bug.
 	if Config.virtualMouseMode == "rigid" then
 		VirtualMouse.setTargetVelocity(targetViewAngles)
 	elseif Config.virtualMouseMode == "dynamic" then
 		VirtualMouse.setTargetDynamic(targetViewAngles)
 	end
 
-	if VirtualMouse.isCrosshairSmoothed then
-		VirtualMouse.isCrosshairSmoothed = false
+	if VirtualMouse.isCrosshairLerpingToZero then
+		VirtualMouse.isCrosshairLerpingToZero = false
 	else
 		local cameraAngles = LocalPlayer.getCameraAngles()
 

@@ -59,6 +59,7 @@ function AiChatCommandRotate:invoke(ai, sender, args)
 
     Pathfinder.blockRoute(Nodegraph.getBombsite(objective))
 
+    ai.states.check:reset()
     ai.states.patrol:reset()
     ai.states.rotate:invoke(objective)
 

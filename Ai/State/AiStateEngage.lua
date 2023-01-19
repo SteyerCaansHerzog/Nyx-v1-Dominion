@@ -36,7 +36,6 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field name string
 --- @field ranges table
 --- @field firerates table
---- @field runAtCloseRange boolean
 --- @field priorityHitbox number
 --- @field isBoltAction boolean
 --- @field isRcsEnabled table
@@ -52,6 +51,14 @@ local WeaponMode = {
     SHOTGUN = 3,
     HEAVY = 4,
     SNIPER = 5,
+}
+
+local WeaponMovementVelocity =  {
+    WALKING = 125,
+    DUCKING = 90,
+    JIGGLING = 110,
+    STANDING_STILL = 40,
+    STANDING_STILL_SNIPER = 25
 }
 --}}}
 
@@ -75,8 +82,6 @@ local WeaponMode = {
 --- @field defendingLookAt Vector3
 --- @field defendLookAtOffset Vector3
 --- @field enemySpottedCooldown Timer
---- @field enemyVisibleTime number
---- @field enemyVisibleTimer Timer
 --- @field fov number
 --- @field hasBackupCover boolean
 --- @field hitboxOffset Vector3
@@ -98,9 +103,9 @@ local WeaponMode = {
 --- @field isPreAimViableForHoldingAngle boolean
 --- @field isRcsEnabled boolean
 --- @field isRefreshingAttackPath boolean
---- @field isRunAndShootAllowed boolean
 --- @field isSneaking boolean
 --- @field isStrafePeeking boolean
+--- @field isTargetEasilyShotDelayed boolean
 --- @field isTargetEasilyShot boolean
 --- @field isUpdatingDefendingLookAt boolean
 --- @field isVisibleToBestTarget boolean
@@ -152,7 +157,6 @@ local WeaponMode = {
 --- @field skill number
 --- @field skillLevelMax number
 --- @field skillLevelMin number
---- @field slowAimSpeed number
 --- @field smokeWallBangHoldTimer Timer
 --- @field sprayTime number
 --- @field sprayTimer Timer
@@ -175,7 +179,7 @@ local WeaponMode = {
 local AiStateEngage = {
     name = "Engage",
     isMouseDelayAllowed = false,
-    skillLevelMin = 0,
+    skillLevelMin = -1,
     skillLevelMax = 10,
     isLockable = false
 }
@@ -200,8 +204,6 @@ function AiStateEngage:initFields()
     self.blockTimer = Timer:new():startThenElapse()
     self.currentReactionTime = 0
     self.enemySpottedCooldown = Timer:new():startThenElapse()
-    self.enemyVisibleTime = 0.66
-    self.enemyVisibleTimer = Timer:new()
     self.equipPistolTimer = Timer:new()
     self.hitboxOffsetTimer = Timer:new():startThenElapse()
     self.ignorePlayerAfter = 35
@@ -234,7 +236,7 @@ function AiStateEngage:initFields()
     self.visibleReactionTimer = Timer:new()
     self.visualizerCallbacks = {}
     self.visualizerExpiryTimers = {}
-    self.aimNoise = VirtualMouse.noise.moving
+    self.aimNoise = VirtualMouse.noise.none
     self.seekCoverTimer = Timer:new():startThenElapse()
     self.strafePeekTimer = Timer:new():startThenElapse()
     self.strafePeekIndex = 1
@@ -711,8 +713,8 @@ function AiStateEngage:isEnemySensed(enemy)
     local timer = self.noticedPlayerTimers[enemy.eid]
     local ignorePlayerAfter = self.ignorePlayerAfter
 
-    if LocalPlayer.isCarryingBomb() then
-        ignorePlayerAfter = 4.5
+    if LocalPlayer.isCarryingBomb() and AiUtility.teammatesAlive == 0 then
+        ignorePlayerAfter = 4
     end
 
     return timer:isStarted() and not timer:isElapsed(ignorePlayerAfter)
@@ -840,7 +842,7 @@ function AiStateEngage:setBestTarget()
         self.watchTimer:stop()
     end
 
-    if self.setBestTargetTimer:isElapsedThenRestart(1) or isUrgent then
+    if (not self.bestTarget or not self.bestTarget:isAlive()) or self.setBestTargetTimer:isElapsedThenRestart(1.5) or isUrgent then
         if self.bestTarget and selectedEnemy then
             -- Clear last valid origin as it's no longer for the same target.
             if selectedEnemy:is(self.bestTarget) then
@@ -896,7 +898,6 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = true,
                 short = true
             },
-            runAtCloseRange = true,
             priorityHitbox = Player.hitbox.NECK,
             evaluate = function()
                 return LocalPlayer:isHoldingWeapons({
@@ -924,7 +925,6 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = false,
                 short = false
             },
-            runAtCloseRange = false,
             priorityHitbox = Player.hitbox.SPINE_2,
             isBoltAction = true,
             evaluate = function()
@@ -950,7 +950,6 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = false,
                 short = false
             },
-            runAtCloseRange = false,
             priorityHitbox = Player.hitbox.HEAD,
             isBoltAction = true,
             evaluate = function()
@@ -976,7 +975,6 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = true,
                 short = true
             },
-            runAtCloseRange = true,
             priorityHitbox = Player.hitbox.NECK,
             evaluate = function()
                 return LocalPlayer:isHoldingLmg()
@@ -988,7 +986,7 @@ function AiStateEngage:setWeaponStats(enemy)
             fov = 16,
             ranges = {
                 long = 2000,
-                medium = 1500,
+                medium = 1000,
                 short = 0
             },
             firerates = {
@@ -1001,7 +999,6 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = true,
                 short = true
             },
-            runAtCloseRange = false,
             priorityHitbox = Player.hitbox.SPINE_3,
             evaluate = function()
                 return LocalPlayer:isHoldingRifle()
@@ -1026,7 +1023,6 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = false,
                 short = false
             },
-            runAtCloseRange = true,
             priorityHitbox = Player.hitbox.NECK,
             evaluate = function()
                 return LocalPlayer:isHoldingShotgun()
@@ -1051,7 +1047,6 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = true,
                 short = true
             },
-            runAtCloseRange = true,
             priorityHitbox = Player.hitbox.NECK,
             evaluate = function()
                 return LocalPlayer:isHoldingSmg()
@@ -1077,7 +1072,6 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = true,
                 short = true
             },
-            runAtCloseRange = false,
             priorityHitbox = Player.hitbox.HEAD,
             evaluate = function()
                 return csgoWeapon.name == "Desert Eagle"
@@ -1102,7 +1096,6 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = false,
                 short = false
             },
-            runAtCloseRange = false,
             priorityHitbox = Player.hitbox.HEAD,
             evaluate = function()
                 return csgoWeapon.name == "R8 Revolver"
@@ -1127,7 +1120,6 @@ function AiStateEngage:setWeaponStats(enemy)
                 medium = true,
                 short = true
             },
-            runAtCloseRange = true,
             priorityHitbox = Player.hitbox.HEAD,
             evaluate = function()
                 return csgoWeapon.name == "CZ75-Auto"
@@ -1138,21 +1130,20 @@ function AiStateEngage:setWeaponStats(enemy)
             weaponMode = WeaponMode.PISTOL,
             fov = 4.5,
             ranges = {
-                long = 1850,
-                medium = 600,
+                long = 1150,
+                medium = 400,
                 short = 0
             },
             firerates = {
-                long = 0.45,
-                medium = 0.24,
-                short = 0
+                long = 0.33,
+                medium = 0.22,
+                short = 0.1
             },
             isRcsEnabled = {
                 long = true,
                 medium = true,
                 short = true
             },
-            runAtCloseRange = true,
             priorityHitbox = Player.hitbox.HEAD,
             evaluate = function()
                 return LocalPlayer:isHoldingPistol()
@@ -1207,12 +1198,6 @@ function AiStateEngage:setWeaponStats(enemy)
     if not self.shootWithinFov then
         self.shootWithinFov = 4
     end
-
-    if selectedWeaponType.runAtCloseRange then
-        self.isRunAndShootAllowed = distance < selectedWeaponType.ranges.medium
-    else
-        self.isRunAndShootAllowed = false
-    end
 end
 
 --- @return void
@@ -1240,31 +1225,21 @@ function AiStateEngage:render()
     local screenDimensions = Client.getScreenDimensions()
     local uiPos = Vector2:new(screenDimensions.x - 50, 20)
 
-    local kd = string.format(
-        "%i / %i (%i KD)",
-        LocalPlayer:m_iKills(), LocalPlayer:m_iDeaths(), LocalPlayer:getKdRatio()
-    )
-
-    local kdColor = Color:hsla(0, 0.8, 0.6):setHue(Math.getClamped(Math.getFloat(LocalPlayer:getKdRatio(), 2), 0, 1) * 100)
-
-    self:renderText(uiPos, kdColor, kd)
     self:renderTimer("REACT", uiPos, self.reactionTimer, self.currentReactionTime)
     self:renderTimer("BLOCK", uiPos, self.blockTimer, self.blockTime)
     self:renderTimer("WATCH", uiPos, self.watchTimer, self.watchTime)
-    self:renderTimer("SEE", uiPos, self.enemyVisibleTimer, self.enemyVisibleTime)
     self:renderTimer("SPRAY", uiPos, self.sprayTimer, self.sprayTime)
     self:renderTimer("TAPPING", uiPos, self.tapFireTimer, self.tapFireTime)
-    self:renderEmpty(uiPos)
+    self:renderLineBreak(uiPos)
 
     if self.activeWeapon then
         self:renderText(uiPos, nil, "Weapon: %s", self.activeWeapon)
     end
 
     self:renderText(uiPos, nil, "Aim speed (in aim): %.2f", self.aimSpeed)
-    self:renderText(uiPos, nil, "Aim speed (in aquire): %.2f", self.slowAimSpeed)
     self:renderText(uiPos, nil, self.isSneaking and "SNEAKING" or "RUNNING")
 
-    self:renderEmpty(uiPos)
+    self:renderLineBreak(uiPos)
 
     if self.bestTarget then
         local color
@@ -1278,7 +1253,7 @@ function AiStateEngage:render()
         self:renderText(uiPos, color, "Target: %s", self.bestTarget:getName())
     end
 
-    self:renderEmpty(uiPos)
+    self:renderLineBreak(uiPos)
 
     for _, enemy in pairs(AiUtility.enemies) do
         local text = "%s %s"
@@ -1307,8 +1282,9 @@ end
 
 --- @param uiPos Vector2
 --- @return void
-function AiStateEngage:renderEmpty(uiPos)
-    local offset = 30
+function AiStateEngage:renderLineBreak(uiPos)
+    local offset = 10
+
     uiPos:offset(0, offset)
 end
 
@@ -1329,11 +1305,11 @@ end
 --- @vararg string
 --- @return void
 function AiStateEngage:renderText(uiPos, color, ...)
-    local offset = 25
+    local offset = 20
 
     color = color or Color:hsla(0, 0, 0.9)
 
-    uiPos:drawSurfaceText(Font.SMALL, color, "r", string.format(...))
+    uiPos:drawSurfaceText(Font.TINY, color, "r", string.format(...))
     uiPos:offset(0, offset)
 end
 
@@ -1350,7 +1326,7 @@ function AiStateEngage:renderTimer(title, uiPos, timer, time, color)
 
     color = color or Color:hsla(0, 0, 0.9)
 
-    uiPos:drawSurfaceText(Font.SMALL, color, "r", string.format(
+    uiPos:drawSurfaceText(Font.TINY, color, "r", string.format(
         "%s - %.2f / %.2f",
         title,
         timer:get() < time and timer:get() or time,
@@ -1435,7 +1411,7 @@ function AiStateEngage:movementHoldAngle()
         if self.isHoldingAngleDucked then
             Pathfinder.duck()
         else
-            self:actionJiggle(self.jiggleShootTime)
+            self:actionJiggle(self.jiggleShootTime, LocalPlayer:getOrigin():getAngle(self.bestTarget:getOrigin()))
         end
 
         return true
@@ -1531,6 +1507,10 @@ function AiStateEngage:movementJiggleBait()
                 return false
             end
         end
+    end
+
+    if self.isBestTargetVisible then
+        return false
     end
 
     if not self.bestTarget:isHoldingGun() then
@@ -1745,6 +1725,16 @@ function AiStateEngage:movementDefending()
         elseif LocalPlayer:isTerrorist() then
             if not AiUtility.plantedBomb or AiUtility.isBombBeingDefusedByEnemy or AiUtility.bombDetonationTime <= 15 then
                 isAbleToDefend = false
+            end
+
+            if AiUtility.plantedBomb then
+                local bombOrigin = AiUtility.plantedBomb:getOrigin()
+
+                for _, enemy in pairs(AiUtility.enemies) do
+                    if enemy:getOrigin():getDistance(bombOrigin) < 450 then
+                        isAbleToDefend = false
+                    end
+                end
             end
         else
             defendNode = Node.defendSiteCt
@@ -1971,7 +1961,7 @@ function AiStateEngage:handleAttacking(cmd)
         return
     end
 
-    if self:attackingSwitchToPistol(cmd) then
+    if self:attackingHandleWeaponSwitchAndReload(cmd) then
         return
     end
 
@@ -1980,11 +1970,6 @@ function AiStateEngage:handleAttacking(cmd)
         self:actionWatchAngle()
 
         return
-    end
-
-    -- Not entirely sure why this is called again.
-    if Table.isEmpty(AiUtility.visibleEnemies) then
-        self:actionWatchAngle()
     end
 
     self:actionStrafePeek()
@@ -2003,6 +1988,10 @@ function AiStateEngage:handleAttacking(cmd)
     if self:isEnemySensed(self.bestTarget) and self.reactionTimer:isElapsed(self.reactionTime) then
         self:preAimAboutCorners()
         self:preAimThroughCorners()
+    end
+
+    if Table.isEmpty(AiUtility.visibleEnemies) then
+        self:actionWatchAngle()
     end
 
     self:attackingBestTarget(cmd)
@@ -2031,8 +2020,12 @@ function AiStateEngage:attackingDefending()
         end
 
         -- We can look along the defend node's angles.
-        if distance < 250 then
-            self.defendingLookAt = self.defendingAtNode.lookAtOrigin
+        if distance < 300 then
+            local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), self.defendingAtNode.origin, AiUtility.traceOptionsVisible)
+
+            if not trace.isIntersectingGeometry then
+                self.defendingLookAt = self.defendingAtNode.lookAtOrigin
+            end
         else
             targetOrigin = self.bestTarget:getOrigin():offset(0, 0, 64):offsetByVector(self.defendLookAtOffset)
 
@@ -2113,6 +2106,12 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:attackingSprayWeapon(cmd)
+    local sprayTime = self.sprayTime
+
+    if LocalPlayer.isFlashed() then
+        sprayTime = 1.5
+    end
+
     -- Spray.
     if self.sprayTimer:isStarted() and not self.sprayTimer:isElapsed(self.sprayTime) then
         self.ai.routines.manageWeaponReload:block()
@@ -2139,7 +2138,7 @@ end
 
 --- @param cmd SetupCommandEvent
 --- @return boolean
-function AiStateEngage:attackingSwitchToPistol(cmd)
+function AiStateEngage:attackingHandleWeaponSwitchAndReload(cmd)
     local weapon = Entity:create(LocalPlayer:m_hActiveWeapon())
     local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
     local ammo = weapon:m_iClip1()
@@ -2318,6 +2317,8 @@ function AiStateEngage:attackingBestTarget(cmd)
     local hitbox, visibleHitboxCount = self:getTargetHitbox(self.bestTarget)
 
     if not hitbox then
+        self:actionWatchAngle()
+
         return
     end
 
@@ -2328,21 +2329,23 @@ function AiStateEngage:attackingBestTarget(cmd)
         self.waitForTargetVisibleTimer:restart()
     end
 
-    if self.waitForTargetVisibleTimer:isElapsed(0.6) then
+    if self.waitForTargetVisibleTimer:isElapsed(0.35) then
         isTargetEasilyShot = true
     end
 
-    self.isTargetEasilyShot = isTargetEasilyShot
+    self.isTargetEasilyShot = isSufficientHitboxesVisible
+    self.isTargetEasilyShotDelayed = isTargetEasilyShot
 
     -- Begin watching last angle.
     if AiUtility.visibleEnemies[self.bestTarget.eid] then
-        if hitbox then
-            self.watchOrigin = enemyOrigin:offset(0, 0, 60)
-        end
+        self.watchOrigin = enemyOrigin:offset(0, 0, 60)
 
-        self.enemyVisibleTimer:ifPausedThenStart()
-    else
-        self.enemyVisibleTimer:stop()
+        -- Watch for a shorter duration if the target is peeking by jumping over a wall.
+        if self.bestTarget:getFlag(Player.flags.FL_ONGROUND) then
+            self.watchTime = 4
+        else
+            self.watchTime = 1
+        end
     end
 
     -- Make sure the default mouse movement isn't active while the enemy is visible but the reaction timer hasn't elapsed.
@@ -2552,10 +2555,10 @@ function AiStateEngage:handleShiftWalking()
     end
 
     if self.walkCheckTimer:isElapsedThenRestart(0.05) then
-        self.walkCheckCount = Math.getClamped(self.walkCheckCount - 1, 0, 20)
+        self.walkCheckCount = Math.getClamped(self.walkCheckCount - 1, 0, 25)
     end
 
-    if self.walkCheckCount >= 12 then
+    if self.walkCheckCount >= 20 then
         return
     end
 
@@ -2592,7 +2595,7 @@ function AiStateEngage:getShootFov(angle, vectorA, vectorB)
     local distance = vectorA:getDistance(vectorB)
     local fov = angle:getFov(vectorA, vectorB)
 
-    return Math.getClamped(Math.getFloat(distance, 512), 0, 90) * fov
+    return Math.getClamped(Math.getFloat(distance, 850), 0, 90) * fov
 end
 
 --- @param angle Angle
@@ -2698,7 +2701,7 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
     VirtualMouse.isRcsEnabled = self.isRcsEnabled
 
     -- Set mouse movement parameters.
-    VirtualMouse.isCrosshairSmoothed = false
+    VirtualMouse.isCrosshairLerpingToZero = true
     VirtualMouse.isCrosshairUsingVelocity = true
 
     -- Select which method to use to perform shooting logic.
@@ -2784,6 +2787,19 @@ function AiStateEngage:fireWeapon(cmd)
     VirtualMouse.fireWeapon()
 end
 
+--- @param baseSpeed number
+--- @param origin Vector3
+function AiStateEngage:getAimSpeed(baseSpeed, origin)
+    local distance = LocalPlayer:getOrigin():getDistance(origin)
+
+    baseSpeed = baseSpeed + Math.getClamped(
+        Math.getInversedFloat(distance, 800) * 6,
+        0, 10
+    )
+
+    return baseSpeed
+end
+
 --- @param cmd SetupCommandEvent
 --- @param aimAtOrigin Vector3
 --- @param fov number
@@ -2791,27 +2807,33 @@ end
 --- @return void
 function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
     local distance = LocalPlayer.getEyeOrigin():getDistance(aimAtOrigin)
+    local speed = LocalPlayer:m_vecVelocity():getMagnitude()
     local isVelocityOk = true
 
-    if distance > 600 then
-        Pathfinder.duck()
-    elseif distance > 900 then
+    if distance > 1000 then
         self:actionStop(cmd)
-    elseif not self.isRunAndShootAllowed then
-        self:actionJiggle(self.jiggleShootTime * 0.33)
 
-        isVelocityOk = LocalPlayer:m_vecVelocity():getMagnitude() < 100
+        isVelocityOk = speed < WeaponMovementVelocity.STANDING_STILL
+    elseif distance > 500 then
+        if self.isTargetEasilyShotDelayed then
+            local jiggle = 0.2  + Animate.sine(0.1, 0.05, 1.65)
+            local angle = self.bestTarget and LocalPlayer:getOrigin():getAngle(self.bestTarget:getOrigin())
+
+            self:actionJiggle(jiggle, angle)
+        else
+            self:actionStop(cmd)
+        end
+
+        isVelocityOk = speed < WeaponMovementVelocity.JIGGLING
+    elseif not self.isTargetEasilyShotDelayed then
+        self:actionStop(cmd)
+
+        isVelocityOk = speed < WeaponMovementVelocity.STANDING_STILL
     elseif AiUtility.totalThreats > 1 then
         self:actionBackUp()
     end
 
-    local aimSpeed = self.aimSpeed
-
-    if distance < 600 then
-        aimSpeed = self.aimSpeed * 1.5
-    end
-
-   VirtualMouse.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage target")
+    VirtualMouse.lookAtLocation(aimAtOrigin, self:getAimSpeed(self.aimSpeed, aimAtOrigin), self.aimNoise, "Engage target")
 
     if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
@@ -2828,28 +2850,35 @@ end
 --- @return void
 function AiStateEngage:shootLight(cmd, aimAtOrigin, fov, weapon)
     local distance = LocalPlayer.getEyeOrigin():getDistance(aimAtOrigin)
-    local aimSpeed = self.aimSpeed
+    local speed = LocalPlayer:m_vecVelocity():getMagnitude()
+    local isVelocityOk = true
 
-    if distance < 500 then
-        aimSpeed = self.aimSpeed * 1.5
-    end
-
-   VirtualMouse.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage target")
-
-    if not self.isTargetEasilyShot and distance > 850 then
-        self:actionStop(cmd)
-
-        return
-    end
-
-    if not self.isRunAndShootAllowed then
+    if distance > 800 then
         self:actionCounterStrafe(cmd)
+
+        isVelocityOk = speed < WeaponMovementVelocity.DUCKING
+    elseif distance > 600 then
+        if self.isTargetEasilyShotDelayed then
+            local jiggle = 0.2  + Animate.sine(0.1, 0.05, 1.65)
+            local angle = self.bestTarget and LocalPlayer:getOrigin():getAngle(self.bestTarget:getOrigin())
+
+            self:actionJiggle(jiggle, angle)
+        else
+            self:actionCounterStrafe(cmd)
+        end
+    elseif not self.isTargetEasilyShotDelayed and distance > 400 then
+        self:actionCounterStrafe(cmd)
+
+        isVelocityOk = speed < WeaponMovementVelocity.DUCKING
     elseif AiUtility.totalThreats > 1 then
         self:actionBackUp()
     end
 
+    VirtualMouse.lookAtLocation(aimAtOrigin, self:getAimSpeed(self.aimSpeed, aimAtOrigin), self.aimNoise, "Engage target")
+
     if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
+        and isVelocityOk
     then
         self:fireWeapon(cmd)
     end
@@ -2862,21 +2891,14 @@ end
 --- @return void
 function AiStateEngage:shootShotgun(cmd, aimAtOrigin, fov, weapon)
     local distance = LocalPlayer.getEyeOrigin():getDistance(aimAtOrigin)
-    local aimSpeed = self.aimSpeed
-
-    if distance < 500 then
-        aimSpeed = self.aimSpeed * 1.5
-    end
-
-   VirtualMouse.lookAtLocation(aimAtOrigin, aimSpeed, self.aimNoise, "Engage target")
 
     if distance > 1000 then
         return
-    end
-
-    if AiUtility.totalThreats > 1 then
+    elseif AiUtility.totalThreats > 1 then
         self:actionBackUp()
     end
+
+    VirtualMouse.lookAtLocation(aimAtOrigin, self:getAimSpeed(self.aimSpeed, aimAtOrigin), self.aimNoise, "Engage target")
 
     if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
@@ -2891,25 +2913,23 @@ end
 --- @param weapon CsgoWeapon
 --- @return void
 function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
-   VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed, self.aimNoise, "Engage target")
+    local distance = LocalPlayer.getEyeOrigin():getDistance(aimAtOrigin)
+    local speed = LocalPlayer:m_vecVelocity():getMagnitude()
+    local isVelocityOk = true
 
-    if self.isTargetEasilyShot then
-        self:actionCounterStrafe(cmd)
+    if distance > 1000 then
+        self:actionStop(cmd)
     else
-        local isStopping = false
-
-        if not self:isAllowedToStrafe() then
-            isStopping = true
-        elseif LocalPlayer:getOrigin():getDistance(aimAtOrigin) > 850 then
-            isStopping = true
-        end
-
-        if isStopping then
+        if not self.isTargetEasilyShot then
             self:actionStop(cmd)
+        else
+            self:actionCounterStrafe(cmd)
         end
+
+        isVelocityOk = speed < WeaponMovementVelocity.DUCKING
     end
 
-    local isVelocityOk = LocalPlayer:m_vecVelocity():getMagnitude() < 110
+    VirtualMouse.lookAtLocation(aimAtOrigin, self:getAimSpeed(self.aimSpeed, aimAtOrigin), self.aimNoise, "Engage target")
 
     if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
@@ -2941,7 +2961,7 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
 
     local isNoscoping = false
 
-    if self.isAllowedToNoscope and self.isTargetEasilyShot and distance < 350 then
+    if self.isAllowedToNoscope and self.isTargetEasilyShotDelayed and distance < 350 then
         isNoscoping = true
     end
 
@@ -2960,7 +2980,11 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
     self:actionStop(cmd)
 
     -- We can shoot when we're this slow.
-    local fireUnderVelocity = weapon.max_player_speed / 4
+    local fireUnderVelocity = WeaponMovementVelocity.STANDING_STILL_SNIPER
+
+    if distance < 1000 and self.isTargetEasilyShotDelayed then
+        fireUnderVelocity = weapon.max_player_speed / 4
+    end
 
     if fov < self.shootWithinFov
         and (isNoscoping or (self.scopedTimer:isElapsed(fireDelay) and LocalPlayer:m_bIsScoped() == 1))
@@ -3077,10 +3101,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:actionCounterStrafe(cmd)
-    if self.isTargetEasilyShot then
-        -- Duck for better accuracy.
-        cmd.in_duck = true
-    end
+    cmd.in_duck = true
 
     if LocalPlayer:m_flDuckSpeed() < 4 then
         if not self:isAllowedToStrafe() then
@@ -3103,7 +3124,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:actionStop(cmd)
-    if self.isTargetEasilyShot then
+    if self.isTargetEasilyShotDelayed then
         -- Duck for better accuracy.
         cmd.in_duck = true
     end
@@ -3339,6 +3360,7 @@ end
 --- @return void
 function AiStateEngage:preAimAboutCorners()
     if not self.bestTarget or not self.bestTarget:isAlive() then
+
         return
     end
 
@@ -3359,7 +3381,7 @@ function AiStateEngage:preAimAboutCorners()
     if self.preAimAboutCornersAimOrigin then
         self.ai.routines.manageWeaponScope:block()
 
-       VirtualMouse.lookAtLocation(self.preAimAboutCornersAimOrigin, self.slowAimSpeed, VirtualMouse.noise.moving, "Engage look at corner")
+        VirtualMouse.lookAtLocation(self.preAimAboutCornersAimOrigin, self.aimSpeed, VirtualMouse.noise.moving, "Engage look at corner")
 
         self:addVisualizer("pre about", function()
             if self.preAimAboutCornersAimOrigin then
@@ -3473,26 +3495,36 @@ end
 function AiStateEngage:setAimSkill(skill)
     self.skill = skill
 
+    if skill == -1 then
+        self.reactionTime = 0.5
+        self.prefireReactionTime = 0.5
+        self.anticipateTime = 0.2
+        self.sprayTime = 0.5
+        self.aimSpeed = 8
+        self.recoilControl = 4
+        self.aimOffset = 96
+        self.aimInaccurateOffset = 144
+        self.blockTime = 0.4
+    end
+
     local skillMinimum = {
-        reactionTime = 0.25,
-        prefireReactionTime = 0.15,
-        anticipateTime = 0.066,
-        sprayTime = 0.45,
-        aimSpeed = 9,
-        slowAimSpeed = 6.5,
+        reactionTime = 0.45,
+        prefireReactionTime = 0.25,
+        anticipateTime = 0.15,
+        sprayTime = 0.4,
+        aimSpeed = 8,
         recoilControl = 2.5,
-        aimOffset = 48,
+        aimOffset = 32,
         aimInaccurateOffset = 144,
-        blockTime = 0.25
+        blockTime = 0.2
     }
 
     local skillMaximum = {
         reactionTime = 0.01,
         prefireReactionTime = 0.005,
         anticipateTime = 0.01,
-        sprayTime = 0.2,
-        aimSpeed = 16,
-        slowAimSpeed = 9.5,
+        sprayTime = 0.3,
+        aimSpeed = 15,
         recoilControl = 2,
         aimOffset = 0,
         aimInaccurateOffset = 80,

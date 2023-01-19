@@ -1,6 +1,5 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -8,9 +7,8 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
-local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --}}}
@@ -42,6 +40,10 @@ end
 
 --- @return void
 function AiStateCheck:assess()
+    if AiUtility.plantedBomb then
+        return AiPriority.IGNORE
+    end
+
     return self.isChecking and AiPriority.CHECK_SPAWN or AiPriority.IGNORE
 end
 

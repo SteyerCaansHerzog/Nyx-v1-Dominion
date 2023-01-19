@@ -66,7 +66,7 @@ function AiChatCommandRunBoost:invoke(ai, sender, args)
         if not self.isTaken then
             ai.states.boostTeammate:boost(sender, traceAim.endPosition, true)
 
-            Messenger.send(" ok", true)
+            Messenger.send(true, " ok")
 
             ai.voice.pack:speakNoProblem()
         end

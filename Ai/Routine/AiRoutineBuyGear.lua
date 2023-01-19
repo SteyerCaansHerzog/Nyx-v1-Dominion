@@ -64,10 +64,8 @@ local Buy = {
 }
 
 local BuyCriteria = {
-	COUNTER_TERRORIST_FULL_BUY = 3100,
-	COUNTER_TERRORIST_SMG_BUY = 2000,
-	TERRORIST_FULL_BUY = 2800,
-	TERRORIST_SMG_BUY = 2000,
+	COUNTER_TERRORIST_FULL_BUY = 3050,
+	TERRORIST_FULL_BUY = 2700,
 }
 
 --- @class GearSet
@@ -498,11 +496,11 @@ function AiRoutineBuyGear:buyTerroristPostPistolRound()
 		return
 	end
 
-	self:logSetPurchase("TerroristPostPistolRound")
+	self:logSetPurchase("TerroristPostPistolRound/TerroristForceRound")
 
 	self:activateHighestChanceFrom({
 		{
-			balance = 2150,
+			balance = 2500,
 			chance = 1,
 			queue = function()
 				self:equipWeapon(Buy.MP7)
@@ -720,7 +718,7 @@ function AiRoutineBuyGear:buyCounterTerroristPostPistolRound()
 		return
 	end
 
-	self:logSetPurchase("CounterTerroristPostPistolRound")
+	self:logSetPurchase("CounterTerroristPostPistolRound/CounterTerroristForceRound")
 
 	self:activateHighestChanceFrom({
 		{

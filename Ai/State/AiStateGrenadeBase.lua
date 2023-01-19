@@ -84,8 +84,6 @@ function AiStateGrenadeBase:__init()
         if e.player:isLocalPlayer() then
             self.isInThrow = false
             self.node = nil
-
-            self.cooldownTimer:start()
         end
     end)
 end
@@ -446,7 +444,7 @@ function AiStateGrenadeBase:think(cmd)
 
     if distance < 200 then
         VirtualMouse.isCrosshairUsingVelocity = false
-        VirtualMouse.isCrosshairSmoothed = true
+        VirtualMouse.isCrosshairLerpingToZero = true
 
         Pathfinder.blockTeammateAvoidance()
         Pathfinder.counterStrafe()

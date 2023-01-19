@@ -105,7 +105,7 @@ end
 
 --- @return void
 function AiRoutineHandleRotates:calloutGo()
-	if not self.callGoCooldownTimer:isElapsed(8) then
+	if not self.callGoCooldownTimer:isElapsed(10) then
 		return
 	end
 
@@ -142,6 +142,10 @@ function AiRoutineHandleRotates:calloutGo()
 
 	local bombsite
 	local enemiesNearBombsite
+
+	if enemiesNearBombsites.A == 0 and enemiesNearBombsites.B == 0 then
+		return
+	end
 
 	if enemiesNearBombsites.A >= enemiesNearBombsites.B then
 		bombsite = "A"

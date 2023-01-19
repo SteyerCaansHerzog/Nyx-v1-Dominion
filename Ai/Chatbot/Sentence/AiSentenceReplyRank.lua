@@ -1,6 +1,4 @@
 --{{{ Dependencies
-local Client = require "gamesense/Nyx/v1/Api/Client"
-local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
