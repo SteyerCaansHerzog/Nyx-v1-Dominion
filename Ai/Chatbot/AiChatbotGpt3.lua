@@ -16,6 +16,7 @@ local AiChatbotBase = require "gamesense/Nyx/v1/Dominion/Ai/Chatbot/AiChatbotBas
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
+local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --}}}
 
 --{{{ AiChatbotGpt3
@@ -144,10 +145,21 @@ function AiChatbotGpt3:__init()
 	self.repeatBlacklist = {}
 
 	local persona, personaName = Table.getRandomFromNonIndexed(self.personas)
+	local personaKeys = Table.getKeys(self.personas);
 
 	self.persona = persona
 
 	Logger.console(Logger.INFO, Localization.chatbotPersonaLoaded, personaName)
+
+	MenuGroup.persona = MenuGroup.group:addList("> Persona", personaKeys):set(Table.getIndexOf(personaKeys, personaName) - 1):addCallback(function(item)
+		personaName = personaKeys[item:get() + 1]
+
+		if self.persona ~= self.personas[personaName] then
+    		self.persona = self.personas[personaName]
+			
+			Logger.console(Logger.INFO, Localization.chatbotPersonaLoaded, personaName)
+		end
+    end):setParent(MenuGroup.master)
 
 	Callbacks.playerChat(function(e)
 		self:processChatMessage(e)
