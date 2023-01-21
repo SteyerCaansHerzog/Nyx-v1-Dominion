@@ -92,6 +92,10 @@ function AiRoutineManageGear:manageKnife(cmd)
 		isKnifeEquippable = true
 	end
 
+	if AiUtility.enemiesAlive > 0 and LocalPlayer:isReloading() then
+		isKnifeEquippable = false
+	end
+
 	local isSwingingKnife = false
 
 	if self.swingKnifeIntervalTimer:isElapsedThenRestart(self.swingKnifeIntervalTime) then

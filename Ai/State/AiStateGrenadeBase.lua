@@ -345,7 +345,7 @@ function AiStateGrenadeBase:activate()
            self.isAtDestination = true
            self.startThrowTimer:start()
        end,
-       goalReachedRadius = 5,
+       goalReachedRadius = 8,
        isCounterStrafingOnGoal = true,
        isPathfindingToNearestNodeIfNoConnections = false,
        isPathfindingToNearestNodeOnFailure = false,
@@ -425,6 +425,8 @@ function AiStateGrenadeBase:think(cmd)
     VirtualMouse.blockBuildup()
 
     if distance < 150 then
+        self.ai.routines.walk:block()
+
         VirtualMouse.lookAlongAngle(self.node.direction, 15, VirtualMouse.noise.none, "Grenade look at line-up")
     end
 
@@ -492,6 +494,8 @@ function AiStateGrenadeBase:think(cmd)
 
             if isThrowable and not self.isThrown then
                 self.throwHoldTimer:ifPausedThenStart()
+
+                self.ai.routines.walk.cooldownTimer:restart()
 
                 cmd.in_attack = true
                 self.isThrown = true

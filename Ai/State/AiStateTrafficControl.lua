@@ -112,13 +112,15 @@ end
 --- @return boolean
 function AiStateTrafficControl:isOccupied(trafficControl)
     -- Find any teammates occupying the zone.
-    for _, teammate in pairs(AiUtility.teammates) do
+    for _, teammate in pairs(AiUtility.teammates) do repeat
         local teammateOrigin = teammate:getOrigin()
 
-        if teammateOrigin:getDistance(trafficControl.origin) < trafficControl.occupancyRadius then
-            return true
+        if teammateOrigin:getDistance(trafficControl.origin) > trafficControl.occupancyRadius then
+            break
         end
-    end
+
+        return true
+    until true end
 
     return false
 end

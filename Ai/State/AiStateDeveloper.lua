@@ -45,7 +45,9 @@ function AiStateDeveloper:assess()
 end
 
 --- @return void
-function AiStateDeveloper:activate() end
+function AiStateDeveloper:activate()
+    Pathfinder.moveToNode(Nodegraph.getById(87))
+end
 
 --- @return void
 function AiStateDeveloper:reset() end

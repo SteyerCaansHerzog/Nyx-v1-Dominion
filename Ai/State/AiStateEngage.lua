@@ -170,12 +170,11 @@ local WeaponMovementVelocity =  {
 --- @field visualizerCallbacks function[]
 --- @field visualizerExpiryTimers Timer[]
 --- @field waitForTargetVisibleTimer Timer
---- @field walkCheckCount number
---- @field walkCheckTimer Timer
 --- @field watchOrigin Vector3
 --- @field watchTime number
 --- @field watchTimer Timer
 --- @field weaponMode number
+--- @field sprayRealTime number
 local AiStateEngage = {
     name = "Engage",
     isMouseDelayAllowed = false,
@@ -208,7 +207,6 @@ function AiStateEngage:initFields()
     self.hitboxOffsetTimer = Timer:new():startThenElapse()
     self.ignorePlayerAfter = 35
     self.isIgnoringDormancy = false
-    self.isSneaking = false
     self.jiggleShootDirection = "Left"
     self.jiggleShootTime = Math.getRandomFloat(0.33, 0.66)
     self.jiggleShootTimer = Timer:new():startThenElapse()
@@ -228,8 +226,6 @@ function AiStateEngage:initFields()
     self.sprayTimer = Timer:new()
     self.tapFireTime = 0.2
     self.tapFireTimer = Timer:new():start()
-    self.walkCheckCount = 0
-    self.walkCheckTimer = Timer:new():start()
     self.watchTime = 2
     self.watchTimer = Timer:new()
     self.smokeWallBangHoldTimer = Timer:new()
@@ -283,16 +279,6 @@ function AiStateEngage:initEvents()
         if e.player:isLocalPlayer() then
             self.lastSoundTimer:restart()
         end
-
-        if e.player:isEnemy() or e.player:isLocalPlayer() then
-            return
-        end
-
-        if LocalPlayer:getOrigin():getDistance(e.player:getOrigin()) > 600 then
-            return
-        end
-
-        self.walkCheckCount = self.walkCheckCount + 1
     end)
 
     Callbacks.weaponFire(function(e)
@@ -301,16 +287,6 @@ function AiStateEngage:initEvents()
 
             self.lastSoundTimer:restart()
         end
-
-        if e.player:isEnemy() or e.player:isLocalPlayer() then
-            return
-        end
-
-        if LocalPlayer:getOrigin():getDistance(e.player:getOrigin()) > 600 then
-            return
-        end
-
-        self.walkCheckCount = self.walkCheckCount + 1
     end)
 
     Callbacks.playerSpawned(function(e)
@@ -486,7 +462,13 @@ end
 function AiStateEngage:assess()
     self:setBestTarget()
 
-    self.sprayTimer:isElapsedThenStop(self.sprayTime)
+    self.sprayRealTime = self.sprayTime
+
+    if LocalPlayer.isFlashed() then
+        self.sprayRealTime = 1.5
+    end
+
+    self.sprayTimer:isElapsedThenStop(self.sprayRealTime)
     self.watchTimer:isElapsedThenStop(self.watchTime)
 
     local clientOrigin = LocalPlayer:getOrigin()
@@ -894,7 +876,7 @@ function AiStateEngage:setWeaponStats(enemy)
                 short = 0
             },
             isRcsEnabled = {
-                long = false,
+                long = true,
                 medium = true,
                 short = true
             },
@@ -986,12 +968,12 @@ function AiStateEngage:setWeaponStats(enemy)
             fov = 16,
             ranges = {
                 long = 2000,
-                medium = 1000,
+                medium = 1500,
                 short = 0
             },
             firerates = {
-                long = 0.4,
-                medium = 0.24,
+                long = 0.3,
+                medium = 0.15,
                 short = 0
             },
             isRcsEnabled = {
@@ -1237,7 +1219,6 @@ function AiStateEngage:render()
     end
 
     self:renderText(uiPos, nil, "Aim speed (in aim): %.2f", self.aimSpeed)
-    self:renderText(uiPos, nil, self.isSneaking and "SNEAKING" or "RUNNING")
 
     self:renderLineBreak(uiPos)
 
@@ -2106,14 +2087,8 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:attackingSprayWeapon(cmd)
-    local sprayTime = self.sprayTime
-
-    if LocalPlayer.isFlashed() then
-        sprayTime = 1.5
-    end
-
     -- Spray.
-    if self.sprayTimer:isStarted() and not self.sprayTimer:isElapsed(self.sprayTime) then
+    if self.sprayTimer:isStarted() and not self.sprayTimer:isElapsed(self.sprayRealTime) then
         self.ai.routines.manageWeaponReload:block()
 
         if self.bestTarget and not AiUtility.visibleEnemies[self.bestTarget.eid] then
@@ -2525,66 +2500,21 @@ end
 
 --- @return void
 function AiStateEngage:handleShiftWalking()
-    self.isSneaking = false
+    if not self.jiggleHoldTimer:isElapsed(self.jiggleHoldTime + 1) then
+        self.ai.routines.walk:block()
 
-    if self.bestTarget and AiUtility.closestEnemy then
+        return
+    end
+
+    if self.bestTarget and (self.isVisibleToBestTarget or self.isAboutToBeVisibleToBestTarget) then
         local clientEyeOrigin = LocalPlayer.getEyeOrigin()
-        local enemyOrigin = AiUtility.closestEnemy:getOrigin()
-        local distance = clientEyeOrigin:getDistance(enemyOrigin)
-
-        if distance < 900 then
-            return
-        end
-
-        if LocalPlayer:isCounterTerrorist() and AiUtility.plantedBomb then
-            if AiUtility.bombDetonationTime < 20 then
-                return
-            elseif distance > 350 then
-                return
-            end
-        end
-
-        local predictedEyeOrigin = clientEyeOrigin + LocalPlayer:m_vecVelocity() * 0.8
-        local trace = Trace.getLineToPosition(predictedEyeOrigin, self.bestTarget:getOrigin():offset(0, 0, 48), AiUtility.traceOptionsVisible, "AiStateEngage.walk<FindPredicted>")
         local shootFov = self:getShootFov(self.bestTarget:getCameraAngles(), self.bestTarget:getEyeOrigin(), clientEyeOrigin)
 
         -- Don't walk if the enemy is facing is and we're going to peek them.
-        if not trace.isIntersectingGeometry and shootFov < 20 then
-            return
+        if shootFov < 20 then
+            self.ai.routines.walk:block()
         end
     end
-
-    if self.walkCheckTimer:isElapsedThenRestart(0.05) then
-        self.walkCheckCount = Math.getClamped(self.walkCheckCount - 1, 0, 25)
-    end
-
-    if self.walkCheckCount >= 20 then
-        return
-    end
-
-    if AiUtility.isBombBeingDefusedByEnemy or AiUtility.isBombBeingPlantedByEnemy then
-        return
-    end
-
-    if AiUtility.isHostageCarriedByEnemy or AiUtility.isHostageBeingPickedUpByEnemy then
-        return
-    end
-
-    if LocalPlayer:m_bIsScoped() == 1 then
-        return
-    end
-
-    if not self.jiggleHoldTimer:isElapsed(self.jiggleHoldTime + 1) then
-        return
-    end
-
-    if LocalPlayer:isTerrorist() and not AiUtility.plantedBomb and AiUtility.timeData.roundtime_remaining < 20 then
-        return
-    end
-
-    self.isSneaking = true
-
-    Pathfinder.walk()
 end
 
 --- @param angle Angle
@@ -2784,6 +2714,8 @@ function AiStateEngage:fireWeapon(cmd)
         return
     end
 
+    self.ai.routines.walk.cooldownTimer:restart()
+
     VirtualMouse.fireWeapon()
 end
 
@@ -2854,7 +2786,7 @@ function AiStateEngage:shootLight(cmd, aimAtOrigin, fov, weapon)
     local isVelocityOk = true
 
     if distance > 800 then
-        self:actionCounterStrafe(cmd)
+        self:actionStrafe(cmd)
 
         isVelocityOk = speed < WeaponMovementVelocity.DUCKING
     elseif distance > 600 then
@@ -2864,10 +2796,10 @@ function AiStateEngage:shootLight(cmd, aimAtOrigin, fov, weapon)
 
             self:actionJiggle(jiggle, angle)
         else
-            self:actionCounterStrafe(cmd)
+            self:actionStrafe(cmd)
         end
     elseif not self.isTargetEasilyShotDelayed and distance > 400 then
-        self:actionCounterStrafe(cmd)
+        self:actionStrafe(cmd)
 
         isVelocityOk = speed < WeaponMovementVelocity.DUCKING
     elseif AiUtility.totalThreats > 1 then
@@ -2922,11 +2854,13 @@ function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
     else
         if not self.isTargetEasilyShot then
             self:actionStop(cmd)
-        else
-            self:actionCounterStrafe(cmd)
-        end
 
-        isVelocityOk = speed < WeaponMovementVelocity.DUCKING
+            isVelocityOk = speed < WeaponMovementVelocity.STANDING_STILL
+        else
+            self:actionStrafe(cmd)
+
+            isVelocityOk = speed < WeaponMovementVelocity.DUCKING
+        end
     end
 
     VirtualMouse.lookAtLocation(aimAtOrigin, self:getAimSpeed(self.aimSpeed, aimAtOrigin), self.aimNoise, "Engage target")
@@ -2949,7 +2883,9 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
     local fireDelay = 0.66
 
     -- Set the delay of our shooting to be roughly accurate as we scope.
-    if distance > 1500 then
+    if weapon.is_full_auto then
+        fireDelay = 0
+    elseif distance > 1500 then
         fireDelay = 0.4
     elseif distance > 1000 then
         fireDelay = 0.3
@@ -2967,9 +2903,9 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
 
     -- Create a "flick" effect when aiming.
     if isNoscoping or self.scopedTimer:isElapsed(fireDelay * 0.4) then
-        VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed * 3, self.aimNoise, "Engage target (sniper, slow)")
+        VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed * 1.4, self.aimNoise, "Engage target (sniper, slow)")
     else
-        VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed, self.aimNoise, "Engage target (sniper, fast)")
+        VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed * 0.6, self.aimNoise, "Engage target (sniper, fast)")
     end
 
     if not isNoscoping and fov < self.shootWithinFov * 2.5 then
@@ -3095,17 +3031,17 @@ function AiStateEngage:actionJiggle(period, angle)
         direction = angle:getRight()
     end
 
-    Pathfinder.moveAtAngle(direction:getAngleFromForward())
+    Pathfinder.moveAtAngle(direction:getAngleFromUnitVector())
 end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function AiStateEngage:actionCounterStrafe(cmd)
+function AiStateEngage:actionStrafe(cmd)
     cmd.in_duck = true
 
     if LocalPlayer:m_flDuckSpeed() < 4 then
         if not self:isAllowedToStrafe() then
-            Pathfinder.standStill()
+            Pathfinder.counterStrafe(true)
         end
 
         return
@@ -3117,7 +3053,7 @@ function AiStateEngage:actionCounterStrafe(cmd)
         --- @type Vector3
         local moveAngle = Nyx.call(angleToEnemy, "get%s", self.strafePeekDirection)
 
-        Pathfinder.moveAtAngle(moveAngle:getAngleFromForward())
+        Pathfinder.moveAtAngle(moveAngle:getAngleFromUnitVector())
     end
 end
 
@@ -3129,19 +3065,7 @@ function AiStateEngage:actionStop(cmd)
         cmd.in_duck = true
     end
 
-    local velocity = LocalPlayer:m_vecVelocity()
-
-    -- Stop moving when our velocity has fallen below threshold.
-    if velocity:getMagnitude() < 70 then
-       Pathfinder.standStill()
-
-        return
-    end
-
-    local inverseVelocity = -velocity
-
-    -- Counter our current velocity.
-    Pathfinder.moveAtAngle(inverseVelocity:getAngleFromForward())
+    Pathfinder.counterStrafe(true)
 end
 
 --- @return void
@@ -3247,7 +3171,7 @@ function AiStateEngage:actionStrafePeek()
         end
 
         if isVisible then
-            moveAngle = direction:getAngleFromForward()
+            moveAngle = direction:getAngleFromUnitVector()
             moveDirection = name
             count = count + 1
         end
@@ -3512,7 +3436,7 @@ function AiStateEngage:setAimSkill(skill)
         prefireReactionTime = 0.25,
         anticipateTime = 0.15,
         sprayTime = 0.4,
-        aimSpeed = 8,
+        aimSpeed = 10,
         recoilControl = 2.5,
         aimOffset = 32,
         aimInaccurateOffset = 144,
@@ -3524,7 +3448,7 @@ function AiStateEngage:setAimSkill(skill)
         prefireReactionTime = 0.005,
         anticipateTime = 0.01,
         sprayTime = 0.3,
-        aimSpeed = 15,
+        aimSpeed = 18,
         recoilControl = 2,
         aimOffset = 0,
         aimInaccurateOffset = 80,

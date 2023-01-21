@@ -7,7 +7,6 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
-local Voice = require "gamesense/Nyx/v1/Api/Voice"
 --}}}
 
 --{{{ Modules
@@ -54,7 +53,7 @@ function AiVoice:__init()
     self.packs = packs
     self.packsListboxMap = packNames
 
-    MenuGroup.enableMicrophone = MenuGroup.group:addCheckbox(" > Enable Microphone"):addCallback(function(item)
+    MenuGroup.enableMicrophone = MenuGroup.group:addCheckbox("> Enable Microphone"):addCallback(function(item)
         if item:get() then
             self.pack = self.packs[MenuGroup.voicePack:get() + 1]
         else

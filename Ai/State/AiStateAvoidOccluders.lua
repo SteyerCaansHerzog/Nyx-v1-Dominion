@@ -1,4 +1,5 @@
 --{{{ Dependencies
+local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
@@ -10,6 +11,7 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateAvoidOccluders
@@ -45,7 +47,14 @@ end
 
 --- @return void
 function AiStateAvoidOccluders:activate()
-    self:move()
+    -- Nodes won't have always updated on this this tick.
+    Client.onNextTick(function()
+        if self.ai.routines.handleOccluderTraversal.infernoInsideOf then
+            self:moveOutOfInferno()
+        elseif self.ai.routines.handleOccluderTraversal.smokeInsideOf then
+            self:moveOutOfSmoke()
+        end
+    end)
 end
 
 --- @return void
@@ -56,70 +65,34 @@ function AiStateAvoidOccluders:deactivate() end
 function AiStateAvoidOccluders:think(cmd)
     self.activity = "Avoiding occluder"
 
-    if Pathfinder.isIdle() then
-        self:move()
+    -- Don't permit walking if we're in a fire.
+    if self.ai.routines.handleOccluderTraversal.infernoInsideOf then
+        self.ai.routines.walk:block()
     end
 end
 
 --- @return void
-function AiStateAvoidOccluders:move()
+function AiStateAvoidOccluders:moveOutOfInferno()
     local clientOrigin = LocalPlayer:getOrigin()
-    local testOrigin
 
-    if AiUtility.closestEnemy then
-        testOrigin = AiUtility.closestEnemy:getOrigin()
-    else
-        testOrigin = clientOrigin + LocalPlayer.getCameraAngles():getForward() * 100
-    end
+    --- @type NodeTypeTraverse
+    local targetNode
+    local closestDistance = math.huge
 
-    if not testOrigin then
-        self:moveToRandom()
+    for _, node in pairs(Nodegraph.get(Node.traverseGeneric)) do repeat
+        if node.isOccludedByInferno then
+            break
+        end
 
-        return
-    end
+        local distance = clientOrigin:getDistance(node.origin)
 
-    local origin
+        if distance < closestDistance then
+            closestDistance = distance
+            targetNode = node
+        end
+    until true end
 
-    if self.ai.routines.handleOccluderTraversal.infernoInsideOf then
-        origin = self.ai.routines.handleOccluderTraversal.infernoInsideOf:m_vecOrigin()
-    elseif self.ai.routines.handleOccluderTraversal.smokeInsideOf then
-        origin = self.ai.routines.handleOccluderTraversal.smokeInsideOf:m_vecOrigin()
-    end
-
-    local clientDistance = clientOrigin:getDistance(testOrigin)
-    local occluderDistance = origin:getDistance(testOrigin)
-    --- @type NodeTraverseGeneric
-    local node
-
-    if clientDistance < occluderDistance then
-        local angleToTest = clientOrigin:getAngle(testOrigin)
-
-        node = Nodegraph.findOne(Node.traverseGeneric, function(n)
-        	local fov = angleToTest:getFov(clientOrigin, n.origin)
-
-            if fov < 80 then
-                return n
-            end
-        end)
-    else
-        local angleAway = clientOrigin:getAngle(testOrigin):zeroPitch():getInversed()
-
-        node = Nodegraph.findOne(Node.traverseGeneric, function(n)
-            local fov = angleAway:getFov(clientOrigin, n.origin)
-
-            if fov < 80 then
-                return n
-            end
-        end)
-    end
-
-    if not node then
-        self:moveToRandom()
-
-        return
-    end
-
-    Pathfinder.moveToNode(node, {
+    Pathfinder.moveToNode(targetNode, {
         task = "Get out of inferno",
         isAllowedToTraverseInactives = true,
         isPathfindingFromNearestNodeIfNoConnections = true,
@@ -129,24 +102,28 @@ function AiStateAvoidOccluders:move()
 end
 
 --- @return void
-function AiStateAvoidOccluders:moveToRandom()
-    local origin
-
-    if self.ai.routines.handleOccluderTraversal.infernoInsideOf then
-        origin = self.ai.routines.handleOccluderTraversal.infernoInsideOf:m_vecOrigin()
-    elseif self.ai.routines.handleOccluderTraversal.smokeInsideOf then
-        origin = self.ai.routines.handleOccluderTraversal.smokeInsideOf:m_vecOrigin()
-    end
-
+function AiStateAvoidOccluders:moveOutOfSmoke()
     local clientOrigin = LocalPlayer:getOrigin()
 
-    Pathfinder.moveToNode(Nodegraph.findRandom(Node.traverseGeneric, function(n)
-        local distanceToClient = clientOrigin:getDistance(n.origin)
-        local distanceToOccluder = origin:getDistance(n.origin)
+    --- @type NodeTypeTraverse
+    local targetNode
+    local closestDistance = math.huge
 
-        return distanceToClient > 400 and distanceToClient < distanceToOccluder
-    end), {
-        task = "Get out of inferno (random node)",
+    for _, node in pairs(Nodegraph.get(Node.traverseGeneric)) do repeat
+        if node.isOccludedBySmoke then
+            break
+        end
+
+        local distance = clientOrigin:getDistance(node.origin)
+
+        if distance < closestDistance then
+            closestDistance = distance
+            targetNode = node
+        end
+    until true end
+
+    Pathfinder.moveToNode(targetNode, {
+        task = "Get out of smoke",
         isAllowedToTraverseInactives = true,
         isPathfindingFromNearestNodeIfNoConnections = true,
         isPathfindingToNearestNodeIfNoConnections = true,

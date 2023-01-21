@@ -88,10 +88,8 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 
 --{{{ Pathfinder
 --- @class Pathfinder : Class
---- @field avoidTeammatesAngle Angle
---- @field avoidTeammatesDirection string
---- @field avoidTeammatesDuration number
---- @field avoidTeammatesTimer Timer
+--- @field avoidTeammatesOriginalMovementAngle Angle
+--- @field avoidTeammatesNewMovementAngle Angle
 --- @field blockedBombsite NodeTypeObjective
 --- @field cachedLastRequest PathfinderRequest
 --- @field deactivatedNodesPool NodeTypeBase[]
@@ -105,7 +103,6 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field isAllowedToRandomlyJump boolean
 --- @field isAllowedToWalk boolean
 --- @field isAscendingLadder boolean
---- @field isAvoidingTeammate boolean
 --- @field isCounterStrafing boolean
 --- @field isDescendingLadder boolean
 --- @field isDucking boolean
@@ -148,9 +145,6 @@ end
 --- @return void
 function Pathfinder.initFields()
 	Pathfinder.isLoggingEnabled = true
-	Pathfinder.avoidTeammatesDirection = "Left"
-	Pathfinder.avoidTeammatesDuration = 0.6
-	Pathfinder.avoidTeammatesTimer = Timer:new()
 	Pathfinder.isAllowedToDuck = true
 	Pathfinder.isAllowedToJump = true
 	Pathfinder.isAllowedToWalk = true
@@ -250,10 +244,10 @@ function Pathfinder.initEvents()
 	Callbacks.infernoStartBurn(function(e)
 		--- @type NodeTypeBase[]
 		local pool = {}
-		local bounds = e.origin:getBounds(Vector3.align.CENTER, 128, 128, 48)
+		local bounds = e.origin:getBounds(Vector3.align.CENTER, 200, 200, 64)
 
 		for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do repeat
-			if node.origin:isInBounds(bounds) then
+			if not node.origin:isInBounds(bounds) then
 				break
 			end
 
@@ -373,6 +367,20 @@ function Pathfinder.render()
 			node.origin:drawScaledCircleOutline(60, 10, Color:hsla(235, 0.16, 0.66, 100))
 		end
 	end
+
+	local clientOrigin = LocalPlayer:getOrigin()
+
+	if Pathfinder.lastMovementAngle then
+		local endPos = clientOrigin + Pathfinder.lastMovementAngle:getForward() * 32
+
+		clientOrigin:drawLine(endPos, Color.GREEN)
+	end
+
+	if Pathfinder.avoidTeammatesNewMovementAngle then
+		local endPos = clientOrigin + Pathfinder.avoidTeammatesNewMovementAngle:getForward() * 32
+
+		clientOrigin:drawLine(endPos, Color.BLUE)
+	end
 end
 
 --- @return void
@@ -421,16 +429,21 @@ function Pathfinder.jump()
 	Pathfinder.isAllowedToRandomlyJump = false
 end
 
+--- @param isStandingStill boolean
 --- @return void
-function Pathfinder.counterStrafe()
+function Pathfinder.counterStrafe(isStandingStill)
 	Pathfinder.isCounterStrafing = true
+
+	if isStandingStill then
+		Pathfinder.standStill()
+	end
 end
 
 --- @param direction Vector3
 --- @param isClearingActivePath boolean
 --- @return void
 function Pathfinder.moveInDirection(direction, isClearingActivePath)
-	Pathfinder.directMovementAngle = direction:getAngleFromForward()
+	Pathfinder.directMovementAngle = direction:getAngleFromUnitVector()
 
 	if isClearingActivePath then
 		Pathfinder.clearActivePathAndLastRequest()
@@ -1586,6 +1599,9 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function Pathfinder.avoidTeammates(cmd)
+	Pathfinder.isObstructedByTeammate = false
+	Pathfinder.avoidTeammatesNewMovementAngle = nil
+
 	if not Pathfinder.lastMovementAngle then
 		return
 	end
@@ -1594,58 +1610,58 @@ function Pathfinder.avoidTeammates(cmd)
 		return
 	end
 
-	local isBlocked = false
+	if not Pathfinder.avoidTeammatesOriginalMovementAngle then
+		Pathfinder.avoidTeammatesOriginalMovementAngle = Pathfinder.lastMovementAngle
+	end
+
 	local clientOrigin = LocalPlayer:getOrigin()
-	local collisionOrigin = clientOrigin:clone():offset(0, 0, 36) + (Pathfinder.lastMovementAngle:clone():set(0):getForward() * 40)
-	local collisionBounds = collisionOrigin:getBounds(Vector3.align.CENTER, 20, 20, 40)
+	local collisionBoundsOrigin = clientOrigin:clone() + Pathfinder.lastMovementAngle:set(0):getForward() * 64
+	local collisionBounds = collisionBoundsOrigin:getBounds(Vector3.align.UP, 25, 25, 36)
 	--- @type Player
-	local blockingTeammate
+	local teammateInBounds
+	local closestDistance = math.huge
 
 	for _, teammate in pairs(AiUtility.teammates) do
-		if teammate:getOrigin():offset(0, 0, 32):isInBounds(collisionBounds) then
-			isBlocked = true
+		local teammateOrigin = teammate:getOrigin()
+		local teammateBounds = teammate:getBounds()
 
-			blockingTeammate = teammate
+		if Vector3.isBoundsIntersecting(collisionBounds, teammateBounds) then
+			local distance = teammateOrigin:getDistance(clientOrigin)
 
-			break
+			if distance < closestDistance then
+				closestDistance = distance
+				teammateInBounds = teammate
+			end
 		end
 	end
 
-	if not isBlocked then
-		Pathfinder.isAvoidingTeammate = false
-		Pathfinder.avoidTeammatesAngle = nil
+	if not teammateInBounds then
+		Pathfinder.avoidTeammatesOriginalMovementAngle = Pathfinder.lastMovementAngle
+		Pathfinder.avoidTeammatesTeammateMovementAngle = nil
+		Pathfinder.avoidTeammatesClientMovementAngle = nil
 
 		return
+	end
+
+	if not Pathfinder.avoidTeammatesTeammateMovementAngle or not Pathfinder.avoidTeammatesClientMovementAngle then
+		Pathfinder.avoidTeammatesTeammateMovementAngle = teammateInBounds:m_vecVelocity():getAngleFromUnitVector()
+		Pathfinder.avoidTeammatesClientMovementAngle = LocalPlayer:m_vecVelocity():getAngleFromUnitVector()
 	end
 
 	Pathfinder.isObstructedByTeammate = true
 
-	if not Pathfinder.avoidTeammatesAngle then
-		Pathfinder.avoidTeammatesAngle = LocalPlayer.getEyeOrigin():getAngle(blockingTeammate:getEyeOrigin())
+	local isLeftHandSide = (Pathfinder.avoidTeammatesClientMovementAngle - Pathfinder.avoidTeammatesTeammateMovementAngle):normalize().y < 0
+	local movementAngle = Pathfinder.avoidTeammatesOriginalMovementAngle:clone()
+
+	if isLeftHandSide then
+		movementAngle:offset(0, -60):normalize()
+	else
+		movementAngle:offset(0, 60):normalize()
 	end
 
-	Pathfinder.avoidTeammatesTimer:ifPausedThenStart()
+	Pathfinder.avoidTeammatesNewMovementAngle = movementAngle
 
-	if Pathfinder.avoidTeammatesTimer:isElapsedThenStop(Pathfinder.avoidTeammatesDuration) then
-		Pathfinder.avoidTeammatesDirection = Math.getChance(2) and "Left" or "Right"
-		Pathfinder.avoidTeammatesDuration = Math.getRandomFloat(0.66, 1)
-	end
-
-	local directionMethod = string.format("get%s", Pathfinder.avoidTeammatesDirection)
-	local eyeOrigin = LocalPlayer.getEyeOrigin()
-	local movementAngles = Pathfinder.lastMovementAngle
-	local directionOffset = eyeOrigin + movementAngles[directionMethod](movementAngles) * 150
-
-	if not Pathfinder.isAllowedToAvoidTeammates then
-		Pathfinder.isAllowedToAvoidTeammates = true
-
-		return
-	end
-
-	Pathfinder.isAvoidingTeammate = true
-	Pathfinder.isAllowedToRandomlyJump = false
-
-	Pathfinder.createMove(cmd, eyeOrigin:getAngle(directionOffset))
+	Pathfinder.createMove(cmd, movementAngle)
 end
 
 --- @param cmd SetupCommandEvent

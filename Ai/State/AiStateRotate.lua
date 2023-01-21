@@ -83,6 +83,8 @@ function AiStateRotate:think(cmd)
         return
     end
 
+    self.ai.routines.walk:block()
+
     self.activity = string.format("Rotating to %s", self.site:upper())
 
     Pathfinder.canRandomlyJump()

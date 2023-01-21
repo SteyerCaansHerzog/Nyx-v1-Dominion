@@ -57,8 +57,10 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field debugPriorities table<string, string>
 --- @field ditherHistories AiStateDitherHistory[]
 --- @field ditherHistoryMax number
+--- @field ditherHistoryTimer Timer
 --- @field ditherThreshold number
 --- @field isAllowedToBuyGear boolean
+--- @field isAntiAfkEnabled boolean
 --- @field isEnabled boolean
 --- @field lastPriority number
 --- @field lockStateTimer Timer
@@ -93,6 +95,7 @@ function Ai:initFields()
 	self.ditherHistories = {}
 	self.ditherHistoryMax = 16
 	self.ditherThreshold = 8
+	self.ditherHistoryTimer = Timer:new():start()
 	self.debugPriorities = {}
 
 	if Config.isLiveClient and not Config.isAdministrator(Client.xuid) then
@@ -120,6 +123,9 @@ function Ai:initFields()
 	end
 
 	self.routines = routines
+
+	-- AI voice packs.
+	self.voice = AiVoice:new()
 
 	-- Chatbots.
 	local chatbots = {}
@@ -177,8 +183,6 @@ function Ai:initFields()
 	until true end
 
 	self.states = states
-
-	self.voice = AiVoice:new()
 end
 
 --- @return void
@@ -187,8 +191,8 @@ function Ai:initMenu()
 		local bool = item:get()
 
 		Pathfinder.isEnabled = bool
-		self.isEnabled = bool
 		AiUtility.isPerformingCalculations = bool
+		self.isEnabled = bool
 		self.lastPriority = nil
 		self.currentState = nil
 
@@ -247,6 +251,10 @@ function Ai:initEvents()
 			return
 		end
 
+		if self.ditherHistoryTimer:isElapsedThenRestart(6) and not Table.isEmpty(self.ditherHistories) then
+			table.remove(self.ditherHistories, 1)
+		end
+
 		self:render()
 	end)
 
@@ -254,6 +262,10 @@ function Ai:initEvents()
 		Callbacks.setupCommand(function(cmd)
 			if self.debugPre then
 				self:debugPre(cmd)
+			end
+
+			if self.isAntiAfkEnabled then
+				cmd.in_duck = true
 			end
 
 			self:think(cmd)
@@ -386,7 +398,8 @@ function Ai:render()
 	
 	if MenuGroup.enableDim:get() then
 		Vector2:new():drawSurfaceRectangle(screenDimensions, screenBgColor)
-	end;
+	end
+
 	self.states.engage:render()
 
 	local nameWidth = ISurface.getTextSize(Font.SMALL_BOLD, name)

@@ -25,9 +25,13 @@ function AiChatCommandAfk:invoke(ai, sender, args)
     if toggle == "on" then
         MenuGroup.enableAi:set(false)
 
+        ai.isAntiAfkEnabled = true
+
         return
     elseif toggle == "off" then
         MenuGroup.enableAi:set(true)
+
+        ai.isAntiAfkEnabled = false
 
         return
     end

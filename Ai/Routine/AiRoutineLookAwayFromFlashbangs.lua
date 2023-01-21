@@ -122,7 +122,7 @@ function AiRoutineLookAwayFromFlashbangs:think(cmd)
 		end
 
 		self.activeFlashbang = flashbang
-		self.lookAngles = eyeOrigin:getAngle(findPredictedFuturePositionTrace.endPosition):getBackward():getAngleFromForward()
+		self.lookAngles = eyeOrigin:getAngle(findPredictedFuturePositionTrace.endPosition):getBackward():getAngleFromUnitVector()
 	until true end
 
 	if not self.activeFlashbang then

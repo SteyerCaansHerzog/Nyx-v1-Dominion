@@ -14,6 +14,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiRoutineHandleOccluderTraversal
@@ -60,7 +61,7 @@ function AiRoutineHandleOccluderTraversal:think()
 	self.isInfernoVisible = false
 	self.isSmokeVisible = false
 
-	local clientOrigin = LocalPlayer:getOrigin()
+	local clientBounds = LocalPlayer:getBounds()
 	local clientEyeOrigin = LocalPlayer.getEyeOrigin()
 
 	-- if inside a fire then we have to get out of it
@@ -72,7 +73,7 @@ function AiRoutineHandleOccluderTraversal:think()
 		local infernoBounds = inferno:m_vecOrigin():getBounds(Vector3.align.CENTER, 256, 256, 64)
 
 		-- Determine if we're nearby an inferno.
-		if not clientOrigin:isInBounds(infernoBounds) then
+		if not Vector3.isBoundsIntersecting(clientBounds, infernoBounds) then
 			break
 		end
 
@@ -84,7 +85,7 @@ function AiRoutineHandleOccluderTraversal:think()
 			local fireBounds = fire:getBounds(Vector3.align.CENTER, 160, 160, 48)
 
 			-- Determine if we're inside an inferno.
-			if clientOrigin:isInBounds(fireBounds) then
+			if Vector3.isBoundsIntersecting(clientBounds, fireBounds) then
 				self.infernoInsideOf = inferno
 			end
 
@@ -113,7 +114,7 @@ function AiRoutineHandleOccluderTraversal:think()
 		local smokeNearBounds = smokeOrigin:getBounds(Vector3.align.CENTER, 256, 256, 64)
 
 		-- Determine if we're nearby a smoke.
-		if not clientOrigin:isInBounds(smokeNearBounds) then
+		if not Vector3.isBoundsIntersecting(clientBounds, smokeNearBounds) then
 			break
 		end
 
@@ -123,7 +124,7 @@ function AiRoutineHandleOccluderTraversal:think()
 		local smokeVisibleBox = smoke:m_vecOrigin():offset(0, 0, 48):getBox(Vector3.align.CENTER, 72, 72, 24)
 
 		-- Determine if we're inside a smoke.
-		if clientOrigin:isInBounds(smokeMaxBounds) then
+		if Vector3.isBoundsIntersecting(clientBounds, smokeMaxBounds) then
 			self.smokeInsideOf = smoke
 		end
 
@@ -249,6 +250,8 @@ end
 --- @return void
 function AiRoutineHandleOccluderTraversal:jiggle(node)
 	local clientOrigin = LocalPlayer:getOrigin()
+
+	VirtualMouse.lookAtLocationPassively(node.origin:clone():offset(0, 0, 64))
 
 	if not self.jiggleCooldownTimer:isElapsed(self.jiggleCooldownTime) then
 		Pathfinder.standStill()

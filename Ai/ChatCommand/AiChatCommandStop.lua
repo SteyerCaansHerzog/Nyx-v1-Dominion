@@ -19,10 +19,6 @@ local AiChatCommandStop = {
 --- @param args string[]
 --- @return void
 function AiChatCommandStop:invoke(ai, sender, args)
-    if not sender:isAlive() then
-        return self.SENDER_IS_DEAD
-    end
-
     ai.states.check:reset()
     ai.states.patrol:reset()
     ai.states.boostTeammate:reset()

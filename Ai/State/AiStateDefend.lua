@@ -246,6 +246,8 @@ function AiStateDefend:assessDemolition()
             local distance = bombCarrierOrigin:getDistance(bombsite.origin)
 
             if AiUtility.isBombBeingPlantedByTeammate or distance < 900 then
+                self.ai.routines.walk:block()
+
                 return AiPriority.DEFEND_PLANTER
             end
         end
@@ -504,7 +506,7 @@ function AiStateDefend:think(cmd)
 
     -- There's a teammate already near this defensive spot. We should hold someplace else.
     for _, teammate in pairs(AiUtility.teammates) do
-        if teammate:getOrigin():getDistance(self.node.origin) < 80 then
+        if teammate:getOrigin():getDistance(self.node.origin) < 128 then
             self:invoke(self.node.bombsite)
         end
     end

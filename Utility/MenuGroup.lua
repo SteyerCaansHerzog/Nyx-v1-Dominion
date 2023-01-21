@@ -40,10 +40,12 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --- @field visualiseAi MenuItem
 --- @field enableDim MenuItem
 ---
---- @field persona MenuItem
----
 --- @field enableMicrophone MenuItem
 --- @field voicePack MenuItem
+---
+--- @field showPersonas MenuItem
+--- @field persona MenuItem
+---
 ---
 --- @field restoreReaperManifest MenuItem
 ---

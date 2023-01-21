@@ -2,6 +2,7 @@
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Panorama = require "gamesense/Nyx/v1/Api/Panorama"
 local Table = require "gamesense/Nyx/v1/Api/Table"
@@ -26,6 +27,7 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field isAtDestination boolean
 --- @field isAutomaticSavingAllowed boolean
 --- @field isSaving boolean
+--- @field evacuateBombsiteDelay number
 local AiStateEvacuate = {
     name = "Evacuate",
     requiredNodes = {
@@ -44,6 +46,7 @@ end
 function AiStateEvacuate:__init()
     self.isForcedToSave = false
     self.isAutomaticSavingAllowed = true
+    self.evacuateBombsiteDelay = Math.getRandomFloat(-1, 1)
 
     Callbacks.roundPrestart(function()
     	self:reset()
@@ -100,7 +103,7 @@ function AiStateEvacuate:assess()
             return AiPriority.SAVE_ROUND
         end
 
-        local bombTimeThreshold = LocalPlayer:m_iHealth() > 50 and 12 or 16
+        local bombTimeThreshold = (LocalPlayer:m_iHealth() > 50 and 12 or 16) + self.evacuateBombsiteDelay
 
         -- The enemy likely cannot defuse now, and we need to leave the site.
         if AiUtility.plantedBomb and not AiUtility.isBombBeingDefusedByEnemy and AiUtility.bombDetonationTime < bombTimeThreshold then

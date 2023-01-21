@@ -25,14 +25,15 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @class AiStateFlashbangDynamic : AiStateBase
 --- @field canJumpThrow boolean
 --- @field isActivated boolean
+--- @field isAllowedToFlashTeammate boolean
 --- @field isThrowing boolean
 --- @field targetPlayer Player
+--- @field threatCooldownTimer Timer
 --- @field throwAngles Angle
 --- @field throwAttemptCooldownTimer Timer
 --- @field throwCooldownTimer Timer
 --- @field throwFromOrigin Vector3
 --- @field throwTimer Timer
---- @field threatCooldownTimer Timer
 local AiStateFlashbangDynamic = {
     name = "Flashbang Dynamic",
     delayedMouseMin = 0.05,
@@ -54,6 +55,14 @@ function AiStateFlashbangDynamic:__init()
 
     Callbacks.roundStart(function()
     	self:reset()
+    end)
+
+    Callbacks.flashbangDetonate(function(e)
+        if not e.player:isLocalPlayer() then
+            return
+        end
+
+        self.isAllowedToFlashTeammate = Math.getChance(3)
     end)
 end
 
@@ -127,6 +136,34 @@ function AiStateFlashbangDynamic:assess()
         return AiPriority.IGNORE
     end
 
+    -- Avoid flashing teammates.
+    if not self.isAllowedToFlashTeammate then
+        for _, teammate in pairs(AiUtility.teammates) do
+            local teammateTestOrigin = teammate:getOrigin():offset(0, 0, 64)
+
+            -- Does our super accurate "detonate" spot trace have line of sight to the approximate enemy's eyeballs?
+            -- Not using getHitboxPosition because getOrigin works on dormancy. That and CSGO's hitbox positions are more demented than this code.
+            local blindTrace = Trace.getHullToPosition(predictionEndPosition, teammateTestOrigin, bounds, {
+                skip = teammate.eid,
+                mask = Trace.mask.VISIBLE
+            }, "AiStateFlashbangDynamic.assess<FindTeammateVisibleToFlashbang>")
+
+            -- No line of sight. Lucky for him.
+            if blindTrace.isIntersectingGeometry then
+                break
+            end
+
+            local distance = blindTrace.startPosition:getDistance(blindTrace.endPosition)
+
+            -- The teammate probably wouldn't be blinded even if we threw an actually well-calculated flash at them.
+            if distance > 800 then
+                break
+            end
+
+            return AiPriority.IGNORE
+        end
+    end
+
     -- Oh boy, which of our opponents is gonna get to see the worst thrown flashbang of their lives?
     -- If you've never seen a do repeat until true loop before it's because Lua couldn't be bothered to implement "continue".
     for _, enemy in pairs(AiUtility.enemies) do repeat
@@ -155,7 +192,7 @@ function AiStateFlashbangDynamic:assess()
         local nearTrace = Trace.getHullAtAngle(clientEyeOrigin, predictionAngles:clone():offset(-12), bounds, {
             skip = LocalPlayer.eid,
             mask = Trace.mask.VISIBLE,
-            distance = 200
+            distance = 100
         }, "AiStateFlashbangDynamic.assess<FindWallTooClose>")
 
         -- We're gonna try these angles. Pray on God.
@@ -230,8 +267,7 @@ function AiStateFlashbangDynamic:think(cmd)
     self.ai.routines.manageGear:block()
     self.ai.routines.lookAwayFromFlashbangs:block()
 
-    Pathfinder.standStill()
-    Pathfinder.counterStrafe()
+    Pathfinder.counterStrafe(true)
     Pathfinder.blockTeammateAvoidance()
     LocalPlayer.equipFlashbang()
     VirtualMouse.lookAlongAngle(self.throwAngles, 4.5, VirtualMouse.noise.none, "FlashbangDynamic look at throw angle")
@@ -263,6 +299,8 @@ function AiStateFlashbangDynamic:think(cmd)
 
         Client.fireAfter(0.15, function()
             self.throwCooldownTimer:restart()
+
+            self.ai.routines.walk.cooldownTimer:restart()
 
             self:reset()
         end)

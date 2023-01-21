@@ -26,6 +26,7 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMou
 
 --{{{ VirtualMouse
 --- @class VirtualMouse : Class
+--- @field activeViewAngles Angle
 --- @field aimPunchAngles Angle
 --- @field blockMouseControlTimer Timer
 --- @field buildup number
@@ -61,7 +62,7 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMou
 --- @field lookStateCached string
 --- @field nodegraph Nodegraph
 --- @field noise VirtualMouseNoiseType
---- @field overrideViewAngles Angle
+--- @field passiveViewAngles Angle
 --- @field pitchFine number
 --- @field pitchSoft number
 --- @field recoilControl number
@@ -112,7 +113,7 @@ function VirtualMouse.initFields()
 	VirtualMouse.pitchSoft = 0
 	VirtualMouse.yawFine = 0
 	VirtualMouse.yawSoft = 0
-	VirtualMouse.lookSpeedIdeal = 0
+	VirtualMouse.lookSpeedIdeal = 10
 	VirtualMouse.watchCornerTimer = Timer:new():startThenElapse()
 	VirtualMouse.buildup = 0
 	VirtualMouse.buildupThreshold = 90
@@ -219,16 +220,18 @@ function VirtualMouse.setViewAngles()
 		-- then the Pathfinder is about to execute a recorded movement,
 		-- and the angle is the starting direction for the movement.
 		VirtualMouse.setIdealRecorded(idealViewAngles)
-	elseif VirtualMouse.overrideViewAngles then
+	elseif VirtualMouse.activeViewAngles then
 		-- AI wants to look at something particular.
-		VirtualMouse.setIdealOverride(idealViewAngles)
+		VirtualMouse.setIdealActive(idealViewAngles)
 
 		if LocalPlayer:m_bIsScoped() == 1 then
 			smoothingCutoffThreshold = 0.2
 		else
 			smoothingCutoffThreshold = 0.35
-
 		end
+	elseif VirtualMouse.passiveViewAngles then
+		-- Allows AI routines to control mouse without also overriding an AI state that is running concurrently.
+		VirtualMouse.setIdealPassive(idealViewAngles)
 	elseif Pathfinder.isOnValidPath() then
 		-- Handle the "buildup" of mouse movement delta that would result in the virtual mouse leaving the mousemat.
 		VirtualMouse.handleBuildup()
@@ -287,7 +290,8 @@ end
 
 --- @return void
 function VirtualMouse.resetViewParameters()
-	VirtualMouse.overrideViewAngles = nil
+	VirtualMouse.activeViewAngles = nil
+	VirtualMouse.passiveViewAngles = nil
 	VirtualMouse.isFiringWeapon = false
 	VirtualMouse.isInUse = false
 
@@ -518,8 +522,14 @@ end
 
 --- @param idealViewAngles Angle
 --- @return void
-function VirtualMouse.setIdealOverride(idealViewAngles)
-	idealViewAngles:setFromAngle(VirtualMouse.overrideViewAngles)
+function VirtualMouse.setIdealActive(idealViewAngles)
+	idealViewAngles:setFromAngle(VirtualMouse.activeViewAngles)
+end
+
+--- @param idealViewAngles Angle
+--- @return void
+function VirtualMouse.setIdealPassive(idealViewAngles)
+	idealViewAngles:setFromAngle(VirtualMouse.passiveViewAngles)
 end
 
 --- @param idealViewAngles Angle
@@ -741,7 +751,7 @@ function VirtualMouse.lookAtLocation(origin, speed, noise, note)
 		return
 	end
 
-	VirtualMouse.overrideViewAngles = LocalPlayer.getEyeOrigin():getAngle(origin)
+	VirtualMouse.activeViewAngles = LocalPlayer.getEyeOrigin():getAngle(origin)
 	VirtualMouse.lookSpeedIdeal = speed
 	VirtualMouse.lastLookAtLocationOrigin = origin
 	VirtualMouse.lookState = note
@@ -758,7 +768,7 @@ function VirtualMouse.lookAlongAngle(angle, speed, noise, note)
 		return
 	end
 
-	VirtualMouse.overrideViewAngles = angle:clone()
+	VirtualMouse.activeViewAngles = angle:clone()
 	VirtualMouse.lookSpeedIdeal = speed
 	VirtualMouse.lastLookAtLocationOrigin = nil
 	VirtualMouse.lookState = note
@@ -775,12 +785,42 @@ function VirtualMouse.lookInDirection(direction, speed, noise, note)
 		return
 	end
 
-	VirtualMouse.overrideViewAngles = direction:getAngleFromForward()
+	VirtualMouse.activeViewAngles = direction:getAngleFromUnitVector()
 	VirtualMouse.lookSpeedIdeal = speed
 	VirtualMouse.lastLookAtLocationOrigin = nil
 	VirtualMouse.lookState = note
 
 	VirtualMouse.setNoiseType(noise or ViewNoiseType.none)
+end
+
+--- @param origin Vector3
+--- @return void
+function VirtualMouse.lookAtLocationPassively(origin)
+	if VirtualMouse.isViewLocked then
+		return
+	end
+
+	VirtualMouse.passiveViewAngles = LocalPlayer.getEyeOrigin():getAngle(origin)
+end
+
+--- @param angle Angle
+--- @return void
+function VirtualMouse.lookAlongAnglePassively(angle)
+	if VirtualMouse.isViewLocked then
+		return
+	end
+
+	VirtualMouse.passiveViewAngles = angle:clone()
+end
+
+--- @param direction Vector3
+--- @return void
+function VirtualMouse.lookInDirectionPassively(direction)
+	if VirtualMouse.isViewLocked then
+		return
+	end
+
+	VirtualMouse.passiveViewAngles = direction:getAngleFromUnitVector()
 end
 
 return Nyx.class("VirtualMouse", VirtualMouse)

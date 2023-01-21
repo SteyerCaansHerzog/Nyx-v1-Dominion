@@ -151,7 +151,9 @@ function AiChatbotGpt3:__init()
 
 	Logger.console(Logger.INFO, Localization.chatbotPersonaLoaded, personaName)
 
-	MenuGroup.persona = MenuGroup.group:addList("> Persona", personaKeys):set(Table.getIndexOf(personaKeys, personaName) - 1):addCallback(function(item)
+	MenuGroup.showPersonas = MenuGroup.group:addCheckbox("> Show Personas"):setParent(MenuGroup.master)
+
+	MenuGroup.persona = MenuGroup.group:addList("    > Persona", personaKeys):set(Table.getIndexOf(personaKeys, personaName) - 1):addCallback(function(item)
 		personaName = personaKeys[item:get() + 1]
 
 		if self.persona ~= self.personas[personaName] then
@@ -159,7 +161,7 @@ function AiChatbotGpt3:__init()
 			
 			Logger.console(Logger.INFO, Localization.chatbotPersonaLoaded, personaName)
 		end
-    end):setParent(MenuGroup.master)
+    end):setParent(MenuGroup.showPersonas)
 
 	Callbacks.playerChat(function(e)
 		self:processChatMessage(e)

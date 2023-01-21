@@ -216,6 +216,10 @@ function AiStatePlant:think(cmd)
 
     local distance = LocalPlayer:getOrigin():getDistance2(self.node.origin)
 
+    if distance < 250 and AiUtility.teammatesAlive > 0 then
+        self.ai.routines.walk:block()
+    end
+
     if distance < 150 then
         self.activity = string.format("Planting on %s", self.node.bombsite)
 

@@ -27,8 +27,6 @@ function AiChatCommandRush:invoke(ai, sender, args)
         return self.REAPER_IS_ACTIVE
     end
 
-    ai.routines.buyGear:blockThisRound()
-
     Client.fireAfterRandom(0, 1, function()
         if LocalPlayer:isCounterTerrorist() then
             ai.states.patrol:reset()
