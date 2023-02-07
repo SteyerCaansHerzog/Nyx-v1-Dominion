@@ -119,6 +119,10 @@ end
 function Logger.console(code, ...)
 	code = code or -1
 
+	if next({...}) == nil then
+		error("lol", 2)
+	end
+
 	local message = string.format(...)
 	local codeData = LoggerCode[code]
 	local time = Time.getDateTime()

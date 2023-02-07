@@ -36,7 +36,6 @@ end
 
 --- @return void
 function AiProcessClient:__init()
-	self:setClientLoaderLock()
 	self:setMisc()
 	self:setCvars()
 
@@ -99,11 +98,6 @@ function AiProcessClient:setMisc()
 			end
 		end)
 	end
-end
-
---- @return void
-function AiProcessClient:setClientLoaderLock()
-	writefile(Config.getPath("Resource/Data/ClientLoaderLock"), "1")
 end
 
 --- @return void

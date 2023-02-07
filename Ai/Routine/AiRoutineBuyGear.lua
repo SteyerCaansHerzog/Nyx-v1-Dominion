@@ -606,6 +606,13 @@ function AiRoutineBuyGear:buyTerroristFullBuyRound()
 
 	self:activateAnyPassingFrom({
 		{
+			balance = 12000,
+			chance = 6,
+			queue = function()
+				self:equipWeapon(Buy.G3SG1)
+			end
+		},
+		{
 			balance = 6000,
 			chance = 4,
 			queue = function()
@@ -820,6 +827,13 @@ function AiRoutineBuyGear:buyCounterTerroristFullBuyRound()
 	self:logSetPurchase("CounterTerroristFullBuyRound")
 
 	self:activateAnyPassingFrom({
+		{
+			balance = 12000,
+			chance = 6,
+			queue = function()
+				self:equipWeapon(Buy.SCAR20)
+			end
+		},
 		{
 			balance = 6000,
 			chance = 4,

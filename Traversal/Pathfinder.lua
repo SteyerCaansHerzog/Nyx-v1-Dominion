@@ -244,7 +244,7 @@ function Pathfinder.initEvents()
 	Callbacks.infernoStartBurn(function(e)
 		--- @type NodeTypeBase[]
 		local pool = {}
-		local bounds = e.origin:getBounds(Vector3.align.CENTER, 200, 200, 64)
+		local bounds = e.origin:getBounds(Vector3.align.CENTER, 250, 250, 64)
 
 		for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do repeat
 			if not node.origin:isInBounds(bounds) then

@@ -65,6 +65,18 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @class ReaperClientShared
 --- @field isForced boolean
 --}}}
+
+--{{{ ReaperClientManifestJson
+--- @class ReaperClientManifestJson
+--- @field isEnabled boolean
+--- @field clients ReaperClientProcess[]
+--}}}
+
+--{{{ ReaperClientProcess
+--- @class ReaperClientProcess
+--- @field pid number
+--- @field hwnd number
+--}}}
 --}}}
 
 --{{{ ReaperClient
@@ -111,12 +123,11 @@ function ReaperManifest:__init()
 		self.isEnabled = false
 
 		error(DominionLocalization.reaperMissingManifest)
-
-		return
 	end
 
 	self.raw = fileData
 
+	--- @type ReaperClientManifestJson
 	local manifest = json.parse(fileData)
 
 	self.isEnabled = manifest.isEnabled
@@ -144,7 +155,7 @@ function ReaperManifest:__init()
 	table.sort(clientKeysSorted)
 
 	for _, key in ipairs(clientKeysSorted) do
-		local window = manifest.clients[key]
+		local window = manifest.clients[key].hwnd
 
 		local client = ReaperClient:new({
 			index = index,
@@ -184,29 +195,30 @@ function ReaperManifest:verifyManifest()
 	if not fileData then
 		self.isEnabled = false
 
-		error(Localization.aiReaperManifestMissing)
+		error(DominionLocalization.reaperMissingManifest)
 
 		return
 	end
 
 	self.raw = fileData
 
+	--- @type ReaperClientManifestJson
 	local manifest = json.parse(fileData)
 	local isReaperStale = false
 
-	for steamId64, windowHandle in pairs(manifest.clients) do
+	for steamId64, process in pairs(manifest.clients) do
 		if not self.steamId64Map[steamId64] then
 			isReaperStale = true
 
-			Logger.console(Logger.OK, Localization.reaperNewAccount)
+			Logger.console(Logger.OK, DominionLocalization.reaperNewAccount)
 
 			break
 		end
 
-		if not self.windowHandleMap[windowHandle] then
+		if not self.windowHandleMap[process.hwnd] then
 			isReaperStale = true
 
-			Logger.console(Logger.OK, Localization.reaperAccountRestarted)
+			Logger.console(Logger.OK, DominionLocalization.reaperAccountRestarted)
 
 			break
 		end
@@ -234,28 +246,26 @@ Nyx.class("ReaperManifest", ReaperManifest)
 --{{{ Reaper
 --- @class Reaper : Class
 --- @field ai Ai
---- @field gameConfig string
+--- @field clientBoxActiveOffset number
+--- @field clientBoxFocusedOffset number
+--- @field infoPath string
 --- @field isActive boolean
 --- @field isAiEnabled boolean
 --- @field isClientAdmin boolean
 --- @field isEnabled boolean
+--- @field isForced boolean
+--- @field keyForceSwap VKey
 --- @field keyHotSwap VKey
+--- @field keyOpenConsole VKey
 --- @field keyTakeControl VKey
 --- @field lastActiveState boolean
 --- @field lastFocusedState boolean
 --- @field manifest ReaperManifest
---- @field keyOpenConsole VKey
---- @field keyForceSwap VKey
---- @field isForced boolean
---- @field syncInfoTimer Timer
---- @field infoPath string
---- @field clientBoxFocusedOffset number
---- @field clientBoxActiveOffset number
+--- @field savedCommunicationStates boolean[]
 --- @field screenGradientAlpha number
 --- @field screenOverlayAlpha number
---- @field savedCommunicationStates boolean[]
+--- @field syncInfoTimer Timer
 local Reaper = {
-	gameConfig = "reaper",
 	clientConfig = "Nyx-v1-Dominion-Reaper",
 	infoPath = Config.getPath("Resource/Data/ReaperClientInfo_%s.json"),
 	sharedPath = Config.getPath("Resource/Data/ReaperClientShared.json"),
@@ -303,8 +313,6 @@ end
 --- @return void
 function Reaper:initEvents()
 	if self.isEnabled then
-		self:setConfig(self.clientConfig)
-
 		Callbacks.frameGlobal(function()
 			self:think()
 			self:render()
@@ -1058,14 +1066,6 @@ function Reaper:think()
 			Client.setInputEnabled(false)
 		end
 	end
-end
-
---- @param name string
---- @return void
-function Reaper:setConfig(name)
-	config.load(name)
-
-	Client.execute("exec %s", self.gameConfig)
 end
 
 return Nyx.class("Reaper", Reaper)
