@@ -10,6 +10,11 @@ local MapInfo = {
 	cs_office = {
 		gamemode = "hostage",
 	},
+	de_dust2 = {
+		gamemode = "demolition",
+		bombsiteType = "radius",
+		bombsiteRotateRadius = 1400,
+	},
 	de_inferno = {
 		gamemode = "demolition",
 		bombsiteType = "distance",

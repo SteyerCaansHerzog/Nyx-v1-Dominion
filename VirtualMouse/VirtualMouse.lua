@@ -27,7 +27,6 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMou
 --{{{ VirtualMouse
 --- @class VirtualMouse : Class
 --- @field activeViewAngles Angle
---- @field aimPunchAngles Angle
 --- @field blockMouseControlTimer Timer
 --- @field buildup number
 --- @field buildupCooldownTime number
@@ -179,7 +178,7 @@ function VirtualMouse.setViewAngles()
 	end
 
 	-- Apply movement recorder angles.
-	-- Immediately exit this logic, so that only the raw recorded angles are applied.
+	-- Immediately exit this method, so that only the raw recorded angles are applied.
 	if Pathfinder.isReplayingMovementRecording then
 		VirtualMouse.lookState = "VirtualMouse recorded"
 
@@ -725,15 +724,11 @@ function VirtualMouse.think(cmd)
 		cmd.in_use = true
 	end
 
-	local aimPunchAngles = LocalPlayer:m_aimPunchAngle()
+	local aimPunchAngles = LocalPlayer:m_aimPunchAngle() * VirtualMouse.recoilControl
 
 	if VirtualMouse.isRcsEnabled then
-		VirtualMouse.aimPunchAngles = VirtualMouse.aimPunchAngles + (aimPunchAngles - VirtualMouse.aimPunchAngles) * 20 * Time.getDelta()
-
-		correctedViewAngles = (correctedViewAngles - VirtualMouse.aimPunchAngles * VirtualMouse.recoilControl):normalize()
+		correctedViewAngles = ((correctedViewAngles - aimPunchAngles)):normalize()
 	end
-
-	correctedViewAngles:normalize()
 
 	VirtualMouse.lookAtAngles = correctedViewAngles
 	VirtualMouse.isViewLocked = false

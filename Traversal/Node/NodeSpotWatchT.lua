@@ -5,36 +5,37 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ Modules
 local NodeTypeSpot = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeSpot"
+local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 --}}}
 
---{{{ NodeSpotWatch
---- @class NodeSpotWatch : NodeTypeSpot
+--{{{ NodeSpotWatchT
+--- @class NodeSpotWatchT : NodeTypeSpot
 --- @field weapons string
 --- @field weaponsSnipers string
 --- @field weaponsOthers string
-local NodeSpotWatch = {
-    name = "Watch",
+local NodeSpotWatchT = {
+    name = "Watch (T)",
     description = {
-        "Informs the AI of random map angles it can hold.",
+        "Informs the T AI of random map angles it can hold.",
         "",
         "- The AI will use these randomly to hold down map angles."
     },
-    colorSecondary = Color:hsla(25, 0.8, 0.5),
+    colorPrimary = Color:hsla(5, 0.8, 0.6),
+    colorSecondary = ColorList.TERRORIST,
     isDirectional = true,
     weaponsSnipers = "Snipers Only",
-    weaponsOthers = "Other Weapons",
-    lookZOffset = 28
+    weaponsOthers = "Other Weapons"
 }
 
---- @param fields NodeSpotWatch
---- @return NodeSpotWatch
-function NodeSpotWatch:new(fields)
+--- @param fields NodeSpotWatchT
+--- @return NodeSpotWatchT
+function NodeSpotWatchT:new(fields)
 	return Nyx.new(self, fields)
 end
 
 --- @param menu MenuGroup
 --- @return void
-function NodeSpotWatch:setupCustomizers(menu)
+function NodeSpotWatchT:setupCustomizers(menu)
     NodeTypeSpot.setupCustomizers(self, menu)
 
     self:addCustomizer("weapons", function()
@@ -45,5 +46,5 @@ function NodeSpotWatch:setupCustomizers(menu)
     end)
 end
 
-return Nyx.class("NodeSpotWatch", NodeSpotWatch, NodeTypeSpot)
+return Nyx.class("NodeSpotWatchT", NodeSpotWatchT, NodeTypeSpot)
 --}}}

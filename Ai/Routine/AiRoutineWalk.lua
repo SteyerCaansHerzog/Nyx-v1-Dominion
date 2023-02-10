@@ -18,6 +18,7 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --- @field noiseLevelTimer Timer
 --- @field maxNoiseLevel number
 --- @field cooldownTimer Timer
+--- @field noiseThreshold number
 local AiRoutineWalk = {}
 
 --- @param fields AiRoutineWalk
@@ -30,8 +31,9 @@ end
 function AiRoutineWalk:__init()
 	self.noiseLevel = 0
 	self.noiseLevelTimer = Timer:new():start()
-	self.maxNoiseLevel = 35
+	self.maxNoiseLevel = Math.getRandomInt(30, 40)
 	self.cooldownTimer = Timer:new():startThenElapse()
+	self.noiseThreshold = Math.getRandomInt(10, 18)
 
 	Callbacks.playerHurt(function(e)
 		if not e.victim:isOtherTeammate() then
@@ -89,7 +91,7 @@ function AiRoutineWalk:think(cmd)
 		return
 	end
 
-	if self.noiseLevel > 15 then
+	if self.noiseLevel > self.noiseThreshold then
 		return
 	end
 

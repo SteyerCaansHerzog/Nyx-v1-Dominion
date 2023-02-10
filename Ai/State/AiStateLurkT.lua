@@ -131,7 +131,7 @@ function AiStateLurkT:think(cmd)
 	end
 
 	local clientOrigin = LocalPlayer:getOrigin()
-	local distance = clientOrigin:getDistance(self.node.origin)
+	local distance = clientOrigin:getDistance(self.node.floorOrigin)
 
 	if distance < 150 then
 		self.activity = string.format("Lurking near %s", self.bombsite)

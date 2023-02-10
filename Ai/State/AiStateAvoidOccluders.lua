@@ -84,7 +84,7 @@ function AiStateAvoidOccluders:moveOutOfInferno()
             break
         end
 
-        local distance = clientOrigin:getDistance(node.origin)
+        local distance = clientOrigin:getDistance(node.floorOrigin)
 
         if distance < closestDistance then
             closestDistance = distance
@@ -114,7 +114,7 @@ function AiStateAvoidOccluders:moveOutOfSmoke()
             break
         end
 
-        local distance = clientOrigin:getDistance(node.origin)
+        local distance = clientOrigin:getDistance(node.floorOrigin)
 
         if distance < closestDistance then
             closestDistance = distance

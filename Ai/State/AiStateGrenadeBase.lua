@@ -101,6 +101,7 @@ function AiStateGrenadeBase:assess()
     end
 
     -- Hold a throw. Used for making run line-ups work correctly.
+    -- This may be causing the AI to stand in the open while being peeked due to not getting on the lineup.
     if self.throwHoldTimer:isNotElapsed(0.5) then
         return self.priorityThrow
     end
@@ -139,11 +140,16 @@ function AiStateGrenadeBase:assess()
     if AiUtility.isClientThreatenedMajor then
         self.threatCooldownTimer:restart()
 
+        -- If we had a node, we're going to consider it used / unavailable.
+        if self.node then
+            self.usedNodes[self.node.id]:restart()
+        end
+
         return AiPriority.IGNORE
     end
 
     -- Prevent dithering with enemy presence.
-    if not self.threatCooldownTimer:isElapsed(3) then
+    if not self.threatCooldownTimer:isElapsed(6) then
         return AiPriority.IGNORE
     end
 
@@ -216,7 +222,7 @@ function AiStateGrenadeBase:getBestLineup(nodes)
 
     -- Find a suitable grenade line-up to use.
     for _, node in pairs(nodes) do repeat
-        local distance = clientOrigin:getDistance(node.origin)
+        local distance = clientOrigin:getDistance(node.floorOrigin)
 
         if distance > 600 or distance >= closestDistance then
             break
@@ -292,7 +298,7 @@ function AiStateGrenadeBase:watchForOccupiedNodes()
     local clientOrigin = LocalPlayer:getOrigin()
 
     for _, node in pairs(nodes) do repeat
-        local distance = clientOrigin:getDistance(node.origin)
+        local distance = clientOrigin:getDistance(node.floorOrigin)
 
         if distance > 2000 then
             break
@@ -305,7 +311,7 @@ function AiStateGrenadeBase:watchForOccupiedNodes()
         local isOccupied = false
 
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance2(node.origin) < 40 and teammate:isHoldingWeapons(self.weapons) then
+            if teammate:getOrigin():getDistance2(node.floorOrigin) < 40 and teammate:isHoldingWeapons(self.weapons) then
                 isOccupied = true
 
                 break
@@ -394,7 +400,7 @@ function AiStateGrenadeBase:think(cmd)
     end
 
     local clientOrigin = LocalPlayer:getOrigin()
-    local distance = clientOrigin:getDistance(self.node.origin)
+    local distance = clientOrigin:getDistance(self.node.floorOrigin)
     local distance2 = clientOrigin:getDistance2(self.node.origin)
 
     if distance2 < 60 then
@@ -423,6 +429,11 @@ function AiStateGrenadeBase:think(cmd)
     self.ai.states.evade:block()
 
     VirtualMouse.blockBuildup()
+
+    -- The AI failed to move to the lineup. Retry path.
+    if distance > 16 and not self.throwHoldTimer:isStarted() then
+        Pathfinder.ifIdleThenRetryLastRequest()
+    end
 
     if distance < 150 then
         self.ai.routines.walk:block()
@@ -466,7 +477,7 @@ function AiStateGrenadeBase:think(cmd)
             self.activity = string.format("Throwing %s", self.name)
 
             local isThrowable = true
-            local isOnGround = LocalPlayer:getFlag(Player.flags.FL_ONGROUND)
+            local isOnGround = LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND)
             local velocity = LocalPlayer:m_vecVelocity()
             local speed = velocity:getMagnitude()
 

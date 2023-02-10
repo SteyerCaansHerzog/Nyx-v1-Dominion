@@ -27,6 +27,7 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field isAtDestination boolean
 --- @field isAutomaticSavingAllowed boolean
 --- @field isSaving boolean
+--- @field isPicking boolean
 --- @field evacuateBombsiteDelay number
 local AiStateEvacuate = {
     name = "Evacuate",
@@ -239,10 +240,14 @@ function AiStateEvacuate:think(cmd)
         end
     end
 
-    self.activity = "Going to hide"
+    if self.isPicking then
+        self.activity = string.format("Going to pick at %s", AiUtility.bombsitePlantedAt:upper())
+    else
+        self.activity = "Going to hide"
+    end
 
     local findSpotVisibleTrace = Trace.getLineToPosition(LocalPlayer:getEyeOrigin(), self.node.origin, AiUtility.traceOptionsVisible, "AiStateEvacuate.think<FindSpotVisible>")
-    local distance = LocalPlayer:getOrigin():getDistance(self.node.origin)
+    local distance = LocalPlayer:getOrigin():getDistance(self.node.floorOrigin)
 
     Pathfinder.canRandomlyJump()
 
@@ -251,7 +256,11 @@ function AiStateEvacuate:think(cmd)
     end
 
     if not findSpotVisibleTrace.isIntersectingGeometry and distance < 200 then
-        self.activity = "Hiding"
+        if self.isPicking then
+            self.activity = string.format("Picking at %s", AiUtility.bombsitePlantedAt:upper())
+        else
+            self.activity = "Hiding"
+        end
 
         self.ai.routines.manageGear:block()
 
@@ -279,15 +288,29 @@ function AiStateEvacuate:getHideNode()
     if LocalPlayer:isTerrorist() then
         nodeClass = Nodegraph.get(Node.spotHideT)
     elseif LocalPlayer:isCounterTerrorist() then
-        nodeClass = Nodegraph.get(Node.spotHideCt)
+        local isAbleToPickEnemies = true
+
+        if LocalPlayer:m_iHealth() < 45 or LocalPlayer:m_iAccount() < 3500 then
+            isAbleToPickEnemies = false
+        end
+
+        if isAbleToPickEnemies then
+            nodeClass = Nodegraph.getForBombsite(Node.spotLurkCt, AiUtility.bombsitePlantAt)
+
+            self.isPicking = true
+        else
+            nodeClass = Nodegraph.get(Node.spotHideCt)
+
+            self.isPicking = false
+        end
     end
 
     for _, node in pairs(nodeClass) do repeat
-        if clientOrigin:getDistance(node.origin) < 1000 then
+        if clientOrigin:getDistance(node.floorOrigin) < 1000 then
             break
         end
 
-        if bombOrigin and bombOrigin:getDistance(node.origin) < 2000 then
+        if bombOrigin and bombOrigin:getDistance(node.floorOrigin) < 2000 then
             break
         end
 

@@ -1,6 +1,5 @@
 --{{{ Dependencies
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
-local Client = require "gamesense/Nyx/v1/Api/Client"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -28,6 +27,7 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field boostOrigin Vector3
 --- @field boostPlayer Player
 --- @field isBoosting boolean
+--- @field isRequesterBot boolean
 --- @field isRunBoosting boolean
 local AiStateBoostTeammate = {
     name = "Boost Teammate"
@@ -64,10 +64,16 @@ end
 --- @param player Player
 --- @param origin Vector3
 --- @return void
-function AiStateBoostTeammate:boost(player, origin, isRunBoosting)
+function AiStateBoostTeammate:boost(player, origin, isRunBoosting, isRequesterBot)
+    print(isRequesterBot)
+    if isRequesterBot then
+        origin = Nodegraph.getClosest(player:getOrigin(), Node.spotBoost).floorOrigin
+    end
+
     self.boostPlayer = player
     self.boostOrigin = origin
     self.isRunBoosting = isRunBoosting
+    self.isRequesterBot = isRequesterBot
 end
 
 --- @return void
@@ -75,7 +81,7 @@ function AiStateBoostTeammate:activate()
     Pathfinder.moveToLocation(self.boostOrigin, {
         task = string.format("Boost %s", self.boostPlayer:getName()),
         isCounterStrafingOnGoal = true,
-        goalReachedRadius = 10,
+        goalReachedRadius = 6,
         onFailedToFindPath = function()
         	self:reset()
         end
@@ -111,6 +117,8 @@ function AiStateBoostTeammate:think(cmd)
     local originDistance = playerOrigin:getDistance2(self.boostOrigin)
     local senderDistance = playerOrigin:getDistance(self.boostPlayer:getOrigin())
 
+    print(originDistance)
+
     if self.isBoosting and senderDistance > 128 then
         self:reset()
 
@@ -136,11 +144,13 @@ function AiStateBoostTeammate:think(cmd)
         self.ai.routines.lookAwayFromFlashbangs:block()
         self.ai.states.evade:block()
 
+        Pathfinder.blockTeammateAvoidance()
+
         local bounds = playerOrigin:clone():offset(0, 0, 32):getBounds(Vector3.align.BOTTOM, 25, 25, 128)
 
         if originDistance < 64 and not self.boostPlayer:getOrigin():offset(0, 0, 48):isInBounds(bounds) then
             if senderDistance < 128 then
-                cmd.in_duck = true
+                Pathfinder.duck()
 
                 isRunBoostReady = false
             end

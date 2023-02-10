@@ -84,7 +84,7 @@ function AiRoutineLookAwayFromFlashbangs:think(cmd)
 
 		local findPredictedFuturePositionTrace = Trace.getHullToPosition(
 			flashbangOrigin,
-			flashbangOrigin + flashbang:m_vecVelocity(),
+			flashbangOrigin + flashbang:m_vecVelocity() * 0, -- This is zeroed for now.
 			self.flashbangCollisionHull,
 			AiUtility.traceOptionsPathfinding,
 			"AiRoutineLookAwayFromFlashbangs.think<FindPredictedFlashbangPosition>"

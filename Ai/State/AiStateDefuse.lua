@@ -186,6 +186,9 @@ function AiStateDefuse:think(cmd)
         self.activity = string.format("Defusing bomb on %s", bombsite)
 
         self.ai.routines.manageWeaponReload:block()
+
+        Pathfinder.blockTeammateAvoidance()
+
         cmd.in_use = true
 
         if AiUtility.enemiesAlive > 0 then

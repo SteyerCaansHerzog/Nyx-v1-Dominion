@@ -15,7 +15,7 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 
 --{{{ AiStateCheck
 --- @class AiStateCheck : AiStateBase
---- @field node Node
+--- @field node NodeTypeObjective
 --- @field isChecking boolean
 --- @field abortDistance number
 --- @field spawn string
@@ -78,7 +78,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateCheck:think(cmd)
-    local distance = LocalPlayer:getOrigin():getDistance(self.node.origin)
+    local distance = LocalPlayer:getOrigin():getDistance(self.node.floorOrigin)
 
     if distance < 400 then
         self.activity = string.format("Checking %s", self.spawn)

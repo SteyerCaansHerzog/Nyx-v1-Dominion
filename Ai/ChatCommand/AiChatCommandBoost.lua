@@ -27,8 +27,9 @@ local AiChatCommandBoost = {
 --- @param ai Ai
 --- @param sender Player
 --- @param args string[]
+--- @param isBot boolean
 --- @return void
-function AiChatCommandBoost:invoke(ai, sender, args)
+function AiChatCommandBoost:invoke(ai, sender, args, isBot)
     if ai.reaper.isActive then
         return self.REAPER_IS_ACTIVE
     end
@@ -36,8 +37,10 @@ function AiChatCommandBoost:invoke(ai, sender, args)
     self.isTaken = false
 
     local senderOrigin = sender:getOrigin()
+    local distance = LocalPlayer:getOrigin():getDistance(senderOrigin)
+    local distanceThreshold = isBot and 2000 or 1450
 
-    if LocalPlayer:getOrigin():getDistance(senderOrigin) > 1400 then
+    if distance > distanceThreshold then
         return self.SENDER_IS_OUT_OF_RANGE
     end
 
@@ -68,7 +71,7 @@ function AiChatCommandBoost:invoke(ai, sender, args)
 
     Client.fireAfter(orderInQueue * 0.6, function()
         if not self.isTaken then
-            ai.states.boostTeammate:boost(sender, traceAim.endPosition)
+            ai.states.boostTeammate:boost(sender, traceAim.endPosition, false, isBot)
 
             Messenger.send(true, " ok")
 

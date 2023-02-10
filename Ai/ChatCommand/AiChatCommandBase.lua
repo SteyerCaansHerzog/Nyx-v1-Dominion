@@ -38,8 +38,9 @@ local AiChatCommandBase = {
 --- @param ai Ai
 --- @param sender Player
 --- @param args string[]
+--- @param isBot boolean
 --- @return string
-function AiChatCommandBase:invoke(ai, sender, args) end
+function AiChatCommandBase:invoke(ai, sender, args, isBot) end
 
 --- @vararg string
 --- @return void

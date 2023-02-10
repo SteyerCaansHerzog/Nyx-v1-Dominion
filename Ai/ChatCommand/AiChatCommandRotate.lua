@@ -61,6 +61,7 @@ function AiChatCommandRotate:invoke(ai, sender, args)
 
     ai.states.check:reset()
     ai.states.patrol:reset()
+    ai.states.useBoost:reset()
     ai.states.rotate:invoke(objective)
 
     ai.states.defend.defendingSite = objective
@@ -68,6 +69,7 @@ function AiChatCommandRotate:invoke(ai, sender, args)
     ai.states.plant.bombsite = objective
     ai.states.lurkWithBomb.bombsite = objective
     ai.states.defend.isSpecificNodeSet = false
+    ai.states.pick.isBlockedThisRound = true
 end
 
 return Nyx.class("AiChatCommandRotate", AiChatCommandRotate, AiChatCommandBase)

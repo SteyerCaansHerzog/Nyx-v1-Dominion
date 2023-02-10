@@ -82,7 +82,7 @@ function AiRoutineHandleOccluderTraversal:think()
 		local fires = inferno:getInfernoFires()
 
 		for _, fire in pairs(fires) do
-			local fireBounds = fire:getBounds(Vector3.align.CENTER, 160, 160, 48)
+			local fireBounds = fire:getBounds(Vector3.align.CENTER, 200, 200, 48)
 
 			-- Determine if we're inside an inferno.
 			if Vector3.isBoundsIntersecting(clientBounds, fireBounds) then
@@ -111,7 +111,7 @@ function AiRoutineHandleOccluderTraversal:think()
 		end
 
 		local smokeOrigin = smoke:m_vecOrigin()
-		local smokeNearBounds = smokeOrigin:getBounds(Vector3.align.CENTER, 256, 256, 64)
+		local smokeNearBounds = smokeOrigin:getBounds(Vector3.align.CENTER, 450, 450, 64)
 
 		-- Determine if we're nearby a smoke.
 		if not Vector3.isBoundsIntersecting(clientBounds, smokeNearBounds) then
@@ -120,7 +120,7 @@ function AiRoutineHandleOccluderTraversal:think()
 
 		self.isNearSmoke = true
 
-		local smokeMaxBounds = Vector3:newBounds(Vector3.align.UP, 144, 144, 72)
+		local smokeMaxBounds = Vector3:newBounds(Vector3.align.UP, 250, 250, 72)
 		local smokeVisibleBox = smoke:m_vecOrigin():offset(0, 0, 48):getBox(Vector3.align.CENTER, 72, 72, 24)
 
 		-- Determine if we're inside a smoke.
@@ -237,7 +237,7 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 		return
 	end
 
-	if AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin()) > 650 then
+	if AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin()) > 1000 then
 		return
 	end
 

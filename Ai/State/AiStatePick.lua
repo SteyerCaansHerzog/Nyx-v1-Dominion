@@ -16,125 +16,112 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
---{{{ AiStateWatch
---- @class AiStateWatch : AiStateBase
+--{{{ AiStatePick
+--- @class AiStatePick : AiStateBase
 --- @field blacklist boolean[]
---- @field isWatching boolean
+--- @field isPicking boolean
 --- @field node NodeSpotWatchT
---- @field watchTime number
---- @field watchTimer Timer
-local AiStateWatch = {
-    name = "Watch",
+--- @field pickTime number
+--- @field pickTimer Timer
+--- @field isBlockedThisRound boolean
+local AiStatePick = {
+    name = "Pick",
     requiredNodes = {
-        Node.spotWatchT
+        Node.spotWatchCt
     }
 }
 
---- @param fields AiStateWatch
---- @return AiStateWatch
-function AiStateWatch:new(fields)
+--- @param fields AiStatePick
+--- @return AiStatePick
+function AiStatePick:new(fields)
     return Nyx.new(self, fields)
 end
 
 --- @return void
-function AiStateWatch:__init()
+function AiStatePick:__init()
     self.blacklist = {}
-    self.watchTime = 10
-    self.watchTimer = Timer:new()
+    self.pickTime = 16
+    self.pickTimer = Timer:new()
 
     Callbacks.roundStart(function()
-        self.watchTime = Math.getRandomFloat(6, 18)
+        self.pickTime = Math.getRandomFloat(16, 32)
         self.blacklist = {}
+        self.isBlockedThisRound = false
 
     	self:reset()
     end)
 end
 
 --- @return void
-function AiStateWatch:assess()
-    -- Handle hostage gamemode.
-    if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
-        -- Only CTs should watch.
-        if not LocalPlayer:isCounterTerrorist() then
-            return AiPriority.IGNORE
-        end
-    else
-        -- Only Ts should watch in demolition.
-        if not LocalPlayer:isTerrorist() then
-            return AiPriority.IGNORE
-        end
+function AiStatePick:assess()
+    if not LocalPlayer:isCounterTerrorist() then
+        return AiPriority.IGNORE
+    end
+
+    if self.isBlockedThisRound then
+        return AiPriority.IGNORE
     end
 
     -- We've finished watching an angle.
-    if self.watchTimer:isElapsedThenStop(self.watchTime) then
+    if self.pickTimer:isElapsedThenStop(self.pickTime) then
         self:reset()
 
         return AiPriority.IGNORE
     end
 
-    -- We have an active node.
-    if self.node then
-        return AiPriority.WATCH
-    end
-
-    -- We don't want to watch angles at bad times.
-    if AiUtility.plantedBomb or (AiUtility.bombCarrier and AiUtility.bombCarrier:is(LocalPlayer)) or AiUtility.timeData.roundtime_remaining < 60 then
+    -- Don't keep taking picks when the enemy aren't likely to be in positions to receive.
+    if AiUtility.timeData.roundtime_elapsed > 35 then
         return AiPriority.IGNORE
     end
 
-    -- Other weapons.
-    if not LocalPlayer:hasPrimary() or LocalPlayer:hasRifle() then
-        local node = self:getNode(Node.spotWatchT.weaponsOthers, 0.75)
-
-        if node then
-            self.node = node
-
-            return AiPriority.WATCH
-        end
+    -- Exit so we can engage the enemy when they become visible.
+    if AiUtility.isEnemyVisible then
+        return AiPriority.IGNORE
     end
 
-    -- Snipers only.
-    if LocalPlayer:hasSniper() then
-        local node = self:getNode(Node.spotWatchT.weaponsSnipers, 0.85)
+    -- We have an active node.
+    if self.node then
+        return AiPriority.PICK
+    end
 
-        if node then
-            self.node = node
+    -- We don't want to watch angles at bad times.
+    if AiUtility.bombsitePlantAt then
+        return AiPriority.IGNORE
+    end
 
-            return AiPriority.WATCH
-        end
+    local node = self:getNode()
+
+    if node then
+        self.node = node
+
+        return AiPriority.PICK
     end
 
     return AiPriority.IGNORE
 end
 
---- @param weapons string
---- @param chance number
 --- @return NodeSpotWatchT
-function AiStateWatch:getNode(weapons, chance)
+function AiStatePick:getNode()
     local clientOrigin = LocalPlayer:getOrigin()
 
-    for _, node in pairs(Nodegraph.get(Node.spotWatchT)) do repeat
+    for _, node in pairs(Nodegraph.get(Node.spotWatchCt)) do repeat
         if self.blacklist[node.id] then
             break
         end
 
-        if node.weapons ~= weapons then
-            break
-        end
-
-        if clientOrigin:getDistance(node.floorOrigin) > 750 then
+        if clientOrigin:getDistance(node.floorOrigin) > 1200 then
             break
         end
 
         -- Blacklist the node for now.
-        if not Math.getChance(chance) then
+        if not Math.getChance(node.chance * 0.01) then
             self.blacklist[node.id] = true
 
             break
         end
 
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance(node.floorOrigin) < 100 then
+            if teammate:getOrigin():getDistance(node.floorOrigin) < 150 then
                 break
             end
         end
@@ -144,48 +131,50 @@ function AiStateWatch:getNode(weapons, chance)
 end
 
 --- @return void
-function AiStateWatch:activate()
+function AiStatePick:activate()
     Pathfinder.moveToNode(self.node, {
-        task = "Watch angle"
+        task = "Pick angle"
     })
 end
 
 --- @return void
-function AiStateWatch:deactivate()
+function AiStatePick:deactivate()
     self:reset()
 end
 
 --- @return void
-function AiStateWatch:reset()
+function AiStatePick:reset()
     self.node = nil
-    self.isWatching = false
+    self.isPicking = false
 
     if self.node then
         self.blacklist[self.node.id] = true
     end
 
-    self.watchTimer:stop()
+    self.pickTimer:stop()
 end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function AiStateWatch:think(cmd)
+function AiStatePick:think(cmd)
     if not self.node then
         return
     end
 
-    self.activity = "Going to watch area"
+    self.activity = "Going to pick at area"
 
-    if AiUtility.plantedBomb then
+    if AiUtility.bombsitePlantAt then
         self:reset()
 
         return
     end
 
+    self.ai.routines.walk:block()
+
     local clientOrigin = LocalPlayer:getOrigin()
     local distance = clientOrigin:getDistance(self.node.floorOrigin)
 
-    if not self.isWatching then
+    if not self.isPicking then
         for _, teammate in pairs(AiUtility.teammates) do
             if teammate:getOrigin():getDistance(self.node.floorOrigin) < 64 then
                 self.blacklist[self.node.id] = true
@@ -202,9 +191,9 @@ function AiStateWatch:think(cmd)
     end
 
     if distance < 32 then
-        self.watchTimer:ifPausedThenStart()
+        self.pickTimer:ifPausedThenStart()
 
-        self.isWatching = true
+        self.isPicking = true
 
         if self.node.isAllowedToDuckAt then
             Pathfinder.duck()
@@ -216,7 +205,7 @@ function AiStateWatch:think(cmd)
     end
 
     if distance < 100 then
-        self.activity = "Watching area"
+        self.activity = "Picking at area"
 
         Pathfinder.counterStrafe()
         Pathfinder.blockTeammateAvoidance()
@@ -224,8 +213,9 @@ function AiStateWatch:think(cmd)
         self.ai.routines.manageWeaponScope:block()
     end
 
-    if distance < 200 then
+    if distance < 280 then
         self.ai.routines.manageGear:block()
+        self.ai.states.evade:block()
 
         if not LocalPlayer:isHoldingGun() then
             if LocalPlayer:hasPrimary() then
@@ -236,10 +226,10 @@ function AiStateWatch:think(cmd)
         end
     end
 
-    if distance < 500 then
-        VirtualMouse.lookAtLocation(self.node.lookAtOrigin, 6, VirtualMouse.noise.none, "Watch look at angle")
+    if distance < 400 then
+        VirtualMouse.lookAtLocation(self.node.lookAtOrigin, 10, VirtualMouse.noise.none, "Pick look at angle")
     end
 end
 
-return Nyx.class("AiStateWatch", AiStateWatch, AiStateBase)
+return Nyx.class("AiStatePick", AiStatePick, AiStateBase)
 --}}}

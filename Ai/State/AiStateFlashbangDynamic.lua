@@ -17,6 +17,8 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
@@ -27,6 +29,7 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field isActivated boolean
 --- @field isAllowedToFlashTeammate boolean
 --- @field isThrowing boolean
+--- @field node NodeTypeTraverse
 --- @field targetPlayer Player
 --- @field threatCooldownTimer Timer
 --- @field throwAngles Angle
@@ -104,18 +107,40 @@ function AiStateFlashbangDynamic:assess()
         return AiPriority.IGNORE
     end
 
+    --- @type Vector3
+    local throwFromOrigin
     local clientEyeOrigin = LocalPlayer.getEyeOrigin()
     local bounds = Vector3:newBounds(Vector3.align.CENTER, 8)
+    local node = Nodegraph.getRandom(Node.traverseGeneric, LocalPlayer:getOrigin(),  200)
+
+    if node then
+        local nodeEyeOrigin = node.origin:clone():offset(0, 0, 46)
+
+        -- Are any enemies able to see the node directly?
+        -- If so, then we really don't want to try that lineup.
+        for _, enemy in pairs(AiUtility.enemies) do
+            local trace = Trace.getLineToPosition(nodeEyeOrigin, enemy:getEyeOrigin(), AiUtility.traceOptionsVisible, "AiStateFlashbangDynamic.asses<FindVisibleEnemy>")
+
+            if not trace.isIntersectingGeometry then
+                return AiPriority.IGNORE
+            end
+        end
+
+        throwFromOrigin = nodeEyeOrigin
+    else
+        throwFromOrigin = clientEyeOrigin
+    end
+
+    self.node = node
 
     -- Angle to try our mentally handicapped flash prediction with.
     local predictionAngles = Angle:new(Math.getRandomFloat(-85, 25), Math.getRandomFloat(-180, 180))
-
     local predictor = GrenadePrediction.create()
 
     predictor:setupArbitrary(
         LocalPlayer.eid,
         Weapons.FLASHBANG,
-        LocalPlayer.getEyeOrigin(),
+        throwFromOrigin,
         predictionAngles
     )
 
@@ -126,9 +151,6 @@ function AiStateFlashbangDynamic:assess()
     end
 
     local predictionEndPosition = Vector3:new(prediction.end_pos.x, prediction.end_pos.y, prediction.end_pos.z)
-
-    -- Vaguely correct for if the AI is moving. May need tweaking.
-    predictionEndPosition = predictionEndPosition + LocalPlayer:m_vecVelocity() * 0.075
 
     -- Throw away traces that end too close to us because they're useless and will just blind the AI.
     -- Although, the AI would probably want to be blind if it pulled up its own hood and found this demented-ass logic.
@@ -225,6 +247,14 @@ end
 --- @return void
 function AiStateFlashbangDynamic:activate()
     self.isActivated = true
+
+    if self.node then
+        Pathfinder.moveToNode(self.node, {
+            task = "Flashbang dynamic move to throw nade",
+            isCounterStrafingOnGoal = true,
+            goalReachedRadius = 5
+        })
+    end
 end
 
 --- @return void
@@ -267,13 +297,19 @@ function AiStateFlashbangDynamic:think(cmd)
     self.ai.routines.manageGear:block()
     self.ai.routines.lookAwayFromFlashbangs:block()
 
-    Pathfinder.counterStrafe(true)
     Pathfinder.blockTeammateAvoidance()
     LocalPlayer.equipFlashbang()
     VirtualMouse.lookAlongAngle(self.throwAngles, 4.5, VirtualMouse.noise.none, "FlashbangDynamic look at throw angle")
 
     VirtualMouse.isCrosshairUsingVelocity = true
     VirtualMouse.isCrosshairLerpingToZero = true
+
+    -- Don't continue until we've lined the flash up.
+    if Pathfinder.isOnValidPath() then
+        return
+    end
+
+    Pathfinder.counterStrafe(true)
 
     local maxDiff = self.throwAngles:getMaxDiff(LocalPlayer.getCameraAngles())
 

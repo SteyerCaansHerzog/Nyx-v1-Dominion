@@ -7,6 +7,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
+local Weapons = require "gamesense/Nyx/v1/Api/Weapons"
 
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
@@ -15,6 +16,14 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+--}}}
+
+--{{{ Definitions
+local WeaponWeights = {
+	DEFAULT = 1,
+	[Weapons.SCAR20] = 4,
+	[Weapons.G3SG1] = 4,
+}
 --}}}
 
 --{{{ AiRoutineHandleGunfireAvoidance
@@ -38,7 +47,7 @@ end
 --- @return void
 function AiRoutineHandleGunfireAvoidance:__init()
 	self.maxGunshots = 8
-	self.gunfireSprayThreshold = 5
+	self.gunfireSprayThreshold = 4
 	self.expireGunshotsAfter = 0.2
 	self.cooldownTimer = Timer:new():startThenElapse()
 	self.expireGunshotsTimer = Timer:new():start()
@@ -75,12 +84,20 @@ function AiRoutineHandleGunfireAvoidance:__init()
 			e.shooter:getOrigin():offset(0, 0, 64),
 			e.origin
 		}
+	end)
 
-		if self.playerGunshots[e.shooter.eid] >= self.maxGunshots then
+	Callbacks.weaponFire(function(e)
+		if self.playerGunshots[e.player.eid] >= self.maxGunshots then
 			return
 		end
 
-		self.playerGunshots[e.shooter.eid] = self.playerGunshots[e.shooter.eid] + 1
+		local weaponWeight = WeaponWeights[e.player:getWeaponClass()]
+
+		if not weaponWeight then
+			weaponWeight = WeaponWeights.DEFAULT
+		end
+
+		self.playerGunshots[e.player.eid] = self.playerGunshots[e.player.eid] + weaponWeight
 	end)
 end
 

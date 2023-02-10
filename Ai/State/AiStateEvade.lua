@@ -46,7 +46,7 @@ function AiStateEvade:__init()
     self.hurtTimer = Timer:new():startThenElapse()
 
     Callbacks.weaponFire(function(e)
-        if e.player:isLocalPlayer() and e.player:isHoldingSniper() then
+        if e.player:isLocalPlayer() and e.player:isHoldingBoltActionRifle() then
             self.shotBoltActionRifleTimer:restart()
         end
     end)

@@ -131,6 +131,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field pathfindIntervalTimer Timer
 --- @field randomJumpIntervalTime number
 --- @field randomJumpIntervalTimer Timer
+--- @field jumpCooldown Timer
 local Pathfinder = {}
 
 --- @return void
@@ -159,6 +160,7 @@ function Pathfinder.initFields()
 	Pathfinder.movementRecorderTimer = Timer:new()
 	Pathfinder.randomJumpIntervalTime = Math.getRandomFloat(0, 160)
 	Pathfinder.randomJumpIntervalTimer = Timer:new():start()
+	Pathfinder.jumpCooldown = Timer:new():startThenElapse()
 end
 
 --- @return void
@@ -179,6 +181,10 @@ function Pathfinder.initEvents()
 	Callbacks.setupCommand(function()
 		if not Pathfinder.isEnabled then
 			return
+		end
+
+		if not LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND) then
+			Pathfinder.jumpCooldown:restart()
 		end
 
 		Pathfinder.handleLastRequest()
@@ -385,7 +391,7 @@ end
 
 --- @return void
 function Pathfinder.syncClientState()
-	Pathfinder.clientState.isOnGround = LocalPlayer:getFlag(Player.flags.FL_ONGROUND)
+	Pathfinder.clientState.isOnGround = LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND)
 	Pathfinder.clientState.origin = LocalPlayer:getOrigin()
 end
 
@@ -425,6 +431,10 @@ end
 
 --- @return void
 function Pathfinder.jump()
+	if not Pathfinder.jumpCooldown:isElapsed(0.33) then
+		return
+	end
+
 	Pathfinder.isJumping = true
 	Pathfinder.isAllowedToRandomlyJump = false
 end
@@ -632,7 +642,7 @@ function Pathfinder.handleLastRequest()
 	end
 
 	-- Don't path while the player is in-air.
-	if not LocalPlayer:getFlag(Player.flags.FL_ONGROUND) then
+	if not LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND) then
 		return
 	end
 
@@ -1119,18 +1129,19 @@ function Pathfinder.traverseActivePath(cmd)
 	Pathfinder.isReplayingMovementRecording = false
 	Pathfinder.movementRecorderAngle = nil
 
+	Pathfinder.handleMovementOptions(cmd)
+
 	if not Pathfinder.isAllowedToMove and not Pathfinder.isInsideInferno then
 		return
 	end
 
-	if LocalPlayer:getFlag(Player.flags.FL_ONGROUND) then
+	if LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND) then
 		Pathfinder.moveOnGroundTimer:ifPausedThenStart()
 	else
 		Pathfinder.moveOnGroundTimer:restart()
 	end
 
 	Pathfinder.airDuck(cmd)
-	Pathfinder.handleMovementOptions(cmd)
 
 	if Pathfinder.directMovementAngle then
 		Pathfinder.ejectFromLadder(cmd)
@@ -1171,7 +1182,7 @@ function Pathfinder.traverseActivePath(cmd)
 	end
 
 	local clientOrigin = LocalPlayer:getOrigin()
-	local isClientOnGround = LocalPlayer:getFlag(Player.flags.FL_ONGROUND)
+	local isClientOnGround = LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND)
 	local clientSpeed = LocalPlayer:m_vecVelocity():getMagnitude()
 	local angleToNode = clientOrigin:getAngle(currentNode.pathOrigin)
 	local distance2d = clientOrigin:getDistance2(currentNode.pathOrigin)
@@ -1602,6 +1613,10 @@ function Pathfinder.avoidTeammates(cmd)
 	Pathfinder.isObstructedByTeammate = false
 	Pathfinder.avoidTeammatesNewMovementAngle = nil
 
+	if not Pathfinder.isAllowedToAvoidTeammates then
+		return
+	end
+
 	if not Pathfinder.lastMovementAngle then
 		return
 	end
@@ -1671,7 +1686,7 @@ function Pathfinder.avoidGeometry(cmd)
 		return false
 	end
 
-	local isDucking = LocalPlayer:getFlag(Player.flags.FL_DUCKING)
+	local isDucking = LocalPlayer:isFlagActive(Player.flags.FL_DUCKING)
 	local clientOrigin = LocalPlayer:getOrigin()
 	local origin = clientOrigin:offset(0, 0, 18)
 	local boundsTraceOrigin = clientOrigin:clone():offset(0, 0, 36)
@@ -1716,7 +1731,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function Pathfinder.airDuck(cmd)
-	if LocalPlayer:getFlag(Player.flags.FL_ONGROUND) then
+	if LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND) then
 		return
 	end
 

@@ -148,9 +148,9 @@ function AiStateBase:getCoverNode(range, target, fov)
     fov = fov or 60
 
     for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do
-        local distance = closestOrigin:getDistance(node.origin)
+        local distance = closestOrigin:getDistance(node.floorOrigin)
 
-        if not node.isOccludedByInferno and distance > farthestDistance and clientOrigin:getDistance(node.origin) < range and coverAngle:getFov(clientOrigin, node.origin) > fov then
+        if not node.isOccludedByInferno and distance > farthestDistance and clientOrigin:getDistance(node.floorOrigin) < range and coverAngle:getFov(clientOrigin, node.origin) > fov then
             i = i + 1
 
             if i > 50 then

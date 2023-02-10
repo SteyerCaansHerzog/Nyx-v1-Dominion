@@ -48,6 +48,7 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field iNode number
 --- @field isRecordingMovement boolean
 --- @field keyAdd VKey
+--- @field keyCopyLookedAtNode VKey
 --- @field keyEnableEditing VKey
 --- @field keyIgnoreSelection VKey
 --- @field keyNext VKey
@@ -74,6 +75,7 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field spawnError string|nil
 --- @field spawnNode NodeTypeBase
 --- @field visibleGroups boolean[]
+--- @field nodeClassnameMap table<string, number>
 local NodegraphEditor = {
     movementRecorderParams = {
         "forwardmove",
@@ -116,8 +118,9 @@ end
 --- @return void
 function NodegraphEditor:initFields()
     self.nodes = {}
+    self.nodeClassnameMap = {}
 
-    local iNodes = 0
+    local nodeIndex = 0
 
     --- @param node NodeTypeBase
     for _, node in Table.sortedPairs(Node, function(a, b)
@@ -128,15 +131,17 @@ function NodegraphEditor:initFields()
                 break
             end
 
-            iNodes = iNodes + 1
+            nodeIndex = nodeIndex + 1
 
-            self.nodes[iNodes] = node
+            self.nodes[nodeIndex] = node
+            self.nodeClassnameMap[node.__classname] = nodeIndex
         until true
     end
 
     self.iNode = 1
     self.node = self.nodes[self.iNode]
     self.keyAdd = VKey:new(VKey.LEFT_MOUSE)
+    self.keyCopyLookedAtNode = VKey:new(VKey.T)
     self.keyEnableEditing = VKey:new(VKey.R):activate()
     self.keyIgnoreSelection = VKey:new(VKey.E)
     self.keyNext = VKey:new(VKey.V)
@@ -392,6 +397,14 @@ function NodegraphEditor:processKeys()
     else
         self:processAdd()
         self:processRemove()
+    end
+
+    if self.keyCopyLookedAtNode:wasPressed() then
+        local node = self:getSelectedNode()
+
+        if node then
+            self:setCurrentNode(self.nodeClassnameMap[node.__classname])
+        end
     end
 
     self:processSwitchNodeType()
@@ -680,18 +693,13 @@ function NodegraphEditor:processSwitchNodeType()
         self.nextNodeTimer:ifPausedThenStart()
 
         if self.nextNodeTimer:isElapsedThenRestart(0.1) then
-            local iNode = self.iNode - 1
+            local index = self.iNode - 1
 
-            if iNode == 0 then
-                iNode = #self.nodes
+            if index == 0 then
+                index = #self.nodes
             end
 
-            self.node:setCustomizersVisibility(false)
-
-            self.node = self.nodes[iNode]
-            self.iNode = iNode
-
-            self.node:setCustomizersVisibility(true)
+            self:setCurrentNode(index)
         end
     end
 
@@ -699,20 +707,26 @@ function NodegraphEditor:processSwitchNodeType()
         self.nextNodeTimer:ifPausedThenStart()
 
         if self.nextNodeTimer:isElapsedThenRestart(0.08) then
-            local iNode = self.iNode + 1
+            local index = self.iNode + 1
 
-            if iNode > #self.nodes then
-                iNode = 1
+            if index > #self.nodes then
+                index = 1
             end
 
-            self.node:setCustomizersVisibility(false)
-
-            self.node = self.nodes[iNode]
-            self.iNode = iNode
-
-            self.node:setCustomizersVisibility(true)
+            self:setCurrentNode(index)
         end
     end
+end
+
+--- @param index number
+--- @return void
+function NodegraphEditor:setCurrentNode(index)
+    self.node:setCustomizersVisibility(false)
+
+    self.node = self.nodes[index]
+    self.iNode = index
+
+    self.node:setCustomizersVisibility(true)
 end
 
 --- @return NodeTypeBase
@@ -1022,6 +1036,11 @@ function NodegraphEditor:render()
 
     UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)
     UserInterface.drawText(drawPos, Font.SMALL, color, text)
+
+    drawPos:offset(0, height)
+
+    UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)
+    UserInterface.drawText(drawPos, Font.SMALL, color, "[T] Copy Looked at Node")
 
     drawPos:offset(0, height)
 

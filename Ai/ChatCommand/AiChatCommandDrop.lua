@@ -6,6 +6,7 @@ local Player = require "gamesense/Nyx/v1/Api/Player"
 
 --{{{ Modules
 local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBase"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 --}}}
 
@@ -77,7 +78,7 @@ function AiChatCommandDrop:invoke(ai, sender, args)
     end) do
         local fov = senderCameraAngles:getFov(senderEyeOrigin, teammate:getEyeOrigin())
 
-        if fov < 55 and fov < closestFov then
+        if fov < AiUtility.visibleFovThreshold and fov < closestFov then
             closestFov = fov
             closestTeammate = teammate
         end

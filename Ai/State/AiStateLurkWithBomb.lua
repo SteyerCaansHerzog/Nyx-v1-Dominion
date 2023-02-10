@@ -125,7 +125,7 @@ function AiStateLurkWithBomb:think(cmd)
 	end
 
 	local clientOrigin = LocalPlayer:getOrigin()
-	local distance = clientOrigin:getDistance(self.node.origin)
+	local distance = clientOrigin:getDistance(self.node.floorOrigin)
 
 	if distance < 150 then
 		self.ai.routines.manageGear:block()

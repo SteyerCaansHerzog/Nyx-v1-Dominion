@@ -64,7 +64,7 @@ function AiRoutineResolveFlyGlitch:think(cmd)
 		lastValue = value
 	until true end
 
-	local onGround = LocalPlayer:getFlag(Player.flags.FL_ONGROUND)
+	local onGround = LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND)
 
 	if not onGround and fails > 10 then
 		cmd.in_jump = true

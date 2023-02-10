@@ -53,7 +53,7 @@ function AiStateTrafficControl:assess()
 
     -- Find a traffic control node.
     for _, node in pairs(Nodegraph.get(Node.hintTrafficControl)) do
-        if clientOrigin:getDistance(node.origin) < node.queueLinkRadius then
+        if clientOrigin:getDistance(node.floorOrigin) < node.queueLinkRadius then
             trafficControl = node
 
             break
@@ -81,7 +81,7 @@ function AiStateTrafficControl:assess()
 
     -- Find closest queue node.
     for _, node in pairs(trafficControl.queueNodes) do repeat
-        local distance = clientOrigin:getDistance(node.origin)
+        local distance = clientOrigin:getDistance(node.floorOrigin)
 
         if distance >= closestDistance then
             break

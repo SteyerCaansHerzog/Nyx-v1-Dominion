@@ -32,7 +32,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field bomb Entity
 --- @field bombCarrier Player
 --- @field bombDetonationTime number
---- @field bombsiteBeingPlantedAt string
+--- @field bombsitePlantAt string
 --- @field canDefuse boolean
 --- @field client Player
 --- @field clientNodeOrigin Vector3
@@ -88,9 +88,10 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field threatZs number[]
 --- @field timeData GameStateTimeData
 --- @field totalThreats number
---- @field traceOptionsVisible TraceOptions
 --- @field traceOptionsPathfinding TraceOptions
+--- @field traceOptionsVisible TraceOptions
 --- @field visibleEnemies Player[]
+--- @field visibleFovThreshold number
 local AiUtility = {
     gamemodes = GamemodeInfo
 }
@@ -122,6 +123,7 @@ function AiUtility:initFields()
     AiUtility.enemyFovs = Table.populateForMaxPlayers(math.huge)
     AiUtility.ignorePresenceAfter = Math.getRandomFloat(10, 15)
     AiUtility.lastPresenceTimers = {}
+    AiUtility.visibleFovThreshold = 53
 
     for i = 1, 64 do
         AiUtility.lastPresenceTimers[i] = Timer:new():startThenElapse()
@@ -200,7 +202,7 @@ end
 --- @return void
 function AiUtility:initEvents()
     Callbacks.roundStart(function()
-        AiUtility.bombsiteBeingPlantedAt = nil
+        AiUtility.bombsitePlantAt = nil
         AiUtility.canDefuse = nil
         AiUtility.visibleEnemies = {}
         AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
@@ -251,7 +253,7 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombBeginPlant(function(e)
-        AiUtility.bombsiteBeingPlantedAt = AiUtility.getBombsiteFromIdx(e.site)
+        AiUtility.bombsitePlantAt = AiUtility.getBombsiteFromIdx(e.site)
 
         if e.player:isLocalPlayer() then
             AiUtility.isClientPlanting = true
@@ -264,7 +266,7 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombAbortPlant(function(e)
-        AiUtility.bombsiteBeingPlantedAt = nil
+        AiUtility.bombsitePlantAt = nil
 
         if e.player:isLocalPlayer() then
             AiUtility.isClientPlanting = false
@@ -276,7 +278,7 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombPlanted(function(e)
-        AiUtility.bombsiteBeingPlantedAt = nil
+        AiUtility.bombsitePlantAt = AiUtility.getBombsiteFromIdx(e.site)
         AiUtility.isClientPlanting = false
         AiUtility.isBombBeingPlantedByEnemy = false
         AiUtility.isBombBeingPlantedByTeammate = false
@@ -650,6 +652,10 @@ function AiUtility.updateThreats()
     local closestThreatDistance = math.huge
     local clientThreatenedFromOrigin
 
+    -- Threat points above head.
+    table.insert(clientPlane, clientOrigin:clone():offset(16, 16, 100))
+    table.insert(clientPlane, clientOrigin:clone():offset(-16, -16, 100))
+
     -- Prevent our own plane from clipping thin walls.
     -- It can look very wrong when pre-aiming through certain geometry.
     for id, vertex in pairs(clientPlane) do
@@ -671,7 +677,7 @@ function AiUtility.updateThreats()
         local enemyOrigin = enemy:getOrigin()
         local canSetThreatenedFromOrigin = false
 
-        if enemy:getFlag(Player.flags.FL_ONGROUND) then
+        if enemy:isFlagActive(Player.flags.FL_ONGROUND) then
             AiUtility.threatZs[enemy.eid] = enemyOrigin.z
         elseif AiUtility.threatZs[enemy.eid] then
             enemyOrigin.z = AiUtility.threatZs[enemy.eid]

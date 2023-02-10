@@ -24,7 +24,7 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --{{{ AiStateWait
 --- @class AiStateWait : AiStateBase
 --- @field isWaiting boolean
---- @field node Node
+--- @field node NodeTypeTraverse
 --- @field waitingOnPlayer Player
 --- @field waitingOrigin Vector3
 local AiStateWait = {
@@ -92,7 +92,7 @@ function AiStateWait:think(cmd)
 
     local clientOrigin = LocalPlayer:getOrigin()
     local distanceToPlayer = clientOrigin:getDistance(self.waitingOnPlayer:getOrigin())
-    local distanceToNode = clientOrigin:getDistance(self.node.origin)
+    local distanceToNode = clientOrigin:getDistance(self.node.floorOrigin)
 
     if distanceToNode < 250 and distanceToPlayer < 250 then
        VirtualMouse.lookAtLocation(self.waitingOnPlayer:getOrigin():offset(0, 0, 64), 5, VirtualMouse.noise.idle, "Wait look at player")

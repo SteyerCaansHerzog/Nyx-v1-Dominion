@@ -140,9 +140,9 @@ function AiStatePlant:assess()
 
     local clientOrigin = LocalPlayer:getOrigin()
     local isTeammateNearby = AiUtility.closestTeammate and clientOrigin:getDistance(AiUtility.closestTeammate:getOrigin()) < 450
-    local isAtPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 100
-    local isNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 600
-    local isVeryNearPlantSpot = self.node and clientOrigin:getDistance(self.node.origin) < 300
+    local isAtPlantSpot = self.node and clientOrigin:getDistance(self.node.floorOrigin) < 100
+    local isNearPlantSpot = self.node and clientOrigin:getDistance(self.node.floorOrigin) < 600
+    local isVeryNearPlantSpot = self.node and clientOrigin:getDistance(self.node.floorOrigin) < 300
     local closestEnemyDistance = AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin())
 
     if AiUtility.isLastAlive and closestEnemyDistance and closestEnemyDistance < 600 then
@@ -268,7 +268,7 @@ function AiStatePlant:setPlantNode(site)
     local closestDistance = math.huge
 
     for _, node in pairs(nodes) do
-        local distance = clientOrigin:getDistance(node.origin)
+        local distance = clientOrigin:getDistance(node.floorOrigin)
 
         if distance < closestDistance then
             closestDistance = distance

@@ -50,8 +50,8 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field collisionHullHumanDucking Vector3[]
 --- @field collisionHullHumanStanding Vector3[]
 --- @field collisionHullNode Vector3[]
---- @field collisionHullNodeSpawn Vector3[]
 --- @field collisionHullNodeSmall Vector3[]
+--- @field collisionHullNodeSpawn Vector3[]
 --- @field colorPrimary Color
 --- @field colorSecondary Color
 --- @field connectionCollisions NodeTypeBaseConnectionCollision[]
@@ -61,11 +61,13 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field description string[]
 --- @field direction Angle
 --- @field drawDistance number
+--- @field floorOrigin Vector3
 --- @field gapCollisions NodeTypeBaseGapCollision[]
 --- @field id number
 --- @field iRenderBottomLines number
 --- @field iRenderTopLines number
 --- @field isActive boolean
+--- @field isAllowedToDuckAt boolean
 --- @field isCollisionTestWeak boolean
 --- @field isConnectable boolean
 --- @field isDirectional boolean
@@ -86,7 +88,6 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field lookAtOrigin Vector3
 --- @field lookDistanceThreshold number
 --- @field lookFromOrigin Vector3
---- @field lookZOffset number
 --- @field name string
 --- @field origin Vector3
 --- @field pathOffset number
@@ -300,15 +301,13 @@ function NodeTypeBase:render(nodegraph, isRenderingMetaData)
 
     if Debug.isDisplayingNodeLookAngles and self.lookAtOrigin then
         local color
-        local distance = self.lookFromOrigin:getDistance(self.lookAtOrigin)
 
-        if distance < self.lookDistanceThreshold then
+        if not self.isAllowedToDuckAt then
             color = ColorList.ERROR
 
             self.lookAtOrigin:drawScaledCircleOutline(50, 15, color)
         else
             color = self.renderColorSecondary
-
         end
 
         self.lookFromOrigin:drawScaledCircle(30, color)
@@ -361,11 +360,15 @@ end
 
 --- @return Vector3
 function NodeTypeBase:setLookAtOrigin()
-    local lookFromOrigin = self.origin:clone():offset(0, 0, self.lookZOffset)
+    local lookFromOrigin = self.origin:clone():offset(0, 0, 46)
+    local lookFromOriginDucked = self.origin:clone():offset(0, 0, 22)
     local lookDirectionTrace = Trace.getLineAtAngle(lookFromOrigin, self.direction, AiUtility.traceOptionsVisible, "NodeTypeBase.setLookAtOrigin<FindLookAngle>")
+    local lookAtOriginOffset = lookDirectionTrace.endPosition - self.direction:getForward() * 8
+    local duckTrace = Trace.getLineToPosition(lookFromOriginDucked, lookAtOriginOffset, AiUtility.traceOptionsVisible, "NodeTypeBase.setLookAtOrigin<FindDuck>")
 
     self.lookAtOrigin = lookDirectionTrace.endPosition
     self.lookFromOrigin = lookFromOrigin
+    self.isAllowedToDuckAt = not duckTrace.isIntersectingGeometry
 end
 
 --- Returns a string describing a problem with the node that will inhibit the AI in gameplay.
@@ -473,7 +476,7 @@ function NodeTypeBase:setConnections(nodegraph, options)
     local hullOffset = 0
 
     if options.isUsingHumanCollisionTest then
-        if LocalPlayer:getFlag(LocalPlayer.flags.FL_DUCKING) then
+        if LocalPlayer:isFlagActive(LocalPlayer.flags.FL_DUCKING) then
             hullBounds = NodeTypeBase.collisionHullHumanDucking
         else
             hullBounds = NodeTypeBase.collisionHullHumanStanding
@@ -697,6 +700,11 @@ end
 --- @param nodegraph Nodegraph
 --- @return void
 function NodeTypeBase:onSetup(nodegraph)
+    -- All nodes are always spawned approximately 18 units above the floor.
+    self.floorOrigin = self.origin:clone():offset(0, 0, -18)
+
+    print(self.floorOrigin)
+
     if self.isPlanar then
         -- We need to test from a higher position, to account for stairs or short ledges.
         local origin = self.origin:clone():offset(0, 0, 18)

@@ -429,7 +429,7 @@ function AiStateDefend:think(cmd)
         end
     end
 
-    local distance = AiUtility.clientNodeOrigin:getDistance(self.node.origin)
+    local distance = AiUtility.clientNodeOrigin:getDistance(self.node.floorOrigin)
     local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), self.node.lookFromOrigin, AiUtility.traceOptionsVisible, "AiStateDefend.think<FindIfVisibleNode>")
 
     if not trace.isIntersectingGeometry then
@@ -445,20 +445,8 @@ function AiStateDefend:think(cmd)
     end
 
     -- Walk.
-    if distance < 500 then
-        local isAbleToWalk = true
-
-        if self.priority == AiPriority.DEFEND_DEFUSER or self.priority == AiPriority.DEFEND_PLANTER then
-            isAbleToWalk = false
-        end
-
-        if not AiUtility.closestEnemy or LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) > 1650 then
-            isAbleToWalk = false
-        end
-
-        if isAbleToWalk then
-            Pathfinder.walk()
-        end
+    if self.priority == AiPriority.DEFEND_DEFUSER or self.priority == AiPriority.DEFEND_PLANTER then
+        self.ai.routines.walk:block()
     end
 
     if distance < 300 then
@@ -506,7 +494,7 @@ function AiStateDefend:think(cmd)
 
     -- There's a teammate already near this defensive spot. We should hold someplace else.
     for _, teammate in pairs(AiUtility.teammates) do
-        if teammate:getOrigin():getDistance(self.node.origin) < 128 then
+        if teammate:getOrigin():getDistance(self.node.floorOrigin) < 128 then
             self:invoke(self.node.bombsite)
         end
     end

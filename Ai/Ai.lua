@@ -317,9 +317,20 @@ end
 --- @param e PlayerChatEvent
 --- @return void
 function Ai:processCommand(e)
-	if not e.text:sub(1, 1) == "/" then
+	local validPrefixes = {
+		["/"] = true,
+		["."] = true,
+		["!"] = true,
+		[" "] = true
+	}
+
+	local cmdPrefix = e.text:sub(1, 1)
+
+	if not validPrefixes[cmdPrefix] then
 		return
 	end
+
+	local isOtherBot = cmdPrefix == " "
 
 	local args = Table.getExplodedString(e.text:sub(2), " ")
 	local cmd = table.remove(args, 1)
@@ -339,7 +350,7 @@ function Ai:processCommand(e)
 	end
 
 	local argsImploded = Table.getImplodedTable(args, ", ")
-	local ignored = command:invoke(self, e.sender, args)
+	local ignored = command:invoke(self, e.sender, args, isOtherBot)
 
 	if ignored then
 		Logger.console(Logger.ALERT, Localization.chatCommandIgnored, cmd, e.sender:getName(), ignored)
