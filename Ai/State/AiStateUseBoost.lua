@@ -68,7 +68,7 @@ function AiStateUseBoost:assess()
     if true then
         return AiPriority.IGNORE
     end
-
+    
     if not LocalPlayer:isCounterTerrorist() then
         return AiPriority.IGNORE
     end
@@ -87,7 +87,7 @@ function AiStateUseBoost:assess()
 
     -- We have an active node.
     if self.boostNode then
-        return AiPriority.IGNORE
+        return AiPriority.USE_BOOST
     end
 
     -- We don't want to watch angles at bad times.
@@ -105,7 +105,7 @@ function AiStateUseBoost:assess()
         self.boostNode = node
         self.waitNode = node.waitNode
 
-        return AiPriority.IGNORE
+        return AiPriority.USE_BOOST
     end
 
     return AiPriority.IGNORE
@@ -136,6 +136,8 @@ function AiStateUseBoost:getNode()
 
         for _, enemy in pairs(AiUtility.enemies) do
             local fov = node.direction:getFov(node.floorOrigin:clone():offset(0, 0, 128), enemy:getEyeOrigin())
+
+            print(fov)
 
             if fov < 35 then
                 isEnemiesInFov = true
@@ -293,7 +295,7 @@ function AiStateUseBoost:think(cmd)
     LocalPlayer.scope()
 
     -- Jump to allow the booster to stand up.
-    if self.boostNode.isStandingHeight and not self.isJumped then
+    if not AiUtility.isEnemyVisible and self.boostNode.isStandingHeight and not self.isJumped then
         self.isJumped = true
 
         Client.fireAfter(0.4, function()

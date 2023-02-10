@@ -101,6 +101,7 @@ local WeaponMovementVelocity =  {
 --- @field isIgnoringDormancy boolean
 --- @field isInJiggleHold boolean
 --- @field isJigglingOnDefend boolean
+--- @field isOnBooster boolean
 --- @field isPreAimingMapAngle boolean
 --- @field isPreAimViableForHoldingAngle boolean
 --- @field isRcsEnabled boolean
@@ -328,16 +329,27 @@ function AiStateEngage:initEvents()
             end
         end
 
+        -- Notice hostage carriers to intercept them.
         if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE and AiUtility.isHostageCarriedByEnemy then
             for _, enemy in pairs(AiUtility.hostageCarriers) do
                 self:noticeEnemy(enemy, Vector3.MAX_DISTANCE, true, "Carrying hostage")
             end
         end
 
+        -- Used for determing how long a sniper has been scoped for.
         if LocalPlayer:m_bIsScoped() == 1 then
             self.scopedTimer:ifPausedThenStart()
         else
             self.scopedTimer:stop()
+        end
+
+        -- Determines how long an enemy has been visible for.
+        if self.bestTarget then
+            if AiUtility.visibleEnemies[self.bestTarget.eid] then
+                self.visibleReactionTimer:ifPausedThenStart()
+            else
+                self.visibleReactionTimer:stop()
+            end
         end
     end)
 
@@ -1419,6 +1431,20 @@ function AiStateEngage:handleMovement()
         return
     end
 
+    if AiUtility.closestTeammate then
+        local boosterBounds = AiUtility.closestTeammate:getBounds()
+        local onBoosterBounds = LocalPlayer:getOrigin():clone():offset(0, 0, -4):getBounds(Vector3.align.UP, 12, 12, 32)
+        local isOnBooster = Vector3.isBoundsIntersecting(onBoosterBounds, boosterBounds)
+
+        self.isOnBooster = isOnBooster
+    end
+
+    if self.isOnBooster then
+        Pathfinder.standStill()
+
+        return
+    end
+
     if self:movementHoldAfterPlant() then
         return
     end
@@ -2281,12 +2307,6 @@ function AiStateEngage:attackingSetReactionTime()
     if self:isEnemySensed(self.bestTarget) then
         self.reactionTimer:ifPausedThenStart()
     end
-
-    if AiUtility.visibleEnemies[self.bestTarget.eid] then
-        self.visibleReactionTimer:ifPausedThenStart()
-    else
-        self.visibleReactionTimer:stop()
-    end
 end
 
 --- @return void
@@ -2858,7 +2878,10 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
     local speed = LocalPlayer:m_vecVelocity():getMagnitude()
     local isVelocityOk = true
 
-    if distance > 1000 then
+    if self.isOnBooster then
+        -- Stop action can incur ducking, which we probably don't want on boost spots.
+        Pathfinder.standStill()
+    elseif distance > 1000 then
         self:actionStop(cmd)
 
         isVelocityOk = speed < WeaponMovementVelocity.STANDING_STILL
@@ -2901,7 +2924,10 @@ function AiStateEngage:shootLight(cmd, aimAtOrigin, fov, weapon)
     local speed = LocalPlayer:m_vecVelocity():getMagnitude()
     local isVelocityOk = true
 
-    if distance > 800 then
+    if self.isOnBooster then
+        -- Stop action can incur ducking, which we probably don't want on boost spots.
+        Pathfinder.standStill()
+    elseif distance > 800 then
         self:actionStrafe(cmd)
 
         isVelocityOk = speed < WeaponMovementVelocity.DUCKING
@@ -2940,7 +2966,10 @@ end
 function AiStateEngage:shootShotgun(cmd, aimAtOrigin, fov, weapon)
     local distance = LocalPlayer.getEyeOrigin():getDistance(aimAtOrigin)
 
-    if distance > 1000 then
+    if self.isOnBooster then
+        -- Stop action can incur ducking, which we probably don't want on boost spots.
+        Pathfinder.standStill()
+    elseif distance > 1000 then
         return
     elseif AiUtility.totalThreats > 1 then
         self:actionBackUp()
@@ -2965,7 +2994,10 @@ function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
     local speed = LocalPlayer:m_vecVelocity():getMagnitude()
     local isVelocityOk = true
 
-    if distance > 1000 then
+    if self.isOnBooster then
+        -- Stop action can incur ducking, which we probably don't want on boost spots.
+        Pathfinder.standStill()
+    elseif distance > 1000 then
         self:actionStop(cmd)
 
         isVelocityOk = speed < WeaponMovementVelocity.STANDING_STILL
@@ -2998,19 +3030,19 @@ end
 --- @return void
 function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
     local distance = LocalPlayer.getEyeOrigin():getDistance(aimAtOrigin)
-    local fireDelay = 0.66
+    local fireDelay = 0.45
 
     -- Set the delay of our shooting to be roughly accurate as we scope.
     if weapon.is_full_auto then
         fireDelay = 0
     elseif distance > 1500 then
-        fireDelay = 0.4
-    elseif distance > 1000 then
         fireDelay = 0.3
-    elseif distance > 500 then
+    elseif distance > 1000 then
         fireDelay = 0.25
+    elseif distance > 500 then
+        fireDelay = 0.2
     else
-        fireDelay = 0.15
+        fireDelay = 0.1
     end
 
     local isNoscoping = false
@@ -3020,18 +3052,22 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
     end
 
     -- Create a "flick" effect when aiming.
-    if isNoscoping or self.scopedTimer:isElapsed(fireDelay * 0.4) then
+    if isNoscoping or self.scopedTimer:isElapsed(fireDelay) then
         VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed * 1.4, self.aimNoise, "Engage target (sniper, slow)")
     else
-        VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed * 0.6, self.aimNoise, "Engage target (sniper, fast)")
+        VirtualMouse.lookAtLocation(aimAtOrigin, self.aimSpeed * 0.5, self.aimNoise, "Engage target (sniper, fast)")
     end
 
     if not isNoscoping and fov < self.shootWithinFov * 2.5 then
         LocalPlayer.scope()
     end
 
-    -- Always come to a complete stop when using snipers.
-    self:actionStop(cmd)
+    if self.isOnBooster then
+        -- Stop action can incur ducking, which we probably don't want on boost spots.
+        Pathfinder.standStill()
+    else
+        self:actionStop(cmd)
+    end
 
     -- We can shoot when we're this slow.
     local fireUnderVelocity = WeaponMovementVelocity.STANDING_STILL_SNIPER
@@ -3040,9 +3076,12 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
         fireUnderVelocity = weapon.max_player_speed / 4
     end
 
+    print(self.visibleReactionTimer:get())
+
     if fov < self.shootWithinFov
         and (isNoscoping or (self.scopedTimer:isElapsed(fireDelay) and LocalPlayer:m_bIsScoped() == 1))
         and LocalPlayer:m_vecVelocity():getMagnitude() < fireUnderVelocity
+        and (self.visibleReactionTimer:isElapsed(fireDelay * 0.6))
     then
         self:fireWeapon(cmd)
     end
