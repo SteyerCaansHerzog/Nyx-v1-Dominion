@@ -22,26 +22,9 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 --- @field language string
 --- @field openAiApiKey string
 --- @field projectDirectory string
---- @field virtualMouseMode string rigid | dynamic
+--- @field virtualMouseMode string ridid | dynamic
 local Config = {
-    administrators = {
-        -- Friends
-        "76561198138748363", -- Adrian
-        "76561198080048177", -- Fanta
-        -- Main accounts
-        --"76561198105632069", -- Kotton
-        --"76561198339559079", -- Data
-        --"76561198971897854", -- Standup
-        "76561198807527047", -- 0DTE
-        --"76561198291655919", -- Boxxy
-        --"76561199064257338", -- Incident
-        --"76561199138080686", -- IKEA Desk
-        --"76561199124428396", -- Combine
-        --"76561199081972961", -- Ice
-        "76561199087305425", -- John Redgrove
-        "76561198853652313", -- Spoce Marine Jim
-        "76561198960888298" -- Ruan
-    }, -- List of SteamID64 strings for accounts allowed to use admin chat commands.
+    administrators = {}, -- List of SteamID64 strings for accounts allowed to use admin chat commands.
     clientConfigs = {
         normal = "Nyx-v1-Dominion", -- GS config to load when in normal mode.
         reaper = "Nyx-v1-Dominion-Reaper", -- GS config to load when in Reaper mode.
@@ -59,7 +42,7 @@ local Config = {
     isTextModeAllowed = true, -- Enable this to disable Source engine rendering when applicable.
     isVisualiserEnabled = true, -- Enable this to see AI visualisation information.
     language = "English", -- Language localization for logs and other text.
-    openAiApiKey = "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", -- Set this to provide an API key for use with the Open AI chatbot.
+    openAiApiKey = "", -- Set this to provide an API key for use with the Open AI chatbot.
     projectDirectory = "lua/gamesense/Nyx/v1/Dominion/%s", -- Root project directory for the Dominion folder. Must have /%s at the end.
     virtualMouseMode = "dynamic" -- "rigid" for old method, "dynamic" for smoother new method.
 }
