@@ -77,17 +77,18 @@ function AiStatePlant:__init()
             return
         end
 
-        if not LocalPlayer:isBombCarrier() then
-            return
-        end
-
         self.isPlanting = false
 
         self.pickRandomSiteTimer:start()
         self.tellSiteTimer:elapse()
 
         Client.onNextTick(function()
+            if not LocalPlayer:isBombCarrier() then
+                return
+            end
+            
             self.bombsite = AiUtility.randomBombsite
+            self.lastBombsite = self.bombsite
 
             self.ai.commands.go:bark(self.bombsite:lower())
         end)
