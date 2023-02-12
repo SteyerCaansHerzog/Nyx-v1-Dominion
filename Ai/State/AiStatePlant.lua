@@ -77,6 +77,10 @@ function AiStatePlant:__init()
             return
         end
 
+        if not LocalPlayer:isBombCarrier() then
+            return
+        end
+
         self.isPlanting = false
 
         self.pickRandomSiteTimer:start()
