@@ -110,6 +110,10 @@ function AiStatePlant:__init()
     end)
 
     Callbacks.setupCommand(function()
+        if AiUtility.gameRules:m_bFreezePeriod() == 1 then
+            return
+        end
+
         if not self.bombsite or not LocalPlayer.isCarryingBomb() then
             return
         end
