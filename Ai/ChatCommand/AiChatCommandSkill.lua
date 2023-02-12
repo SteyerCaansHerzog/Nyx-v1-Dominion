@@ -40,7 +40,7 @@ function AiChatCommandSkill:invoke(ai, sender, args)
         skill = Math.getRandomInt(min, max)
     end
 
-    ai.states.engage:setAimSkill(skill)
+    ai.states.engage:setSkillLevel(skill)
 
     Logger.console(Logger.OK, Localization.cmdSkillSet, skill)
 end
