@@ -12,7 +12,7 @@ local AiChatbotBase = require "gamesense/Nyx/v1/Dominion/Ai/Chatbot/AiChatbotBas
 
 --{{{ AiChatbotNormal
 --- @class AiChatbotNormal : AiChatbotBase
---- @field sentences AiSentence
+--- @field sentences AiSentence[]
 local AiChatbotNormal = {}
 
 --- @param fields AiChatbotNormal

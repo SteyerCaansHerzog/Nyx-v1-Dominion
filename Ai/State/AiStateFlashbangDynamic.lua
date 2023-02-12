@@ -291,6 +291,14 @@ function AiStateFlashbangDynamic:think(cmd)
         return
     end
 
+    for _, teammate in pairs(AiUtility.teammates) do
+        if teammate:getOrigin():getDistance(self.node.floorOrigin) < 16 then
+            self:reset()
+
+            return
+        end
+    end
+
     self.activity = "Throwing Flashbang"
 
     self.ai.states.evade:block()

@@ -290,7 +290,7 @@ function Ai:initEvents()
 			return
 		end
 
-		self:processCommand(e)
+		self:processCommand(e, false)
 	end)
 
 	Callbacks.consoleInput(function(e)
@@ -306,13 +306,13 @@ function Ai:initEvents()
 			name = LocalPlayer:getName()
 		}
 
-		self:processCommand(params)
+		self:processCommand(params, true)
 	end)
 end
 
 --- @param e PlayerChatEvent
 --- @return void
-function Ai:processCommand(e)
+function Ai:processCommand(e, isInvokedByConsole)
 	local validPrefixes = {
 		["/"] = true,
 		["."] = true,
@@ -337,7 +337,7 @@ function Ai:processCommand(e)
 		return
 	end
 
-	local rejection = command:getRejectionError(self, e.sender, args)
+	local rejection = command:getRejectionError(self, e.sender, args, isInvokedByConsole)
 
 	if rejection then
 		Logger.console(Logger.ALERT, Localization.chatCommandRejected, cmd, e.sender:getName(), rejection)
@@ -346,10 +346,10 @@ function Ai:processCommand(e)
 	end
 
 	local argsImploded = Table.getImplodedTable(args, ", ")
-	local ignored = command:invoke(self, e.sender, args, isOtherBot)
+	local errString = command:invoke(self, e.sender, args, isOtherBot)
 
-	if ignored then
-		Logger.console(Logger.ALERT, Localization.chatCommandIgnored, cmd, e.sender:getName(), ignored)
+	if errString then
+		Logger.console(Logger.ALERT, Localization.chatCommandIgnored, cmd, e.sender:getName(), errString)
 
 		return
 	end

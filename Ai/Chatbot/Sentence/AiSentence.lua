@@ -2,6 +2,7 @@
 --- @class AiSentence
 local AiSentence = {
 	replyCheater = require "gamesense/Nyx/v1/Dominion/Ai/Chatbot/Sentence/AiSentenceReplyCheater",
+	replyChickenKilled = require "gamesense/Nyx/v1/Dominion/Ai/Chatbot/Sentence/AiSentenceReplyChickenKilled",
 	replyCommend = require "gamesense/Nyx/v1/Dominion/Ai/Chatbot/Sentence/AiSentenceReplyCommend",
 	replyEmoticon = require "gamesense/Nyx/v1/Dominion/Ai/Chatbot/Sentence/AiSentenceReplyEmoticon",
 	replyGay = require "gamesense/Nyx/v1/Dominion/Ai/Chatbot/Sentence/AiSentenceReplyGay",

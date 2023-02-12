@@ -41,12 +41,12 @@ function AiStateDeveloper:__init() end
 
 --- @return void
 function AiStateDeveloper:assess()
-    return AiPriority.IGNORE
+    return AiPriority.DEVELOPER
 end
 
 --- @return void
 function AiStateDeveloper:activate()
-    Pathfinder.moveToNode(Nodegraph.getById(811))
+    Pathfinder.moveToNode(Nodegraph.getById(153))
 end
 
 --- @return void

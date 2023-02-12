@@ -971,7 +971,7 @@ function NodegraphEditor:render()
     height = 30
 
     local text = "[R] Nodegraph Editing (ENABLED)"
-    local color = ColorList.INFO
+    local color = ColorList.OK
 
     if not self.keyEnableEditing:isToggled() then
         text = "[R] Nodegraph Editing (DISABLED)"
@@ -989,7 +989,7 @@ function NodegraphEditor:render()
 
     if not self.keyIgnoreSelection:isToggled() then
         text = "[E] Node Selection (ENABLED)"
-        color = ColorList.INFO
+        color = ColorList.OK
     end
 
     UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)
@@ -999,7 +999,7 @@ function NodegraphEditor:render()
 
 
     local text = "[G] Test LOS for Selection (ENABLED)"
-    local color = ColorList.INFO
+    local color = ColorList.OK
 
     if not self.keyTestLineOfSight:isToggled() then
         text = "[G] Test LOS for Selection (DISABLED)"
@@ -1012,11 +1012,11 @@ function NodegraphEditor:render()
     drawPos:offset(0, height)
 
 
-    local text = "[F] Select Nodes"
+    local text = "[F] Node Selection Mode"
     local color = ColorList.INFO
 
     if self.keySetConnections:isToggled() then
-        text = "[F] Edit Node Connections"
+        text = "[F] Node Connections Editing Mode"
         color = ColorList.WARNING
     end
 
@@ -1026,11 +1026,11 @@ function NodegraphEditor:render()
     drawPos:offset(0, height)
 
 
-    local text = "[B] Begin Movement Recorder"
+    local text = "[B] Start Movement Recording"
     local color = ColorList.INFO
 
     if self.keyStartMovementRecorder:isToggled() then
-        text = "[B] STOP MOVEMENT RECORDER"
+        text = "[B] Stop and Save Movement Recording"
         color = ColorList.ERROR
     end
 
@@ -1039,13 +1039,25 @@ function NodegraphEditor:render()
 
     drawPos:offset(0, height)
 
-    UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, ColorList.INFO, height)
-    UserInterface.drawText(drawPos, Font.SMALL, ColorList.INFO, "[T] Copy Looked at Node")
+    local color = ColorList.INFO
+
+    if (self.keyCopyLookedAtNode:isHeld()) then
+        color =  ColorList.FONT_NORMAL
+    end
+
+    UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)
+    UserInterface.drawText(drawPos, Font.SMALL, color, "[T] Copy Looked at Node")
 
     drawPos:offset(0, height)
 
-    UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, ColorList.INFO, height)
-    UserInterface.drawText(drawPos, Font.SMALL, ColorList.INFO, "[X] Save Nodegraph")
+    local color = ColorList.INFO
+
+    if (self.keySaveNodegraph:isHeld()) then
+        color =  ColorList.FONT_NORMAL
+    end
+
+    UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)
+    UserInterface.drawText(drawPos, Font.SMALL, color, "[X] Save Nodegraph to Disk")
 
     drawPos:offset(0, height)
 

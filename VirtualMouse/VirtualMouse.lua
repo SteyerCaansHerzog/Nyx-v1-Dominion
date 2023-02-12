@@ -669,7 +669,7 @@ function VirtualMouse.setIdealRemoveObstructions(idealViewAngles)
 	VirtualMouse.lookSpeedDelayMin = 0
 	VirtualMouse.lookSpeedDelayMax = 0
 
-	if clientOrigin:getDistance2(node.origin) < 35 and maxDiff < 35 and VirtualMouse.useCooldown:isElapsedThenRestart(1) then
+	if clientOrigin:getDistance2(node.origin) < 16 and maxDiff < 35 and VirtualMouse.useCooldown:isElapsedThenRestart(1) then
 		if Pathfinder.isObstructedByObstacle then
 			VirtualMouse.isFiringWeapon = true
 		elseif Pathfinder.isObstructedByDoor then

@@ -150,6 +150,7 @@ local WeaponMovementVelocity =  {
 --- @field preAimTarget Player
 --- @field preAimThroughCornersBlockTimer Timer
 --- @field preAimThroughCornersOrigin Vector3
+--- @field preAimThroughCornersTargetOrigin Vector3
 --- @field preAimThroughCornersUpdateTimer Timer
 --- @field prefireReactionTime number
 --- @field priorityHitbox number
@@ -1394,7 +1395,7 @@ end
 
 --- @return void
 function AiStateEngage:render()
-    if not MenuGroup.master:get() or not MenuGroup.enableAi:get() or not MenuGroup.enableAimbot:get() then
+    if not MenuGroup.master:get() or not MenuGroup.enableAi:get() then
         return
     end
 
@@ -2247,14 +2248,14 @@ function AiStateEngage:handleAttacking(cmd)
         return
     end
 
+    if Table.isEmpty(AiUtility.visibleEnemies) then
+        self:actionWatchAngle()
+    end
+
     -- Pre-aim angle/hitbox when peeking.
     if self:isEnemySensed(self.bestTarget) and self.reactionTimer:isElapsed(self.reactionTime) then
         self:preAimAboutCorners()
         self:preAimThroughCorners()
-    end
-
-    if Table.isEmpty(AiUtility.visibleEnemies) then
-        self:actionWatchAngle()
     end
 
     self:attackingBestTarget(cmd)
@@ -2607,8 +2608,6 @@ function AiStateEngage:attackingBestTarget(cmd)
     local hitbox, visibleHitboxCount = self:getTargetHitbox(self.bestTarget)
 
     if not hitbox then
-        self:actionWatchAngle()
-
         return
     end
 
@@ -3590,17 +3589,23 @@ function AiStateEngage:preAimThroughCorners()
         end
     end
 
-    if self.preAimThroughCornersUpdateTimer:isElapsedThenRestart(1.2) then
-        local hitboxPosition = target:getHitboxPosition(Player.hitbox.HEAD)
-        local distance = playerOrigin:getDistance(hitboxPosition)
-        local offsetRange = Math.getFloat(Math.getClamped(distance, 0, 1024), 1024) * 64
+    if self.preAimThroughCornersUpdateTimer:isElapsedThenRestart(0.75) then
+        local hitboxPosition = target:getOrigin():offset(0, 0, 64)
 
-        self.preAimThroughCornersOrigin = hitboxPosition:offset(
-            Math.getRandomFloat(-offsetRange, offsetRange),
-            Math.getRandomFloat(-offsetRange, offsetRange),
-            Math.getRandomFloat(-8, 2)
-        ) - (clientVelocity:clone():set(nil, nil, 0) * 0.15)
+        self.preAimThroughCornersTargetOrigin = hitboxPosition
     end
+
+    if not self.preAimThroughCornersTargetOrigin then
+        return
+    end
+
+    local distance = playerOrigin:getDistance(self.preAimThroughCornersTargetOrigin)
+    local offsetRange = Math.getFloat(Math.getClamped(distance, 0, 1024), 1024) * 80
+    local sine = Animate.sine(0, offsetRange, 0.6)
+
+    self.preAimThroughCornersOrigin = self.preAimThroughCornersTargetOrigin:clone():offset(
+        sine, sine, 0
+    ) - (clientVelocity:clone():set(nil, nil, 0) * 0.15)
 
     self.preAimTarget = self.bestTarget
 

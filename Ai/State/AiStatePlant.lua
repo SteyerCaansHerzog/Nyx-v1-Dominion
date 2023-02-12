@@ -86,7 +86,7 @@ function AiStatePlant:__init()
             if not LocalPlayer:isBombCarrier() then
                 return
             end
-            
+
             self.bombsite = AiUtility.randomBombsite
             self.lastBombsite = self.bombsite
 

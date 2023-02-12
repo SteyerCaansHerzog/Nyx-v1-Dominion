@@ -1504,6 +1504,7 @@ end
 --- @return void
 function Pathfinder.resetMoveParameters()
 	Pathfinder.directMovementAngle = nil
+	Pathfinder.isAllowedToAvoidTeammates = true
 	Pathfinder.isAllowedToDuck = true
 	Pathfinder.isAllowedToJump = true
 	Pathfinder.isAllowedToMove = true

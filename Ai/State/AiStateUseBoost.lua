@@ -79,7 +79,7 @@ function AiStateUseBoost:assess()
     end
 
     if AiUtility.timeData.roundtime_remaining < 32 then
-        -- todo return AiPriority.IGNORE
+        return AiPriority.IGNORE
     end
 
     -- We have an active node.
@@ -195,6 +195,8 @@ function AiStateUseBoost:think(cmd)
     self.activity = "Waiting to be boosted"
 
     if not self.boostNode then
+        self:reset()
+
         return
     end
 

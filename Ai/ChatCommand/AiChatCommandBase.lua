@@ -58,8 +58,9 @@ end
 --- @param ai Ai
 --- @param sender Player
 --- @param args string[]
+--- @param isInvokedByConsole boolean
 --- @return string|nil
-function AiChatCommandBase:getRejectionError(ai, sender, args)
+function AiChatCommandBase:getRejectionError(ai, sender, args, isInvokedByConsole)
     if self.requiredArgs and #args < self.requiredArgs then
         return string.format(Localization.cmdRejectionArgsMissing, self.requiredArgs, #args)
     end
@@ -77,7 +78,7 @@ function AiChatCommandBase:getRejectionError(ai, sender, args)
         return
     end
 
-    local isAllowed = (Config.isAllowedToSelfInvokeCommands and isLocalPlayer) or not isLocalPlayer
+    local isAllowed = isInvokedByConsole or not isLocalPlayer
 
     if not isAllowed then
         return Localization.cmdRejectionSelfInvoked

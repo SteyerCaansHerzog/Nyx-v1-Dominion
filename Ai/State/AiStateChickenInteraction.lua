@@ -18,6 +18,7 @@ local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
+local AiSentence = require "gamesense/Nyx/v1/Dominion/Ai/Chatbot/Sentence/AiSentence"
 --}}}
 
 --{{{ AiStateChickenInteraction
@@ -26,6 +27,7 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field cooldownTimer Timer
 --- @field blacklist boolean[]
 --- @field interaction string
+--- @field chickensOwned Entity[]
 local AiStateChickenInteraction = {
     name = "Chicken Interaction",
     delayedMouseMin = 0.1,
@@ -42,6 +44,7 @@ end
 function AiStateChickenInteraction:__init()
     self.blacklist = {}
     self.cooldownTimer = Timer:new():startThenElapse()
+    self.chickensOwned = {}
     self.interaction = Table.getRandom({
         "kill", "collect"
     })
@@ -50,10 +53,22 @@ function AiStateChickenInteraction:__init()
         self.interaction = Table.getRandom({
             "kill", "collect"
         })
+
+        self.chickensOwned = {}
     end)
 
     Callbacks.roundStart(function()
     	self.blacklist = {}
+    end)
+
+    Callbacks.netUpdateEnd(function()
+        for id, chicken in pairs(self.chickensOwned) do
+            if chicken:m_vecOrigin():isZero() then
+                self.ai.chatbots.normal.sentences.replyChickenKilled:speak()
+
+                table.remove(self.chickensOwned, id)
+            end
+        end
     end)
 end
 
@@ -192,6 +207,8 @@ function AiStateChickenInteraction:think(cmd)
             cmd.in_attack = true
         elseif self.interaction == "collect" then
             cmd.in_use = true
+
+            table.insert(self.chickensOwned, self.targetChicken)
         end
 
         self.blacklist[self.targetChicken.eid] = true

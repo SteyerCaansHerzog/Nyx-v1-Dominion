@@ -152,10 +152,6 @@ function AiRoutineHandleOccluderTraversal:handleInferno()
 		return
 	end
 
-	if not self.isInfernoVisible then
-		return
-	end
-
 	if not Pathfinder.isOnValidPath() then
 		return
 	end
@@ -186,8 +182,6 @@ end
 
 --- @return void
 function AiRoutineHandleOccluderTraversal:handleSmoke()
-	local clientOrigin = LocalPlayer:getOrigin()
-
 	if self.smokeInsideOf then
 		return
 	end
@@ -214,7 +208,7 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 		return
 	end
 
-	if not self.isNearSmoke then
+	if AiUtility.timeData.roundtime_remaining < 30 then
 		return
 	end
 
@@ -234,10 +228,6 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 	until true end
 
 	if not isTraversingSmoke then
-		return
-	end
-
-	if AiUtility.closestEnemy and clientOrigin:getDistance(AiUtility.closestEnemy:getOrigin()) > 1000 then
 		return
 	end
 
