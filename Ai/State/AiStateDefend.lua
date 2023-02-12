@@ -131,7 +131,7 @@ function AiStateDefend:__init()
             return
         end
 
-        self.teammateInTroubleTimer:restart()
+        self.teammateInTroubleTimer:start()
     end)
 
 
@@ -172,16 +172,16 @@ function AiStateDefend:assess()
     end
 
     if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.DEMOLITION or AiUtility.mapInfo.gamemode == AiUtility.gamemodes.WINGMAN then
-        return self:assessDemolition()
+        return self:getDemolitionPriority()
     elseif AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
-        return self:assessHostage()
+        return self:getHostagePriority()
     end
 
     return AiPriority.IGNORE
 end
 
 --- @return number
-function AiStateDefend:assessDemolition()
+function AiStateDefend:getDemolitionPriority()
     if LocalPlayer.isCarryingBomb() then
         return AiPriority.IGNORE
     end
@@ -276,7 +276,7 @@ function AiStateDefend:assessDemolition()
 end
 
 --- @return number
-function AiStateDefend:assessHostage()
+function AiStateDefend:getHostagePriority()
     if LocalPlayer:isTerrorist() then
         -- The CTs have a hostage.
         if AiUtility.isHostageCarriedByEnemy then

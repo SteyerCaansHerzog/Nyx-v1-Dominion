@@ -26,7 +26,7 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field acknowledgeTimer Timer
 --- @field blacklist boolean[]
 --- @field booster Player
---- @field boostNode NodeSpotBoost
+--- @field boostNode NodeTypeBoost
 --- @field boostTime number
 --- @field boostTimer Timer
 --- @field isReady boolean
@@ -38,7 +38,8 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 local AiStateUseBoost = {
     name = "Use Boost",
     requiredNodes = {
-        Node.spotBoost
+        Node.spotBoostCt,
+        Node.spotBoostT,
     }
 }
 
@@ -56,7 +57,7 @@ function AiStateUseBoost:__init()
     self.acknowledgeTimer = Timer:new()
 
     Callbacks.roundStart(function()
-        self.boostTime = Math.getRandomFloat(8, 16)
+        self.boostTime = Math.getRandomFloat(6, 12)
         self.blacklist = {}
 
     	self:reset()
@@ -65,14 +66,6 @@ end
 
 --- @return void
 function AiStateUseBoost:assess()
-    if true then
-        return AiPriority.IGNORE
-    end
-    
-    if not LocalPlayer:isCounterTerrorist() then
-        return AiPriority.IGNORE
-    end
-
     -- We've finished watching an angle.
     if self.boostTimer:isElapsedThenStop(self.boostTime) then
         self:reset()
@@ -85,12 +78,15 @@ function AiStateUseBoost:assess()
         return AiPriority.IGNORE
     end
 
+    if AiUtility.timeData.roundtime_remaining < 32 then
+        -- todo return AiPriority.IGNORE
+    end
+
     -- We have an active node.
     if self.boostNode then
         return AiPriority.USE_BOOST
     end
 
-    -- We don't want to watch angles at bad times.
     if AiUtility.bombsitePlantAt then
         return AiPriority.IGNORE
     end
@@ -111,11 +107,14 @@ function AiStateUseBoost:assess()
     return AiPriority.IGNORE
 end
 
---- @return NodeSpotBoost
+--- @return NodeSpotBoostCt
 function AiStateUseBoost:getNode()
     local clientOrigin = LocalPlayer:getOrigin()
+    local nodeClass = LocalPlayer:isTerrorist() and Node.spotBoostT or Node.spotBoostCt
+    -- Globally increase the weight of boost chances.
+    local chanceMod = 2
 
-    for _, node in pairs(Nodegraph.get(Node.spotBoost)) do repeat
+    for _, node in pairs(Nodegraph.get(nodeClass)) do repeat
         if self.blacklist[node.id] then
             break
         end
@@ -125,7 +124,7 @@ function AiStateUseBoost:getNode()
         end
 
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance(node.floorOrigin) < 16 then
+            if teammate:getOrigin():getDistance(node.floorOrigin) < 32 then
                 self.blacklist[node.id] = true
 
                 break
@@ -136,8 +135,6 @@ function AiStateUseBoost:getNode()
 
         for _, enemy in pairs(AiUtility.enemies) do
             local fov = node.direction:getFov(node.floorOrigin:clone():offset(0, 0, 128), enemy:getEyeOrigin())
-
-            print(fov)
 
             if fov < 35 then
                 isEnemiesInFov = true
@@ -150,12 +147,13 @@ function AiStateUseBoost:getNode()
             break
         end
 
-        -- Blacklist the node for now.
-        if not Math.getChance(node.chance * 0.01) then
-            -- todo
-            --self.blacklist[node.id] = true
+        local chance = Math.getClamped(node.chance * chanceMod, 0, 100) * 0.01
 
-            --break
+        -- Blacklist the node for now.
+        if not Math.getChance(chance) then
+            self.blacklist[node.id] = true
+
+            break
         end
 
         return node
@@ -169,8 +167,6 @@ function AiStateUseBoost:activate()
     self.isJumped = false
     self.booster = nil
 
-    self.acknowledgeTimer:start()
-
     Pathfinder.moveToNode(self.waitNode, {
         task = "Use boost wait on teammate"
     })
@@ -183,12 +179,12 @@ end
 
 --- @return void
 function AiStateUseBoost:reset()
-    self.boostNode = nil
-    self.isUsingBoost = false
-
     if self.boostNode then
         self.blacklist[self.boostNode.id] = true
     end
+
+    self.boostNode = nil
+    self.isUsingBoost = false
 
     self.boostTimer:stop()
 end
@@ -196,6 +192,8 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateUseBoost:think(cmd)
+    self.activity = "Waiting to be boosted"
+
     if not self.boostNode then
         return
     end
@@ -205,6 +203,9 @@ function AiStateUseBoost:think(cmd)
 
         return
     end
+
+    -- This might cause the AI to die.
+    self.ai.states.evade:block()
 
     local clientOrigin = LocalPlayer:getOrigin()
     local distanceToWaitNode = clientOrigin:getDistance(self.waitNode.origin)
@@ -219,27 +220,34 @@ function AiStateUseBoost:think(cmd)
         self.isReady = true
 
         self.ai.commands.boost:bark()
+        self.acknowledgeTimer:start()
     end
 
     if not self.isReady then
         return
     end
 
-    -- We weren't acknowledged in a timely manner.
-    if not self.booster and self.acknowledgeTimer:isElapsed(2) then
-        self:reset()
-
-        return
-    end
-
     -- No booster yet.
     if not self.booster then
+        -- We weren't acknowledged in a timely manner.
+        if self.acknowledgeTimer:isElapsed(2) then
+            self:reset()
+        end
+
         return
     end
 
-    LocalPlayer.equipAvailableWeapon()
+    for _, teammate in pairs(AiUtility.teammates) do
+        if not teammate:is(self.booster) and teammate:getOrigin():getDistance(self.waitNode.origin) < 16 then
+            self:reset()
+
+            return
+        end
+    end
 
     self.ai.routines.manageGear:block()
+
+    LocalPlayer.equipAvailableWeapon()
 
     local teammateDistanceToBoostNode = self.booster:getOrigin():getDistance(self.boostNode.floorOrigin)
 
@@ -249,6 +257,13 @@ function AiStateUseBoost:think(cmd)
 
     -- We're not ready to use the boost as the teammate isn't ready themselves.
     if not self.isWaiting then
+        return
+    end
+
+    -- Teammate moved off the spot.
+    if teammateDistanceToBoostNode > 32 then
+        self:reset()
+
         return
     end
 
@@ -273,13 +288,6 @@ function AiStateUseBoost:think(cmd)
 
     local boosterOrigin = self.booster:getOrigin()
 
-    -- Teammate moved off the spot.
-    if teammateDistanceToBoostNode > 32 then
-        self:reset()
-
-        return
-    end
-
     -- Move at the booster.
     if clientOrigin:getDistance2(boosterOrigin) > 6 then
         Pathfinder.moveAtAngle(clientOrigin:getAngle(boosterOrigin))
@@ -292,7 +300,17 @@ function AiStateUseBoost:think(cmd)
         return
     end
 
+    self.activity = "Watching from boost"
+
+    if LocalPlayer:isTerrorist() then
+        self.boostTimer:ifPausedThenStart()
+    end
+
     LocalPlayer.scope()
+
+    if not self.boostNode.isStandingHeight then
+        Pathfinder.duck()
+    end
 
     -- Jump to allow the booster to stand up.
     if not AiUtility.isEnemyVisible and self.boostNode.isStandingHeight and not self.isJumped then

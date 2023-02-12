@@ -102,7 +102,7 @@ function AiRoutineManageGear:manageKnife(cmd)
 		self.swingKnifeIntervalTime = Math.getRandomFloat(10, 40)
 		self.swingKnifeDurationTime = Math.getRandomFloat(0.1, 2)
 
-		self.swingKnifeDurationTimer:restart()
+		self.swingKnifeDurationTimer:start()
 	end
 
 	if not self.swingKnifeDurationTimer:isElapsed(self.swingKnifeDurationTime) then
@@ -134,7 +134,7 @@ function AiRoutineManageGear:manageWeaponInspection(cmd)
 	end
 
 	if not self.inspectTimer:isElapsed(self.inspectTime) then
-		self.jiggleInspectDurationTimer:restart()
+		self.jiggleInspectDurationTimer:start()
 
 		return
 	end
@@ -156,7 +156,7 @@ function AiRoutineManageGear:manageWeaponInspection(cmd)
 			self.isJiggleInspecting = Math.getChance(1)
 			self.inspectTime = Math.getRandomFloat(30, 90)
 
-			self.inspectTimer:restart()
+			self.inspectTimer:start()
 		end
 	else
 		LocalPlayer.inspectWeapon()
@@ -164,7 +164,7 @@ function AiRoutineManageGear:manageWeaponInspection(cmd)
 		self.isJiggleInspecting = Math.getChance(1)
 		self.inspectTime = Math.getRandomFloat(30, 90)
 
-		self.inspectTimer:restart()
+		self.inspectTimer:start()
 	end
 end
 

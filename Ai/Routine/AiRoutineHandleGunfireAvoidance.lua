@@ -72,7 +72,7 @@ function AiRoutineHandleGunfireAvoidance:__init()
 			return
 		end
 
-		self.cooldownTimer:restart()
+		self.cooldownTimer:start()
 	end)
 
 	Callbacks.bulletImpact(function(e)

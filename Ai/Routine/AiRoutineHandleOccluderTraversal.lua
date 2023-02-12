@@ -262,7 +262,7 @@ function AiRoutineHandleOccluderTraversal:jiggle(node)
 	if self.jiggleTimer:isElapsedThenRestart(self.jiggleTime) then
 		if Math.getChance(4) then
 			self.jiggleCooldownTime = Math.getRandomFloat(0.2, 2)
-			self.jiggleCooldownTimer:restart()
+			self.jiggleCooldownTimer:start()
 		end
 
 		self.jiggleTime = Math.getRandomFloat(0.25, 0.5)

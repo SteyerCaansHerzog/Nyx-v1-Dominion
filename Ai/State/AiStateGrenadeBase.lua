@@ -138,11 +138,11 @@ function AiStateGrenadeBase:assess()
 
     -- We're threatened by an enemy.
     if AiUtility.isClientThreatenedMajor then
-        self.threatCooldownTimer:restart()
+        self.threatCooldownTimer:start()
 
         -- If we had a node, we're going to consider it used / unavailable.
         if self.node then
-            self.usedNodes[self.node.id]:restart()
+            self.usedNodes[self.node.id]:start()
         end
 
         return AiPriority.IGNORE
@@ -319,7 +319,7 @@ function AiStateGrenadeBase:watchForOccupiedNodes()
         end
 
         if isOccupied then
-           AiStateGrenadeBase.usedNodes[node.id]:restart()
+           AiStateGrenadeBase.usedNodes[node.id]:start()
         end
     until true end
 end
@@ -327,7 +327,7 @@ end
 --- @return void
 function AiStateGrenadeBase:activate()
     if not self:isAllowedToThrow() then
-        AiStateGrenadeBase.usedNodes[self.node.id]:restart()
+        AiStateGrenadeBase.usedNodes[self.node.id]:start()
 
         return
     end
@@ -337,7 +337,7 @@ function AiStateGrenadeBase:activate()
     -- The AI can cling onto lineups since we select the node in assess, but may not run the think afterwards.
     -- This just checks if we're within the bounds when we try to run this state. If not we probably don't want to run this at all.
     if not LocalPlayer:getOrigin():offset(0, 0, 48):isInBounds(bounds) then
-        AiStateGrenadeBase.usedNodes[self.node.id]:restart()
+        AiStateGrenadeBase.usedNodes[self.node.id]:start()
 
         return
     end
@@ -405,7 +405,7 @@ function AiStateGrenadeBase:think(cmd)
 
     if distance2 < 60 then
         if not self:isAllowedToThrow() then
-            AiStateGrenadeBase.usedNodes[self.node.id]:restart()
+            AiStateGrenadeBase.usedNodes[self.node.id]:start()
 
             return
         end
@@ -506,7 +506,7 @@ function AiStateGrenadeBase:think(cmd)
             if isThrowable and not self.isThrown then
                 self.throwHoldTimer:ifPausedThenStart()
 
-                self.ai.routines.walk.cooldownTimer:restart()
+                self.ai.routines.walk.cooldownTimer:start()
 
                 cmd.in_attack = true
                 self.isThrown = true
@@ -537,7 +537,7 @@ function AiStateGrenadeBase:isAllowedToThrow()
                 local teammatePredictedOrigin = teammate:getOrigin() + teammate:m_vecVelocity() * 0.4
 
                 if teammatePredictedOrigin:getDistance(predictionEndPosition) < 300 then
-                    self.usedNodes[self.node.id]:restart()
+                    self.usedNodes[self.node.id]:start()
 
                     return false
                 end
@@ -548,7 +548,7 @@ function AiStateGrenadeBase:isAllowedToThrow()
         if self.isInferno or self.isSmoke then
             for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
                 if predictionEndPosition:getDistance(smoke:m_vecOrigin()) < 350 then
-                    self.usedNodes[self.node.id]:restart()
+                    self.usedNodes[self.node.id]:start()
 
                     return false
                 end

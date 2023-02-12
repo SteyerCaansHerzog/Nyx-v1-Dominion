@@ -19,6 +19,7 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --- @field maxNoiseLevel number
 --- @field cooldownTimer Timer
 --- @field noiseThreshold number
+--- @field isWalking boolean
 local AiRoutineWalk = {}
 
 --- @param fields AiRoutineWalk
@@ -87,7 +88,7 @@ function AiRoutineWalk:think(cmd)
 		return
 	end
 
-	if AiUtility.closestEnemyDistance > 1000 then
+	if AiUtility.closestEnemyDistance > 1400 then
 		return
 	end
 
@@ -111,7 +112,7 @@ function AiRoutineWalk:think(cmd)
 		return
 	end
 
-	if LocalPlayer:isTerrorist() and not AiUtility.plantedBomb and AiUtility.timeData.roundtime_remaining < 20 then
+	if LocalPlayer:isTerrorist() and not AiUtility.plantedBomb and AiUtility.timeData.roundtime_remaining < 25 then
 		return
 	end
 

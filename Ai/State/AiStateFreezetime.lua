@@ -57,7 +57,7 @@ function AiStateFreezetime:__init()
     self.freezeTimer = Timer:new()
 
     Callbacks.roundPrestart(function()
-    	self.freezeTimer:restart()
+    	self.freezeTimer:start()
         self.freezeTime = cvar.mp_freezetime:get_int()
         self.plusDirection = Math.getChance(2) and 1 or 0
 
@@ -132,7 +132,7 @@ function AiStateFreezetime:actionLookAtTeammate(cmd)
             self.crouchCooldownTime = Math.getRandomFloat(1, 15)
             self.crouchTime = Math.getRandomFloat(0.5, 1)
 
-            self.crouchCooldownTimer:restart()
+            self.crouchCooldownTimer:start()
             self.crouchTimer:stop()
         else
             cmd.in_duck = true

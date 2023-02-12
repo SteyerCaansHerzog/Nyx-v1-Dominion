@@ -60,7 +60,7 @@ function AiRoutineVoteController:__init()
 			end
 
 			if e.victim:isTeammate() then
-				self.lastAliveTimer:restart()
+				self.lastAliveTimer:start()
 			end
 		end)
 	end)

@@ -261,7 +261,7 @@ function AiUtility:initEvents()
             AiUtility.isBombBeingPlantedByTeammate = true
         elseif e.player:isEnemy() then
             AiUtility.isBombBeingPlantedByEnemy = true
-            AiUtility.lastPresenceTimers[e.player.eid]:restart()
+            AiUtility.lastPresenceTimers[e.player.eid]:start()
         end
     end)
 
@@ -284,7 +284,7 @@ function AiUtility:initEvents()
         AiUtility.isBombBeingPlantedByTeammate = false
 
         if e.player:isEnemy() then
-            AiUtility.lastPresenceTimers[e.player.eid]:restart()
+            AiUtility.lastPresenceTimers[e.player.eid]:start()
         end
     end)
 
@@ -298,7 +298,7 @@ function AiUtility:initEvents()
         elseif e.player:isEnemy() then
             AiUtility.isBombBeingDefusedByEnemy = true
 
-            AiUtility.lastPresenceTimers[e.player.eid]:restart()
+            AiUtility.lastPresenceTimers[e.player.eid]:start()
         end
     end)
 
@@ -324,7 +324,7 @@ function AiUtility:initEvents()
         elseif e.player:isEnemy() then
             AiUtility.isBombBeingDefusedByEnemy = false
 
-            AiUtility.lastPresenceTimers[e.player.eid]:restart()
+            AiUtility.lastPresenceTimers[e.player.eid]:start()
         end
     end)
 
@@ -341,13 +341,13 @@ function AiUtility:initEvents()
             local timer = AiUtility.lastPresenceTimers[e.attacker.eid]
 
             if timer then
-                timer:restart()
+                timer:start()
             end
         end
     end)
 
     Callbacks.weaponFire(function(e)
-        AiUtility.lastPresenceTimers[e.player.eid]:restart()
+        AiUtility.lastPresenceTimers[e.player.eid]:start()
     end)
 
     Callbacks.playerFootstep(function(e)
@@ -355,7 +355,7 @@ function AiUtility:initEvents()
             return
         end
 
-        AiUtility.lastPresenceTimers[e.player.eid]:restart()
+        AiUtility.lastPresenceTimers[e.player.eid]:start()
     end)
 
     Callbacks.weaponReload(function(e)
@@ -363,7 +363,7 @@ function AiUtility:initEvents()
             return
         end
 
-        AiUtility.lastPresenceTimers[e.player.eid]:restart()
+        AiUtility.lastPresenceTimers[e.player.eid]:start()
     end)
 
     Callbacks.weaponZoom(function(e)
@@ -371,7 +371,7 @@ function AiUtility:initEvents()
             return
         end
 
-        AiUtility.lastPresenceTimers[e.player.eid]:restart()
+        AiUtility.lastPresenceTimers[e.player.eid]:start()
     end)
 
     Callbacks.netUpdateEnd(function()

@@ -113,7 +113,7 @@ function AiProcessPanorama:autoAcceptAdminInvites()
 			if isAbleToAccept and isJoinable then
 				Panorama.PartyBrowserAPI.ActionJoinParty(lobbyId)
 
-				self.blockAcceptingInvitesTimer:restart()
+				self.blockAcceptingInvitesTimer:start()
 
 				isLobbyFound = true
 

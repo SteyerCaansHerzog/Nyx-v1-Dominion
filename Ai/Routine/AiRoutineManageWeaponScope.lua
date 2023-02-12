@@ -42,7 +42,7 @@ end
 --- @return void
 function AiRoutineManageWeaponScope:whileBlocked()
 	-- Reset unscope delay.
-	self.unscopeTimer:restart()
+	self.unscopeTimer:start()
 end
 
 --- @param cmd SetupCommandEvent

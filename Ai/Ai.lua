@@ -281,10 +281,6 @@ function Ai:initEvents()
 			return
 		end
 
-		if not self.reaper.isEnabled then
-			Client.openConsole()
-		end
-
 		self.lastPriority = nil
 		self.currentState = nil
 	end)
@@ -678,7 +674,7 @@ function Ai:preventDithering()
 		return
 	end
 
-	currentState.state.abuseLockTimer:restart()
+	currentState.state.abuseLockTimer:start()
 
 	self.ditherHistories = {}
 
@@ -787,7 +783,7 @@ function Ai:selectState(cmd)
 				self.currentState:deactivate()
 			end
 
-			self.lockStateTimer:restart()
+			self.lockStateTimer:start()
 		end
 
 		self.currentState = currentState

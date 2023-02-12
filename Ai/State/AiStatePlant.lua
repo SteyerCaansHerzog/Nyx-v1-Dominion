@@ -73,11 +73,20 @@ function AiStatePlant:__init()
     end)
 
     Callbacks.roundPrestart(function()
-        self.bombsite = AiUtility.randomBombsite
+        if not LocalPlayer:isTerrorist() then
+            return
+        end
+
         self.isPlanting = false
 
         self.pickRandomSiteTimer:start()
         self.tellSiteTimer:elapse()
+
+        Client.onNextTick(function()
+            self.bombsite = AiUtility.randomBombsite
+
+            self.ai.commands.go:bark(self.bombsite:lower())
+        end)
     end)
 
     Callbacks.bombBeginPlant(function(e)
@@ -129,17 +138,12 @@ function AiStatePlant:assess()
         return AiPriority.IGNORE
     end
 
-    -- Violating encapsulation.
-    if self.ai.states.evacuate.isSaving then
-        return AiPriority.IGNORE
-    end
-
     -- Set plant node every tick.
     -- Before it would only set if this behaviour activated, but this assess logic relies on a plant node to be set.
     self:setPlantNode(self.bombsite)
 
     local clientOrigin = LocalPlayer:getOrigin()
-    local isTeammateNearby = AiUtility.closestTeammate and clientOrigin:getDistance(AiUtility.closestTeammate:getOrigin()) < 450
+    local isTeammateNearby = AiUtility.closestTeammate and clientOrigin:getDistance(AiUtility.closestTeammate:getOrigin()) < 500
     local isAtPlantSpot = self.node and clientOrigin:getDistance(self.node.floorOrigin) < 100
     local isNearPlantSpot = self.node and clientOrigin:getDistance(self.node.floorOrigin) < 600
     local isVeryNearPlantSpot = self.node and clientOrigin:getDistance(self.node.floorOrigin) < 300
@@ -157,15 +161,17 @@ function AiStatePlant:assess()
         return AiPriority.PLANT_COVERED
     end
 
-    if isVeryNearPlantSpot and isTeammateNearby and closestEnemyDistance and closestEnemyDistance > 250 then
+    if self.isPlanting then
+        return AiPriority.PLANT_EXPEDITE
+    end
+
+    if isVeryNearPlantSpot and isTeammateNearby
+        and (not closestEnemyDistance or (closestEnemyDistance and closestEnemyDistance > 250))
+    then
         return AiPriority.PLANT_EXPEDITE
     end
 
     if isAtPlantSpot and not AiUtility.isEnemyVisible then
-        return AiPriority.PLANT_EXPEDITE
-    end
-
-    if self.isPlanting then
         return AiPriority.PLANT_EXPEDITE
     end
 
@@ -175,6 +181,12 @@ function AiStatePlant:assess()
 
     if AiUtility.timeData.roundtime_remaining < 20 then
         return AiPriority.PLANT_EXPEDITE
+    end
+
+    for _, teammate in pairs(AiUtility.teammates) do
+        if teammate:getOrigin():getDistance(self.node.origin) < 1250 then
+            return AiPriority.PLANT_EXPEDITE
+        end
     end
 
     if isNearPlantSpot then

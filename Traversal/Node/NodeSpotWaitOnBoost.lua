@@ -16,7 +16,8 @@ local NodeSpotWaitOnBoost = {
     description = {
         "Informs the AI of where to wait on boosts."
     },
-    colorSecondary = Color:hsla(0, 0.5, 0.4),
+    colorPrimary = Color:hsla(20, 0.8, 0.6),
+    colorSecondary = Color:hsla(0, 1, 1),
     isDirectional = true
 }
 

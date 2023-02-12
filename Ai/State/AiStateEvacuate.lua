@@ -91,17 +91,17 @@ function AiStateEvacuate:assess()
             local bombOrigin = AiUtility.plantedBomb:m_vecOrigin()
 
             for _, enemy in pairs(AiUtility.enemies) do
-                if enemy:getOrigin():getDistance(bombOrigin) < 1000 then
+                if enemy:getOrigin():getDistance(bombOrigin) < 600 then
                     return AiPriority.IGNORE
                 end
             end
-        end
+        else
+            -- We should save.
+            if self:isRoundWinProbabilityLow()then
+                self.isSaving = true
 
-        -- We should save.
-        if self:isRoundWinProbabilityLow()then
-            self.isSaving = true
-
-            return AiPriority.SAVE_ROUND
+                return AiPriority.SAVE_ROUND
+            end
         end
 
         local bombTimeThreshold = (LocalPlayer:m_iHealth() > 50 and 12 or 16) + self.evacuateBombsiteDelay
@@ -128,6 +128,7 @@ function AiStateEvacuate:isRoundWinProbabilityLow()
     end
 
     -- Prevent sitting in a corner and being murdered.
+    -- This isn't actually part of "is round win probability low?".
     if self.isAtDestination and AiUtility.isClientThreatenedMajor then
         return false
     end

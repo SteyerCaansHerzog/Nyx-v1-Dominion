@@ -65,9 +65,10 @@ end
 --- @param origin Vector3
 --- @return void
 function AiStateBoostTeammate:boost(player, origin, isRunBoosting, isRequesterBot)
-    print(isRequesterBot)
     if isRequesterBot then
-        origin = Nodegraph.getClosest(player:getOrigin(), Node.spotBoost).floorOrigin
+        local node = LocalPlayer:isTerrorist() and Node.spotBoostT  or Node.spotBoostCt
+
+        origin = Nodegraph.getClosest(player:getOrigin(), node).floorOrigin
     end
 
     self.boostPlayer = player
@@ -117,8 +118,6 @@ function AiStateBoostTeammate:think(cmd)
     local originDistance = playerOrigin:getDistance2(self.boostOrigin)
     local senderDistance = playerOrigin:getDistance(self.boostPlayer:getOrigin())
 
-    print(originDistance)
-
     if self.isBoosting and senderDistance > 128 then
         self:reset()
 
@@ -138,7 +137,7 @@ function AiStateBoostTeammate:think(cmd)
 
     local isRunBoostReady = true
 
-    if senderDistance < 500 and originDistance < 200 then
+    if senderDistance < 250 and originDistance < 50 then
         Pathfinder.blockTeammateAvoidance()
 
         self.ai.routines.lookAwayFromFlashbangs:block()
@@ -149,13 +148,11 @@ function AiStateBoostTeammate:think(cmd)
         local bounds = playerOrigin:clone():offset(0, 0, 32):getBounds(Vector3.align.BOTTOM, 25, 25, 128)
 
         if originDistance < 64 and not self.boostPlayer:getOrigin():offset(0, 0, 48):isInBounds(bounds) then
-            if senderDistance < 128 then
+            if senderDistance < 250 then
                 Pathfinder.duck()
 
                 isRunBoostReady = false
             end
-
-            VirtualMouse.lookAtLocation(self.boostPlayer:getHitboxPosition(Player.hitbox.NECK), 5.5, VirtualMouse.noise.idle, "Boost look at booster")
         end
     end
 

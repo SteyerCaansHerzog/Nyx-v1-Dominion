@@ -16,7 +16,7 @@ local NodeSpotLurkWithBomb = {
         "",
         "- The AI will use these to wait with bomb."
     },
-    colorSecondary = Color:hsla(280, 0.8, 0.7),
+    colorSecondary = Color:hsla(60, 0.8, 0.7),
     isDirectional = true,
     isLinkedToBombsite = true
 }

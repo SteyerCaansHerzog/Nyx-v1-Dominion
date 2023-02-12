@@ -89,9 +89,12 @@ local WeaponMovementVelocity =  {
 --- @field hitboxOffsetTimer Timer
 --- @field ignorePlayerAfter number
 --- @field isAboutToBeVisibleToBestTarget boolean
+--- @field isActivelyInStealth boolean
 --- @field isAimEnabled boolean
 --- @field isAllowedToJiggleHold boolean
 --- @field isAllowedToNoscope boolean
+--- @field isAllowedToStealthKnifeTarget boolean
+--- @field isAllowedToStealthTarget boolean
 --- @field isBackingUp boolean
 --- @field isBestTargetVisible boolean
 --- @field isCrouchingOnDefend boolean
@@ -102,6 +105,7 @@ local WeaponMovementVelocity =  {
 --- @field isInJiggleHold boolean
 --- @field isJigglingOnDefend boolean
 --- @field isOnBooster boolean
+--- @field isPassivelyInStealth boolean
 --- @field isPreAimingMapAngle boolean
 --- @field isPreAimViableForHoldingAngle boolean
 --- @field isRcsEnabled boolean
@@ -125,6 +129,7 @@ local WeaponMovementVelocity =  {
 --- @field lastBestTargetValidOrigin Vector3
 --- @field lastMoveDirection Vector3
 --- @field lastSeenTimers Timer[]
+--- @field lastShotTimer Timer
 --- @field lastSoundTimer Timer
 --- @field lookAtBackingUpOrigin Vector3
 --- @field noticedLoudPlayerTimers Timer[]
@@ -166,6 +171,7 @@ local WeaponMovementVelocity =  {
 --- @field sprayRealTime number
 --- @field sprayTime number
 --- @field sprayTimer Timer
+--- @field stealthingTimer Timer
 --- @field strafePeekDirection string
 --- @field strafePeekIndex number
 --- @field strafePeekMoveAngle Angle
@@ -215,7 +221,7 @@ function AiStateEngage:initFields()
     self.jiggleShootDirection = "Left"
     self.jiggleShootTime = Math.getRandomFloat(0.33, 0.66)
     self.jiggleShootTimer = Timer:new():startThenElapse()
-    self.lastSoundTimer = Timer:new():start()
+    self.lastSoundTimer = Timer:new():startThenElapse()
     self.noticedPlayerTimers = {}
     self.noticedPlayerLastKnownOrigin = {}
     self.onGroundTime = 0.1
@@ -259,6 +265,10 @@ function AiStateEngage:initFields()
     self.blockMovementAfterPlantTimer = Timer:new():startThenElapse()
     self.waitForTargetVisibleTimer = Timer:new():startThenElapse()
     self.preAimMapAngleTimer = Timer:new():startThenElapse()
+    self.isAllowedToStealthTarget = Math.getChance(2)
+    self.isAllowedToStealthKnifeTarget = Math.getChance(3)
+    self.lastShotTimer = Timer:new():startThenElapse()
+    self.stealthingTimer = Timer:new():startThenElapse()
 
     for i = 1, 64 do
         self.noticedPlayerTimers[i] = Timer:new()
@@ -276,14 +286,14 @@ function AiStateEngage:initFields()
         self.lastSeenTimers[i] = Timer:new()
     end
 
-    self:setAimSkill(Config.defaultSkillLevel)
+    self:setSkillLevel(Config.defaultSkillLevel)
 end
 
 --- @return void
 function AiStateEngage:initEvents()
     Callbacks.playerFootstep(function(e)
         if e.player:isLocalPlayer() then
-            self.lastSoundTimer:restart()
+            self.lastSoundTimer:start()
         end
     end)
 
@@ -291,7 +301,8 @@ function AiStateEngage:initEvents()
         if e.player:isLocalPlayer() then
             self.isAllowedToNoscope = Math.getChance(2)
 
-            self.lastSoundTimer:restart()
+            self.lastShotTimer:start()
+            self.lastSoundTimer:start()
         end
     end)
 
@@ -358,7 +369,7 @@ function AiStateEngage:initEvents()
             return
         end
 
-        self.jiggleHoldCooldownTimer:restart()
+        self.jiggleHoldCooldownTimer:start()
 
         self:noticeEnemy(e.attacker, Vector3.MAX_DISTANCE, true, "Shot by")
     end)
@@ -383,7 +394,7 @@ function AiStateEngage:initEvents()
 
     Callbacks.weaponFire(function(e)
         if e.player:isLocalPlayer() or e.player:is(self.bestTarget) then
-            self.jiggleHoldCooldownTimer:restart()
+            self.jiggleHoldCooldownTimer:start()
         end
 
         if CsgoWeapons[e.weapon].is_melee_weapon then
@@ -443,6 +454,11 @@ function AiStateEngage:initEvents()
             return
         end
 
+        if e.victim:isTeammate() then
+            self.isAllowedToStealthTarget = Math.getChance(2)
+            self.isAllowedToStealthKnifeTarget = Math.getChance(3)
+        end
+
         if e.victim:is(self.bestTarget) then
             self.isAllowedToJiggleHold = Math.getChance(2)
         end
@@ -471,7 +487,7 @@ function AiStateEngage:initEvents()
             return
         end
 
-        self.blockMovementAfterPlantTimer:restart()
+        self.blockMovementAfterPlantTimer:start()
     end)
 end
 
@@ -531,7 +547,7 @@ function AiStateEngage:assess()
         return AiPriority.ENGAGE_ACTIVE
     end
 
-    -- todo this will definitely cause the AI to become stuck if we do not handle pathfinding when the defuser is dormant.
+    -- This will definitely cause the AI to become stuck if we do not handle pathfinding when the defuser is dormant.
     if AiUtility.isBombBeingDefusedByEnemy then
         return AiPriority.ENGAGE_ACTIVE
     end
@@ -617,11 +633,109 @@ function AiStateEngage:think(cmd)
         return
     end
 
+    self:handleStealthing()
     self:handleMovement()
-    -- This is below movement because it needs to override movement.
     self:handleAttacking(cmd)
     self:handleCommunications()
     self:handleShiftWalking()
+end
+
+--- @return void
+function AiStateEngage:handleStealthing()
+    self.isPassivelyInStealth = not self.stealthingTimer:isElapsed(2.5)
+
+    -- We're trying to be stealthy. Walking up on the enemy or whatever.
+    if self:isStealthingTarget() then
+        self.ai.states.evade:block()
+
+        self.activity = "Stealthing behind enemy"
+
+        self.stealthingTimer:start()
+
+        -- Suppress the "spray weapon" timer, or the AI will shoot enemies as they walk behind cover.
+        self.sprayTimer:elapse()
+
+        Pathfinder.walk()
+        VirtualMouse.lookAtLocation(self.bestTarget:getEyeOrigin(), 6, VirtualMouse.noise.moving, "Engage look-at enemy while stealthing")
+
+        self.isActivelyInStealth = true
+
+        return
+    else
+        self.isActivelyInStealth = false
+    end
+end
+
+--- @return boolean
+function AiStateEngage:isStealthingTarget()
+    if not self.isAllowedToStealthTarget or not self.bestTarget then
+        return false
+    end
+
+    if AiUtility.timeData.roundtime_remaining < 20 then
+        return false
+    end
+
+    if not self.lastSoundTimer:isElapsed(6) then
+        return false
+    end
+
+    if AiUtility.isBombPlanted() then
+        return false
+    end
+
+    if LocalPlayer:getOrigin():getDistance(self.bestTarget:getOrigin()) > 650 then
+        return false
+    end
+
+    local eyeOrigin = LocalPlayer.getEyeOrigin()
+
+    for _, enemy in pairs(AiUtility.visibleEnemies) do
+        local fov = enemy:getCameraAngles():getFov(enemy:getEyeOrigin(), eyeOrigin)
+
+        if fov < AiUtility.visibleFovThreshold then
+            -- AI may as well have made a sound.
+            self.lastSoundTimer:start()
+
+            return false
+        end
+    end
+
+    if LocalPlayer:isCounterTerrorist() then
+        local _, distance = Nodegraph.getClosestBombsite(self.bestTarget:getOrigin())
+
+        -- We shouldn't be stealthing enemies who are on the bombsite.
+        if distance < 1000 then
+            return false
+        end
+    end
+
+    return true
+end
+
+--- @return void
+function AiStateEngage:handleShiftWalking()
+    if self.isPassivelyInStealth then
+        Pathfinder.walk()
+
+        return
+    end
+
+    if not self.jiggleHoldTimer:isElapsed(self.jiggleHoldTime + 1) then
+        self.ai.routines.walk:block()
+
+        return
+    end
+
+    if self.bestTarget and (self.isVisibleToBestTarget or self.isAboutToBeVisibleToBestTarget) then
+        local clientEyeOrigin = LocalPlayer.getEyeOrigin()
+        local shootFov = self:getShootFov(self.bestTarget:getCameraAngles(), self.bestTarget:getEyeOrigin(), clientEyeOrigin)
+
+        -- Don't walk if the enemy is facing us and we're going to peek them.
+        if shootFov < 20 then
+            self.ai.routines.walk:block()
+        end
+    end
 end
 
 --- @return void
@@ -668,7 +782,7 @@ function AiStateEngage:handlePreAimMapAngle()
 
             self.isPreAimingMapAngle = true
 
-            self.preAimMapAngleTimer:restart()
+            self.preAimMapAngleTimer:start()
 
             local distance = clientOrigin:getDistance(node.floorOrigin)
 
@@ -720,7 +834,7 @@ function AiStateEngage:pingEnemy()
                 LocalPlayer.ping()
             end)
 
-            self.pingEnemyTimer:restart()
+            self.pingEnemyTimer:start()
 
             return
         end
@@ -1445,6 +1559,10 @@ function AiStateEngage:handleMovement()
         return
     end
 
+    if self:movementStealthing() then
+        return
+    end
+
     if self:movementHoldAfterPlant() then
         return
     end
@@ -1481,6 +1599,38 @@ function AiStateEngage:handleMovement()
     end
 
     self:movementToTarget()
+end
+
+--- @return boolean
+function AiStateEngage:movementStealthing()
+    if not self.isActivelyInStealth then
+        return false
+    end
+
+    local clientOrigin = LocalPlayer:getOrigin()
+    local targetOrigin = self.bestTarget:getOrigin()
+
+    if clientOrigin:getDistance(targetOrigin) > 100 then
+        return false
+    end
+
+    local behindOrigin
+
+    if LocalPlayer:isAbleToAttack() then
+        behindOrigin = targetOrigin
+    else
+        behindOrigin = targetOrigin + self.bestTarget:getCameraAngles():getBackward() * 72
+    end
+
+    if clientOrigin:getDistance(behindOrigin) > 10 then
+        Pathfinder.moveAtAngle(clientOrigin:getAngle(behindOrigin), true)
+    else
+        Pathfinder.standStill()
+    end
+
+    self.activity = "Knifing target"
+
+    return true
 end
 
 --- @return boolean
@@ -1573,7 +1723,7 @@ function AiStateEngage:movementJiggleBait()
     if self.jiggleHoldCount >= self.jiggleHoldThreshold then
         self.jiggleHoldCount = 0
         self.jiggleHoldThreshold = Math.getRandomInt(1, 6)
-        self.jiggleHoldCooldownTimer:restart()
+        self.jiggleHoldCooldownTimer:start()
     end
 
     if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
@@ -1650,7 +1800,7 @@ function AiStateEngage:movementJiggleBait()
 
         if not leftTrace.isStartSolid and not rightTrace.isStartSolid then
             if not leftTrace.isIntersectingGeometry then
-                self.jiggleHoldTimer:restart()
+                self.jiggleHoldTimer:start()
 
                 self.jiggleHoldDirection = right
                 self.jiggleHoldTime = Math.getRandomFloat(0.2, 0.6)
@@ -1658,7 +1808,7 @@ function AiStateEngage:movementJiggleBait()
             end
 
             if not rightTrace.isIntersectingGeometry then
-                self.jiggleHoldTimer:restart()
+                self.jiggleHoldTimer:start()
 
                 self.jiggleHoldDirection = left
                 self.jiggleHoldTime = Math.getRandomFloat(0.2, 0.6)
@@ -1713,7 +1863,7 @@ function AiStateEngage:movementAvoidSmokes()
             self.lookAtBackingUpOrigin = Trace.getLineAlongCrosshair(AiUtility.traceOptionsVisible).endPosition
             self.isBackingUp = true
 
-            self.seekCoverTimer:restart()
+            self.seekCoverTimer:start()
 
             Pathfinder.moveToNode(cover, {
                 task = "Back up from threats",
@@ -1779,7 +1929,7 @@ function AiStateEngage:movementBackUpFromThreats()
         self.lookAtBackingUpOrigin = Trace.getLineAlongCrosshair(AiUtility.traceOptionsVisible).endPosition
         self.isBackingUp = true
 
-        self.seekCoverTimer:restart()
+        self.seekCoverTimer:start()
 
         Pathfinder.moveToNode(cover, {
             task = "Back up from threats",
@@ -2041,6 +2191,10 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:handleAttacking(cmd)
+    if self:attackingKnife(cmd) then
+        return
+    end
+
     self:attackingBlockRoutines()
     self:attackingEquipWeapon()
     self:attackingDefending()
@@ -2104,6 +2258,32 @@ function AiStateEngage:handleAttacking(cmd)
     end
 
     self:attackingBestTarget(cmd)
+end
+
+--- @param cmd SetupCommandEvent
+--- @return boolean
+function AiStateEngage:attackingKnife(cmd)
+    if not self.isActivelyInStealth then
+        return false
+    end
+
+    local clientOrigin = LocalPlayer:getOrigin()
+    local targetBounds = self.bestTarget:getBounds()
+    local equipKnifeBounds = clientOrigin:getBounds(Vector3.align.UP, 100, 100, 72)
+
+    if Vector3.isBoundsIntersecting(targetBounds, equipKnifeBounds) then
+        self.ai.routines.manageGear:block()
+
+        LocalPlayer.equipKnife()
+    end
+
+    local useKnifeBounds = clientOrigin:getBounds(Vector3.align.UP, 36, 36, 72)
+
+    if Vector3.isBoundsIntersecting(useKnifeBounds, targetBounds) then
+        cmd.in_attack2 = true
+    end
+
+    return true
 end
 
 --- @return void
@@ -2225,14 +2405,13 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:attackingSprayWeapon(cmd)
-    -- Spray.
     if self.sprayTimer:isStarted() and not self.sprayTimer:isElapsed(self.sprayRealTime) then
         self.ai.routines.manageWeaponReload:block()
 
         if self.bestTarget and not AiUtility.visibleEnemies[self.bestTarget.eid] then
-            self:shoot(cmd, self.watchOrigin, self.bestTarget)
+            self:shootAtTarget(cmd, self.watchOrigin, self.bestTarget)
         elseif not self.bestTarget then
-            self:shoot(cmd, self.watchOrigin)
+            self:shootAtTarget(cmd, self.watchOrigin)
         end
     end
 end
@@ -2394,7 +2573,7 @@ function AiStateEngage:attackingWallAndSmokeBang(cmd)
                     self.shootAtOrigin:drawCircleOutline(12, 2, Color:hsla(30, 1, 0.5, 200))
                 end)
 
-                self:shoot(cmd, self.shootAtOrigin)
+                self:shootAtTarget(cmd, self.shootAtOrigin)
 
                 return true
             end
@@ -2409,7 +2588,7 @@ end
 function AiStateEngage:attackingFlashed(cmd)
     -- Shoot while blind.
     if LocalPlayer.isFlashed() and AiUtility.visibleEnemies[self.bestTarget.eid] then
-        self:shoot(cmd, self.shootAtOrigin, self.bestTarget)
+        self:shootAtTarget(cmd, self.shootAtOrigin, self.bestTarget)
 
         return true
     end
@@ -2437,7 +2616,7 @@ function AiStateEngage:attackingBestTarget(cmd)
     local isSufficientHitboxesVisible = visibleHitboxCount >= 8
 
     if not isSufficientHitboxesVisible then
-        self.waitForTargetVisibleTimer:restart()
+        self.waitForTargetVisibleTimer:start()
     end
 
     if self.waitForTargetVisibleTimer:isElapsed(0.35) then
@@ -2475,7 +2654,7 @@ function AiStateEngage:attackingBestTarget(cmd)
         self.lastSeenTimers[self.bestTarget.eid]:start()
 
         self:noticeEnemy(self.bestTarget, 4096, false, "In shoot FoV")
-        self:shoot(cmd, hitbox, self.bestTarget)
+        self:shootAtTarget(cmd, hitbox, self.bestTarget)
     end
 end
 
@@ -2634,25 +2813,6 @@ function AiStateEngage:isAbleToHoldAngle()
     return false
 end
 
---- @return void
-function AiStateEngage:handleShiftWalking()
-    if not self.jiggleHoldTimer:isElapsed(self.jiggleHoldTime + 1) then
-        self.ai.routines.walk:block()
-
-        return
-    end
-
-    if self.bestTarget and (self.isVisibleToBestTarget or self.isAboutToBeVisibleToBestTarget) then
-        local clientEyeOrigin = LocalPlayer.getEyeOrigin()
-        local shootFov = self:getShootFov(self.bestTarget:getCameraAngles(), self.bestTarget:getEyeOrigin(), clientEyeOrigin)
-
-        -- Don't walk if the enemy is facing is and we're going to peek them.
-        if shootFov < 20 then
-            self.ai.routines.walk:block()
-        end
-    end
-end
-
 --- @param angle Angle
 --- @param vectorA Vector3
 --- @param vectorB Vector3
@@ -2679,16 +2839,17 @@ end
 --- @param aimAtBaseOrigin Vector3
 --- @param enemy Player
 --- @return void
-function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
+function AiStateEngage:shootAtTarget(cmd, aimAtBaseOrigin, enemy)
+    -- We haven't set any weapon stats yet.
+    -- This can happen because of the knife being out from stealthing.
+    if not self.weaponMode then
+        return
+    end
+
     self.activity = "Shooting enemy"
 
     -- Nothing to shoot at.
     if not aimAtBaseOrigin then
-        return
-    end
-
-    -- Don't shoot when in-air.
-    if not LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND) then
         return
     end
 
@@ -2792,6 +2953,23 @@ function AiStateEngage:shoot(cmd, aimAtBaseOrigin, enemy)
     method(self, cmd, aimAtOrigin, fov, csgoWeapon)
 end
 
+--- @param cmd SetupCommandEvent
+--- @return void
+function AiStateEngage:fireWeapon(cmd)
+    if not self.isAimEnabled or not MenuGroup.enableAimbot:get() then
+        return
+    end
+
+    -- Don't shoot when in-air.
+    if not LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND) then
+        return
+    end
+
+    self.ai.routines.walk.cooldownTimer:start()
+
+    VirtualMouse.fireWeapon()
+end
+
 --- @return boolean
 function AiStateEngage:isTeammateInCrosshair(aimAtOrigin)
     local clientWeapon = LocalPlayer:getWeapon()
@@ -2841,18 +3019,6 @@ function AiStateEngage:isTeammateInCrosshair(aimAtOrigin)
     until true end
 
     return isTeammateInDanger
-end
-
---- @param cmd SetupCommandEvent
---- @return void
-function AiStateEngage:fireWeapon(cmd)
-    if not self.isAimEnabled or not MenuGroup.enableAimbot:get() then
-        return
-    end
-
-    self.ai.routines.walk.cooldownTimer:restart()
-
-    VirtualMouse.fireWeapon()
 end
 
 --- @param baseSpeed number
@@ -3076,8 +3242,6 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
         fireUnderVelocity = weapon.max_player_speed / 4
     end
 
-    print(self.visibleReactionTimer:get())
-
     if fov < self.shootWithinFov
         and (isNoscoping or (self.scopedTimer:isElapsed(fireDelay) and LocalPlayer:m_bIsScoped() == 1))
         and LocalPlayer:m_vecVelocity():getMagnitude() < fireUnderVelocity
@@ -3261,7 +3425,7 @@ function AiStateEngage:actionStrafePeek()
     if not self.isBestTargetVisible
         and not self.isVisibleToBestTarget
         and self.strafePeekTimer:isStarted()
-        and not self.strafePeekTimer:isElapsedThenStop(0.5)
+        and not self.strafePeekTimer:isElapsedThenStop(1)
     then
         Pathfinder.moveAtAngle(self.strafePeekMoveAngle)
 
@@ -3314,6 +3478,10 @@ function AiStateEngage:actionStrafePeek()
         local findOffsetTrace = Trace.getHullInDirection(eyeOrigin, direction, bounds, traceOptions, "AiStateEngage.strafePeek<FindStrafePeekDirection>")
         local offsetTraceOrigin = findOffsetTrace.endPosition
         local isVisible = false
+
+        if findOffsetTrace.isIntersectingGeometry then
+            offsetTraceOrigin:offsetByVector(direction * -8)
+        end
 
         for _, hitbox in pairs(enemy:getHitboxPositions({
             Player.hitbox.HEAD,
@@ -3425,7 +3593,7 @@ function AiStateEngage:preAimThroughCorners()
     if self.preAimThroughCornersUpdateTimer:isElapsedThenRestart(1.2) then
         local hitboxPosition = target:getHitboxPosition(Player.hitbox.HEAD)
         local distance = playerOrigin:getDistance(hitboxPosition)
-        local offsetRange = Math.getFloat(Math.getClamped(distance, 0, 1024), 1024) * 150
+        local offsetRange = Math.getFloat(Math.getClamped(distance, 0, 1024), 1024) * 64
 
         self.preAimThroughCornersOrigin = hitboxPosition:offset(
             Math.getRandomFloat(-offsetRange, offsetRange),
@@ -3578,7 +3746,7 @@ end
 
 --- @param skill number
 --- @return void
-function AiStateEngage:setAimSkill(skill)
+function AiStateEngage:setSkillLevel(skill)
     self.skill = skill
 
     if skill == -1 then
@@ -3591,6 +3759,8 @@ function AiStateEngage:setAimSkill(skill)
         self.aimOffset = 96
         self.aimInaccurateOffset = 144
         self.blockTime = 0.4
+
+        return
     end
 
     local skillMinimum = {

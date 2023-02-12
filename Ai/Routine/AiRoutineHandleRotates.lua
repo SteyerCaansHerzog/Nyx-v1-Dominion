@@ -90,7 +90,7 @@ function AiRoutineHandleRotates:calloutRotate()
 
 	self.lastCallRotateBombsite = enemyNearestBombsite.bombsite
 
-	self.callRotateCooldownTimer:restart()
+	self.callRotateCooldownTimer:start()
 
 	local clientOrigin = LocalPlayer:getOrigin()
 	local clientNearestBombsite = Nodegraph.getClosestBombsite(clientOrigin)
@@ -167,7 +167,7 @@ function AiRoutineHandleRotates:calloutGo()
 		return
 	end
 
-	self.callGoCooldownTimer:restart()
+	self.callGoCooldownTimer:start()
 
 	local clientOrigin = LocalPlayer:getOrigin()
 	local clientNearestBombsite = Nodegraph.getClosestBombsite(clientOrigin)

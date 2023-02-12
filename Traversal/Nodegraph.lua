@@ -333,7 +333,7 @@ function Nodegraph.getSpawn(spawn)
 end
 
 --- @param origin Vector3
---- @return NodeTypeObjective
+--- @return NodeTypeObjective, number
 function Nodegraph.getClosestBombsite(origin)
     if AiUtility.mapInfo.bombsiteType == "distance" then
         return Nodegraph.getClosestBombsiteByDistance(origin)
@@ -343,7 +343,7 @@ function Nodegraph.getClosestBombsite(origin)
 end
 
 --- @param origin Vector3
---- @return NodeTypeObjective
+--- @return NodeTypeObjective, number
 function Nodegraph.getClosestBombsiteByDistance(origin)
     --- @type NodeTypeObjective[]
     local bombsites = {
@@ -364,7 +364,7 @@ function Nodegraph.getClosestBombsiteByDistance(origin)
         end
     end
 
-    return closestBombsite
+    return closestBombsite, closestDistance
 end
 
 --- @param origin Vector3
@@ -421,7 +421,6 @@ end
 --- @param bombsite string
 --- @return T[]
 function Nodegraph.getForBombsiteOfType(node, bombsite)
-    -- todo
     local nodes = Nodegraph.getOfType(node)
 
     if not nodes then

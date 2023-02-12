@@ -88,8 +88,8 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 
 --{{{ Pathfinder
 --- @class Pathfinder : Class
---- @field avoidTeammatesOriginalMovementAngle Angle
 --- @field avoidTeammatesNewMovementAngle Angle
+--- @field avoidTeammatesOriginalMovementAngle Angle
 --- @field blockedBombsite NodeTypeObjective
 --- @field cachedLastRequest PathfinderRequest
 --- @field deactivatedNodesPool NodeTypeBase[]
@@ -117,6 +117,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field isReadyToReplayMovementRecording boolean
 --- @field isReplayingMovementRecording boolean
 --- @field isWalking boolean
+--- @field jumpCooldown Timer
 --- @field lastMovementAngle Angle
 --- @field lastRequest PathfinderRequest
 --- @field moveDuckTimer Timer
@@ -131,7 +132,6 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field pathfindIntervalTimer Timer
 --- @field randomJumpIntervalTime number
 --- @field randomJumpIntervalTimer Timer
---- @field jumpCooldown Timer
 local Pathfinder = {}
 
 --- @return void
@@ -184,7 +184,7 @@ function Pathfinder.initEvents()
 		end
 
 		if not LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND) then
-			Pathfinder.jumpCooldown:restart()
+			Pathfinder.jumpCooldown:start()
 		end
 
 		Pathfinder.handleLastRequest()
@@ -1138,7 +1138,7 @@ function Pathfinder.traverseActivePath(cmd)
 	if LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND) then
 		Pathfinder.moveOnGroundTimer:ifPausedThenStart()
 	else
-		Pathfinder.moveOnGroundTimer:restart()
+		Pathfinder.moveOnGroundTimer:start()
 	end
 
 	Pathfinder.airDuck(cmd)
@@ -1194,9 +1194,9 @@ function Pathfinder.traverseActivePath(cmd)
 
 	if currentNode.isDuck then
 		if previousNode and previousNode.isDuck then
-			Pathfinder.moveDuckTimer:restart()
+			Pathfinder.moveDuckTimer:start()
 		elseif distance2d < 35 then
-			Pathfinder.moveDuckTimer:restart()
+			Pathfinder.moveDuckTimer:start()
 		end
 	end
 

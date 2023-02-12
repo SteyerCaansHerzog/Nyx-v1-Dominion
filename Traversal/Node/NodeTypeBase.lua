@@ -703,8 +703,6 @@ function NodeTypeBase:onSetup(nodegraph)
     -- All nodes are always spawned approximately 18 units above the floor.
     self.floorOrigin = self.origin:clone():offset(0, 0, -18)
 
-    print(self.floorOrigin)
-
     if self.isPlanar then
         -- We need to test from a higher position, to account for stairs or short ledges.
         local origin = self.origin:clone():offset(0, 0, 18)

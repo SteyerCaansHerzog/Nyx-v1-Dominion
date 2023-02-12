@@ -81,7 +81,7 @@ function AiStatePickupBomb:assess()
         if delta > 5 then
             self.ignorePickup = false
             self.pickupBombFails = 0
-            self.pickupBombTimer:restart()
+            self.pickupBombTimer:start()
         end
 
         if self.pickupBombTimer:isElapsed(self.pickupBombTime) then

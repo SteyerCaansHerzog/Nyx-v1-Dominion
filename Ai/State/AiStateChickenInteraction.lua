@@ -130,7 +130,7 @@ end
 function AiStateChickenInteraction:reset()
     self.targetChicken = nil
 
-    self.cooldownTimer:restart()
+    self.cooldownTimer:start()
 end
 
 --- @param cmd SetupCommandEvent

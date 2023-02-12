@@ -78,7 +78,7 @@ function AiStateFlashbangDynamic:assess()
 
     -- AI is threatened. Don't try to throw a flashbang.
     if AiUtility.isClientThreatenedMajor or AiUtility.isEnemyVisible then
-        self.threatCooldownTimer:restart()
+        self.threatCooldownTimer:start()
     end
 
     -- We were just threatened by an enemy, so we don't want to try again too soon.
@@ -259,7 +259,7 @@ end
 
 --- @return void
 function AiStateFlashbangDynamic:deactivate()
-    self.throwAttemptCooldownTimer:restart()
+    self.throwAttemptCooldownTimer:start()
 
     self:reset()
 end
@@ -334,9 +334,9 @@ function AiStateFlashbangDynamic:think(cmd)
         cmd.in_attack = false
 
         Client.fireAfter(0.15, function()
-            self.throwCooldownTimer:restart()
+            self.throwCooldownTimer:start()
 
-            self.ai.routines.walk.cooldownTimer:restart()
+            self.ai.routines.walk.cooldownTimer:start()
 
             self:reset()
         end)

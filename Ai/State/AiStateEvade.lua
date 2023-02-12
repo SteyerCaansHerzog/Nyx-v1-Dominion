@@ -47,13 +47,13 @@ function AiStateEvade:__init()
 
     Callbacks.weaponFire(function(e)
         if e.player:isLocalPlayer() and e.player:isHoldingBoltActionRifle() then
-            self.shotBoltActionRifleTimer:restart()
+            self.shotBoltActionRifleTimer:start()
         end
     end)
 
     Callbacks.playerHurt(function(e)
         if e.victim:isLocalPlayer() and e.health < 20 then
-            self.hurtTimer:restart()
+            self.hurtTimer:start()
         end
     end)
 end
@@ -111,11 +111,13 @@ function AiStateEvade:assess()
     end
 
     -- Avoid grenades.
-    for _, grenade in Entity.find({"CBaseCSGrenadeProjectile", "CMolotovProjectile"}) do
-        if eyeOrigin:getDistance(grenade:m_vecOrigin()) < 128 then
-            return AiPriority.EVADE_PASSIVE
+    for _, grenade in Entity.find({"CBaseCSGrenadeProjectile", "CMolotovProjectile"}) do repeat
+        if eyeOrigin:getDistance(grenade:m_vecOrigin()) > 128 then
+            break
         end
-    end
+
+        return AiPriority.EVADE_PASSIVE
+    until true end
 
     return AiPriority.IGNORE
 end

@@ -141,11 +141,11 @@ function VirtualMouse.initEvents()
 	end, false)
 
 	Callbacks.levelInit(function()
-		VirtualMouse.blockMouseControlTimer:restart()
+		VirtualMouse.blockMouseControlTimer:start()
 	end)
 
 	Callbacks.roundPrestart(function()
-		VirtualMouse.blockMouseControlTimer:restart()
+		VirtualMouse.blockMouseControlTimer:start()
 	end)
 end
 
@@ -326,14 +326,14 @@ function VirtualMouse.handleBuildup()
 	VirtualMouse.buildupThreshold = Math.getRandomFloat(125,  165)
 	VirtualMouse.buildupCooldownTime = Math.getRandomFloat(0.25, 0.8)
 
-	VirtualMouse.buildupCooldownTimer:restart()
+	VirtualMouse.buildupCooldownTimer:start()
 end
 
 --- @return void
 function VirtualMouse.delayMovement()
 	VirtualMouse.lookSpeed = 0
 	VirtualMouse.lookSpeedDelayed = 0
-	VirtualMouse.lookSpeedDelayTimer:restart()
+	VirtualMouse.lookSpeedDelayTimer:start()
 	VirtualMouse.lookSpeedDelay = Math.getRandomFloat(VirtualMouse.lookSpeedDelayMin, VirtualMouse.lookSpeedDelayMax)
 end
 
@@ -596,27 +596,6 @@ function VirtualMouse.setIdealLookAhead(idealViewAngles)
 		return
 	end
 
-	local isLookingDirectlyAhead = false
-
-	if Pathfinder.path.node.isJump then
-		-- isLookingDirectlyAhead = true todo
-	end
-
-	local previousNode = Pathfinder.path.nodes[Pathfinder.path.idx - 1]
-
-	if previousNode and previousNode.isJump then
-		-- isLookingDirectlyAhead = true todo
-	end
-
-	-- Look in direction of jumps to increase accuracy.
-	if isLookingDirectlyAhead then
-		local nextNode = Pathfinder.path.nodes[Pathfinder.path.idx + 1]
-
-		if nextNode then
-			lookAheadNode = nextNode
-		end
-	end
-
 	local lookOrigin = lookAheadNode.origin:clone()
 
 	-- We want to look roughly head height of the goal.
@@ -654,7 +633,7 @@ function VirtualMouse.setIdealWatchCorner(idealViewAngles)
 	if AiUtility.clientThreatenedFromOrigin then
 		VirtualMouse.watchCornerOrigin = AiUtility.clientThreatenedFromOrigin
 
-		VirtualMouse.watchCornerTimer:restart()
+		VirtualMouse.watchCornerTimer:start()
 	end
 
 	if VirtualMouse.watchCornerTimer:isElapsed(1.5) then

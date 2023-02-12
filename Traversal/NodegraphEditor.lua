@@ -151,7 +151,7 @@ function NodegraphEditor:initFields()
     self.keySetConnections = VKey:new(VKey.F)
     self.keyTestLineOfSight  = VKey:new(VKey.G):activate()
     self.keyUnsetConnections = VKey:new(VKey.MIDDLE_MOUSE)
-    self.keyStartMovementRecorder = VKey:new(VKey.Z)
+    self.keyStartMovementRecorder = VKey:new(VKey.B)
     self.moveNodeDelay = Timer:new()
     self.moveNodeResetDelay = Timer:new():startThenElapse()
     self.nextNodeTimer = Timer:new():startThenElapse()
@@ -575,7 +575,7 @@ function NodegraphEditor:processAdd()
 
     -- Drag-move is active.
     if self.moveNode then
-        self.moveNodeResetDelay:restart()
+        self.moveNodeResetDelay:start()
 
         local trace = Trace.getHullAlongCrosshair(nodeBounds, AiUtility.traceOptionsPathfinding)
 
@@ -1026,11 +1026,11 @@ function NodegraphEditor:render()
     drawPos:offset(0, height)
 
 
-    local text = "[Z] Begin Movement Recorder"
+    local text = "[B] Begin Movement Recorder"
     local color = ColorList.INFO
 
     if self.keyStartMovementRecorder:isToggled() then
-        text = "[Z] STOP MOVEMENT RECORDER"
+        text = "[B] STOP MOVEMENT RECORDER"
         color = ColorList.ERROR
     end
 
@@ -1039,8 +1039,13 @@ function NodegraphEditor:render()
 
     drawPos:offset(0, height)
 
-    UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)
-    UserInterface.drawText(drawPos, Font.SMALL, color, "[T] Copy Looked at Node")
+    UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, ColorList.INFO, height)
+    UserInterface.drawText(drawPos, Font.SMALL, ColorList.INFO, "[T] Copy Looked at Node")
+
+    drawPos:offset(0, height)
+
+    UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, ColorList.INFO, height)
+    UserInterface.drawText(drawPos, Font.SMALL, ColorList.INFO, "[X] Save Nodegraph")
 
     drawPos:offset(0, height)
 

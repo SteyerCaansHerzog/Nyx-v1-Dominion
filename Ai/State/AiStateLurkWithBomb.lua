@@ -20,7 +20,7 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field bombsite string
 --- @field isSpotted boolean
 local AiStateLurkWithBomb = {
-	name = "Lurk with Bomb",
+	name = "Lurk With Bomb",
 	requiredNodes = {
 		Node.spotLurkWithBomb
 	},
@@ -65,15 +65,11 @@ function AiStateLurkWithBomb:assess()
 		return AiPriority.IGNORE
 	end
 
-	if not AiUtility.bombCarrier then
+	if not AiUtility.bombCarrier or not AiUtility.bombCarrier:isLocalPlayer() then
 		return AiPriority.IGNORE
 	end
 
-	if not AiUtility.bombCarrier:isLocalPlayer() then
-		return AiPriority.IGNORE
-	end
-
-	if AiUtility.timeData.roundtime_elapsed > 40 then
+	if AiUtility.timeData.roundtime_elapsed > 35 then
 		return AiPriority.IGNORE
 	end
 

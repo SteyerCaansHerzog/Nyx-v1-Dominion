@@ -49,7 +49,7 @@ function AiStateGraffiti:__init()
             self.killCount = 0
         end
 
-        self.lastKillTimer:restart()
+        self.lastKillTimer:start()
 
         self.killCount = self.killCount + 1
     end)

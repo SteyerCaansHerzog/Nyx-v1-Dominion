@@ -72,6 +72,7 @@ function AiChatCommandBoost:invoke(ai, sender, args, isBot)
     Client.fireAfter(orderInQueue * 0.6, function()
         if not self.isTaken then
             ai.states.boostTeammate:boost(sender, traceAim.endPosition, false, isBot)
+            ai.states.useBoost:reset()
 
             Messenger.send(true, " ok")
 
