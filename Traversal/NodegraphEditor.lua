@@ -37,6 +37,12 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @class NodePathfindTest
 --- @field node NodeTypeBase
 --- @field isOk boolean
+
+--- @class NodegraphEditorHistory
+--- @field nodeName string
+--- @field action string
+--- @field data NodegraphDataSerialized
+--- @field nodesChanged number
 --}}}
 
 --{{{ NodegraphEditor
@@ -72,7 +78,7 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field nextNodeTimer Timer
 --- @field node NodeTypeBase
 --- @field nodeClassnameMap table<string, number>
---- @field nodegraphSerializedHistory NodeTypeBase[]
+--- @field nodegraphSerializedHistory NodegraphEditorHistory[]
 --- @field nodes NodeTypeBase[]
 --- @field pathfindTestNodes NodePathfindTest[]
 --- @field selectedNode NodeTypeBase
@@ -376,62 +382,35 @@ end
 --- @param isDeletion boolean
 --- @param node NodeTypeBase
 --- @return void
-function NodegraphEditor:saveNodeHistory(node, isDeletion)
-    local history = {
-        -- If true the node will be removed from the serialized nodegraph.
-        -- Do not confuse this with saving a deleted node and re-adding it.
-        isDeletion = isDeletion,
-        nodes = {
-            [node.id] = Nodegraph.getSerializedNode(node)
-        }
-    }
+function NodegraphEditor:saveNodegraphHistory(node, action)
+    local nodesChanged = 1
 
     for _, connection in pairs(node.connections) do
-        history.nodes[connection.id] = Nodegraph.getSerializedNode(connection)
+        nodesChanged = nodesChanged + 1
     end
+
+    --- @type NodegraphEditorHistory
+    local history = {
+        nodeName = node.name,
+        action = action,
+        data = Nodegraph.getSerializedNodegraph(),
+        nodesChanged = nodesChanged
+    }
 
     table.insert(self.nodegraphSerializedHistory, history)
 end
 
 --- @return void
-function NodegraphEditor:loadNodeHistory()
+function NodegraphEditor:loadNodegraphHistory()
     local history = table.remove(self.nodegraphSerializedHistory, #self.nodegraphSerializedHistory)
 
     if not history then
         return
     end
 
-    local count = 0
+    Nodegraph.loadFromString(history.data)
 
-    local nodegraphData = Nodegraph.getSerializedNodegraph()
-
-    -- Remove nodes from the serialized if they exist.
-    for idx, datum in pairs(nodegraphData.nodes) do repeat
-        local node = history.nodes[datum.id]
-
-        if not node then
-            break
-        end
-
-        table.remove(nodegraphData.nodes, idx)
-    until true end
-
-    if not history.isDeletion then
-        -- Add all nodes to the serialized graph.
-        for _, node in pairs(history.nodes) do
-            table.insert(nodegraphData.nodes, node)
-
-            count = count + 1
-        end
-    end
-
-    Nodegraph.loadFromString(nodegraphData)
-
-    if history.isDeletion then
-        Logger.message(0, Localization.nodegraphActionDelete)
-    else
-        Logger.message(0, Localization.nodegraphActionUndone, count)
-    end
+    Logger.message(Logger.OK, Localization.nodegraphActionUndone, history.action, history.nodeName, history.nodesChanged)
 end
 
 --- @return void
@@ -478,7 +457,7 @@ function NodegraphEditor:processKeys()
     end
 
     if self.keyControl:isHeld() and self.keyUndoAction:wasPressed() then
-        self:loadNodeHistory()
+        self:loadNodegraphHistory()
     end
 
     self:processSwitchNodeType()
@@ -597,7 +576,7 @@ function NodegraphEditor:processSetConnections()
     end
 
     if self.keyUnsetConnections:wasPressed() then
-        self:saveNodeHistory(self.selectedNode)
+        self:saveNodegraphHistory(self.selectedNode, "unset node connections")
 
         self.selectedNode:unsetConnections()
 
@@ -617,7 +596,7 @@ function NodegraphEditor:processSetConnections()
             return
         end
 
-        self:saveNodeHistory(node)
+        self:saveNodegraphHistory(node, "modify node connections")
 
         if self.selectedNode.connections[node.id] then
             self.selectedNode.connections[node.id] = nil
@@ -642,7 +621,7 @@ function NodegraphEditor:processLeftMouse()
 
     -- Set up node customizers when clicking on a node.
     if selectedNode and self.keyAdd:wasPressed() then
-        self:saveNodeHistory(selectedNode)
+        self:saveNodegraphHistory(selectedNode, "move/update node")
 
         if self.node:is(selectedNode) then
             selectedNode:executeCustomizers()
@@ -750,11 +729,11 @@ function NodegraphEditor:processLeftMouse()
         self.highlightNode, self.highlightNodeColor = node, Color:hsla(120, 0.8, 0.6, 50)
 
         if self.keyAdd:wasPressed() then
+            self:saveNodegraphHistory(node, "add node")
+
             node:onCreatePre(Nodegraph)
 
             Nodegraph.add(node, true)
-
-            self:saveNodeHistory(node, true)
         end
     else
         self.keyAdd:reset()
@@ -771,7 +750,7 @@ function NodegraphEditor:processRemove()
     end
 
     if not Menu.isOpen() and self.keyRemove:wasPressed() then
-        self:saveNodeHistory(node)
+        self:saveNodegraphHistory(node, "remove node")
 
         Nodegraph.remove(node)
     end
