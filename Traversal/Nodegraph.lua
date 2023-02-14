@@ -785,6 +785,8 @@ end
 --- @param data string
 --- @return void
 function Nodegraph.loadFromString(data)
+    Nodegraph.setup()
+
     --- @type NodeTypeBase[]
     local nodes = {}
 

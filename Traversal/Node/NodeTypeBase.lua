@@ -262,7 +262,7 @@ function NodeTypeBase:render(nodegraph, isRenderingMetaData)
                 color = Color:hsla(235, 0.16, 0.66, math.min(self.renderAlpha, 55))
             end
 
-            self.origin:drawLine(connection.origin, color, 0.25)
+            self.origin:drawLine(connection.origin, color, 0.33)
         end
     end
 

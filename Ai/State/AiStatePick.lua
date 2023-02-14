@@ -178,7 +178,7 @@ function AiStatePick:think(cmd)
 
     if not self.isPicking then
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance(self.node.floorOrigin) < self.node.maxLength then
+            if teammate:getOrigin():getDistance(self.node.floorOrigin) < self.node.maxLength * 2 then
                 self.blacklist[self.node.id] = true
 
                 self:reset()

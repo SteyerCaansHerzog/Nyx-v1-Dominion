@@ -33,7 +33,7 @@ function AiChatCommandRunBoost:invoke(ai, sender, args)
 
     local senderOrigin = sender:getOrigin()
 
-    if LocalPlayer:getOrigin():getDistance(senderOrigin) > 1400 then
+    if LocalPlayer:getOrigin():getDistance(senderOrigin) > 1250 then
         return self.SENDER_IS_OUT_OF_RANGE
     end
 

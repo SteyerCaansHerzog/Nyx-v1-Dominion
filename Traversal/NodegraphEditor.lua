@@ -39,6 +39,7 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field isOk boolean
 
 --- @class NodegraphEditorHistory
+--- @field isInitial boolean
 --- @field nodeName string
 --- @field action string
 --- @field data NodegraphDataSerialized
@@ -48,18 +49,22 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --{{{ NodegraphEditor
 --- @class NodegraphEditor : Class
 --- @field blockInputs boolean
+--- @field dragMovingNode NodeTypeBase
+--- @field dragMovingNodeCrosshairDelta Angle
 --- @field groups table<number, NodeTypeBase[]>
 --- @field highlightNode NodeTypeBase
 --- @field highlightNodeColor Color
 --- @field iNode number
 --- @field isRecordingMovement boolean
 --- @field keyAdd VKey
+--- @field keyAddHoldTimer Timer
 --- @field keyControl VKey
 --- @field keyCopyLookedAtNode VKey
 --- @field keyEnableEditing VKey
 --- @field keyIgnoreSelection VKey
 --- @field keyNext VKey
 --- @field keyPrevious VKey
+--- @field keyRedoAction VKey
 --- @field keyRemove VKey
 --- @field keySaveNodegraph VKey
 --- @field keySetConnections VKey
@@ -72,18 +77,17 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field movementRecorderStartAngles Angle
 --- @field movementRecorderStartOrigin Vector3
 --- @field movementRecording SetupCommandEvent[]
---- @field moveNode NodeTypeBase
---- @field moveNodeCrosshairDelta Angle
---- @field moveNodeDelay Timer
 --- @field nextNodeTimer Timer
 --- @field node NodeTypeBase
 --- @field nodeClassnameMap table<string, number>
 --- @field nodegraphSerializedHistory NodegraphEditorHistory[]
+--- @field nodegraphSerializedHistoryIndex number
 --- @field nodes NodeTypeBase[]
 --- @field pathfindTestNodes NodePathfindTest[]
+--- @field selectableNode NodeTypeBase
 --- @field selectedNode NodeTypeBase
+--- @field spawnableNode NodeTypeBase
 --- @field spawnError string|nil
---- @field spawnNode NodeTypeBase
 --- @field visibleGroups boolean[]
 local NodegraphEditor = {
     movementRecorderParams = {
@@ -120,6 +124,7 @@ end
 function NodegraphEditor:__init()
     self:initFields()
     self:initEvents()
+    self:saveNodegraphInitialHistory()
 
     Logger.console(Logger.OK, Localization.editorReady)
 end
@@ -149,6 +154,13 @@ function NodegraphEditor:initFields()
 
     self.iNode = 1
     self.node = self.nodes[self.iNode]
+    self.keyAddHoldTimer = Timer:new()
+    self.nextNodeTimer = Timer:new():startThenElapse()
+    self.pathfindTestNodes = {}
+    self.groups = {}
+    self.nodegraphSerializedHistory = {}
+    self.nodegraphSerializedHistoryIndex = 0
+
     self.keyAdd = VKey:new(VKey.LEFT_MOUSE)
     self.keyControl = VKey:new(VKey.SHIFT)
     self.keyCopyLookedAtNode = VKey:new(VKey.T)
@@ -156,23 +168,19 @@ function NodegraphEditor:initFields()
     self.keyIgnoreSelection = VKey:new(VKey.E)
     self.keyNext = VKey:new(VKey.V)
     self.keyPrevious = VKey:new(VKey.C)
+    self.keyRedoAction = VKey:new(VKey.X)
     self.keyRemove = VKey:new(VKey.RIGHT_MOUSE)
-    self.keySaveNodegraph = VKey:new(VKey.X)
+    self.keySaveNodegraph = VKey:new(VKey.Q)
     self.keySetConnections = VKey:new(VKey.F)
     self.keyStartMovementRecorder = VKey:new(VKey.B)
     self.keyTestLineOfSight  = VKey:new(VKey.G):activate()
     self.keyUndoAction = VKey:new(VKey.Z)
     self.keyUnsetConnections = VKey:new(VKey.MIDDLE_MOUSE)
-    self.moveNodeDelay = Timer:new()
-    self.nextNodeTimer = Timer:new():startThenElapse()
-    self.pathfindTestNodes = {}
-    self.groups = {}
-    self.nodegraphSerializedHistory = {}
 
     MenuGroup.group:addLabel("----------------------------------------"):setParent(MenuGroup.master)
     MenuGroup.enableEditor = MenuGroup.group:addCheckbox("> Enable Nodegraph Editor"):setParent(MenuGroup.master)
 
-    MenuGroup.drawDistance = MenuGroup.group:addSlider("> Draw distance", 10, 80, {
+    MenuGroup.drawDistance = MenuGroup.group:addSlider("> Draw distance", 5, 80, {
         scale = 100
     }):addCallback(function(item)
         NodeTypeBase.drawDistance = item:get() * 100
@@ -263,6 +271,7 @@ function NodegraphEditor:initEvents()
             return
         end
 
+        self:setSelectableNode()
         self:processKeys()
         self:render()
     end)
@@ -379,10 +388,25 @@ function NodegraphEditor:testPathfinding()
     end
 end
 
+--- @return void
+function NodegraphEditor:saveNodegraphInitialHistory()
+    self.nodegraphSerializedHistoryIndex = self.nodegraphSerializedHistoryIndex + 1
+
+    --- @type NodegraphEditorHistory
+    local history = {
+        isInitial = true,
+        data = Nodegraph.getSerializedNodegraph(),
+    }
+
+    self.nodegraphSerializedHistory[self.nodegraphSerializedHistoryIndex] = history
+end
+
 --- @param isDeletion boolean
 --- @param node NodeTypeBase
 --- @return void
 function NodegraphEditor:saveNodegraphHistory(node, action)
+    self.nodegraphSerializedHistoryIndex = self.nodegraphSerializedHistoryIndex + 1
+
     local nodesChanged = 1
 
     for _, connection in pairs(node.connections) do
@@ -391,18 +415,43 @@ function NodegraphEditor:saveNodegraphHistory(node, action)
 
     --- @type NodegraphEditorHistory
     local history = {
-        nodeName = node.name,
+        isInitial = false,
         action = action,
         data = Nodegraph.getSerializedNodegraph(),
-        nodesChanged = nodesChanged
+        node = node,
+        nodeName = node.name,
+        nodesChanged = nodesChanged,
     }
 
-    table.insert(self.nodegraphSerializedHistory, history)
+    -- Trim histories tail.
+    for i = self.nodegraphSerializedHistoryIndex, #self.nodegraphSerializedHistory do
+        self.nodegraphSerializedHistory[i] = nil
+    end
+
+    self.nodegraphSerializedHistory[self.nodegraphSerializedHistoryIndex] = history
 end
 
+--- @param step number
 --- @return void
-function NodegraphEditor:loadNodegraphHistory()
-    local history = table.remove(self.nodegraphSerializedHistory, #self.nodegraphSerializedHistory)
+function NodegraphEditor:loadNodegraphHistory(step)
+    local lastStep = self.nodegraphSerializedHistoryIndex
+
+    self.nodegraphSerializedHistoryIndex = self.nodegraphSerializedHistoryIndex + step
+
+    local maxIndex = #self.nodegraphSerializedHistory
+
+    if self.nodegraphSerializedHistoryIndex < 1 then
+        self.nodegraphSerializedHistoryIndex = 1
+    elseif self.nodegraphSerializedHistoryIndex > maxIndex then
+        self.nodegraphSerializedHistoryIndex = maxIndex
+    end
+
+    if lastStep == self.nodegraphSerializedHistoryIndex then
+        return
+    end
+
+    local history = self.nodegraphSerializedHistory[self.nodegraphSerializedHistoryIndex]
+    local lastHistory = self.nodegraphSerializedHistory[lastStep]
 
     if not history then
         return
@@ -410,7 +459,28 @@ function NodegraphEditor:loadNodegraphHistory()
 
     Nodegraph.loadFromString(history.data)
 
-    Logger.message(Logger.OK, Localization.nodegraphActionUndone, history.action, history.nodeName, history.nodesChanged)
+    if history.isInitial then
+        Logger.message(Logger.OK, Localization.nodegraphActionRestore)
+
+        return
+    end
+
+    local message
+    local relevantHistory
+
+    if step == 1 then
+        message = Localization.nodegraphActionRedone
+        relevantHistory = history
+    else
+        message = Localization.nodegraphActionUndone
+        relevantHistory = lastHistory
+    end
+
+    if not relevantHistory then
+        return
+    end
+
+    Logger.message(Logger.OK, message, relevantHistory.action, relevantHistory.nodeName, relevantHistory.nodesChanged)
 end
 
 --- @return void
@@ -449,7 +519,7 @@ function NodegraphEditor:processKeys()
     end
 
     if self.keyCopyLookedAtNode:wasPressed() then
-        local node = self:getSelectedNode()
+        local node = self.selectableNode
 
         if node then
             self:setCurrentNode(self.nodeClassnameMap[node.__classname])
@@ -457,7 +527,11 @@ function NodegraphEditor:processKeys()
     end
 
     if self.keyControl:isHeld() and self.keyUndoAction:wasPressed() then
-        self:loadNodegraphHistory()
+        self:loadNodegraphHistory(-1)
+    end
+
+    if self.keyControl:isHeld() and self.keyRedoAction:wasPressed() then
+        self:loadNodegraphHistory(1)
     end
 
     self:processSwitchNodeType()
@@ -559,7 +633,7 @@ function NodegraphEditor:processSetConnections()
         return
     end
 
-    local node = self:getSelectedNode()
+    local node = self.selectableNode
 
     if self.keyAdd:wasPressed() then
         if not node then
@@ -576,9 +650,9 @@ function NodegraphEditor:processSetConnections()
     end
 
     if self.keyUnsetConnections:wasPressed() then
-        self:saveNodegraphHistory(self.selectedNode, "unset node connections")
-
         self.selectedNode:unsetConnections()
+
+        self:saveNodegraphHistory(self.selectedNode, "unset node connections")
 
         return
     end
@@ -596,8 +670,6 @@ function NodegraphEditor:processSetConnections()
             return
         end
 
-        self:saveNodegraphHistory(node, "modify node connections")
-
         if self.selectedNode.connections[node.id] then
             self.selectedNode.connections[node.id] = nil
             node.connections[self.selectedNode.id] = nil
@@ -605,72 +677,97 @@ function NodegraphEditor:processSetConnections()
             self.selectedNode.connections[node.id] = node
             node.connections[self.selectedNode.id] = self.selectedNode
         end
+
+        self:saveNodegraphHistory(node, "modify node connections")
     end
 end
 
 --- @return void
 function NodegraphEditor:processLeftMouse()
-    local selectedNode = self:getSelectedNode()
-    local nodeBounds = NodeTypeBase.collisionHullNodeSpawn
-
-    self.spawnNode = nil
-
     if Menu.isOpen() then
         return
     end
 
-    -- Set up node customizers when clicking on a node.
-    if selectedNode and self.keyAdd:wasPressed() then
-        self:saveNodegraphHistory(selectedNode, "move/update node")
+    self:processAddNode()
+    self:processModifyNode()
+end
 
-        if self.node:is(selectedNode) then
-            selectedNode:executeCustomizers()
-            selectedNode:onSetup(Nodegraph)
+--- @return void
+function NodegraphEditor:processModifyNode()
+    local node = self.selectableNode
+    local dragMoveAfter = 0.2
+
+    if self.keyAdd:wasReleased() then
+        if not self.keyAddHoldTimer:isElapsed(dragMoveAfter) then
+            -- Update the node if we're looking at a node of the same type as the spawnable.
+            -- Otherwise try spawning a node.
+            -- Technically this if statement tries to invoke addNode if we're looking at a node if it isn't the right type.
+            -- However, looking at a node wipes spawnNode. So there is no bug here, but in case something happens,
+            -- now you know.
+            if node and self.node:is(node) then
+                node:executeCustomizers()
+                node:onSetup(Nodegraph)
+
+                self:saveNodegraphHistory(node, "update node")
+            else
+                self:attemptSpawnNode()
+            end
+        end
+    end
+
+    if self.keyAdd:isHeld() then
+        if node and node.isDragMovable then
+            self.keyAddHoldTimer:ifPausedThenStart()
         end
 
-        return
-    end
+        -- Begin drag-moving node.
+        if node and not self.dragMovingNode and self.keyAddHoldTimer:isElapsed(dragMoveAfter) then
+            self.dragMovingNode = node
 
-    -- Drag-move is active.
-    if self.moveNode and self.keyAdd:isHeld() then
-        local angle = (LocalPlayer.getCameraAngles() + self.moveNodeCrosshairDelta):normalize()
-        local trace = Trace.getHullAtAngle(LocalPlayer.getEyeOrigin(), angle, nodeBounds, AiUtility.traceOptionsPathfinding)
-
-        self.highlightNode, self.highlightNodeColor = self.moveNode, Color:hsla(210, 0.8, 0.6, 50)
-        self.moveNode.origin = trace.endPosition
-
-        return
-    end
-
-    -- Test drag-move.
-    if selectedNode and selectedNode.isDragMovable and self.keyAdd:isHeld() then
-        self.moveNodeDelay:ifPausedThenStart()
-
-        if not self.moveNode and selectedNode and self.moveNodeDelay:isElapsed(0.1) then
-            self.moveNode = selectedNode
-
-            local angleOffset = LocalPlayer.getEyeOrigin():getAngle(self.moveNode.origin)
+            local angleOffset = LocalPlayer.getEyeOrigin():getAngle(self.dragMovingNode.origin)
             local angleDelta = (angleOffset - LocalPlayer.getCameraAngles()):normalize()
 
-            self.moveNodeCrosshairDelta = angleDelta
+            -- Prevents snapping node to crosshair centre, which can cause abrupt and unwanted movement of the node.
+            self.dragMovingNodeCrosshairDelta = angleDelta
+        end
+
+        -- We're currently drag-moving a node.
+        if self.dragMovingNode then
+            local angle = (LocalPlayer.getCameraAngles() + self.dragMovingNodeCrosshairDelta):normalize()
+            local trace = Trace.getHullAtAngle(LocalPlayer.getEyeOrigin(), angle, self.dragMovingNode.collisionHullNodeSpawn, AiUtility.traceOptionsPathfinding)
+
+            self.highlightNode, self.highlightNodeColor = self.dragMovingNode, Color:hsla(210, 0.8, 0.6, 50)
+            self.dragMovingNode.origin = trace.endPosition
         end
     else
-        if self.moveNode then
-            self.moveNode:onSetup(Nodegraph)
+        -- Stop drag-moving the node.
+        if self.dragMovingNode and self.keyAddHoldTimer:isElapsed(dragMoveAfter) then
+            self.dragMovingNode:onSetup(NodegraphEditor)
+
+            self:saveNodegraphHistory(self.dragMovingNode, "moved node")
         end
 
-        self.moveNode = nil
+        self.dragMovingNode = nil
 
-        self.moveNodeDelay:stop()
+        self.keyAddHoldTimer:stop()
     end
+end
 
-    if selectedNode then
+--- @return void
+function NodegraphEditor:processAddNode()
+    self.spawnableNode = nil
+
+    if self.selectableNode then
         return
     end
 
-    -- Place the node in the map.
+    if self.dragMovingNode then
+        return
+    end
+
     --- @type Vector3
     local origin
+    local nodeBounds = NodeTypeBase.collisionHullNodeSpawn
 
     if self.node.isDirectional then
         origin = LocalPlayer:getOrigin():offset(0, 0, 18)
@@ -680,35 +777,35 @@ function NodegraphEditor:processLeftMouse()
         origin = trace.endPosition
     end
 
-    -- Test collisions.
-    local trace = Trace.getHullAtPosition(
+    local traceCollision = Trace.getHullAtPosition(
         origin,
         nodeBounds,
         AiUtility.traceOptionsPathfinding
     )
 
-    if trace.isIntersectingGeometry then
+    if traceCollision.isIntersectingGeometry then
         self.spawnError = "Node is inside geometry"
     end
 
-    -- Test node height to floor.
-    local trace = Trace.getHullToPosition(
+    local traceFloor = Trace.getHullToPosition(
         origin,
         origin + Vector3:new(0, 0, -18),
         nodeBounds,
         AiUtility.traceOptionsPathfinding
     )
 
-    if not trace.isIntersectingGeometry then
+    if not traceFloor.isIntersectingGeometry then
         self.spawnError = "Node is not on the floor"
     end
 
-    -- Test node distance.
     if LocalPlayer:getOrigin():getDistance(origin) > 750 then
         self.spawnError = "Node is too far away"
     end
 
-    -- Create new node.
+    -- We're respawning the node every frame.
+    -- This does ensure that the node is fully correct as it would appear when added to the Nodegraph.
+    -- It may be cheaper to do this another way,
+    -- but this is the probably most performant of the other Nodegraph related code.
     local node = self.node:new({
         origin = origin
     })
@@ -722,19 +819,10 @@ function NodegraphEditor:processLeftMouse()
 
     node:render(Nodegraph, true)
 
-    self.spawnNode = node
-
-    -- Spawn the node or highlight it.
     if not self.spawnError then
         self.highlightNode, self.highlightNodeColor = node, Color:hsla(120, 0.8, 0.6, 50)
 
-        if self.keyAdd:wasPressed() then
-            self:saveNodegraphHistory(node, "add node")
-
-            node:onCreatePre(Nodegraph)
-
-            Nodegraph.add(node, true)
-        end
+        self.spawnableNode = node
     else
         self.keyAdd:reset()
         self.highlightNode, self.highlightNodeColor = node, Color:hsla(0, 0.8, 0.6, 50)
@@ -742,17 +830,31 @@ function NodegraphEditor:processLeftMouse()
 end
 
 --- @return void
+function NodegraphEditor:attemptSpawnNode()
+    if not self.spawnableNode then
+        return
+    end
+
+    self.spawnableNode:onCreatePre(Nodegraph)
+
+    Nodegraph.add(self.spawnableNode, true)
+
+    self:saveNodegraphHistory(self.spawnableNode, "spawn node")
+end
+
+--- @return void
 function NodegraphEditor:processRemove()
-    local node = self:getSelectedNode()
+    local node = self.selectableNode
 
     if not node then
         return
     end
 
     if not Menu.isOpen() and self.keyRemove:wasPressed() then
+        Nodegraph.remove(node)
+
         self:saveNodegraphHistory(node, "remove node")
 
-        Nodegraph.remove(node)
     end
 end
 
@@ -799,7 +901,7 @@ function NodegraphEditor:setCurrentNode(index)
 end
 
 --- @return NodeTypeBase
-function NodegraphEditor:getSelectedNode()
+function NodegraphEditor:setSelectableNode()
     if self.keyIgnoreSelection:isToggled() then
         return
     end
@@ -807,6 +909,8 @@ function NodegraphEditor:getSelectedNode()
     local cameraOrigin = LocalPlayer.getCameraOrigin()
     local cameraAngles = LocalPlayer.getCameraAngles()
     local isTestingLos = self.keyTestLineOfSight:isToggled()
+    local maxSelectDistance = Math.getClamped(NodeTypeBase.drawDistance, 0, 1000)
+    local cameraLookOrigin = Trace.getLineAlongCrosshair(AiUtility.traceOptionsPathfinding).endPosition
 
     --- @type NodeTypeBase
     local closest
@@ -819,13 +923,19 @@ function NodegraphEditor:getSelectedNode()
 
         local distance = cameraOrigin:getDistance(node.origin)
 
-        if distance > 512 then
+        if distance > maxSelectDistance then
             break
         end
 
         local fov = cameraAngles:getFov(cameraOrigin, node.origin)
 
-        if fov > 4 then
+        if fov > 35 then
+            break
+        end
+
+        local rayClosestPoint = node.origin:getRayClosestPoint(cameraOrigin, cameraLookOrigin)
+
+        if node.origin:getDistance(rayClosestPoint) > 16 then
             break
         end
 
@@ -852,7 +962,7 @@ function NodegraphEditor:getSelectedNode()
         self.highlightNode, self.highlightNodeColor = closest, color:clone():setAlpha(100)
     end
 
-    return closest
+    self.selectableNode = closest
 end
 
 --- @return void
@@ -870,6 +980,7 @@ end
 
 --- @return void
 function NodegraphEditor:render()
+    -- This method should be refactored.
     local padding = 10
     local tabWidth = 290
     local screenDims = Client.getScreenDimensions()
@@ -1126,7 +1237,7 @@ function NodegraphEditor:render()
     end
 
     UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)
-    UserInterface.drawText(drawPos, Font.SMALL, color, "[SHIFT + X] Save Nodegraph to Disk")
+    UserInterface.drawText(drawPos, Font.SMALL, color, "[SHIFT + Q] Save Nodegraph to Disk")
 
     drawPos:offset(0, height)
 
@@ -1138,6 +1249,17 @@ function NodegraphEditor:render()
 
     UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)
     UserInterface.drawText(drawPos, Font.SMALL, color, "[SHIFT + Z] Undo Last Action")
+
+    drawPos:offset(0, height)
+
+    local color = ColorList.INFO
+
+    if (self.keyControl:isHeld() and self.keyRedoAction:isHeld()) then
+        color =  ColorList.FONT_NORMAL
+    end
+
+    UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)
+    UserInterface.drawText(drawPos, Font.SMALL, color, "[SHIFT + X] Redo Last Action")
 
     drawPos:offset(0, height)
 
@@ -1245,11 +1367,11 @@ function NodegraphEditor:render()
         drawListPos:offset(0, height)
     until true end
 
-    if self.spawnNode and self.spawnNode.customizers then
+    if self.spawnableNode and self.spawnableNode.customizers then
         local drawMetaPos = Client.getScreenDimensionsCenter():offset(-(tabWidth / 2), 300)
         drawListPos:offset(0, 5)
 
-        for _, name in pairs(self.spawnNode.customizers) do
+        for _, name in pairs(self.spawnableNode.customizers) do
             local metadata = NodeTypeBase.customizerItems[name]:get()
 
             drawMetaPos:clone():offset(-2, 0):drawBlur(Vector2:new(tabWidth + 22, 30))
