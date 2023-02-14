@@ -20,7 +20,7 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @class AiStatePick : AiStateBase
 --- @field blacklist boolean[]
 --- @field isPicking boolean
---- @field node NodeSpotWatchT
+--- @field node NodeSpotWatchCt
 --- @field pickTime number
 --- @field pickTimer Timer
 --- @field isBlockedThisRound boolean
@@ -121,7 +121,7 @@ function AiStatePick:getNode()
         end
 
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance(node.floorOrigin) < 150 then
+            if teammate:getOrigin():getDistance(node.floorOrigin) < 200 then
                 break
             end
         end
@@ -132,7 +132,9 @@ end
 
 --- @return void
 function AiStatePick:activate()
-    Pathfinder.moveToNode(self.node, {
+    self.node:generateWatchOrigin()
+
+    Pathfinder.moveToLocation(self.node.watchOrigin, {
         task = "Pick angle"
     })
 end
@@ -172,11 +174,11 @@ function AiStatePick:think(cmd)
     self.ai.routines.walk:block()
 
     local clientOrigin = LocalPlayer:getOrigin()
-    local distance = clientOrigin:getDistance(self.node.floorOrigin)
+    local distance = clientOrigin:getDistance(self.node.watchOrigin)
 
     if not self.isPicking then
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance(self.node.floorOrigin) < 64 then
+            if teammate:getOrigin():getDistance(self.node.floorOrigin) < self.node.maxLength then
                 self.blacklist[self.node.id] = true
 
                 self:reset()

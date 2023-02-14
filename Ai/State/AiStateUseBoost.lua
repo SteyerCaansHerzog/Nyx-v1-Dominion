@@ -73,6 +73,10 @@ function AiStateUseBoost:assess()
         return AiPriority.IGNORE
     end
 
+    if AiUtility.isBombPlanted() then
+        return AiPriority.IGNORE
+    end
+
     -- Exit so we can engage the enemy when they become visible.
     if AiUtility.isEnemyVisible then
         return AiPriority.IGNORE
@@ -232,9 +236,16 @@ function AiStateUseBoost:think(cmd)
     -- No booster yet.
     if not self.booster then
         -- We weren't acknowledged in a timely manner.
-        if self.acknowledgeTimer:isElapsed(2) then
+        if self.acknowledgeTimer:isElapsed(5) then
             self:reset()
         end
+
+        return
+    end
+
+    -- The teammate never got to us in time.
+    if not self.isWaiting and self.acknowledgeTimer:isElapsed(15) then
+        self:reset()
 
         return
     end

@@ -48,6 +48,7 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field iNode number
 --- @field isRecordingMovement boolean
 --- @field keyAdd VKey
+--- @field keyControl VKey
 --- @field keyCopyLookedAtNode VKey
 --- @field keyEnableEditing VKey
 --- @field keyIgnoreSelection VKey
@@ -58,6 +59,7 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field keySetConnections VKey
 --- @field keyStartMovementRecorder VKey
 --- @field keyTestLineOfSight VKey
+--- @field keyUndoAction VKey
 --- @field keyUnsetConnections VKey
 --- @field movementRecorderEndOrigin Vector3
 --- @field movementRecorderParams string[]
@@ -65,17 +67,18 @@ local UserInterface = require "gamesense/Nyx/v1/Dominion/Utility/UserInterface"
 --- @field movementRecorderStartOrigin Vector3
 --- @field movementRecording SetupCommandEvent[]
 --- @field moveNode NodeTypeBase
+--- @field moveNodeCrosshairDelta Angle
 --- @field moveNodeDelay Timer
---- @field moveNodeResetDelay Timer
 --- @field nextNodeTimer Timer
 --- @field node NodeTypeBase
+--- @field nodeClassnameMap table<string, number>
+--- @field nodegraphSerializedHistory NodeTypeBase[]
 --- @field nodes NodeTypeBase[]
 --- @field pathfindTestNodes NodePathfindTest[]
 --- @field selectedNode NodeTypeBase
 --- @field spawnError string|nil
 --- @field spawnNode NodeTypeBase
 --- @field visibleGroups boolean[]
---- @field nodeClassnameMap table<string, number>
 local NodegraphEditor = {
     movementRecorderParams = {
         "forwardmove",
@@ -141,6 +144,7 @@ function NodegraphEditor:initFields()
     self.iNode = 1
     self.node = self.nodes[self.iNode]
     self.keyAdd = VKey:new(VKey.LEFT_MOUSE)
+    self.keyControl = VKey:new(VKey.SHIFT)
     self.keyCopyLookedAtNode = VKey:new(VKey.T)
     self.keyEnableEditing = VKey:new(VKey.R):activate()
     self.keyIgnoreSelection = VKey:new(VKey.E)
@@ -149,14 +153,15 @@ function NodegraphEditor:initFields()
     self.keyRemove = VKey:new(VKey.RIGHT_MOUSE)
     self.keySaveNodegraph = VKey:new(VKey.X)
     self.keySetConnections = VKey:new(VKey.F)
-    self.keyTestLineOfSight  = VKey:new(VKey.G):activate()
-    self.keyUnsetConnections = VKey:new(VKey.MIDDLE_MOUSE)
     self.keyStartMovementRecorder = VKey:new(VKey.B)
+    self.keyTestLineOfSight  = VKey:new(VKey.G):activate()
+    self.keyUndoAction = VKey:new(VKey.Z)
+    self.keyUnsetConnections = VKey:new(VKey.MIDDLE_MOUSE)
     self.moveNodeDelay = Timer:new()
-    self.moveNodeResetDelay = Timer:new():startThenElapse()
     self.nextNodeTimer = Timer:new():startThenElapse()
     self.pathfindTestNodes = {}
     self.groups = {}
+    self.nodegraphSerializedHistory = {}
 
     MenuGroup.group:addLabel("----------------------------------------"):setParent(MenuGroup.master)
     MenuGroup.enableEditor = MenuGroup.group:addCheckbox("> Enable Nodegraph Editor"):setParent(MenuGroup.master)
@@ -221,11 +226,11 @@ function NodegraphEditor:initFields()
     MenuGroup.findNode = MenuGroup.group:addTextBox("DominionNodegraphEditorFindNode"):setParent(MenuGroup.enableEditor)
 
     MenuGroup.group:addButton("Load nodegraph", function()
-        Nodegraph.load(Nodegraph.getFilename())
+        Nodegraph.loadFromFile(Nodegraph.getFilename())
     end):setParent(MenuGroup.enableEditor)
 
     MenuGroup.group:addButton("Save nodegraph", function()
-        Nodegraph.save(Nodegraph.getFilename())
+        Nodegraph.saveToFile(Nodegraph.getFilename())
     end):setParent(MenuGroup.enableEditor)
 
     MenuGroup.group:addButton("Create nodegraph", function()
@@ -243,6 +248,10 @@ end
 
 --- @return void
 function NodegraphEditor:initEvents()
+    Callbacks.levelInit(function()
+    	self.nodegraphSerializedHistory = {}
+    end)
+
     Callbacks.frame(function()
         if not MenuGroup.master:get() or not MenuGroup.enableEditor:get() then
             return
@@ -364,6 +373,67 @@ function NodegraphEditor:testPathfinding()
     end
 end
 
+--- @param isDeletion boolean
+--- @param node NodeTypeBase
+--- @return void
+function NodegraphEditor:saveNodeHistory(node, isDeletion)
+    local history = {
+        -- If true the node will be removed from the serialized nodegraph.
+        -- Do not confuse this with saving a deleted node and re-adding it.
+        isDeletion = isDeletion,
+        nodes = {
+            [node.id] = Nodegraph.getSerializedNode(node)
+        }
+    }
+
+    for _, connection in pairs(node.connections) do
+        history.nodes[connection.id] = Nodegraph.getSerializedNode(connection)
+    end
+
+    table.insert(self.nodegraphSerializedHistory, history)
+end
+
+--- @return void
+function NodegraphEditor:loadNodeHistory()
+    local history = table.remove(self.nodegraphSerializedHistory, #self.nodegraphSerializedHistory)
+
+    if not history then
+        return
+    end
+
+    local count = 0
+
+    local nodegraphData = Nodegraph.getSerializedNodegraph()
+
+    -- Remove nodes from the serialized if they exist.
+    for idx, datum in pairs(nodegraphData.nodes) do repeat
+        local node = history.nodes[datum.id]
+
+        if not node then
+            break
+        end
+
+        table.remove(nodegraphData.nodes, idx)
+    until true end
+
+    if not history.isDeletion then
+        -- Add all nodes to the serialized graph.
+        for _, node in pairs(history.nodes) do
+            table.insert(nodegraphData.nodes, node)
+
+            count = count + 1
+        end
+    end
+
+    Nodegraph.loadFromString(nodegraphData)
+
+    if history.isDeletion then
+        Logger.message(0, Localization.nodegraphActionDelete)
+    else
+        Logger.message(0, Localization.nodegraphActionUndone, count)
+    end
+end
+
 --- @return void
 function NodegraphEditor:processKeys()
     self.spawnError = nil
@@ -384,8 +454,8 @@ function NodegraphEditor:processKeys()
         self.keyUnsetConnections:reset()
     end
 
-    if self.keySaveNodegraph:wasPressed() then
-        Nodegraph.save(Nodegraph.getFilename())
+    if self.keyControl:isHeld() and self.keySaveNodegraph:wasPressed() then
+        Nodegraph.saveToFile(Nodegraph.getFilename())
     end
 
     if self.keySetConnections:wasPressed() then
@@ -395,7 +465,7 @@ function NodegraphEditor:processKeys()
     if self.keySetConnections:isToggled() then
         self:processSetConnections()
     else
-        self:processAdd()
+        self:processLeftMouse()
         self:processRemove()
     end
 
@@ -405,6 +475,10 @@ function NodegraphEditor:processKeys()
         if node then
             self:setCurrentNode(self.nodeClassnameMap[node.__classname])
         end
+    end
+
+    if self.keyControl:isHeld() and self.keyUndoAction:wasPressed() then
+        self:loadNodeHistory()
     end
 
     self:processSwitchNodeType()
@@ -523,7 +597,11 @@ function NodegraphEditor:processSetConnections()
     end
 
     if self.keyUnsetConnections:wasPressed() then
+        self:saveNodeHistory(self.selectedNode)
+
         self.selectedNode:unsetConnections()
+
+        return
     end
 
     if self.keyRemove:wasPressed() and node then
@@ -539,6 +617,8 @@ function NodegraphEditor:processSetConnections()
             return
         end
 
+        self:saveNodeHistory(node)
+
         if self.selectedNode.connections[node.id] then
             self.selectedNode.connections[node.id] = nil
             node.connections[self.selectedNode.id] = nil
@@ -550,7 +630,7 @@ function NodegraphEditor:processSetConnections()
 end
 
 --- @return void
-function NodegraphEditor:processAdd()
+function NodegraphEditor:processLeftMouse()
     local selectedNode = self:getSelectedNode()
     local nodeBounds = NodeTypeBase.collisionHullNodeSpawn
 
@@ -560,24 +640,22 @@ function NodegraphEditor:processAdd()
         return
     end
 
-    -- Test drag-move.
-    if selectedNode and selectedNode.isDragMovable and self.keyAdd:isHeld() then
-        self.moveNodeDelay:ifPausedThenStart()
+    -- Set up node customizers when clicking on a node.
+    if selectedNode and self.keyAdd:wasPressed() then
+        self:saveNodeHistory(selectedNode)
 
-        if not self.moveNode and selectedNode and self.moveNodeDelay:isElapsed(0.15) then
-            self.moveNode = selectedNode
+        if self.node:is(selectedNode) then
+            selectedNode:executeCustomizers()
+            selectedNode:onSetup(Nodegraph)
         end
-    else
-        self.moveNode = nil
 
-        self.moveNodeDelay:stop()
+        return
     end
 
     -- Drag-move is active.
-    if self.moveNode then
-        self.moveNodeResetDelay:start()
-
-        local trace = Trace.getHullAlongCrosshair(nodeBounds, AiUtility.traceOptionsPathfinding)
+    if self.moveNode and self.keyAdd:isHeld() then
+        local angle = (LocalPlayer.getCameraAngles() + self.moveNodeCrosshairDelta):normalize()
+        local trace = Trace.getHullAtAngle(LocalPlayer.getEyeOrigin(), angle, nodeBounds, AiUtility.traceOptionsPathfinding)
 
         self.highlightNode, self.highlightNodeColor = self.moveNode, Color:hsla(210, 0.8, 0.6, 50)
         self.moveNode.origin = trace.endPosition
@@ -585,18 +663,26 @@ function NodegraphEditor:processAdd()
         return
     end
 
-    -- Reset drag-move.
-    if self.moveNodeResetDelay:isStarted() and not self.moveNodeResetDelay:isElapsed(0.1) then
-        self.keyAdd:reset()
+    -- Test drag-move.
+    if selectedNode and selectedNode.isDragMovable and self.keyAdd:isHeld() then
+        self.moveNodeDelay:ifPausedThenStart()
 
-        return
-    end
+        if not self.moveNode and selectedNode and self.moveNodeDelay:isElapsed(0.1) then
+            self.moveNode = selectedNode
 
-    -- Set up node customizers when clicking on a node.
-    if selectedNode and self.keyAdd:wasPressed() and self.node:is(selectedNode) then
-        selectedNode:executeCustomizers()
+            local angleOffset = LocalPlayer.getEyeOrigin():getAngle(self.moveNode.origin)
+            local angleDelta = (angleOffset - LocalPlayer.getCameraAngles()):normalize()
 
-        return
+            self.moveNodeCrosshairDelta = angleDelta
+        end
+    else
+        if self.moveNode then
+            self.moveNode:onSetup(Nodegraph)
+        end
+
+        self.moveNode = nil
+
+        self.moveNodeDelay:stop()
     end
 
     if selectedNode then
@@ -667,6 +753,8 @@ function NodegraphEditor:processAdd()
             node:onCreatePre(Nodegraph)
 
             Nodegraph.add(node, true)
+
+            self:saveNodeHistory(node, true)
         end
     else
         self.keyAdd:reset()
@@ -683,6 +771,8 @@ function NodegraphEditor:processRemove()
     end
 
     if not Menu.isOpen() and self.keyRemove:wasPressed() then
+        self:saveNodeHistory(node)
+
         Nodegraph.remove(node)
     end
 end
@@ -1052,12 +1142,23 @@ function NodegraphEditor:render()
 
     local color = ColorList.INFO
 
-    if (self.keySaveNodegraph:isHeld()) then
+    if (self.keyControl:isHeld() and self.keySaveNodegraph:isHeld()) then
         color =  ColorList.FONT_NORMAL
     end
 
     UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)
-    UserInterface.drawText(drawPos, Font.SMALL, color, "[X] Save Nodegraph to Disk")
+    UserInterface.drawText(drawPos, Font.SMALL, color, "[SHIFT + X] Save Nodegraph to Disk")
+
+    drawPos:offset(0, height)
+
+    local color = ColorList.INFO
+
+    if (self.keyControl:isHeld() and self.keyUndoAction:isHeld()) then
+        color =  ColorList.FONT_NORMAL
+    end
+
+    UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, color, height)
+    UserInterface.drawText(drawPos, Font.SMALL, color, "[SHIFT + Z] Undo Last Action")
 
     drawPos:offset(0, height)
 
@@ -1076,7 +1177,7 @@ function NodegraphEditor:render()
     drawPos:offset(0, 15)
 
 
-    -- Node information
+    -- Node information.
     height = 30
 
     if self.node.isDirectional then

@@ -70,6 +70,8 @@ function AiStatePlant:__init()
         end
 
         self.bombsite = bombsite.bombsite
+
+        self.ai.commands.go:bark(self.bombsite:lower())
     end)
 
     Callbacks.roundPrestart(function()
@@ -144,6 +146,10 @@ end
 --- @return void
 function AiStatePlant:assess()
     if AiUtility.gameRules:m_bFreezePeriod() == 1 or not LocalPlayer.isCarryingBomb() then
+        return AiPriority.IGNORE
+    end
+
+    if self.ai.states.evacuate.isSaving then
         return AiPriority.IGNORE
     end
 

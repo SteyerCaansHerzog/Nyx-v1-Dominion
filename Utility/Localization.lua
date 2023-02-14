@@ -72,6 +72,8 @@ local English = {
 	manageEconomyEcoRush = "Eco rushing this round.",
 	manageEconomyForceBuy = "Full/force buying this round.",
 	manageEconomyFullBuy = "Full buying this round.",
+	nodegraphActionDelete = "Deleted 1 node.",
+	nodegraphActionUndone = "Undone changes to %i node(s).",
 	nodegraphLoaded = "Loaded nodegraph from '%s'.",
 	nodegraphMissingFile = "Cannot load graph from '%s'. File does not exist.", -- filename
 	nodegraphReady = "Nodegraph is ready.",
@@ -174,6 +176,8 @@ local Languages = {
 --- @field manageEconomyEcoRush string
 --- @field manageEconomyForceBuy string
 --- @field manageEconomyFullBuy string
+--- @field nodegraphActionDelete string
+--- @field nodegraphActionUndone string
 --- @field nodegraphLoaded string
 --- @field nodegraphMissingFile string
 --- @field nodegraphReady string

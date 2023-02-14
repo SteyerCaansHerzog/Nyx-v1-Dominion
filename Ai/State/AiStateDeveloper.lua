@@ -41,7 +41,7 @@ function AiStateDeveloper:__init() end
 
 --- @return void
 function AiStateDeveloper:assess()
-    return AiPriority.DEVELOPER
+    return AiPriority.IGNORE
 end
 
 --- @return void

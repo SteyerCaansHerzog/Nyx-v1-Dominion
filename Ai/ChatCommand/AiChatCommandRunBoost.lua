@@ -62,7 +62,7 @@ function AiChatCommandRunBoost:invoke(ai, sender, args)
         end
     end
 
-    Client.fireAfter(orderInQueue * 0.6, function()
+    Client.fireAfter(orderInQueue * 1, function()
         if not self.isTaken then
             ai.states.boostTeammate:boost(sender, traceAim.endPosition, true)
             ai.states.useBoost:reset()

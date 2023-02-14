@@ -54,10 +54,10 @@ end
 
 --- @return void
 function Nodegraph.initEvents()
-    Nodegraph.loadForCurrentMap()
+    Nodegraph.loadCurrentMapFromFile()
 
     Callbacks.levelInit(function()
-        Nodegraph.loadForCurrentMap()
+        Nodegraph.loadCurrentMapFromFile()
     end)
 
     Callbacks.frame(function()
@@ -782,33 +782,9 @@ function Nodegraph.create()
     Nodegraph.initFields()
 end
 
+--- @param data string
 --- @return void
-function Nodegraph.loadForCurrentMap()
-    local filename = Nodegraph.getFilename()
-
-    if not filename then
-        return
-    end
-
-    Nodegraph.load(filename)
-end
-
---- @param filename string
---- @return void
-function Nodegraph.load(filename)
-    Nodegraph.setup()
-
-    local filedata = readfile(filename)
-
-    if not filedata then
-        Logger.message(1, Localization.nodegraphMissingFile, filename)
-
-        return
-    end
-
-    --- @type NodegraphDataSerialized
-    local data = json.parse(filedata)
-
+function Nodegraph.loadFromString(data)
     --- @type NodeTypeBase[]
     local nodes = {}
 
@@ -891,13 +867,58 @@ function Nodegraph.load(filename)
     end
 
     Nodegraph.isLoaded = true
+end
+
+--- @return void
+function Nodegraph.loadCurrentMapFromFile()
+    local filename = Nodegraph.getFilename()
+
+    if not filename then
+        return
+    end
+
+    Nodegraph.loadFromFile(filename)
+end
+
+--- @param filename string
+--- @return void
+function Nodegraph.loadFromFile(filename)
+    Nodegraph.setup()
+
+    local filedata = readfile(filename)
+
+    if not filedata then
+        Logger.message(1, Localization.nodegraphMissingFile, filename)
+
+        return
+    end
+
+    --- @type NodegraphDataSerialized
+    local data = json.parse(filedata)
+
+    Nodegraph.loadFromString(data)
 
     Logger.console(Logger.OK, Localization.nodegraphLoaded, filename)
 end
 
 --- @param filename string
 --- @return void
-function Nodegraph.save(filename)
+function Nodegraph.saveToFile(filename, data)
+    if not data then
+        data = Nodegraph.getSerializedNodegraph()
+    end
+
+    if not data then
+        error("Could not serialize nodegraph.")
+    end
+
+    writefile(filename, json.stringify(data))
+
+    Logger.message(0, Localization.nodegraphSaved, filename)
+end
+
+--- @return NodegraphDataSerialized
+function Nodegraph.getSerializedNodegraph()
     --- @type NodegraphDataSerialized
     local data = {
         nodes = {},
@@ -911,52 +932,58 @@ function Nodegraph.save(filename)
             break
         end
 
-        --- @type NodeTypeBase
-        local datum = {}
-
-        datum.__classname = node.__classname
-        datum.id = node.id
-        datum.connections = {}
-
-        local iConnections = 0
-
-        for _, connection in pairs(node.connections) do
-            iConnections = iConnections + 1
-
-            datum.connections[iConnections] = connection.id
-        end
-
-        datum.origin = node.origin:round(0):__serialize()
-
-        if node.isDirectional then
-            datum.direction = node.direction:round(0):__serialize()
-        end
-
-        if node.customizers then
-            for _, field in pairs(node.customizers) do
-                datum[field] = node[field]
-            end
-        end
-
-        local serialized = node:serialize()
-
-        if serialized then
-            local userdata = {}
-
-            for field, value in pairs(serialized) do
-                userdata[field] = value
-            end
-
-            datum.userdata = userdata
-        end
+        local datum = Nodegraph.getSerializedNode(node)
 
         iDataNodes = iDataNodes + 1
         data.nodes[iDataNodes] = datum
     until true end
 
-    writefile(filename, json.stringify(data))
+    return data
+end
 
-    Logger.message(0, Localization.nodegraphSaved, filename)
+--- @param node NodeTypeBase
+--- @return NodeTypeBase
+function Nodegraph.getSerializedNode(node)
+    --- @type NodeTypeBase
+    local datum = {}
+
+    datum.__classname = node.__classname
+    datum.id = node.id
+    datum.connections = {}
+
+    local iConnections = 0
+
+    for _, connection in pairs(node.connections) do
+        iConnections = iConnections + 1
+
+        datum.connections[iConnections] = connection.id
+    end
+
+    datum.origin = node.origin:round(0):__serialize()
+
+    if node.isDirectional then
+        datum.direction = node.direction:round(0):__serialize()
+    end
+
+    if node.customizers then
+        for _, field in pairs(node.customizers) do
+            datum[field] = node[field]
+        end
+    end
+
+    local serialized = node:serialize()
+
+    if serialized then
+        local userdata = {}
+
+        for field, value in pairs(serialized) do
+            userdata[field] = value
+        end
+
+        datum.userdata = userdata
+    end
+
+    return datum
 end
 
 return Nyx.class("Nodegraph", Nodegraph)

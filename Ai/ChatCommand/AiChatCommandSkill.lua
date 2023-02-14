@@ -28,7 +28,9 @@ function AiChatCommandSkill:invoke(ai, sender, args)
     local max = args[2]
 
     if not min then
-        Messenger.send(true, "My skill is level %i", ai.states.engage.skill)
+        Messenger.send(true, "%i", ai.states.engage.skill)
+
+        return
     end
 
     min = Math.getClamped(tonumber(min), ai.states.engage.skillLevelMin, ai.states.engage.skillLevelMax)

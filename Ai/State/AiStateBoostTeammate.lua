@@ -50,12 +50,16 @@ end
 
 --- @return number
 function AiStateBoostTeammate:assess()
+    if AiUtility.isBombPlanted() then
+        return AiPriority.IGNORE
+    end
+
     if self.boostPlayer then
         if LocalPlayer:getOrigin():getDistance2(self.boostPlayer:getOrigin()) < 256 then
             return AiPriority.BOOST_ACTIVE
         end
 
-        return AiPriority.BOOST
+        return AiPriority.BOOST_PASSIVE
     end
 
     return AiPriority.IGNORE

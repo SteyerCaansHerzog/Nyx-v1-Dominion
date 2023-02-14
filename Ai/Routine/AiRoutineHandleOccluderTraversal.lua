@@ -31,6 +31,7 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field jiggleTime number
 --- @field jiggleTimer Timer
 --- @field smokeInsideOf Entity
+--- @field isSmokeWatchedByEnemy boolean
 local AiRoutineHandleOccluderTraversal = {}
 
 --- @param fields AiRoutineHandleOccluderTraversal
@@ -102,6 +103,8 @@ function AiRoutineHandleOccluderTraversal:think()
 		Pathfinder.isInsideInferno = true
 	end
 
+	self.isSmokeWatchedByEnemy = false
+
 	-- Find smokes.
 	for _, smoke in Entity.find("CSmokeGrenadeProjectile") do repeat
 		local smokeTick = smoke:m_nFireEffectTickBegin()
@@ -120,10 +123,34 @@ function AiRoutineHandleOccluderTraversal:think()
 
 		self.isNearSmoke = true
 
-		local smokeMaxBounds = Vector3:newBounds(Vector3.align.UP, 250, 250, 72)
+		local smokeMaxBounds = smokeOrigin:getBounds(Vector3.align.UP, 200, 200, 72)
 		local smokeVisibleBox = smoke:m_vecOrigin():offset(0, 0, 48):getBox(Vector3.align.CENTER, 72, 72, 24)
 
-		-- Determine if we're inside a smoke.
+		-- Are enemies watching the smoke?
+		for _, enemy in pairs(AiUtility.enemies) do if self.isSmokeWatchedByEnemy then break end repeat
+			if enemy:getOrigin():getDistance(smokeOrigin) < 400 then
+				self.isSmokeWatchedByEnemy = true
+
+				break
+			end
+
+			local eyeOrigin = enemy:getEyeOrigin()
+			local cameraAngles = enemy:getCameraAngles()
+
+			if cameraAngles:getFov(eyeOrigin, smokeOrigin) > AiUtility.visibleFovThreshold then
+				break
+			end
+
+			local trace = Trace.getLineAtAngle(eyeOrigin, cameraAngles, AiUtility.traceOptionsVisible, "AiRoutineHandleOccluderTraversal.think<FindEnemyWatchingSmoke>")
+
+			if not eyeOrigin:isRayIntersectingBounds(trace.endPosition, smokeMaxBounds) then
+				break
+			end
+
+			self.isSmokeWatchedByEnemy = true
+		until true end
+
+		-- Are we inside a smoke?
 		if Vector3.isBoundsIntersecting(clientBounds, smokeMaxBounds) then
 			self.smokeInsideOf = smoke
 		end
@@ -209,6 +236,14 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 	end
 
 	if AiUtility.timeData.roundtime_remaining < 30 then
+		return
+	end
+
+	if AiUtility.isBombPlanted() and LocalPlayer:isCounterTerrorist() and LocalPlayer:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 250 then
+		return
+	end
+
+	if LocalPlayer:m_bIsDefusing() == 1 then
 		return
 	end
 

@@ -443,6 +443,147 @@ function NodeTypeBase:executeCustomizers()
     end
 end
 
+--- @return void
+function NodeTypeBase:activate()
+    self.isActive = true
+end
+
+--- @return void
+function NodeTypeBase:deactivate()
+    self.isActive = false
+end
+
+--- Executed immediately before adding the node to the graph.
+---
+--- @param nodegraph Nodegraph
+--- @return void
+function NodeTypeBase:onCreatePre(nodegraph)
+    if self.isDirectional then
+        self.direction = LocalPlayer.getCameraAngles()
+    end
+end
+
+--- Executed immediately before after adding the node to the graph.
+---
+--- @param nodegraph Nodegraph
+--- @return void
+function NodeTypeBase:onCreatePost(nodegraph)
+    for _, connection in pairs(self.connections) do
+        connection.connections[self.id] = self
+    end
+end
+
+--- Executed on all nodes in sequence when the graph is loaded or modified.
+---
+--- If you have bugs relating to associations with other nodes, try using this method instead of onCreate.
+---
+--- @param nodegraph Nodegraph
+--- @return void
+function NodeTypeBase:onSetup(nodegraph)
+    -- All nodes are always spawned approximately 18 units above the floor.
+    self.floorOrigin = self.origin:clone():offset(0, 0, -18)
+
+    if self.isPlanar then
+        -- We need to test from a higher position, to account for stairs or short ledges.
+        local origin = self.origin:clone():offset(0, 0, 18)
+        -- Default planar test offset.
+        local offset = 5
+
+        -- Determine the maximum offset we can use for planar nodes' path offsets.
+        -- This will make planar offsets become small in tight spaces, and larger in open areas.
+        -- The intent is for the AI to take randomised paths. These validation functions
+        -- give us the maximum possible offset the AI could perform.
+        for _, item in pairs(PlanarTestList) do
+            if not item.validation(origin) then
+                break
+            end
+
+            offset = item.offset
+        end
+
+        self.pathOffset = offset
+    end
+
+    -- Set look-at data for directional nodes. Hints the AI with crosshair placement information.
+    if self.isDirectional then
+        self:setLookAtOrigin()
+    end
+end
+
+--- Executed when the node is removed from the graph.
+---
+--- @param nodegraph Nodegraph
+--- @return void
+function NodeTypeBase:onRemove(nodegraph)
+    for _, connection in pairs(self.connections) do
+        connection.connections[self.id] = nil
+    end
+end
+
+--- Executed once per tick and allows the node to perform its own gameplay logic.
+---
+--- @param nodegraph Nodegraph
+--- @return void
+function NodeTypeBase:onThink(nodegraph) end
+
+--- Executed when pathfinding selects this node.
+---
+--- @param nodegraph Nodegraph
+--- @return void
+function NodeTypeBase:onIsInPath(nodegraph) end
+
+--- Executed when this node is the current node in the AI's path.
+---
+--- @param nodegraph Nodegraph
+--- @param path PathfinderPath
+--- @return void
+function NodeTypeBase:onIsNext(nodegraph, path)
+    -- Don't make the first node in a path offset.
+    -- Also don't make the last offset.
+    -- If the AI keeps remaking the path, it's likely to zig-zag on the spot.
+    if self.isPlanar and path.idx > 1 and path.idx ~= path.finalIdx then
+        local nextNode = path.nodes[path.idx + 1]
+
+        -- Never offset the path if the next node is a jump or duck,
+        -- or the AI may not line them up properly.
+        if nextNode and (nextNode.isJump or nextNode.isDuck) then
+            return
+        end
+
+        -- Generate a realistic offset based on the distance.
+        -- Close nodes in the path shouldn't want to make the AI strafe really hard.
+        local distance = LocalPlayer:getOrigin():getDistance(self.origin)
+        local pct = Math.getClampedFloat(distance, 150, 0, 150)
+        local pathOffset = self.pathOffset * pct
+
+        -- Generate the world position we would like the AI to walk to.
+        local idealPathOrigin = self.origin + Vector3:new(
+            Math.getRandomFloat(-pathOffset, pathOffset),
+            Math.getRandomFloat(-pathOffset, pathOffset),
+            0
+        )
+
+        -- Generate the world position that the AI can physically walk to.
+        local trace = Trace.getHullToPosition(
+            self.origin,
+            idealPathOrigin,
+            Vector3:newBounds(Vector3.align.UP, 32, 32, 16),
+            AiUtility.traceOptionsPathfinding,
+            "NodeTypeBase.onIsNext<FindPlanarOffset>"
+        )
+
+        -- Randomly offset the path origin so that the AI moves along a path in a slightly random fashion.
+        self.pathOrigin = trace.endPosition
+    else
+        self.pathOrigin = self.origin
+    end
+end
+
+--- Executed when this node is the passed during a path traversal.
+--- @param nodegraph Nodegraph
+--- @return void
+function NodeTypeBase:onIsPassed(nodegraph) end
+
 --- @param node NodeTypeBase
 --- @return void
 function NodeTypeBase:setConnection(node)
@@ -662,147 +803,6 @@ end
 function NodeTypeBase:isConnectionless()
     return next(self.connections) == nil
 end
-
---- @return void
-function NodeTypeBase:activate()
-    self.isActive = true
-end
-
---- @return void
-function NodeTypeBase:deactivate()
-    self.isActive = false
-end
-
---- Executed immediately before adding the node to the graph.
----
---- @param nodegraph Nodegraph
---- @return void
-function NodeTypeBase:onCreatePre(nodegraph)
-    if self.isDirectional then
-        self.direction = LocalPlayer.getCameraAngles()
-    end
-end
-
---- Executed immediately before after adding the node to the graph.
----
---- @param nodegraph Nodegraph
---- @return void
-function NodeTypeBase:onCreatePost(nodegraph)
-    for _, connection in pairs(self.connections) do
-        connection.connections[self.id] = self
-    end
-end
-
---- Executed on all nodes in sequence when the graph is loaded or modified.
----
---- If you have bugs relating to associations with other nodes, try using this method instead of onCreate.
----
---- @param nodegraph Nodegraph
---- @return void
-function NodeTypeBase:onSetup(nodegraph)
-    -- All nodes are always spawned approximately 18 units above the floor.
-    self.floorOrigin = self.origin:clone():offset(0, 0, -18)
-
-    if self.isPlanar then
-        -- We need to test from a higher position, to account for stairs or short ledges.
-        local origin = self.origin:clone():offset(0, 0, 18)
-        -- Default planar test offset.
-        local offset = 5
-
-        -- Determine the maximum offset we can use for planar nodes' path offsets.
-        -- This will make planar offsets become small in tight spaces, and larger in open areas.
-        -- The intent is for the AI to take randomised paths. These validation functions
-        -- give us the maximum possible offset the AI could perform.
-        for _, item in pairs(PlanarTestList) do
-            if not item.validation(origin) then
-                break
-            end
-
-            offset = item.offset
-        end
-
-        self.pathOffset = offset
-    end
-
-    -- Set look-at data for directional nodes. Hints the AI with crosshair placement information.
-    if self.isDirectional then
-        self:setLookAtOrigin()
-    end
-end
-
---- Executed when the node is removed from the graph.
----
---- @param nodegraph Nodegraph
---- @return void
-function NodeTypeBase:onRemove(nodegraph)
-    for _, connection in pairs(self.connections) do
-        connection.connections[self.id] = nil
-    end
-end
-
---- Executed once per tick and allows the node to perform its own gameplay logic.
----
---- @param nodegraph Nodegraph
---- @return void
-function NodeTypeBase:onThink(nodegraph) end
-
---- Executed when pathfinding selects this node.
----
---- @param nodegraph Nodegraph
---- @return void
-function NodeTypeBase:onIsInPath(nodegraph) end
-
---- Executed when this node is the current node in the AI's path.
----
---- @param nodegraph Nodegraph
---- @param path PathfinderPath
---- @return void
-function NodeTypeBase:onIsNext(nodegraph, path)
-    -- Don't make the first node in a path offset.
-    -- Also don't make the last offset.
-    -- If the AI keeps remaking the path, it's likely to zig-zag on the spot.
-    if self.isPlanar and path.idx > 1 and path.idx ~= path.finalIdx then
-        local nextNode = path.nodes[path.idx + 1]
-
-        -- Never offset the path if the next node is a jump or duck,
-        -- or the AI may not line them up properly.
-        if nextNode and (nextNode.isJump or nextNode.isDuck) then
-            return
-        end
-
-        -- Generate a realistic offset based on the distance.
-        -- Close nodes in the path shouldn't want to make the AI strafe really hard.
-        local distance = LocalPlayer:getOrigin():getDistance(self.origin)
-        local pct = Math.getClampedFloat(distance, 150, 0, 150)
-        local pathOffset = self.pathOffset * pct
-
-        -- Generate the world position we would like the AI to walk to.
-        local idealPathOrigin = self.origin + Vector3:new(
-            Math.getRandomFloat(-pathOffset, pathOffset),
-            Math.getRandomFloat(-pathOffset, pathOffset),
-            0
-        )
-
-        -- Generate the world position that the AI can physically walk to.
-        local trace = Trace.getHullToPosition(
-            self.origin,
-            idealPathOrigin,
-            Vector3:newBounds(Vector3.align.UP, 32, 32, 16),
-            AiUtility.traceOptionsPathfinding,
-            "NodeTypeBase.onIsNext<FindPlanarOffset>"
-        )
-
-        -- Randomly offset the path origin so that the AI moves along a path in a slightly random fashion.
-        self.pathOrigin = trace.endPosition
-    else
-        self.pathOrigin = self.origin
-    end
-end
-
---- Executed when this node is the passed during a path traversal.
---- @param nodegraph Nodegraph
---- @return void
-function NodeTypeBase:onIsPassed(nodegraph) end
 
 return Nyx.class("NodeTypeBase", NodeTypeBase)
 --}}}
