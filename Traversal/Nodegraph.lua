@@ -14,7 +14,6 @@ local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
-local MapInfo = require "gamesense/Nyx/v1/Dominion/Ai/Info/MapInfo"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
@@ -368,7 +367,7 @@ function Nodegraph.getClosestBombsiteByDistance(origin)
 end
 
 --- @param origin Vector3
---- @return NodeTypeObjective
+--- @return NodeTypeObjective, number
 function Nodegraph.getClosestBombsiteByHeight(origin)
     --- @type NodeTypeObjective
     local lower
@@ -386,12 +385,16 @@ function Nodegraph.getClosestBombsiteByHeight(origin)
     end
 
     local upperZ = upper.origin.z - 175
+    --- @type NodeTypeObjective
+    local bombsite
 
     if origin.z < upperZ then
-        return lower
+        bombsite = lower
+    else
+        bombsite = upper
     end
 
-    return upper
+    return bombsite, origin:getDistance(bombsite.origin)
 end
 
 --- @param origin Vector3
