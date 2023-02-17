@@ -17,7 +17,7 @@ Create a client config named `Nyx-v1-Dominion`. The config data to import can be
 
 Dominion-specific configuration can be found under `lua/gamesense/Nyx/v1/Dominion/Utility/Config.lua`.
 
-## Support Maps
+## Supported Maps
 - Inferno
 - Mirage
 - Office
