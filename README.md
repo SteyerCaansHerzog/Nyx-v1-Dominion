@@ -2,7 +2,7 @@
 Competitive matchmaking bot for CS:GO.
 
 # Dependencies
-- https://github.com/SteyerCaansHerzog/Nyx-v1-Api
+- https://github.com/SteyerCaansHerzog/Nyx-v1-Api (use branch `v2`)
 - https://gamesense.pub/forums/viewtopic.php?id=18807
 
 # Installation
