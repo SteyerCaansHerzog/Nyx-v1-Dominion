@@ -34,7 +34,6 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field bombDetonationTime number
 --- @field bombsitePlantAt string
 --- @field canDefuse boolean
---- @field client Player
 --- @field clientNodeOrigin Vector3
 --- @field clientThreatenedBy Player
 --- @field clientThreatenedFromOrigin Vector3
@@ -53,7 +52,6 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field enemyHitboxes table<number, Vector3[]>
 --- @field gamemodes GamemodeInfo
 --- @field gameRules GameRules
---- @field hasBomb Player
 --- @field hostageCarriers Player[]
 --- @field ignorePresenceAfter number
 --- @field isBombBeingDefusedByEnemy boolean

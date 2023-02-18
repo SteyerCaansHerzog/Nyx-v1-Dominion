@@ -12,7 +12,6 @@ local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 --{{{ NodeTypeBoost
 --- @class NodeTypeBoost : NodeTypeSpot
 --- @field chance number
---- @field isStandingHeight boolean
 --- @field waitNode NodeSpotWaitOnBoost
 local NodeTypeBoost = {
     colorPrimary = Color:hsla(20, 0.8, 0.6),

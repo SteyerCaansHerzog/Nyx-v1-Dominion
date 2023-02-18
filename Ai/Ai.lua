@@ -26,7 +26,6 @@ local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 
 -- Other.
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
-local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiVoice = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoice"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"

@@ -13,11 +13,11 @@ local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local NodeHintPreAim = {
     name = "Pre-Aim",
     description = {
-        "Forces T AI to pre-aim common angles",
+        "Forces AI to pre-aim common angles",
         "when executing sites."
     },
     colorPrimary = Color:hsla(300, 0.8, 0.6),
-    colorSecondary = Color:hsla(300, 0.8, 0.6),
+    colorSecondary = Color:hsla(60, 0.8, 0.6),
     isDirectional = true
 }
 

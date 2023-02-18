@@ -52,6 +52,12 @@ function AiStateEvacuate:__init()
     Callbacks.roundPrestart(function()
     	self:reset()
     end)
+
+    Callbacks.bombPlanted(function()
+        -- This has the side-effect of forcing the AI to reselect a hide node.
+        -- But it will also force the AI to determine if it's going to lurk outside bombsites.
+    	self:activate()
+    end)
 end
 
 --- @return void
@@ -199,7 +205,7 @@ end
 
 --- @return void
 function AiStateEvacuate:activate()
-    local node = self:getHideNode()
+    local node = self:getNode()
 
     if not node then
         return
@@ -278,35 +284,44 @@ function AiStateEvacuate:think(cmd)
     end
 end
 
---- @return NodeSpotHide
-function AiStateEvacuate:getHideNode()
-    --- @type NodeSpotHide[]
-    local nodes = {}
+--- @return NodeSpotHide|NodeSpotLurkCt
+function AiStateEvacuate:getNode()
     local clientOrigin = LocalPlayer:getOrigin()
     local bombOrigin = AiUtility.plantedBomb and AiUtility.plantedBomb:m_vecOrigin()
-    local nodeClass
+    local potentialNodes
 
     if LocalPlayer:isTerrorist() then
-        nodeClass = Nodegraph.get(Node.spotHideT)
+        potentialNodes = Nodegraph.get(Node.spotHideT)
     elseif LocalPlayer:isCounterTerrorist() then
         local isAbleToPickEnemies = true
+
+        if not AiUtility.isBombPlanted() then
+            isAbleToPickEnemies = false
+        end
 
         if LocalPlayer:m_iHealth() < 45 or LocalPlayer:m_iAccount() < 3500 then
             isAbleToPickEnemies = false
         end
 
         if isAbleToPickEnemies then
-            nodeClass = Nodegraph.getForBombsite(Node.spotLurkCt, AiUtility.bombsitePlantAt)
+            potentialNodes = Nodegraph.getForBombsite(Node.spotLurkCt, AiUtility.bombsitePlantAt)
 
             self.isPicking = true
         else
-            nodeClass = Nodegraph.get(Node.spotHideCt)
+            potentialNodes = Nodegraph.get(Node.spotHideCt)
 
             self.isPicking = false
         end
     end
 
-    for _, node in pairs(nodeClass) do repeat
+    -- We don't need to filter lurk CT nodes.
+    if self.isPicking then
+        return Table.getRandom(potentialNodes)
+    end
+
+    local nodes = {}
+
+    for _, node in pairs(potentialNodes) do repeat
         if clientOrigin:getDistance(node.floorOrigin) < 1000 then
             break
         end

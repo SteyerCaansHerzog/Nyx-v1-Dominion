@@ -235,7 +235,6 @@ function VirtualMouse.setViewAngles()
 		-- Handle the "buildup" of mouse movement delta that would result in the virtual mouse leaving the mousemat.
 		VirtualMouse.handleBuildup()
 
-
 		if VirtualMouse.buildupCooldownTimer:isElapsed(VirtualMouse.buildupCooldownTime) then
 			-- Perform generic look behaviour.
 			VirtualMouse.setIdealLookAhead(idealViewAngles)
@@ -718,7 +717,7 @@ end
 
 --- @param origin Vector3
 --- @param speed number
---- @param noise number
+--- @param noise VirtualMouseNoiseType
 --- @return void
 function VirtualMouse.lookAtLocation(origin, speed, noise, note)
 	if VirtualMouse.isViewLocked then
@@ -735,7 +734,7 @@ end
 
 --- @param angle Angle
 --- @param speed number
---- @param noise number
+--- @param noise VirtualMouseNoiseType
 --- @return void
 function VirtualMouse.lookAlongAngle(angle, speed, noise, note)
 	if VirtualMouse.isViewLocked then
@@ -752,7 +751,7 @@ end
 
 --- @param direction Vector3
 --- @param speed number
---- @param noise number
+--- @param noise VirtualMouseNoiseType
 --- @return void
 function VirtualMouse.lookInDirection(direction, speed, noise, note)
 	if VirtualMouse.isViewLocked then

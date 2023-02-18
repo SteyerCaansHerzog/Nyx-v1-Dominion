@@ -62,6 +62,10 @@ function AiStateChickenInteraction:__init()
     end)
 
     Callbacks.netUpdateEnd(function()
+        if not self.ai.chatbots.normal.isEnabled then
+            return
+        end
+
         for id, chicken in pairs(self.chickensOwned) do
             if chicken:m_vecOrigin():isZero() then
                 self.ai.chatbots.normal.sentences.replyChickenKilled:speak()

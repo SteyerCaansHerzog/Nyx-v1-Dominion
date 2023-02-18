@@ -22,6 +22,8 @@ local AiChatCommandOk = {
 function AiChatCommandOk:invoke(ai, sender, args)
     ai.commands.boost.isTaken = true
     ai.states.useBoost.booster = sender
+    ai.states.useRunBoost.booster = sender
+    ai.states.useOntoPositionBoost.booster = sender
 end
 
 return Nyx.class("AiChatCommandOk", AiChatCommandOk, AiChatCommandBase)

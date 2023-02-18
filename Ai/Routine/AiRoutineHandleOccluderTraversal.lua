@@ -114,7 +114,7 @@ function AiRoutineHandleOccluderTraversal:think()
 		end
 
 		local smokeOrigin = smoke:m_vecOrigin()
-		local smokeNearBounds = smokeOrigin:getBounds(Vector3.align.CENTER, 450, 450, 64)
+		local smokeNearBounds = smokeOrigin:getBounds(Vector3.align.CENTER, 250, 250, 64)
 
 		-- Determine if we're nearby a smoke.
 		if not Vector3.isBoundsIntersecting(clientBounds, smokeNearBounds) then
@@ -123,7 +123,7 @@ function AiRoutineHandleOccluderTraversal:think()
 
 		self.isNearSmoke = true
 
-		local smokeMaxBounds = smokeOrigin:getBounds(Vector3.align.UP, 200, 200, 72)
+		local smokeMaxBounds = smokeOrigin:getBounds(Vector3.align.UP, 175, 175, 72)
 		local smokeVisibleBox = smoke:m_vecOrigin():offset(0, 0, 48):getBox(Vector3.align.CENTER, 72, 72, 24)
 
 		-- Are enemies watching the smoke?
@@ -213,6 +213,10 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 		return
 	end
 
+	if not self.isSmokeWatchedByEnemy then
+		return
+	end
+
 	if not Pathfinder.isOnValidPath() then
 		return
 	end
@@ -239,7 +243,10 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 		return
 	end
 
-	if AiUtility.isBombPlanted() and LocalPlayer:isCounterTerrorist() and LocalPlayer:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 250 then
+	if AiUtility.isBombPlanted()
+		and LocalPlayer:isCounterTerrorist()
+		and LocalPlayer:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 250
+	then
 		return
 	end
 

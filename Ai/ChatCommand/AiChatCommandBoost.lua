@@ -34,6 +34,10 @@ function AiChatCommandBoost:invoke(ai, sender, args, isBot)
         return self.REAPER_IS_ACTIVE
     end
 
+    if not LocalPlayer:isAlive() then
+        return self.CLIENT_IS_DEAD
+    end
+
     self.isTaken = false
 
     local senderOrigin = sender:getOrigin()
@@ -68,13 +72,13 @@ function AiChatCommandBoost:invoke(ai, sender, args, isBot)
         end
     end
 
+    local boostType = args[1]
+
     Client.fireAfter(orderInQueue * 1, function()
         if not self.isTaken then
-            ai.states.boostTeammate:boost(sender, traceAim.endPosition, false, isBot)
+            ai.commands.ok:bark()
+            ai.states.boostTeammate:boost(sender, traceAim.endPosition, boostType, isBot)
             ai.states.useBoost:reset()
-
-            Messenger.send(true, " ok")
-
             ai.voice.pack:speakNoProblem()
         end
 

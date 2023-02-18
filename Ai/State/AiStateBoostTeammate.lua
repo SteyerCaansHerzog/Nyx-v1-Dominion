@@ -22,8 +22,7 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 
 --{{{ AiStateBoostTeammate
 --- @class AiStateBoostTeammate : AiStateBase
---- @field boostLookAngles Angle
---- @field boostLookTimer Timer
+--- @field boostNode NodeTypeBoost
 --- @field boostOrigin Vector3
 --- @field boostPlayer Player
 --- @field isBoosting boolean
@@ -41,8 +40,6 @@ end
 
 --- @return void
 function AiStateBoostTeammate:__init()
-    self.boostLookTimer = Timer:new():startThenElapse()
-
     Callbacks.roundStart(function()
     	self:reset()
     end)
@@ -67,18 +64,38 @@ end
 
 --- @param player Player
 --- @param origin Vector3
+--- @param boostType string
 --- @return void
-function AiStateBoostTeammate:boost(player, origin, isRunBoosting, isRequesterBot)
+function AiStateBoostTeammate:boost(player, origin, boostType, isRequesterBot)
     if isRequesterBot then
-        local node = LocalPlayer:isTerrorist() and Node.spotBoostT  or Node.spotBoostCt
+        local node = self:getNodeClass(boostType)
+        local closestNode = Nodegraph.getClosest(player:getOrigin(), node)
 
-        origin = Nodegraph.getClosest(player:getOrigin(), node).floorOrigin
+        origin = closestNode.floorOrigin
+
+        self.boostNode = closestNode
     end
 
     self.boostPlayer = player
     self.boostOrigin = origin
-    self.isRunBoosting = isRunBoosting
+    self.isRunBoosting = boostType == "RunBoost"
     self.isRequesterBot = isRequesterBot
+end
+
+--- @param boostType string
+--- @return NodeTypeBoost
+function AiStateBoostTeammate:getNodeClass(boostType)
+    if boostType == "NormalBoost" then
+        return LocalPlayer:isTerrorist() and Node.spotBoostT or Node.spotBoostCt
+    end
+
+    if boostType == "OntoPositionBoost" then
+        return LocalPlayer:isTerrorist() and Node.spotOntoPositionBoostStartT or Node.spotOntoPositionBoostStartCt
+    end
+
+    if boostType == "RunBoost" then
+        return LocalPlayer:isTerrorist() and Node.spotRunBoostT or Node.spotRunBoostCt
+    end
 end
 
 --- @return void
@@ -104,6 +121,7 @@ end
 function AiStateBoostTeammate:reset()
     self.boostPlayer = nil
     self.boostOrigin = nil
+    self.boostNode = nil
     self.isBoosting = false
 end
 
@@ -128,26 +146,24 @@ function AiStateBoostTeammate:think(cmd)
         return
     end
 
-    if self.boostLookTimer:isElapsedThenRestart(2) then
-        self.boostLookAngles = self.boostPlayer:getCameraAngles():offset(
-            Math.getRandomFloat(-2, 2),
-            Math.getRandomFloat(-8, 8)
-        )
-    end
-
     if originDistance < 200 then
         self.activity = "Waiting to boost teammate"
+
+        if self.boostNode then
+            print(self.boostNode.direction)
+            VirtualMouse.lookAlongAngle(self.boostNode.direction, 6, VirtualMouse.noise.none, "Boost teammate look along boost")
+        end
     end
 
     local isRunBoostReady = true
 
-    if senderDistance < 250 and originDistance < 50 then
+    if senderDistance < 32 and originDistance < 32 then
         Pathfinder.blockTeammateAvoidance()
+    end
 
+    if senderDistance < 250 and originDistance < 50 then
         self.ai.routines.lookAwayFromFlashbangs:block()
         self.ai.states.evade:block()
-
-        Pathfinder.blockTeammateAvoidance()
 
         local bounds = playerOrigin:clone():offset(0, 0, 32):getBounds(Vector3.align.BOTTOM, 25, 25, 128)
 
@@ -160,8 +176,8 @@ function AiStateBoostTeammate:think(cmd)
         end
     end
 
-    if self.isBoosting and self.isRunBoosting and isRunBoostReady then
-        local origin = self.boostPlayer:getOrigin() + self.boostPlayer:m_vecVelocity()
+    if self.isBoosting and self.isRunBoosting and isRunBoostReady and self.boostPlayer:isFlagActive(Player.flags.FL_ONGROUND) then
+        local origin = self.boostPlayer:getOrigin() + self.boostPlayer:m_vecVelocity() * 0.5
 
         if playerOrigin:getDistance2(origin) > 30 then
             local angle = playerOrigin:getAngle(origin)

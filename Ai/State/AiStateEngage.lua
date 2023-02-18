@@ -81,13 +81,13 @@ local WeaponMovementVelocity =  {
 --- @field defendActionTimer Timer
 --- @field defendingAtNode NodeTypeDefend
 --- @field defendingLookAt Vector3
---- @field defendLookAtOffset Vector3
 --- @field enemySpottedCooldown Timer
 --- @field fov number
 --- @field hasBackupCover boolean
 --- @field hitboxOffset Vector3
 --- @field hitboxOffsetTimer Timer
 --- @field ignorePlayerAfter number
+--- @field isAbleToAttackDucked boolean
 --- @field isAboutToBeVisibleToBestTarget boolean
 --- @field isActivelyInStealth boolean
 --- @field isAimEnabled boolean
@@ -209,67 +209,66 @@ end
 
 --- @return void
 function AiStateEngage:initFields()
-    self.isAimEnabled = true
+    self.aimNoise = VirtualMouse.noise.none
     self.anticipateTime = 0.1
+    self.blockMovementAfterPlantTimer = Timer:new():startThenElapse()
     self.blockTime = 0.25
     self.blockTimer = Timer:new():startThenElapse()
     self.currentReactionTime = 0
+    self.defendActionTime = 1
+    self.defendActionTimer = Timer:new():startThenElapse()
     self.enemySpottedCooldown = Timer:new():startThenElapse()
     self.equipPistolTimer = Timer:new()
+    self.fov = 0
     self.hitboxOffsetTimer = Timer:new():startThenElapse()
-    self.ignorePlayerAfter = 35
+    self.ignorePlayerAfter = 16
+    self.isAimEnabled = true
+    self.isAllowedToJiggleHold = true
+    self.isAllowedToNoscope = false
+    self.isAllowedToStealthKnifeTarget = Math.getChance(3)
+    self.isAllowedToStealthTarget = Math.getChance(2)
     self.isIgnoringDormancy = false
+    self.jiggleHoldCooldownTimer = Timer:new():startThenElapse()
+    self.jiggleHoldCount = 0
+    self.jiggleHoldThreshold = 4
+    self.jiggleHoldTime = 0.3
+    self.jiggleHoldTimer = Timer:new():startThenElapse()
     self.jiggleShootDirection = "Left"
     self.jiggleShootTime = Math.getRandomFloat(0.33, 0.66)
     self.jiggleShootTimer = Timer:new():startThenElapse()
+    self.lastShotTimer = Timer:new():startThenElapse()
     self.lastSoundTimer = Timer:new():startThenElapse()
-    self.noticedPlayerTimers = {}
     self.noticedPlayerLastKnownOrigin = {}
+    self.noticedPlayerTimers = {}
     self.onGroundTime = 0.1
     self.onGroundTimer = Timer:new()
     self.patienceCooldownTimer = Timer:new():startThenElapse()
     self.patienceTimer = Timer:new()
+    self.pingEnemyTimer = Timer:new():startThenElapse()
+    self.preAimMapAngleTimer = Timer:new():startThenElapse()
     self.preAimOriginDelayed = Vector3:new()
     self.preAimThroughCornersBlockTimer = Timer:new():startThenElapse()
     self.preAimThroughCornersUpdateTimer = Timer:new():startThenElapse()
+    self.randomizeFireDelay = 0
+    self.randomizeFireDelayTime = 0
+    self.randomizeFireDelayTimer = Timer:new():startThenElapse()
     self.reactionTimer = Timer:new()
     self.scopedTimer = Timer:new()
+    self.seekCoverTimer = Timer:new():startThenElapse()
     self.setBestTargetTimer = Timer:new():startThenElapse()
+    self.smokeWallBangHoldTimer = Timer:new():startThenElapse()
     self.sprayTimer = Timer:new()
+    self.stealthingTimer = Timer:new():startThenElapse()
+    self.strafePeekIndex = 1
+    self.strafePeekTimer = Timer:new():startThenElapse()
     self.tapFireTime = 0.2
     self.tapFireTimer = Timer:new():start()
-    self.watchTime = 2
-    self.watchTimer = Timer:new()
-    self.smokeWallBangHoldTimer = Timer:new()
     self.visibleReactionTimer = Timer:new()
     self.visualizerCallbacks = {}
     self.visualizerExpiryTimers = {}
-    self.aimNoise = VirtualMouse.noise.none
-    self.seekCoverTimer = Timer:new():startThenElapse()
-    self.strafePeekTimer = Timer:new():startThenElapse()
-    self.strafePeekIndex = 1
-    self.randomizeFireDelayTimer = Timer:new():startThenElapse()
-    self.randomizeFireDelayTime = 0
-    self.randomizeFireDelay = 0
-    self.pingEnemyTimer = Timer:new():startThenElapse()
-    self.fov = 0
-    self.isAllowedToNoscope = false
-    self.jiggleHoldTimer = Timer:new():startThenElapse()
-    self.jiggleHoldTime = 0.3
-    self.jiggleHoldCount = 0
-    self.jiggleHoldCooldownTimer = Timer:new():startThenElapse()
-    self.jiggleHoldThreshold = 4
-    self.isAllowedToJiggleHold = true
-    self.defendActionTimer = Timer:new():startThenElapse()
-    self.defendActionTime = 1
-    self.defendLookAtOffset = Vector3:new()
-    self.blockMovementAfterPlantTimer = Timer:new():startThenElapse()
     self.waitForTargetVisibleTimer = Timer:new():startThenElapse()
-    self.preAimMapAngleTimer = Timer:new():startThenElapse()
-    self.isAllowedToStealthTarget = Math.getChance(2)
-    self.isAllowedToStealthKnifeTarget = Math.getChance(3)
-    self.lastShotTimer = Timer:new():startThenElapse()
-    self.stealthingTimer = Timer:new():startThenElapse()
+    self.watchTime = 2
+    self.watchTimer = Timer:new()
 
     for i = 1, 64 do
         self.noticedPlayerTimers[i] = Timer:new()
@@ -321,11 +320,7 @@ function AiStateEngage:initEvents()
         self.defendingLookAt = nil
         self.isIgnoringDormancy = true
         self.jiggleShootTime = Math.getRandomFloat(0.33, 0.66)
-        self.defendLookAtOffset = Vector3:new(
-            Math.getRandomFloat(-256, 256),
-            Math.getRandomFloat(-256, 256),
-            Math.getRandomFloat(-10, 10)
-        )
+
     end)
 
     Callbacks.runCommand(function()
@@ -445,7 +440,9 @@ function AiStateEngage:initEvents()
     end)
 
     Callbacks.grenadeThrown(function(e)
-        self:noticeEnemy(e.player, 750, true, "Threw grenade")
+        Client.fireAfter(1, function()
+            self:noticeEnemy(e.player, 750, true, "Threw grenade")
+        end)
     end)
 
     Callbacks.playerDeath(function(e)
@@ -453,6 +450,10 @@ function AiStateEngage:initEvents()
             self:reset()
 
             return
+        end
+
+        if e.attacker:isLocalPlayer() and e.victim:isEnemy() then
+            self.lastSoundTimer:start()
         end
 
         if e.victim:isTeammate() then
@@ -495,6 +496,8 @@ end
 --- @return void
 function AiStateEngage:assess()
     self:setBestTarget()
+    -- This is effectively a global behaviour, dependent on code inside this class.
+    self:handlePreAimMapAngle()
 
     self.sprayRealTime = self.sprayTime
 
@@ -526,8 +529,6 @@ function AiStateEngage:assess()
         return AiPriority.ENGAGE_ACTIVE
     end
 
-    self:handlePreAimMapAngle()
-
     -- An enemy is in a common pick spot.
     if self.isPreAimingMapAngle then
         return AiPriority.ENGAGE_ACTIVE
@@ -544,7 +545,7 @@ function AiStateEngage:assess()
         end
     end
 
-    if self.sprayTimer:isStarted() then
+    if self.sprayTimer:isStarted() or not self.smokeWallBangHoldTimer:isElapsed(1.5) then
         return AiPriority.ENGAGE_ACTIVE
     end
 
@@ -716,6 +717,7 @@ end
 
 --- @return void
 function AiStateEngage:handleShiftWalking()
+    -- Block the AI from accidentally running when the stealth target goes behind cover.
     if self.isPassivelyInStealth then
         Pathfinder.walk()
 
@@ -2317,7 +2319,11 @@ function AiStateEngage:attackingDefending()
     end
 
     -- If we can pre-aim, we should do that.
-    if self.preAimAboutCornersAimOrigin then
+    if self.watchOrigin then
+        self.isUpdatingDefendingLookAt = true
+
+        targetOrigin = self.preAimAboutCornersAimOrigin
+    elseif self.preAimAboutCornersAimOrigin then
         self.isUpdatingDefendingLookAt = true
 
         targetOrigin = self.preAimAboutCornersAimOrigin
@@ -2334,12 +2340,6 @@ function AiStateEngage:attackingDefending()
             if not trace.isIntersectingGeometry then
                 self.defendingLookAt = self.defendingAtNode.lookAtOrigin
             end
-        else
-            targetOrigin = self.bestTarget:getOrigin():offset(0, 0, 64):offsetByVector(self.defendLookAtOffset)
-
-            local eyeOrigin = LocalPlayer.getEyeOrigin()
-
-            targetOrigin.z = Math.getClamped(targetOrigin.z, eyeOrigin.z - 48, eyeOrigin.z + 48)
         end
     end
 
@@ -2518,7 +2518,7 @@ function AiStateEngage:attackingWallAndSmokeBang(cmd)
     if not AiUtility.visibleEnemies[self.bestTarget.eid] then
         local lastNoticedAgo = self.noticedLoudPlayerTimers[self.bestTarget.eid]:get()
 
-        if AiUtility.isBombBeingDefusedByEnemy or (lastNoticedAgo > 0 and lastNoticedAgo < 1.25) then
+        if AiUtility.isBombBeingDefusedByEnemy or (lastNoticedAgo > 0 and lastNoticedAgo < 2) then
             local bangOrigin = self.bestTarget:getOrigin():offset(0, 0, 46)
             local _, traceDamage = eyeOrigin:getTraceBullet(bangOrigin, LocalPlayer.eid)
             local isBangable = true
@@ -2562,13 +2562,13 @@ function AiStateEngage:attackingWallAndSmokeBang(cmd)
             elseif isOccludedBySmoke and isBangable then
                 -- Smokebang.
                 isShooting = true
-            elseif self.smokeWallBangHoldTimer:isStarted() and not self.smokeWallBangHoldTimer:isElapsed(1) then
+            elseif not self.smokeWallBangHoldTimer:isElapsed(1.5) then
                 -- Hold our spray. Prevents dithering.
                 isShooting = true
             end
 
             if isShooting then
-                self.smokeWallBangHoldTimer:ifPausedThenStart()
+                self.smokeWallBangHoldTimer:start()
 
                 self:addVisualizer("bang", function()
                     self.shootAtOrigin:drawCircleOutline(12, 2, Color:hsla(30, 1, 0.5, 200))
@@ -3045,7 +3045,7 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
 
     if self.isOnBooster then
         -- Stop action can incur ducking, which we probably don't want on boost spots.
-        Pathfinder.standStill()
+        Pathfinder.counterStrafe(true)
     elseif distance > 1000 then
         self:actionStop(cmd)
 
@@ -3091,7 +3091,7 @@ function AiStateEngage:shootLight(cmd, aimAtOrigin, fov, weapon)
 
     if self.isOnBooster then
         -- Stop action can incur ducking, which we probably don't want on boost spots.
-        Pathfinder.standStill()
+        Pathfinder.counterStrafe(true)
     elseif distance > 800 then
         self:actionStrafe(cmd)
 
@@ -3133,7 +3133,7 @@ function AiStateEngage:shootShotgun(cmd, aimAtOrigin, fov, weapon)
 
     if self.isOnBooster then
         -- Stop action can incur ducking, which we probably don't want on boost spots.
-        Pathfinder.standStill()
+        Pathfinder.counterStrafe(true)
     elseif distance > 1000 then
         return
     elseif AiUtility.totalThreats > 1 then
@@ -3161,7 +3161,7 @@ function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
 
     if self.isOnBooster then
         -- Stop action can incur ducking, which we probably don't want on boost spots.
-        Pathfinder.standStill()
+        Pathfinder.counterStrafe(true)
     elseif distance > 1000 then
         self:actionStop(cmd)
 
@@ -3229,7 +3229,7 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
 
     if self.isOnBooster then
         -- Stop action can incur ducking, which we probably don't want on boost spots.
-        Pathfinder.standStill()
+        Pathfinder.counterStrafe(true)
     else
         self:actionStop(cmd)
     end
@@ -3314,6 +3314,12 @@ function AiStateEngage:getTargetHitbox(enemy)
 
     self.isBestTargetVisible = visibleHitboxCount > 0
 
+    local duckOrigin = LocalPlayer:getOrigin():offset(0, 0, 46)
+    local headOrigin = enemy:getHitboxPosition(Player.hitbox.HEAD)
+    local trace = Trace.getLineToPosition(duckOrigin, headOrigin, AiUtility.traceOptionsVisible)
+
+    self.isAbleToAttackDucked = not trace.isIntersectingGeometry
+
     return targetHitbox, visibleHitboxCount
 end
 
@@ -3357,7 +3363,13 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:actionStrafe(cmd)
-    cmd.in_duck = true
+    if self.isAbleToAttackDucked then
+        cmd.in_duck = true
+    else
+        Pathfinder.counterStrafe(true)
+
+        return
+    end
 
     if LocalPlayer:m_flDuckSpeed() < 4 then
         if not self:isAllowedToStrafe() then
@@ -3380,7 +3392,7 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:actionStop(cmd)
-    if self.isTargetEasilyShotDelayed then
+    if self.isTargetEasilyShotDelayed and self.isAbleToAttackDucked then
         -- Duck for better accuracy.
         cmd.in_duck = true
     end
@@ -3579,9 +3591,9 @@ function AiStateEngage:preAimThroughCorners()
         for _, hitbox in pairs(hitboxes) do
             hitbox = hitbox + targetVelocity
 
-            local _, fraction, eid = playerOrigin:getTraceLine(hitbox, LocalPlayer.eid)
+            local trace = Trace.getLineToPosition(playerOrigin, hitbox, AiUtility.traceOptionsVisible)
 
-            if eid == target.eid or fraction == 1 then
+            if not trace.isIntersectingGeometry then
                 self.preAimThroughCornersBlockTimer:start()
 
                 return
@@ -3600,7 +3612,7 @@ function AiStateEngage:preAimThroughCorners()
     end
 
     local distance = playerOrigin:getDistance(self.preAimThroughCornersTargetOrigin)
-    local offsetRange = Math.getFloat(Math.getClamped(distance, 0, 1024), 1024) * 80
+    local offsetRange = Math.getFloat(Math.getClamped(distance, 0, 1024), 1024) * 50
     local sine = Animate.sine(0, offsetRange, 0.6)
 
     self.preAimThroughCornersOrigin = self.preAimThroughCornersTargetOrigin:clone():offset(
@@ -3666,19 +3678,19 @@ function AiStateEngage:preAimAboutCorners()
     local eyeOrigin = LocalPlayer.getEyeOrigin()
     local bands = {
         {
-            distance = 40,
+            distance = 50,
             points = 2
         },
         {
-            distance = 80,
+            distance = 75,
             points = 4
         },
         {
-            distance = 120,
+            distance = 125,
             points = 6
         },
         {
-            distance = 160,
+            distance = 150,
             points = 8
         },
         {
@@ -3755,13 +3767,13 @@ function AiStateEngage:setSkillLevel(skill)
     self.skill = skill
 
     if skill == -1 then
-        self.reactionTime = 0.5
+        self.reactionTime = 0.6
         self.prefireReactionTime = 0.5
         self.anticipateTime = 0.2
         self.sprayTime = 0.5
-        self.aimSpeed = 8
-        self.recoilControl = 4
-        self.aimOffset = 96
+        self.aimSpeed = 6
+        self.recoilControl = 5
+        self.aimOffset = 128
         self.aimInaccurateOffset = 144
         self.blockTime = 0.4
 
@@ -3769,15 +3781,15 @@ function AiStateEngage:setSkillLevel(skill)
     end
 
     local skillMinimum = {
-        reactionTime = 0.45,
-        prefireReactionTime = 0.25,
-        anticipateTime = 0.15,
+        reactionTime = 0.55,
+        prefireReactionTime = 0.35,
+        anticipateTime = 0.2,
         sprayTime = 0.4,
-        aimSpeed = 10,
-        recoilControl = 2.25,
-        aimOffset = 32,
-        aimInaccurateOffset = 144,
-        blockTime = 0.2
+        aimSpeed = 8,
+        recoilControl = 2.33,
+        aimOffset = 64,
+        aimInaccurateOffset = 175,
+        blockTime = 0.25
     }
 
     local skillMaximum = {

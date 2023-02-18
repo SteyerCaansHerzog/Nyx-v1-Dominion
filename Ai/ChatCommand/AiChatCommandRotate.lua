@@ -8,7 +8,6 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
-local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --}}}
@@ -61,7 +60,8 @@ function AiChatCommandRotate:invoke(ai, sender, args)
 
     ai.states.check:reset()
     ai.states.patrol:reset()
-    ai.states.useBoost:reset()
+    ai.states.useBoost:resetIfOtherBombsite(objective)
+    ai.states.useOntoPositionBoost:resetIfOtherBombsite(objective)
     ai.states.rotate:invoke(objective)
 
     ai.states.defend.defendingSite = objective
@@ -70,6 +70,9 @@ function AiChatCommandRotate:invoke(ai, sender, args)
     ai.states.lurkWithBomb.bombsite = objective
     ai.states.defend.isSpecificNodeSet = false
     ai.states.pick.isBlockedThisRound = true
+    ai.states.useBoost.isBlockedThisRound = true
+    ai.states.useRunBoost.isBlockedThisRound = true
+    ai.states.useOntoPositionBoost.isBlockedThisRound = true
 end
 
 return Nyx.class("AiChatCommandRotate", AiChatCommandRotate, AiChatCommandBase)

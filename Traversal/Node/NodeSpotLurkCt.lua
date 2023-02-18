@@ -13,7 +13,8 @@ local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local NodeSpotLurkCt = {
     name = "Lurk (CT)",
     description = {
-        "Informs the AI of lurk spots when CT-side and picking bombsite.",
+        "Informs the AI of lurk spots when CT-side",
+        "and picking bombsite.",
         "",
         "- The AI will use these to pick enemies leaving a bombsite."
     },

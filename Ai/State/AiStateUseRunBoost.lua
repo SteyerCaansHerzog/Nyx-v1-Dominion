@@ -23,43 +23,38 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
---{{{ AiStateUseBoost
---- @class AiStateUseBoost : AiStateBase
+--{{{ AiStateUseRunBoost
+--- @class AiStateUseRunBoost : AiStateBase
 --- @field acknowledgeTimer Timer
 --- @field blacklist boolean[]
 --- @field booster Player
 --- @field boostNode NodeTypeBoost
---- @field boostTime number
---- @field boostTimer Timer
 --- @field isBlockedThisRound boolean
 --- @field isJumped boolean
 --- @field isOnBooster boolean
 --- @field isReady boolean
 --- @field isUsingBoost boolean
 --- @field waitNode NodeSpotWaitOnBoost
-local AiStateUseBoost = {
-    name = "Use Boost",
+local AiStateUseRunBoost = {
+    name = "Use Run Boost",
     requiredNodes = {
-        Node.spotBoostCt,
-        Node.spotBoostT,
+        Node.spotRunBoostCt,
+        Node.spotRunBoostT,
     }
 }
 
---- @param fields AiStateUseBoost
---- @return AiStateUseBoost
-function AiStateUseBoost:new(fields)
+--- @param fields AiStateUseRunBoost
+--- @return AiStateUseRunBoost
+function AiStateUseRunBoost:new(fields)
     return Nyx.new(self, fields)
 end
 
 --- @return void
-function AiStateUseBoost:__init()
+function AiStateUseRunBoost:__init()
     self.blacklist = {}
-    self.boostTime = 16
-    self.boostTimer = Timer:new()
     self.acknowledgeTimer = Timer:new()
 
     Callbacks.roundStart(function()
-        self.boostTime = Math.getRandomFloat(6, 12)
         self.blacklist = {}
         self.isBlockedThisRound = false
 
@@ -68,7 +63,7 @@ function AiStateUseBoost:__init()
 end
 
 --- @return void
-function AiStateUseBoost:assess()
+function AiStateUseRunBoost:assess()
     if Config.isPlayingSolo then
         return AiPriority.IGNORE
     end
@@ -78,13 +73,6 @@ function AiStateUseBoost:assess()
     end
 
     if not MenuGroup.useChatCommands:get() then
-        return AiPriority.IGNORE
-    end
-
-    -- We've finished watching an angle.
-    if self.boostTimer:isElapsedThenStop(self.boostTime) then
-        self:reset()
-
         return AiPriority.IGNORE
     end
 
@@ -105,21 +93,9 @@ function AiStateUseBoost:assess()
         return AiPriority.IGNORE
     end
 
-    if AiUtility.bombCarrier and not AiUtility.bombCarrier:is(LocalPlayer) then
-        local bombCarrierOrigin = AiUtility.bombCarrier:getOrigin()
-        local bombsite = Nodegraph.getClosestBombsite(bombCarrierOrigin)
-        local distance = bombCarrierOrigin:getDistance(bombsite.origin)
-
-        if AiUtility.isBombBeingPlantedByTeammate or distance < 900 then
-            self.isBlockedThisRound = true
-
-            return AiPriority.IGNORE
-        end
-    end
-
     -- We have an active node.
     if self.boostNode then
-        return AiPriority.USE_BOOST
+        return AiPriority.USE_RUN_BOOST
     end
 
     if AiUtility.bombsitePlantAt then
@@ -136,14 +112,14 @@ function AiStateUseBoost:assess()
         self.boostNode = node
         self.waitNode = node.waitNode
 
-        return AiPriority.USE_BOOST
+        return AiPriority.USE_RUN_BOOST
     end
 
     return AiPriority.IGNORE
 end
 
 --- @return NodeSpotBoostCt
-function AiStateUseBoost:getNode()
+function AiStateUseRunBoost:getNode()
     local clientOrigin = LocalPlayer:getOrigin()
     local nodeClass = LocalPlayer:isTerrorist() and Node.spotBoostT or Node.spotBoostCt
     -- Globally increase the weight of boost chances.
@@ -154,39 +130,35 @@ function AiStateUseBoost:getNode()
             break
         end
 
-        if clientOrigin:getDistance(node.floorOrigin) > 1200 then
+        if clientOrigin:getDistance(node.floorOrigin) > 900 then
             break
         end
 
         local isTeammateDisrupting = false
 
         for _, teammate in pairs(AiUtility.teammates) do
-            if teammate:getOrigin():getDistance(node.floorOrigin) < 32 then
+            local teammateDistance = teammate:getOrigin():getDistance(node.floorOrigin)
+
+            if teammateDistance < 32 then
                 isTeammateDisrupting = true
 
                 break
+            end
+
+            if teammateDistance < 800 then
+                local fov = node.direction:getFov(node.lookFromOrigin, teammate:getEyeOrigin())
+
+                if fov < AiUtility.visibleFovThreshold then
+                    isTeammateDisrupting = true
+
+                    break
+                end
             end
         end
 
         if isTeammateDisrupting then
             self.blacklist[node.id] = true
 
-            break
-        end
-
-        local isEnemiesInFov = false
-
-        for _, enemy in pairs(AiUtility.enemies) do
-            local fov = node.direction:getFov(node.floorOrigin:clone():offset(0, 0, 128), enemy:getEyeOrigin())
-
-            if fov < 80 then
-                isEnemiesInFov = true
-
-                break
-            end
-        end
-
-        if not isEnemiesInFov then
             break
         end
 
@@ -204,7 +176,7 @@ function AiStateUseBoost:getNode()
 end
 
 --- @return void
-function AiStateUseBoost:activate()
+function AiStateUseRunBoost:activate()
     self.isUsingBoost = false
     self.isReady = false
     self.isJumped = false
@@ -216,40 +188,24 @@ function AiStateUseBoost:activate()
 end
 
 --- @return void
-function AiStateUseBoost:deactivate()
+function AiStateUseRunBoost:deactivate()
     self:reset()
 end
 
 --- @return void
-function AiStateUseBoost:reset()
+function AiStateUseRunBoost:reset()
     if self.boostNode then
         self.blacklist[self.boostNode.id] = true
     end
 
     self.boostNode = nil
     self.isUsingBoost = false
-
-    self.boostTimer:stop()
-end
-
---- @param bombsite string
---- @return void
-function AiStateUseBoost:resetIfOtherBombsite(bombsite)
-    if self.boostNode then
-        local closestBombsite = Nodegraph.getClosestBombsite(self.boostNode.origin)
-
-        if closestBombsite.bombsite == bombsite then
-            return
-        end
-    end
-
-    self:reset()
 end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function AiStateUseBoost:think(cmd)
-    self.activity = "Waiting to be boosted"
+function AiStateUseRunBoost:think(cmd)
+    self.activity = "Waiting to be run-boosted"
 
     self.ai.states.flashbangDynamic:block()
 
@@ -280,7 +236,7 @@ function AiStateUseBoost:think(cmd)
     if distanceToWaitNode < 64 and not self.isReady then
         self.isReady = true
 
-        self.ai.commands.boost:bark("NormalBoost")
+        self.ai.commands.rboost:bark()
         self.acknowledgeTimer:start()
     end
 
@@ -316,6 +272,7 @@ function AiStateUseBoost:think(cmd)
 
             return
         end
+
     end
 
     for _, teammate in pairs(AiUtility.teammates) do
@@ -326,10 +283,6 @@ function AiStateUseBoost:think(cmd)
         end
     end
 
-    self.ai.routines.manageGear:block()
-
-    LocalPlayer.equipAvailableWeapon()
-
     local teammateDistanceToBoostNode = self.booster:getOrigin():getDistance(self.boostNode.floorOrigin)
 
     if teammateDistanceToBoostNode < 32 and self.booster:isFlagActive(Player.flags.FL_DUCKING) then
@@ -337,18 +290,21 @@ function AiStateUseBoost:think(cmd)
     end
 
     -- We're not ready to use the boost as the teammate isn't ready themselves.
-    if not self.isUsingBoost then
+    if not self.isJumped and not self.isUsingBoost then
         return
     end
 
     -- Teammate moved off the spot.
-    if teammateDistanceToBoostNode > 32 then
+    if not self.isJumped and teammateDistanceToBoostNode > 32 then
         self:reset()
 
         return
     end
 
-    Pathfinder.walk()
+    if not self.isJumped then
+        Pathfinder.walk()
+    end
+
     Pathfinder.blockTeammateAvoidance()
 
     self.ai.routines.walk:block()
@@ -368,40 +324,50 @@ function AiStateUseBoost:think(cmd)
     end
 
     local boosterOrigin = self.booster:getOrigin()
+    local angleToTeammate = clientOrigin:getAngle(boosterOrigin)
 
     -- Move at the booster.
     if clientOrigin:getDistance2(boosterOrigin) > 6 then
-        Pathfinder.moveAtAngle(clientOrigin:getAngle(boosterOrigin))
+        Pathfinder.moveAtAngle(angleToTeammate)
     end
 
-    -- Look down the boost angle.
-    VirtualMouse.lookAlongAngle(self.boostNode.direction, 12, VirtualMouse.noise.none, "Use boost look along boost node")
-
-    if not isOnBooster then
+    if not self.isJumped and not isOnBooster then
         return
     end
 
-    self.activity = "Watching from boost"
+    self.ai.routines.manageGear:block()
 
-    if LocalPlayer:isTerrorist() then
-        self.boostTimer:ifPausedThenStart()
-    end
+    LocalPlayer.equipKnife()
 
-    LocalPlayer.scope()
-
-    if not self.boostNode.isStandingHeight then
-        Pathfinder.duck()
-    end
+    self.activity = "Getting run-boosted"
 
     -- Jump to allow the booster to stand up.
-    if not AiUtility.isEnemyVisible and self.boostNode.isStandingHeight and not self.isJumped then
-        self.isJumped = true
-
+    if not AiUtility.isEnemyVisible and not self.isJumped then
         Client.fireAfter(0.4, function()
-        	Pathfinder.jump()
+            self.isJumped = true
+
+            Pathfinder.jump()
         end)
+    end
+
+    if not self.isJumped then
+        return
+    end
+
+    -- We haven't finished the jump.
+    if not LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND) then
+        return
+    end
+
+    VirtualMouse.lookAlongAngle(self.boostNode.direction, 12, VirtualMouse.noise.moving, "Use run boost look along boost node")
+    Pathfinder.moveAtAngle(self.boostNode.direction, true)
+
+    if LocalPlayer:m_vecVelocity():getMagnitude() > 220 then
+        Pathfinder.jump()
+
+        self:reset()
     end
 end
 
-return Nyx.class("AiStateUseBoost", AiStateUseBoost, AiStateBase)
+return Nyx.class("AiStateUseRunBoost", AiStateUseRunBoost, AiStateBase)
 --}}}

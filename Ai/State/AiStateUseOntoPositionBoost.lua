@@ -23,36 +23,40 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
---{{{ AiStateUseBoost
---- @class AiStateUseBoost : AiStateBase
+--{{{ AiStateUseOntoPositionBoost
+--- @class AiStateUseOntoPositionBoost : AiStateBase
 --- @field acknowledgeTimer Timer
 --- @field blacklist boolean[]
+--- @field boostEndNode NodeSpotOntoPositionBoostEndCt|NodeSpotOntoPositionBoostEndT
 --- @field booster Player
---- @field boostNode NodeTypeBoost
+--- @field boostStartNode NodeTypeOntoPositionStartBoost
 --- @field boostTime number
 --- @field boostTimer Timer
 --- @field isBlockedThisRound boolean
---- @field isJumped boolean
+--- @field isFirstJumped boolean
 --- @field isOnBooster boolean
 --- @field isReady boolean
+--- @field isSecondJumped boolean
 --- @field isUsingBoost boolean
 --- @field waitNode NodeSpotWaitOnBoost
-local AiStateUseBoost = {
-    name = "Use Boost",
+local AiStateUseOntoPositionBoost = {
+    name = "Use Onto Position Boost",
     requiredNodes = {
-        Node.spotBoostCt,
-        Node.spotBoostT,
+        Node.spotOntoPositionBoostStartCt,
+        Node.spotOntoPositionBoostEndCt,
+        Node.spotOntoPositionBoostStartT,
+        Node.spotOntoPositionBoostEndT,
     }
 }
 
---- @param fields AiStateUseBoost
---- @return AiStateUseBoost
-function AiStateUseBoost:new(fields)
+--- @param fields AiStateUseOntoPositionBoost
+--- @return AiStateUseOntoPositionBoost
+function AiStateUseOntoPositionBoost:new(fields)
     return Nyx.new(self, fields)
 end
 
 --- @return void
-function AiStateUseBoost:__init()
+function AiStateUseOntoPositionBoost:__init()
     self.blacklist = {}
     self.boostTime = 16
     self.boostTimer = Timer:new()
@@ -68,7 +72,7 @@ function AiStateUseBoost:__init()
 end
 
 --- @return void
-function AiStateUseBoost:assess()
+function AiStateUseOntoPositionBoost:assess()
     if Config.isPlayingSolo then
         return AiPriority.IGNORE
     end
@@ -118,8 +122,8 @@ function AiStateUseBoost:assess()
     end
 
     -- We have an active node.
-    if self.boostNode then
-        return AiPriority.USE_BOOST
+    if self.boostStartNode then
+        return AiPriority.USE_ONTO_POSITION_BOOST
     end
 
     if AiUtility.bombsitePlantAt then
@@ -133,21 +137,26 @@ function AiStateUseBoost:assess()
     local node = self:getNode()
 
     if node then
-        self.boostNode = node
+        self.boostStartNode = node
+        self.boostEndNode = node.endNode
         self.waitNode = node.waitNode
 
-        return AiPriority.USE_BOOST
+        return AiPriority.USE_ONTO_POSITION_BOOST
     end
 
     return AiPriority.IGNORE
 end
 
---- @return NodeSpotBoostCt
-function AiStateUseBoost:getNode()
+--- @return NodeTypeOntoPositionStartBoost
+function AiStateUseOntoPositionBoost:getNode()
     local clientOrigin = LocalPlayer:getOrigin()
-    local nodeClass = LocalPlayer:isTerrorist() and Node.spotBoostT or Node.spotBoostCt
+    local nodeClass = LocalPlayer:isTerrorist() and Node.spotOntoPositionBoostStartT or Node.spotOntoPositionBoostStartT
     -- Globally increase the weight of boost chances.
     local chanceMod = 2
+
+    if panorama.open().MyPersonaAPI.GetXuid() == "76561198807527047" then
+        return Nodegraph.getById(847)
+    end
 
     for _, node in pairs(Nodegraph.get(nodeClass)) do repeat
         if self.blacklist[node.id] then
@@ -174,22 +183,6 @@ function AiStateUseBoost:getNode()
             break
         end
 
-        local isEnemiesInFov = false
-
-        for _, enemy in pairs(AiUtility.enemies) do
-            local fov = node.direction:getFov(node.floorOrigin:clone():offset(0, 0, 128), enemy:getEyeOrigin())
-
-            if fov < 80 then
-                isEnemiesInFov = true
-
-                break
-            end
-        end
-
-        if not isEnemiesInFov then
-            break
-        end
-
         local chance = Math.getClamped(node.chance * chanceMod, 0, 100) * 0.01
 
         -- Blacklist the node for now.
@@ -204,10 +197,11 @@ function AiStateUseBoost:getNode()
 end
 
 --- @return void
-function AiStateUseBoost:activate()
+function AiStateUseOntoPositionBoost:activate()
     self.isUsingBoost = false
     self.isReady = false
-    self.isJumped = false
+    self.isFirstJumped = false
+    self.isSecondJumped = false
     self.booster = nil
 
     Pathfinder.moveToNode(self.waitNode, {
@@ -216,17 +210,17 @@ function AiStateUseBoost:activate()
 end
 
 --- @return void
-function AiStateUseBoost:deactivate()
+function AiStateUseOntoPositionBoost:deactivate()
     self:reset()
 end
 
 --- @return void
-function AiStateUseBoost:reset()
-    if self.boostNode then
-        self.blacklist[self.boostNode.id] = true
+function AiStateUseOntoPositionBoost:reset()
+    if self.boostStartNode then
+        self.blacklist[self.boostStartNode.id] = true
     end
 
-    self.boostNode = nil
+    self.boostStartNode = nil
     self.isUsingBoost = false
 
     self.boostTimer:stop()
@@ -234,9 +228,9 @@ end
 
 --- @param bombsite string
 --- @return void
-function AiStateUseBoost:resetIfOtherBombsite(bombsite)
-    if self.boostNode then
-        local closestBombsite = Nodegraph.getClosestBombsite(self.boostNode.origin)
+function AiStateUseOntoPositionBoost:resetIfOtherBombsite(bombsite)
+    if self.boostStartNode then
+        local closestBombsite = Nodegraph.getClosestBombsite(self.boostStartNode.origin)
 
         if closestBombsite.bombsite == bombsite then
             return
@@ -248,12 +242,12 @@ end
 
 --- @param cmd SetupCommandEvent
 --- @return void
-function AiStateUseBoost:think(cmd)
+function AiStateUseOntoPositionBoost:think(cmd)
     self.activity = "Waiting to be boosted"
 
     self.ai.states.flashbangDynamic:block()
 
-    if not self.boostNode then
+    if not self.boostStartNode then
         self:reset()
 
         return
@@ -280,7 +274,7 @@ function AiStateUseBoost:think(cmd)
     if distanceToWaitNode < 64 and not self.isReady then
         self.isReady = true
 
-        self.ai.commands.boost:bark("NormalBoost")
+        self.ai.commands.boost:bark("OntoPositionBoost")
         self.acknowledgeTimer:start()
     end
 
@@ -298,7 +292,7 @@ function AiStateUseBoost:think(cmd)
         return
     end
 
-    if not self.isUsingBoost then
+    if not self.isSecondJumped and not self.isUsingBoost then
         for _, teammate in pairs(AiUtility.teammates) do repeat
             if teammate:is(self.booster) then
                 break
@@ -330,19 +324,19 @@ function AiStateUseBoost:think(cmd)
 
     LocalPlayer.equipAvailableWeapon()
 
-    local teammateDistanceToBoostNode = self.booster:getOrigin():getDistance(self.boostNode.floorOrigin)
+    local teammateDistanceToBoostNode = self.booster:getOrigin():getDistance(self.boostStartNode.floorOrigin)
 
     if teammateDistanceToBoostNode < 32 and self.booster:isFlagActive(Player.flags.FL_DUCKING) then
         self.isUsingBoost = true
     end
 
     -- We're not ready to use the boost as the teammate isn't ready themselves.
-    if not self.isUsingBoost then
+    if not self.isSecondJumped and not self.isUsingBoost then
         return
     end
 
     -- Teammate moved off the spot.
-    if teammateDistanceToBoostNode > 32 then
+    if not self.isSecondJumped and teammateDistanceToBoostNode > 32 then
         self:reset()
 
         return
@@ -370,38 +364,66 @@ function AiStateUseBoost:think(cmd)
     local boosterOrigin = self.booster:getOrigin()
 
     -- Move at the booster.
-    if clientOrigin:getDistance2(boosterOrigin) > 6 then
+    if not self.isSecondJumped and clientOrigin:getDistance2(boosterOrigin) > 6 then
         Pathfinder.moveAtAngle(clientOrigin:getAngle(boosterOrigin))
     end
 
     -- Look down the boost angle.
-    VirtualMouse.lookAlongAngle(self.boostNode.direction, 12, VirtualMouse.noise.none, "Use boost look along boost node")
+    VirtualMouse.lookAlongAngle(self.boostStartNode.direction, 12, VirtualMouse.noise.none, "Use boost look along boost node")
 
-    if not isOnBooster then
+    if not self.isSecondJumped and not isOnBooster then
         return
     end
 
     self.activity = "Watching from boost"
 
-    if LocalPlayer:isTerrorist() then
-        self.boostTimer:ifPausedThenStart()
-    end
-
-    LocalPlayer.scope()
-
-    if not self.boostNode.isStandingHeight then
-        Pathfinder.duck()
-    end
-
     -- Jump to allow the booster to stand up.
-    if not AiUtility.isEnemyVisible and self.boostNode.isStandingHeight and not self.isJumped then
-        self.isJumped = true
+    if not AiUtility.isEnemyVisible and not self.isFirstJumped then
+        self.isFirstJumped = true
 
         Client.fireAfter(0.4, function()
         	Pathfinder.jump()
         end)
     end
+
+    if not self.isFirstJumped then
+        return
+    end
+
+    if not self.isSecondJumped and not LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND) then
+        return
+    end
+
+    if clientOrigin:getDistance(self.boostEndNode.floorOrigin) > 8 then
+        Pathfinder.moveAtAngle(clientOrigin:getAngle(self.boostEndNode.origin))
+    end
+
+    if not self.isSecondJumped then
+        self.isSecondJumped = true
+
+        Client.fireAfter(1, function()
+            self.ai.commands.thanks:bark()
+
+            if (clientOrigin.z - self.boostEndNode.origin.z) < 20 then
+                return
+            end
+
+            Pathfinder.jump()
+        end)
+    end
+
+    if not self.isSecondJumped then
+        return
+    end
+
+    if LocalPlayer:isTerrorist() then
+        self.boostTimer:ifPausedThenStart()
+    end
+
+    VirtualMouse.lookAlongAngle(self.boostEndNode.direction, 6, VirtualMouse.noise.none, "Use boost look along boost node")
+
+    LocalPlayer.scope()
 end
 
-return Nyx.class("AiStateUseBoost", AiStateUseBoost, AiStateBase)
+return Nyx.class("AiStateUseOntoPositionBoost", AiStateUseOntoPositionBoost, AiStateBase)
 --}}}

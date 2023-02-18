@@ -264,6 +264,9 @@ end
 function NodegraphEditor:initEvents()
     Callbacks.levelInit(function()
     	self.nodegraphSerializedHistory = {}
+    	self.nodegraphSerializedHistoryIndex = 0
+
+        self:saveNodegraphInitialHistory()
     end)
 
     Callbacks.frame(function()
@@ -401,8 +404,8 @@ function NodegraphEditor:saveNodegraphInitialHistory()
     self.nodegraphSerializedHistory[self.nodegraphSerializedHistoryIndex] = history
 end
 
---- @param isDeletion boolean
 --- @param node NodeTypeBase
+--- @param action string
 --- @return void
 function NodegraphEditor:saveNodegraphHistory(node, action)
     self.nodegraphSerializedHistoryIndex = self.nodegraphSerializedHistoryIndex + 1
