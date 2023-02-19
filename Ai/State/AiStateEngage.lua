@@ -19,6 +19,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local AiSense = require "gamesense/Nyx/v1/Dominion/Ai/AiSense"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
@@ -93,6 +94,7 @@ local WeaponMovementVelocity =  {
 --- @field isAimEnabled boolean
 --- @field isAllowedToJiggleHold boolean
 --- @field isAllowedToNoscope boolean
+--- @field isAllowedToPreAim boolean
 --- @field isAllowedToStealthKnifeTarget boolean
 --- @field isAllowedToStealthTarget boolean
 --- @field isBackingUp boolean
@@ -132,12 +134,8 @@ local WeaponMovementVelocity =  {
 --- @field lastShotTimer Timer
 --- @field lastSoundTimer Timer
 --- @field lookAtBackingUpOrigin Vector3
---- @field noticedLoudPlayerTimers Timer[]
---- @field noticedPlayerLastKnownOrigin Vector3[]
---- @field noticedPlayerTimers Timer[]
 --- @field onGroundTime Timer
 --- @field onGroundTimer Timer
---- @field overrideBestTarget Player
 --- @field patienceCooldownTimer Timer
 --- @field patienceTimer Timer
 --- @field pingEnemyTimer Timer
@@ -238,8 +236,6 @@ function AiStateEngage:initFields()
     self.jiggleShootTimer = Timer:new():startThenElapse()
     self.lastShotTimer = Timer:new():startThenElapse()
     self.lastSoundTimer = Timer:new():startThenElapse()
-    self.noticedPlayerLastKnownOrigin = {}
-    self.noticedPlayerTimers = {}
     self.onGroundTime = 0.1
     self.onGroundTimer = Timer:new()
     self.patienceCooldownTimer = Timer:new():startThenElapse()
@@ -270,16 +266,6 @@ function AiStateEngage:initFields()
     self.watchTime = 2
     self.watchTimer = Timer:new()
 
-    for i = 1, 64 do
-        self.noticedPlayerTimers[i] = Timer:new()
-    end
-
-    self.noticedLoudPlayerTimers = {}
-
-    for i = 1, 64 do
-        self.noticedLoudPlayerTimers[i] = Timer:new()
-    end
-
     self.lastSeenTimers = {}
 
     for i = 1, 64 do
@@ -309,8 +295,6 @@ function AiStateEngage:initEvents()
     Callbacks.playerSpawned(function(e)
         if e.player:isLocalPlayer() then
             self:reset()
-        else
-            self:unnoticeEnemy(e.player)
         end
     end)
 
@@ -324,25 +308,6 @@ function AiStateEngage:initEvents()
     end)
 
     Callbacks.runCommand(function()
-        local bomb = AiUtility.plantedBomb
-
-        if bomb and LocalPlayer:isCounterTerrorist() then
-            local bombOrigin = bomb:m_vecOrigin()
-
-            for _, enemy in pairs(AiUtility.enemies) do
-                if bombOrigin:getDistance(enemy:getOrigin()) < 512 then
-                    self:noticeEnemy(enemy, 500, false, "Near Site")
-                end
-            end
-        end
-
-        -- Notice hostage carriers to intercept them.
-        if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE and AiUtility.isHostageCarriedByEnemy then
-            for _, enemy in pairs(AiUtility.hostageCarriers) do
-                self:noticeEnemy(enemy, Vector3.MAX_DISTANCE, true, "Carrying hostage")
-            end
-        end
-
         -- Used for determing how long a sniper has been scoped for.
         if LocalPlayer:m_bIsScoped() == 1 then
             self.scopedTimer:ifPausedThenStart()
@@ -366,83 +331,24 @@ function AiStateEngage:initEvents()
         end
 
         self.jiggleHoldCooldownTimer:start()
-
-        self:noticeEnemy(e.attacker, Vector3.MAX_DISTANCE, true, "Shot by")
-    end)
-
-    Callbacks.playerFootstep(function(e)
-        local isLoud = LocalPlayer:getOrigin():getDistance(e.player:getOrigin()) < 450
-
-        self:noticeEnemy(e.player, 1100, isLoud, "Stepped")
-    end)
-
-    Callbacks.playerJump(function(e)
-        self:noticeEnemy(e.player, 700, false, "Jumped")
-    end)
-
-    Callbacks.weaponZoom(function(e)
-        self:noticeEnemy(e.player, 650, false, "Scoped")
-    end)
-
-    Callbacks.weaponReload(function(e)
-        self:noticeEnemy(e.player, 800, false, "Reloaded")
     end)
 
     Callbacks.weaponFire(function(e)
         if e.player:isLocalPlayer() or e.player:is(self.bestTarget) then
             self.jiggleHoldCooldownTimer:start()
         end
-
-        if CsgoWeapons[e.weapon].is_melee_weapon then
-            self:noticeEnemy(e.player, 600, true, "Knifed")
-
-            return
-        end
-
-        local range = 2000
-
-        if AiUtility.visibleEnemies[e.player.eid] then
-            range = Vector3.MAX_DISTANCE
-        end
-
-        self:noticeEnemy(e.player, range, true, "Shot")
-    end)
-
-    Callbacks.bulletImpact(function(e)
-        if not e.shooter:isEnemy() then
-            return
-        end
-
-        local eyeOrigin = LocalPlayer.getEyeOrigin()
-        local rayIntersection = eyeOrigin:getRayClosestPoint(e.shooter:getEyeOrigin(), e.origin)
-
-        if eyeOrigin:getDistance(rayIntersection) > 450 then
-            return
-        end
-
-        self:noticeEnemy(e.shooter, Vector3.MAX_DISTANCE, true, "Shot at")
     end)
 
     Callbacks.bombBeginDefuse(function(e)
         if e.player:isEnemy() then
             self.isRefreshingAttackPath = true
         end
-
-        self:noticeEnemy(e.player, Vector3.MAX_DISTANCE, true, "Began defusing")
     end)
 
     Callbacks.bombBeginPlant(function(e)
         if e.player:isEnemy() then
             self.isRefreshingAttackPath = true
         end
-
-        self:noticeEnemy(e.player, Vector3.MAX_DISTANCE, true, "Began planting")
-    end)
-
-    Callbacks.grenadeThrown(function(e)
-        Client.fireAfter(1, function()
-            self:noticeEnemy(e.player, 750, true, "Threw grenade")
-        end)
     end)
 
     Callbacks.playerDeath(function(e)
@@ -469,13 +375,7 @@ function AiStateEngage:initEvents()
             self.blockTimer:start()
         end
 
-        if e.victim:isTeammate() and LocalPlayer:getOrigin():getDistance(e.victim:getOrigin()) < 1250 then
-            self:noticeEnemy(e.attacker, 2000, true, "Teammate killed")
-        end
-
-        if e.victim:isEnemy() and self.noticedPlayerTimers[e.victim.eid] then
-            self.noticedPlayerTimers[e.victim.eid]:stop()
-            self.noticedLoudPlayerTimers[e.victim.eid]:stop()
+        if e.victim:isEnemy() and self.lastSeenTimers[e.victim.eid] then
             self.lastSeenTimers[e.victim.eid]:stop()
         end
     end)
@@ -525,10 +425,6 @@ function AiStateEngage:assess()
         return AiPriority.ENGAGE_PANIC
     end
 
-    if self.overrideBestTarget then
-        return AiPriority.ENGAGE_ACTIVE
-    end
-
     -- An enemy is in a common pick spot.
     if self.isPreAimingMapAngle then
         return AiPriority.ENGAGE_ACTIVE
@@ -536,7 +432,7 @@ function AiStateEngage:assess()
 
     -- Engage enemies.
     for _, enemy in pairs(AiUtility.enemies) do
-        if AiUtility.visibleEnemies[enemy.eid] and self:isEnemySensed(enemy) then
+        if AiUtility.visibleEnemies[enemy.eid] and self:isAwareOfEnemy(enemy) then
             if Pathfinder.isInsideInferno then
                 return AiPriority.ENGAGE_INSIDE_INFERNO
             end
@@ -573,7 +469,7 @@ function AiStateEngage:assess()
         end
     end
 
-    if self:isAnyEnemiesSensed() then
+    if self:isAwareOfEnemies() then
         return AiPriority.ENGAGE_PASSIVE
     end
 
@@ -608,18 +504,6 @@ function AiStateEngage:reset()
     self.watchOrigin = nil
     self.bestTarget = nil
     self.lastBestTargetOrigin = nil
-
-    self.noticedPlayerTimers = {}
-
-    for i = 1, 64 do
-        self.noticedPlayerTimers[i] = Timer:new()
-    end
-
-    self.noticedLoudPlayerTimers = {}
-
-    for i = 1, 64 do
-        self.noticedLoudPlayerTimers[i] = Timer:new()
-    end
 
     self.lastSeenTimers = {}
 
@@ -781,7 +665,7 @@ function AiStateEngage:handlePreAimMapAngle()
                 break
             end
 
-            self:noticeEnemy(enemy, Vector3.MAX_DISTANCE, false, "inside pre-aim zone")
+            AiSense.sense(enemy, Vector3.MAX_DISTANCE, false, "in pre-aim zone")
 
             self.isPreAimingMapAngle = true
 
@@ -844,54 +728,10 @@ function AiStateEngage:pingEnemy()
     until true end
 end
 
---- @param player Player
---- @param range number
---- @param isLoud boolean
---- @param reason string
---- @return void
-function AiStateEngage:noticeEnemy(player, range, isLoud, reason)
-    if not LocalPlayer:isAlive() then
-        return
-    end
-
-    if player:isTeammate() then
-        return
-    end
-
-    local enemyOrigin = player:getOrigin()
-
-    if enemyOrigin:isZero() then
-        return
-    end
-
-    if LocalPlayer:getOrigin():getDistance(enemyOrigin) > range then
-        return
-    end
-
-    self.noticedPlayerTimers[player.eid]:start()
-
-    if isLoud then
-        self.noticedLoudPlayerTimers[player.eid]:start()
-    end
-
-    self.noticedPlayerLastKnownOrigin[player.eid] = enemyOrigin
-end
-
---- @param player Player
---- @return void
-function AiStateEngage:unnoticeEnemy(player)
-    if not self.noticedPlayerTimers[player.eid] then
-        return
-    end
-
-    self.noticedPlayerTimers[player.eid]:stop()
-    self.noticedLoudPlayerTimers[player.eid]:stop()
-end
-
 --- @return boolean
-function AiStateEngage:isAnyEnemiesSensed()
+function AiStateEngage:isAwareOfEnemies()
     for _, enemy in pairs(AiUtility.enemies) do
-        if self:isEnemySensed(enemy) then
+        if self:isAwareOfEnemy(enemy) then
             return true
         end
     end
@@ -901,44 +741,24 @@ end
 
 --- @param enemy Player
 --- @return boolean
-function AiStateEngage:isEnemySensed(enemy)
-    local timer = self.noticedPlayerTimers[enemy.eid]
-    local ignorePlayerAfter = self.ignorePlayerAfter
+function AiStateEngage:isAwareOfEnemy(enemy)
+    local awarenessThreshold = AiSense.awareness.RECENT_MOVED
 
     if LocalPlayer.isCarryingBomb() and AiUtility.teammatesAlive == 0 then
-        ignorePlayerAfter = 4
+        awarenessThreshold = AiSense.awareness.IMMEDIATE_DEEP_OCCLUDED
     end
 
-    return timer:isStarted() and not timer:isElapsed(ignorePlayerAfter)
-end
+    local awarenessLevel = AiSense.getAwareness(enemy)
 
---- @param enemy Player
---- @return boolean
-function AiStateEngage:isEnemyLoudlySensed(enemy)
-    local timer = self.noticedLoudPlayerTimers[enemy.eid]
-
-    return timer:isStarted() and not timer:isElapsed(self.ignorePlayerAfter)
-end
-
---- @return void
-function AiStateEngage:unnoticeAllEnemies()
-    for i = 1, 64 do
-        self.noticedPlayerTimers[i]:stop()
-        self.noticedLoudPlayerTimers[i]:stop()
+    if awarenessLevel == AiSense.awareness.IMMEDIATE_PROXY then
+        return false
     end
+
+    return awarenessLevel <= awarenessThreshold
 end
 
 --- @return Player
 function AiStateEngage:setBestTarget()
-    if self.overrideBestTarget then
-        self.bestTarget = self.overrideBestTarget
-
-        self:setWeaponStats(self.overrideBestTarget)
-        self:setIsVisibleToBestTarget()
-
-        return
-    end
-
     --- @type Player
     local selectedEnemy
     local lowestFov = math.huge
@@ -976,7 +796,7 @@ function AiStateEngage:setBestTarget()
             break
         end
 
-        if self:isEnemySensed(enemy) then
+        if self:isAwareOfEnemy(enemy) then
             local distance = origin:getDistance(enemy:getOrigin())
 
             if distance < closestDistance then
@@ -1014,16 +834,9 @@ function AiStateEngage:setBestTarget()
             break
         end
 
-        -- Planter.
-        -- Do not prioritse the planter over other visible threats. Pick the best threat instead.
-
         local fov = AiUtility.enemyFovs[enemy.eid]
 
-        if fov < AiUtility.visibleFovThreshold then
-            self:noticeEnemy(enemy, Vector3.MAX_DISTANCE, false, "In field of view")
-        end
-
-        if self:isEnemySensed(enemy) and fov < lowestFov then
+        if self:isAwareOfEnemy(enemy) and fov < lowestFov then
             lowestFov = fov
             selectedEnemy = enemy
             isUrgent = true
@@ -1055,6 +868,16 @@ function AiStateEngage:setBestTarget()
     if self.bestTarget and AiUtility.visibleEnemies[self.bestTarget.eid] then
         self.watchTimer:ifPausedThenStart()
     end
+
+    local isAllowedToPreAim = true
+
+    if AiSense.getAwareness(selectedEnemy) >= AiSense.awareness.RECENT_MOVED
+        and lowestFov > 60
+    then
+        isAllowedToPreAim = false
+    end
+
+    self.isAllowedToPreAim = isAllowedToPreAim
 
     self:setWeaponStats(selectedEnemy)
     self:setIsVisibleToBestTarget()
@@ -1445,32 +1268,6 @@ function AiStateEngage:render()
         end
 
         self:renderText(uiPos, color, "Target: %s", self.bestTarget:getName())
-    end
-
-    self:renderLineBreak(uiPos)
-
-    for _, enemy in pairs(AiUtility.enemies) do
-        local text = "%s %s"
-
-        local color
-
-        local status
-
-        if AiUtility.visibleEnemies[enemy.eid] and not self:isEnemySensed(enemy) then
-            color = Color:hsla(60, 0.8, 0.6)
-            status = "(BEHIND)"
-        elseif AiUtility.visibleEnemies[enemy.eid] then
-            color = Color:hsla(100, 0.8, 0.6)
-            status = "(VISIBLE)"
-        elseif self:isEnemySensed(enemy) then
-            color = Color:hsla(40, 0.8, 0.6)
-            status = "(NOTICED)"
-        else
-            color = Color:hsla(0, 0.8, 0.6)
-            status = "(UNKNOWN)"
-        end
-
-        self:renderTimer(string.format(text, enemy:getName(), status), uiPos, self.noticedPlayerTimers[enemy.eid], self.ignorePlayerAfter, color)
     end
 end
 
@@ -2187,7 +1984,8 @@ function AiStateEngage:moveToLocation(origin)
         task = "Engage enemy at their exact location",
         isAllowedToTraverseInactives = true,
         isPathfindingToNearestNodeIfNoConnections = true,
-        isPathfindingToNearestNodeOnFailure = true
+        isPathfindingToNearestNodeOnFailure = true,
+        goalReachedRadius = 80
     })
 end
 
@@ -2208,16 +2006,8 @@ function AiStateEngage:handleAttacking(cmd)
     VirtualMouse.recoilControl = self.recoilControl
 
     -- Reset reaction delay.
-    if not self.bestTarget or not self:isEnemySensed(self.bestTarget) then
+    if not self.bestTarget or not self:isAwareOfEnemy(self.bestTarget) then
         self.reactionTimer:stop()
-    end
-
-    -- Ignore unnoticed enemies.
-    -- I'm like 100% sure that this is completely redundant. How does this attack function even get run
-    -- if there's no enemies the AI knows about to attack?
-    -- I'm not removing it because every time I change something in this 4000 line file the AI starts doing something insane.
-    if not self:isAnyEnemiesSensed() then
-        return
     end
 
     -- Block overpowered spray transfers.
@@ -2255,7 +2045,7 @@ function AiStateEngage:handleAttacking(cmd)
     end
 
     -- Pre-aim angle/hitbox when peeking.
-    if self:isEnemySensed(self.bestTarget) and self.reactionTimer:isElapsed(self.reactionTime) then
+    if self.reactionTimer:isElapsed(self.reactionTime) then
         self:preAimAboutCorners()
         self:preAimThroughCorners()
     end
@@ -2468,12 +2258,13 @@ end
 function AiStateEngage:attackingSetReactionTime()
     local lastSeenEnemyTimer = self.lastSeenTimers[self.bestTarget.eid]
     local currentReactionTime = self.reactionTime
+    local lastAwareTimer = AiSense.lastAwareTimers[self.bestTarget.eid]
 
-    if self.noticedLoudPlayerTimers[self.bestTarget.eid]:isNotElapsed(8) then
+    if lastAwareTimer and not lastAwareTimer:isElapsed(6) then
         currentReactionTime = self.prefireReactionTime
     end
 
-    if lastSeenEnemyTimer:isNotElapsed(6) then
+    if lastSeenEnemyTimer:isNotElapsed(4) then
         currentReactionTime = self.anticipateTime
     end
 
@@ -2484,7 +2275,7 @@ function AiStateEngage:attackingSetReactionTime()
     self.currentReactionTime = currentReactionTime
 
     -- Begin reaction timer.
-    if self:isEnemySensed(self.bestTarget) then
+    if self:isAwareOfEnemy(self.bestTarget) then
         self.reactionTimer:ifPausedThenStart()
     end
 end
@@ -2513,75 +2304,115 @@ function AiStateEngage:attackingWallAndSmokeBang(cmd)
     local maxAmmo = csgoWeapon.primary_clip_size
     local ammoRatio = ammo / maxAmmo
     local eyeOrigin = LocalPlayer.getEyeOrigin()
+    local wallbangNodes = Nodegraph.get(Node.hintWallbang)
 
     -- Wallbang and smokebang.
-    if not AiUtility.visibleEnemies[self.bestTarget.eid] then
-        local lastNoticedAgo = self.noticedLoudPlayerTimers[self.bestTarget.eid]:get()
+    if AiUtility.visibleEnemies[self.bestTarget.eid] then
+        return false
+    end
 
-        if AiUtility.isBombBeingDefusedByEnemy or (lastNoticedAgo > 0 and lastNoticedAgo < 2) then
-            local bangOrigin = self.bestTarget:getOrigin():offset(0, 0, 46)
-            local _, traceDamage = eyeOrigin:getTraceBullet(bangOrigin, LocalPlayer.eid)
-            local isBangable = true
+    if AiSense.getAwareness(self.bestTarget) >= AiSense.awareness.IMMEDIATE_PROXY then
+        return
+    end
 
-            if AiUtility.isInsideSmoke then
-                isBangable = false
-            end
+    local bangOrigin = self.bestTarget:getOrigin():offset(0, 0, 46)
+    local _, traceDamage = eyeOrigin:getTraceBullet(bangOrigin, LocalPlayer.eid)
+    local isBangable = true
+    local isCriticallyBangable = true
 
-            if LocalPlayer:hasSniper() then
-                if ammoRatio < 1 then
-                    -- Banging with AWP is often not a great idea.
-                    -- So we're only going to allow it if the AI has a full mag.
-                    isBangable = false
-                elseif traceDamage < 40 then
-                    -- We should only wallbang on high damage bangs.
-                    isBangable = false
-                end
-            else
-                if ammo < 0.25 then
-                    -- Low ammo.
-                    isBangable = false
-                elseif ammoRatio < 0.4 and traceDamage < 25 then
-                    -- Mid-ammo so spare our shots more.
-                    isBangable = false
-                elseif traceDamage < 15 then
-                    -- At least try to damage the enemy.
-                    isBangable = false
-                end
-            end
+    if AiUtility.isInsideSmoke then
+        isBangable = false
+    end
 
-            local isShooting = false
-            local isOccludedBySmoke = eyeOrigin:isRayIntersectingSmoke(bangOrigin)
-            local trace = Trace.getLineToPosition(eyeOrigin, bangOrigin, AiUtility.traceOptionsVisible, "AiStateEngage.attackBestTarget<FindBangable>")
-            local isOccludedByWall = trace.isIntersectingGeometry
+    if LocalPlayer:hasSniper() then
+        if ammoRatio < 1 then
+            -- Banging with AWP is often not a great idea.
+            -- So we're only going to allow it if the AI has a full mag.
+            isBangable = false
+        elseif traceDamage < 40 then
+            -- We should only wallbang on high damage bangs.
+            isBangable = false
+        end
 
-            if isOccludedByWall then
-                -- Wallbang, but only if there isn't a smoke in the way.
-                if self.canWallbang and not isOccludedBySmoke and isBangable then
-                    isShooting = true
-                end
-            elseif isOccludedBySmoke and isBangable then
-                -- Smokebang.
+        if traceDamage < 33 then
+            isCriticallyBangable = false
+        end
+    else
+        if ammo < 0.25 then
+            -- Low ammo.
+            isBangable = false
+        elseif ammoRatio < 0.4 and traceDamage < 25 then
+            -- Mid-ammo so spare our shots more.
+            isBangable = false
+        elseif traceDamage < 15 then
+            -- At least try to damage the enemy.
+            isBangable = false
+        end
+
+        if traceDamage < 10 then
+            isCriticallyBangable = false
+        end
+    end
+
+    local isShooting = false
+    local isOccludedBySmoke = eyeOrigin:isRayIntersectingSmoke(bangOrigin)
+    local trace = Trace.getLineToPosition(eyeOrigin, bangOrigin, AiUtility.traceOptionsVisible, "AiStateEngage.attackBestTarget<FindBangable>")
+    local isOccludedByWall = trace.isIntersectingGeometry
+
+    if isOccludedByWall then
+        -- Wallbang, but only if there isn't a smoke in the way.
+        if self.canWallbang and not isOccludedBySmoke and isBangable then
+            isShooting = true
+        end
+    elseif isOccludedBySmoke and isBangable then
+        -- Smokebang.
+        isShooting = true
+    elseif not self.smokeWallBangHoldTimer:isElapsed(1.5) then
+        -- Hold our spray. Prevents dithering.
+        isShooting = true
+    end
+
+    local isDirectlyWallbanging = false
+
+    -- Enemy is in a common wallbang spot and the AI is immediately aware of the enemy.
+    local enemyOrigin = self.bestTarget:getOrigin()
+
+    if isCriticallyBangable then
+        for _, wallbangNode in pairs(wallbangNodes) do
+            if enemyOrigin:getDistance(wallbangNode.floorOrigin) < wallbangNode.radius then
                 isShooting = true
-            elseif not self.smokeWallBangHoldTimer:isElapsed(1.5) then
-                -- Hold our spray. Prevents dithering.
-                isShooting = true
-            end
+                isDirectlyWallbanging = true
 
-            if isShooting then
-                self.smokeWallBangHoldTimer:start()
-
-                self:addVisualizer("bang", function()
-                    self.shootAtOrigin:drawCircleOutline(12, 2, Color:hsla(30, 1, 0.5, 200))
-                end)
-
-                self:shootAtTarget(cmd, self.shootAtOrigin)
-
-                return true
+                break
             end
         end
     end
 
-    return false
+    if not isDirectlyWallbanging and AiSense.lastAwareTimers[self.bestTarget.eid]:isElapsed(1.5) then
+        return
+    end
+
+    if not isShooting then
+        return false
+    end
+
+    self.smokeWallBangHoldTimer:start()
+
+    self:addVisualizer("bang", function()
+        self.shootAtOrigin:drawCircleOutline(12, 2, Color:hsla(30, 1, 0.5, 200))
+    end)
+
+    local aimAtOrigin
+
+    if isDirectlyWallbanging then
+        aimAtOrigin = self.bestTarget:getEyeOrigin()
+    else
+        aimAtOrigin = self.shootAtOrigin
+    end
+
+    self:shootAtTarget(cmd, aimAtOrigin)
+
+    return true
 end
 
 --- @param cmd SetupCommandEvent
@@ -2647,12 +2478,11 @@ function AiStateEngage:attackingBestTarget(cmd)
     end
 
     -- React to visible enemy.
-    if not self.isInJiggleHold and self:isEnemySensed(self.bestTarget) and self.visibleReactionTimer:isElapsed(self.currentReactionTime) and AiUtility.visibleEnemies[self.bestTarget.eid] then
+    if not self.isInJiggleHold and self:isAwareOfEnemy(self.bestTarget) and self.visibleReactionTimer:isElapsed(self.currentReactionTime) and AiUtility.visibleEnemies[self.bestTarget.eid] then
         self.sprayTimer:start()
         self.watchTimer:start()
         self.lastSeenTimers[self.bestTarget.eid]:start()
 
-        self:noticeEnemy(self.bestTarget, 4096, false, "In shoot FoV")
         self:shootAtTarget(cmd, hitbox, self.bestTarget)
     end
 end
@@ -2883,7 +2713,7 @@ function AiStateEngage:shootAtTarget(cmd, aimAtBaseOrigin, enemy)
             Math.getClampedInversedFloat(enemy:m_vecVelocity():getMagnitude(), 145, 100, 450)
         })
     else
-        resonated = 1
+        resonated = 0.66
     end
 
     self.hitboxOffset = Vector3:new(
@@ -2927,7 +2757,7 @@ function AiStateEngage:shootAtTarget(cmd, aimAtBaseOrigin, enemy)
     VirtualMouse.isRcsEnabled = self.isRcsEnabled
 
     -- Set mouse movement parameters.
-    VirtualMouse.isCrosshairLerpingToZero = true
+    VirtualMouse.isCrosshairLerpingToZero = false
     VirtualMouse.isCrosshairUsingVelocity = true
 
     -- Select which method to use to perform shooting logic.
@@ -3437,6 +3267,7 @@ function AiStateEngage:actionStrafePeek()
         and not self.isVisibleToBestTarget
         and self.strafePeekTimer:isStarted()
         and not self.strafePeekTimer:isElapsedThenStop(1)
+        and AiSense.getAwareness(self.bestTarget) <= AiSense.awareness.RECENT_NEARBY
     then
         Pathfinder.moveAtAngle(self.strafePeekMoveAngle)
 
@@ -3537,6 +3368,10 @@ function AiStateEngage:preAimThroughCorners()
     end
 
     if self.isBestTargetVisible then
+        return
+    end
+
+    if not self.isAllowedToPreAim then
         return
     end
 
@@ -3649,7 +3484,7 @@ function AiStateEngage:preAimAboutCorners()
         return
     end
 
-    if self.preAimAboutCornersAimOrigin then
+    if self.preAimAboutCornersAimOrigin and self.isAllowedToPreAim then
         self.ai.routines.manageWeaponScope:block()
 
         VirtualMouse.lookAtLocation(self.preAimAboutCornersAimOrigin, self.aimSpeed, VirtualMouse.noise.moving, "Engage look at corner")
@@ -3795,7 +3630,7 @@ function AiStateEngage:setSkillLevel(skill)
         aimSpeed = 8,
         recoilControl = 2.33,
         aimOffset = 64,
-        aimInaccurateOffset = 175,
+        aimInaccurateOffset = 128,
         blockTime = 0.25
     }
 
@@ -3807,7 +3642,7 @@ function AiStateEngage:setSkillLevel(skill)
         aimSpeed = 18,
         recoilControl = 2,
         aimOffset = 0,
-        aimInaccurateOffset = 80,
+        aimInaccurateOffset = 64,
         blockTime = 0.01
     }
 

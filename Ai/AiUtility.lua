@@ -37,6 +37,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field clientNodeOrigin Vector3
 --- @field clientThreatenedBy Player
 --- @field clientThreatenedFromOrigin Vector3
+--- @field clientThreatenedFromOriginPlayer Player
 --- @field closestEnemy Player
 --- @field closestEnemyDistance number
 --- @field closestTeammate Player
@@ -653,6 +654,7 @@ function AiUtility.updateThreats()
     local closestThreat
     local closestThreatDistance = math.huge
     local clientThreatenedFromOrigin
+    local clientThreatenedFromOriginPlayer
 
     -- Threat points above head.
     table.insert(clientPlane, clientOrigin:clone():offset(0, 0, 120))
@@ -672,6 +674,7 @@ function AiUtility.updateThreats()
             AiUtility.isClientThreatenedMinor = true
             AiUtility.isClientThreatenedMajor = true
             AiUtility.clientThreatenedFromOrigin = enemy:getOrigin():offset(0, 0, 64)
+            AiUtility.clientThreatenedFromOriginPlayer = enemy
             AiUtility.threats[enemy.eid] = true
 
             break
@@ -735,6 +738,7 @@ function AiUtility.updateThreats()
                         lowestFov = fov
 
                         clientThreatenedFromOrigin = findWallCollideTrace.endPosition
+                        clientThreatenedFromOriginPlayer = enemy
                     end
                 end
 
@@ -774,6 +778,7 @@ function AiUtility.updateThreats()
 
         if not findVisibleTrace.isIntersectingGeometry or not findPredictedVisibleTrace.isIntersectingGeometry then
             AiUtility.clientThreatenedFromOrigin = clientThreatenedFromOrigin
+            AiUtility.clientThreatenedFromOriginPlayer = clientThreatenedFromOriginPlayer
         end
     end
 

@@ -14,6 +14,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local AiSense = require "gamesense/Nyx/v1/Dominion/Ai/AiSense"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
@@ -74,6 +75,7 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMou
 --- @field viewAngles Angle
 --- @field viewPitchOffset number
 --- @field watchCornerOrigin Vector3
+--- @field watchCornerOriginPlayer Player
 --- @field watchCornerTimer Timer
 --- @field yawFine number
 --- @field yawSoft number
@@ -631,13 +633,22 @@ function VirtualMouse.setIdealWatchCorner(idealViewAngles)
 	-- as AiUtility.clientThreatenedFromOrigin is rapidly set and unset.
 	if AiUtility.clientThreatenedFromOrigin then
 		VirtualMouse.watchCornerOrigin = AiUtility.clientThreatenedFromOrigin
+		VirtualMouse.watchCornerOriginPlayer = AiUtility.clientThreatenedFromOriginPlayer
 
 		VirtualMouse.watchCornerTimer:start()
+	end
+
+	if VirtualMouse.watchCornerOriginPlayer
+		and AiSense.getAwareness(VirtualMouse.watchCornerOriginPlayer) >= AiSense.awareness.RECENT_MOVED
+	then
+		return
 	end
 
 	if VirtualMouse.watchCornerTimer:isElapsed(1.5) then
 		return
 	end
+
+	print("hello")
 
 	idealViewAngles:setFromAngle(LocalPlayer.getEyeOrigin():getAngle(VirtualMouse.watchCornerOrigin))
 

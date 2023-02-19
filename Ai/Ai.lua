@@ -25,9 +25,11 @@ local AiRoutine = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutine"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 
 -- Other.
+local AiSense = require "gamesense/Nyx/v1/Dominion/Ai/AiSense"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiVoice = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoice"
+local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
 local DominionClient = require "gamesense/Nyx/v1/Dominion/Client/Client"
@@ -35,7 +37,6 @@ local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
-local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
@@ -65,6 +66,7 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field lockStateTimer Timer
 --- @field processes AiProcess
 --- @field routines AiRoutine
+--- @field sense AiSense
 --- @field states AiStateList
 --- @field voice AiVoice
 local Ai = {}
@@ -96,6 +98,7 @@ function Ai:initFields()
 	self.ditherThreshold = 8
 	self.ditherHistoryTimer = Timer:new():start()
 	self.debugPriorities = {}
+	self.sense = AiSense
 
 	if Config.isLiveClient and not Config.isAdministrator(Client.xuid) then
 		self.client = DominionClient:new()
@@ -204,6 +207,8 @@ function Ai:initMenu()
 	end):setParent(MenuGroup.enableAi)
 
 	MenuGroup.visualiseAi = MenuGroup.group:addCheckbox("    > Visualise AI"):setParent(MenuGroup.enableAi)
+	MenuGroup.visualiseAiStates = MenuGroup.group:addCheckbox("        > Visualise States"):set(true):setParent(MenuGroup.visualiseAi)
+	MenuGroup.visualiseAiSense = MenuGroup.group:addCheckbox("        > Visualise Senses"):set(true):setParent(MenuGroup.visualiseAi)
 	MenuGroup.enableDim = MenuGroup.group:addCheckbox("        > Enable Dim"):set(true):setParent(MenuGroup.visualiseAi)
 	MenuGroup.enableAimbot = MenuGroup.group:addCheckbox("    > Enable Aim System"):setParent(MenuGroup.enableAi)
 	MenuGroup.visualiseAimbot = MenuGroup.group:addCheckbox("        > Visualise Aimbot"):setParent(MenuGroup.enableAimbot)
@@ -586,24 +591,57 @@ function Ai:render()
 		Client.draw(Vector3.drawCircleOutline, AiUtility.clientThreatenedFromOrigin, 30, 3, Color:hsla(0, 1, 1, 75))
 	end
 
-	-- Debug priorities
-	if not Table.isEmpty(self.debugPriorities) then
-		for stateName, priority in Table.sortedPairs(self.debugPriorities, function(a, b)
-			return a > b
-		end) do
-			local priorityColor = fontColor
+	if MenuGroup.visualiseAiSense:get() then
+		local baseColor = Color:hsla(0, 0.8, 0.6)
+		local isEmpty = true
 
-			if Debug.highlightStates[stateName] then
-				priorityColor = ColorList.OK
-			end
+		for _, enemy in pairs(AiUtility.enemies) do
+			isEmpty = false
 
-			uiPos:drawSurfaceText(Font.EXTRA_TINY, priorityColor, "l", string.format(
-				"%s (%s)",
-				stateName,
-				AiStateBase.priorityMap[priority]
+			local awarenessLevel, awarenessReason = AiSense.getAwareness(enemy)
+			local awarenessString = AiSense.awarenessStrings[awarenessLevel]
+			local float = Math.getInversedFloat(awarenessLevel, 8)
+			local color = baseColor:clone():shiftHue(120 * float)
+
+			uiPos:drawSurfaceText(Font.EXTRA_TINY, color, "l", string.format(
+				"%s (%s, %s)",
+				enemy:getName(),
+				awarenessString,
+				awarenessReason
 			))
 
 			uiPos:offset(0, 14)
+		end
+
+		if isEmpty then
+			uiPos:drawSurfaceText(Font.EXTRA_TINY, ColorList.FONT_NORMAL, "l", "NO ENEMIES ARE SENSED")
+			uiPos:offset(0, 14)
+		end
+
+		uiPos:clone():offset(-5, 5):drawSurfaceRectangle(spacerDimensions, spacerColor)
+		uiPos:offset(0, 10)
+	end
+
+	if MenuGroup.visualiseAiStates:get() then
+		-- Debug priorities
+		if not Table.isEmpty(self.debugPriorities) then
+			for stateName, priority in Table.sortedPairs(self.debugPriorities, function(a, b)
+				return a > b
+			end) do
+				local priorityColor = fontColor
+
+				if Debug.highlightStates[stateName] then
+					priorityColor = ColorList.OK
+				end
+
+				uiPos:drawSurfaceText(Font.EXTRA_TINY, priorityColor, "l", string.format(
+					"%s (%s)",
+					stateName,
+					AiStateBase.priorityMap[priority]
+				))
+
+				uiPos:offset(0, 14)
+			end
 		end
 	end
 end
@@ -716,7 +754,7 @@ function Ai:selectState(cmd)
 			error(string.format(Localization.aiNoPriority, state.name))
 		end
 
-		if Debug.isLoggingStatePriorities and priority > -1 then
+		if priority > -1 then
 			debugPriorities[state.name] = priority
 		end
 
@@ -726,9 +764,7 @@ function Ai:selectState(cmd)
 		end
 	until true end
 
-	if Debug.isLoggingStatePriorities then
-		self.debugPriorities = debugPriorities
-	end
+	self.debugPriorities = debugPriorities
 
 	if currentState and ((self.lastPriority and self.lastPriority > highestPriority) or self.lockStateTimer:isElapsed(0.15))then
 		local isReactivated = false

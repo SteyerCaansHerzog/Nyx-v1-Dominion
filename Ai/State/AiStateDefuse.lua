@@ -66,7 +66,7 @@ function AiStateDefuse:assess()
         return AiPriority.IGNORE
     end
 
-    -- Can't defuse if we're not already on the bomb.
+    -- No time left and we haven't started defusing.
     if not AiUtility.canDefuse and not LocalPlayer:m_bIsDefusing() == 1 then
         return AiPriority.IGNORE
     end

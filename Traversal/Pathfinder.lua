@@ -1217,7 +1217,7 @@ function Pathfinder.traverseActivePath(cmd)
 					return
 				end
 
-				if not Pathfinder.moveOnGroundTimer:isElapsed(0.1) then
+				if not Pathfinder.moveOnGroundTimer:isElapsed(0.33) then
 					return
 				end
 
@@ -1239,7 +1239,7 @@ function Pathfinder.traverseActivePath(cmd)
 					return
 				end
 
-				if not Pathfinder.moveOnGroundTimer:isElapsed(0.1) then
+				if not Pathfinder.moveOnGroundTimer:isElapsed(0.33) then
 					return
 				end
 
@@ -1262,7 +1262,7 @@ function Pathfinder.traverseActivePath(cmd)
 					return
 				end
 
-				if not Pathfinder.moveOnGroundTimer:isElapsed(0.1) then
+				if not Pathfinder.moveOnGroundTimer:isElapsed(0.33) then
 					return
 				end
 

@@ -38,6 +38,8 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --- @field visualiseOtherAiMode MenuItem
 --- @field visualiseExtraInfo MenuItem
 --- @field visualiseAi MenuItem
+--- @field visualiseAiStates MenuItem
+--- @field visualiseAiSense MenuItem
 --- @field enableDim MenuItem
 ---
 --- @field enableMicrophone MenuItem

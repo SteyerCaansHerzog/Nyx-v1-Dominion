@@ -8,7 +8,7 @@ local Debug = {
 	isLoggingLookState = false,
 	isLoggingStatePriorities = true,
 	isFilteringConsole = true,
-	isLoggingPathfinderMoveOntoNextNode =  false,
+	isLoggingPathfinderMoveOntoNextNode = false,
 	highlightStates = {}
 }
 

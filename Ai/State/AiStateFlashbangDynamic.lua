@@ -15,6 +15,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
+local AiSense = require "gamesense/Nyx/v1/Dominion/Ai/AiSense"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
@@ -189,6 +190,10 @@ function AiStateFlashbangDynamic:assess()
     -- Oh boy, which of our opponents is gonna get to see the worst thrown flashbang of their lives?
     -- If you've never seen a do repeat until true loop before it's because Lua couldn't be bothered to implement "continue".
     for _, enemy in pairs(AiUtility.enemies) do repeat
+        if AiSense.getAwareness(enemy) >= AiSense.awareness.OLD then
+            break
+        end
+
         local enemyTestOrigin = enemy:getOrigin():offset(0, 0, 64)
 
         -- Does our super accurate "detonate" spot trace have line of sight to the approximate enemy's eyeballs?

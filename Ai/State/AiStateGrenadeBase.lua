@@ -12,6 +12,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local AiSense = require "gamesense/Nyx/v1/Dominion/Ai/AiSense"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
@@ -263,7 +264,17 @@ end
 --- @param node NodeTypeGrenade
 --- @return boolean
 function AiStateGrenadeBase:isEnemyThreatenedByNode(node)
+    local isCheckingAwareness = true
+
+    if AiUtility.timeData.roundtime_elapsed < 25 then
+        isCheckingAwareness = true
+    end
+
     for _, enemy in pairs(AiUtility.enemies) do repeat
+        if isCheckingAwareness and AiSense.getAwareness(enemy) >= AiSense.awareness.OLD then
+            break
+        end
+
         local enemyOrigin = enemy:getOrigin()
         local enemyDistance = node.origin:getDistance(enemyOrigin)
         local range = (node.isRun or node.isJump) and self.rangeThreshold or self.rangeThreshold * 0.65
