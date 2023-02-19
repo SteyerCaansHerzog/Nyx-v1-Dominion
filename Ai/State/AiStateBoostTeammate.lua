@@ -150,7 +150,6 @@ function AiStateBoostTeammate:think(cmd)
         self.activity = "Waiting to boost teammate"
 
         if self.boostNode then
-            print(self.boostNode.direction)
             VirtualMouse.lookAlongAngle(self.boostNode.direction, 6, VirtualMouse.noise.none, "Boost teammate look along boost")
         end
     end

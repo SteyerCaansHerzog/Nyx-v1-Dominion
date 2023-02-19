@@ -88,8 +88,10 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field totalThreats number
 --- @field traceOptionsPathfinding TraceOptions
 --- @field traceOptionsVisible TraceOptions
+--- @field updateThreatsIndex number
 --- @field visibleEnemies Player[]
 --- @field visibleFovThreshold number
+--- @field updateThreatsCache table
 local AiUtility = {
     gamemodes = GamemodeInfo
 }
@@ -122,6 +124,8 @@ function AiUtility:initFields()
     AiUtility.ignorePresenceAfter = Math.getRandomFloat(10, 15)
     AiUtility.lastPresenceTimers = {}
     AiUtility.visibleFovThreshold = 53
+    AiUtility.updateThreatsIndex = 0
+    AiUtility.updateThreatsCache = {}
 
     for i = 1, 64 do
         AiUtility.lastPresenceTimers[i] = Timer:new():startThenElapse()
@@ -632,7 +636,7 @@ end
 --- @return void
 function AiUtility.updateThreats()
     -- Don't update the threat origin too often, or it'll be obvious this is effectively wallhacking.
-    if not AiUtility.threatUpdateTimer:isElapsedThenRestart(0.2) then
+    if not AiUtility.threatUpdateTimer:isElapsedThenRestart(0.25) then
         return
     end
 
@@ -651,8 +655,7 @@ function AiUtility.updateThreats()
     local clientThreatenedFromOrigin
 
     -- Threat points above head.
-    table.insert(clientPlane, clientOrigin:clone():offset(16, 16, 100))
-    table.insert(clientPlane, clientOrigin:clone():offset(-16, -16, 100))
+    table.insert(clientPlane, clientOrigin:clone():offset(0, 0, 120))
 
     -- Prevent our own plane from clipping thin walls.
     -- It can look very wrong when pre-aiming through certain geometry.
@@ -662,7 +665,9 @@ function AiUtility.updateThreats()
         clientPlane[id] = trace.endPosition
     end
 
-    for _, enemy in pairs(AiUtility.enemies) do repeat
+    for _, enemy in Table.sortedPairs(AiUtility.enemies, function(a, b)
+    	return a.eid < b.eid
+    end) do repeat
         if AiUtility.visibleEnemies[enemy.eid] then
             AiUtility.isClientThreatenedMinor = true
             AiUtility.isClientThreatenedMajor = true
@@ -700,7 +705,7 @@ function AiUtility.updateThreats()
         local enemyOffset = enemyOrigin:offset(0, 0, 50)
         local bandAngle = eyeOrigin:getAngle(enemyOffset):set(0):offset(0, 90)
         local enemyAngle = eyeOrigin:getAngle(enemyOffset)
-        local steps = 8
+        local steps = 6
         local stepDistance = 180 / steps
         local isClientThreatenedMinor = false
         local isClientThreatenedMajor = false
@@ -715,17 +720,8 @@ function AiUtility.updateThreats()
             local findWallCollideTrace = Trace.getLineToPosition(enemyOffset, collideIdealOrigin, AiUtility.traceOptionsVisible, "AiUtility.updateThreats<FindWallCollidePoint>")
 
             for _, vertex in pairs(clientPlane) do
-                -- Trace to see if we can see the previous trace.
                 local findCollidedPointVisibleToEnemyTrace = Trace.getLineToPosition(findWallCollideTrace.endPosition, vertex, AiUtility.traceOptionsVisible, "AiUtility.updateThreats<FindCollidedPointVisibleToEnemy>")
-                local findUncollidedPointVisibleToEnemyTrace = Trace.getLineToPosition(uncollideIdealOrigin, vertex, AiUtility.traceOptionsVisible, "AiUtility.updateThreats<FindUncollidedPointVisibleToEnemy>")
-                local fov = enemyAngle:getFov(eyeOrigin, findWallCollideTrace.endPosition)
 
-                -- Find if the enemy could potentially peek us.
-                if not findUncollidedPointVisibleToEnemyTrace.isIntersectingGeometry then
-                    isClientThreatenedMinor = true
-                end
-
-                -- Set the closest point to the enemy as the best point to look at.
                 if not findCollidedPointVisibleToEnemyTrace.isIntersectingGeometry then
                     isClientThreatenedMinor = true
 
@@ -733,10 +729,20 @@ function AiUtility.updateThreats()
                         isClientThreatenedMajor = true
                     end
 
+                    local fov = enemyAngle:getFov(eyeOrigin, findWallCollideTrace.endPosition)
+
                     if canSetThreatenedFromOrigin and fov < lowestFov and fov < 20 then
                         lowestFov = fov
 
                         clientThreatenedFromOrigin = findWallCollideTrace.endPosition
+                    end
+                end
+
+                if findCollidedPointVisibleToEnemyTrace.isIntersectingGeometry and not isClientThreatenedMinor and not isClientThreatenedMajor then
+                    local findUncollidedPointVisibleToEnemyTrace = Trace.getLineToPosition(uncollideIdealOrigin, vertex, AiUtility.traceOptionsVisible, "AiUtility.updateThreats<FindUncollidedPointVisibleToEnemy>")
+
+                    if not findUncollidedPointVisibleToEnemyTrace.isIntersectingGeometry then
+                        isClientThreatenedMinor = true
                     end
                 end
             end

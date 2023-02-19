@@ -9,6 +9,9 @@ Competitive matchmaking bot for CS:GO.
 Place the project in the `Counter-Strike Global Offensive` directory under `lua/gamesense/Nyx/v1/Dominion`.
 
 Create a Lua file under `lua` named `Nyx-Dominion.lua` and insert the following code:
+
+Copy the `Utility/ConfigValuesDefault.lua` file to `Utility/ConfigValues.lua` and use this file to configure the AI.
+
 ```lua
 require "gamesense/Nyx/v1/Dominion/Dominion"
 ```

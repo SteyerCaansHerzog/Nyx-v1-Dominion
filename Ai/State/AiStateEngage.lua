@@ -3746,6 +3746,13 @@ function AiStateEngage:preAimAboutCorners()
         end
     end
 
+    -- Only select the closest point to look at.
+    if self.preAimAboutCornersAimOrigin and closestVertex
+        and closestVertex:getDistance2(enemyOrigin) > self.preAimAboutCornersAimOrigin:getDistance2(enemyOrigin)
+    then
+        return
+    end
+
     self.preAimAboutCornersAimOrigin = closestVertex
 
     if not closestVertex then
