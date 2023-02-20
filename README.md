@@ -2,11 +2,11 @@
 Competitive matchmaking bot for CS:GO.
 
 ## Dependencies
-- https://github.com/SteyerCaansHerzog/Nyx-v1-Api (use branch `v2`)
-- CSGO-Weapon-Data <https://gamesense.pub/forums/viewtopic.php?id=18807>
-- Localization-API <https://gamesense.pub/forums/viewtopic.php?id=30643>
-- Web-Sockets-API <https://gamesense.pub/forums/viewtopic.php?id=23653>
-- Trace <https://gamesense.pub/forums/viewtopic.php?id=32949>
+- Nyx-API https://github.com/SteyerCaansHerzog/Nyx-v1-Api (use branch `v2`)
+- CSGO-Weapon-Data https://gamesense.pub/forums/viewtopic.php?id=18807
+- Localization-API https://gamesense.pub/forums/viewtopic.php?id=30643
+- Web-Sockets-API https://gamesense.pub/forums/viewtopic.php?id=23653
+- Trace https://gamesense.pub/forums/viewtopic.php?id=32949
 
 ## Installation
 Place the project in the `Counter-Strike Global Offensive` directory under `lua/gamesense/Nyx/v1/Dominion`.
