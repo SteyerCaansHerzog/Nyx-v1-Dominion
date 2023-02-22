@@ -64,6 +64,10 @@ end
 
 --- @return void
 function AiStateUseRunBoost:assess()
+    if self.isJumped then
+        return AiPriority.USE_RUN_BOOST_COMMIT
+    end
+
     if Config.isPlayingSolo then
         return AiPriority.IGNORE
     end
@@ -98,7 +102,7 @@ function AiStateUseRunBoost:assess()
         return AiPriority.USE_RUN_BOOST
     end
 
-    if AiUtility.bombsitePlantAt then
+    if AiUtility.plantedAtBombsite then
         return AiPriority.IGNORE
     end
 
@@ -121,9 +125,9 @@ end
 --- @return NodeSpotBoostCt
 function AiStateUseRunBoost:getNode()
     local clientOrigin = LocalPlayer:getOrigin()
-    local nodeClass = LocalPlayer:isTerrorist() and Node.spotBoostT or Node.spotBoostCt
+    local nodeClass = LocalPlayer:isTerrorist() and Node.spotRunBoostT or Node.spotRunBoostCt
     -- Globally increase the weight of boost chances.
-    local chanceMod = 2
+    local chanceMod = 0.5
 
     for _, node in pairs(Nodegraph.get(nodeClass)) do repeat
         if self.blacklist[node.id] then
@@ -221,6 +225,18 @@ function AiStateUseRunBoost:think(cmd)
         return
     end
 
+    for _, teammate in pairs(AiUtility.teammates) do repeat
+        if self.booster and teammate:is(self.booster) then
+            break
+        end
+
+        if teammate:getOrigin():getDistance(self.waitNode.floorOrigin) < 32 then
+            self:reset()
+
+            return
+        end
+    until true end
+
     -- This might cause the AI to die.
     self.ai.states.evade:block()
 
@@ -236,7 +252,7 @@ function AiStateUseRunBoost:think(cmd)
     if distanceToWaitNode < 64 and not self.isReady then
         self.isReady = true
 
-        self.ai.commands.rboost:bark()
+        self.ai.commands.boost:bark("RunBoost")
         self.acknowledgeTimer:start()
     end
 
@@ -255,32 +271,12 @@ function AiStateUseRunBoost:think(cmd)
     end
 
     if not self.isUsingBoost then
-        for _, teammate in pairs(AiUtility.teammates) do repeat
-            if teammate:is(self.booster) then
-                break
-            end
-
-            if teammate:getOrigin():getDistance(self.waitNode.floorOrigin) < 32 then
-                self:reset()
-
-                return
-            end
-        until true end
-
         if self.acknowledgeTimer:isElapsed(15) then
             self:reset()
 
             return
         end
 
-    end
-
-    for _, teammate in pairs(AiUtility.teammates) do
-        if not teammate:is(self.booster) and teammate:getOrigin():getDistance(self.waitNode.origin) < 16 then
-            self:reset()
-
-            return
-        end
     end
 
     local teammateDistanceToBoostNode = self.booster:getOrigin():getDistance(self.boostNode.floorOrigin)
@@ -363,6 +359,8 @@ function AiStateUseRunBoost:think(cmd)
     Pathfinder.moveAtAngle(self.boostNode.direction, true)
 
     if LocalPlayer:m_vecVelocity():getMagnitude() > 220 then
+        Pathfinder.isAirStrafeJump = false
+
         Pathfinder.jump()
 
         self:reset()

@@ -122,7 +122,7 @@ function AiStateUseBoost:assess()
         return AiPriority.USE_BOOST
     end
 
-    if AiUtility.bombsitePlantAt then
+    if AiUtility.plantedAtBombsite then
         return AiPriority.IGNORE
     end
 
@@ -147,7 +147,7 @@ function AiStateUseBoost:getNode()
     local clientOrigin = LocalPlayer:getOrigin()
     local nodeClass = LocalPlayer:isTerrorist() and Node.spotBoostT or Node.spotBoostCt
     -- Globally increase the weight of boost chances.
-    local chanceMod = 2
+    local chanceMod = 1
 
     for _, node in pairs(Nodegraph.get(nodeClass)) do repeat
         if self.blacklist[node.id] then
@@ -265,6 +265,18 @@ function AiStateUseBoost:think(cmd)
         return
     end
 
+    for _, teammate in pairs(AiUtility.teammates) do repeat
+        if self.booster and teammate:is(self.booster) then
+            break
+        end
+
+        if teammate:getOrigin():getDistance(self.waitNode.floorOrigin) < 32 then
+            self:reset()
+
+            return
+        end
+    until true end
+
     -- This might cause the AI to die.
     self.ai.states.evade:block()
 
@@ -299,27 +311,7 @@ function AiStateUseBoost:think(cmd)
     end
 
     if not self.isUsingBoost then
-        for _, teammate in pairs(AiUtility.teammates) do repeat
-            if teammate:is(self.booster) then
-                break
-            end
-
-            if teammate:getOrigin():getDistance(self.waitNode.floorOrigin) < 32 then
-                self:reset()
-
-                return
-            end
-        until true end
-
         if self.acknowledgeTimer:isElapsed(15) then
-            self:reset()
-
-            return
-        end
-    end
-
-    for _, teammate in pairs(AiUtility.teammates) do
-        if not teammate:is(self.booster) and teammate:getOrigin():getDistance(self.waitNode.origin) < 16 then
             self:reset()
 
             return

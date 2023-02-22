@@ -3,7 +3,10 @@ local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
 local Client = require "gamesense/Nyx/v1/Api/Client"
 local Entity = require "gamesense/Nyx/v1/Api/Entity"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
+local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Player = require "gamesense/Nyx/v1/Api/Player"
+local Table = require "gamesense/Nyx/v1/Api/Table"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
@@ -18,14 +21,20 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 
 --{{{ AiStateEvade
 --- @class AiStateEvade : AiStateBase
+--- @field changeAngleTime number
+--- @field changeAngleTimer Timer
+--- @field evadeLookAtAngles Vector3
+--- @field holdTimer Timer
+--- @field hurtTimer Timer
+--- @field isFirstJumpEvasion boolean
+--- @field isHurt boolean
+--- @field isJumpEvasionActive boolean
+--- @field isLookingAtPathfindingDirection boolean
+--- @field jumpEvasionAngle Angle
+--- @field jumpEvasionCooldownTimer Timer
+--- @field jumpEvasionMethod fun(self: AiStateEvade, cmd: SetupCommandEvent): void
 --- @field node Node
 --- @field shotBoltActionRifleTimer Timer
---- @field changeAngleTimer Timer
---- @field changeAngleTime number
---- @field evadeLookAtAngles Vector3
---- @field isHurt boolean
---- @field hurtTimer Timer
---- @field isLookingAtPathfindingDirection boolean
 local AiStateEvade = {
     name = "Evade",
     isLockable = false
@@ -44,6 +53,8 @@ function AiStateEvade:__init()
     self.changeAngleTimer = Timer:new():startThenElapse()
     self.changeAngleTime = 1
     self.hurtTimer = Timer:new():startThenElapse()
+    self.jumpEvasionCooldownTimer = Timer:new():startThenElapse()
+    self.holdTimer = Timer:new():startThenElapse()
 
     Callbacks.weaponFire(function(e)
         if e.player:isLocalPlayer() and e.player:isHoldingBoltActionRifle() then
@@ -65,6 +76,10 @@ function AiStateEvade:assess()
     -- No enemies to threaten us.
     if AiUtility.enemiesAlive == 0 then
         return AiPriority.IGNORE
+    end
+
+    if not AiUtility.isEnemyVisible and not self.holdTimer:isElapsed(1.5) then
+        return AiPriority.EVADE_ACTIVE
     end
 
     -- We can be peeked by an enemy.
@@ -124,11 +139,17 @@ end
 
 --- @return void
 function AiStateEvade:activate()
+    self.jumpEvasionAngle = nil
+    self.isFirstJumpEvasion = true
+
+    self.holdTimer:start()
+
     self:moveToCover()
 end
 
+--- @param cmd SetupCommandEvent
 --- @return void
-function AiStateEvade:think()
+function AiStateEvade:think(cmd)
     self.activity = "Seeking cover"
 
     self.ai.routines.manageGear:block()
@@ -144,6 +165,94 @@ function AiStateEvade:think()
     if Pathfinder.isIdle() then
         self:moveToCover()
     end
+
+    self:moveJumpEvasion(cmd)
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function AiStateEvade:moveJumpEvasion(cmd)
+    if LocalPlayer:isAbleToAttack() then
+        return
+    end
+
+    if LocalPlayer:getNextAttackProgress() < 0.35 then
+        return
+    end
+
+    if not AiUtility.isEnemyVisible then
+        return
+    end
+
+    self.ai.routines.walk:block()
+
+    if LocalPlayer:m_vecVelocity():getMagnitude() > 165 and self.jumpEvasionCooldownTimer:isElapsedThenRestart(0.75) then
+        if not Math.getChance(3) then
+            self.jumpEvasionMethod = nil
+        else
+            if self.isFirstJumpEvasion then
+                -- Duplicated because easy weighted random.
+                self.jumpEvasionMethod = Table.getRandom({
+                    AiStateEvade.jumpEvasionForward,
+                    AiStateEvade.jumpEvasionForward,
+                    AiStateEvade.jumpEvasionBackward,
+                    AiStateEvade.jumpEvasionBackward,
+                    AiStateEvade.jumpEvasionSimple
+                })
+            else
+                self.jumpEvasionMethod = AiStateEvade.jumpEvasionSimple
+            end
+
+            self.isFirstJumpEvasion = false
+        end
+
+        cmd.in_jump = true
+    end
+
+    if not self.jumpEvasionMethod or LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND) then
+        return
+    end
+
+    if not self.jumpEvasionAngle then
+        self.jumpEvasionAngle = LocalPlayer.getCameraAngles()
+    end
+
+
+    Pathfinder.blockMovement()
+    VirtualMouse.block()
+
+    self.jumpEvasionMethod(self, cmd)
+
+    VirtualMouse.viewAngles = self.jumpEvasionAngle
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function AiStateEvade:jumpEvasionBackward(cmd)
+    self.jumpEvasionAngle:offset(0, 8)
+
+    cmd.in_right = true
+    cmd.sidemove = 450
+    cmd.in_back = true
+    cmd.forwardmove = -450
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function AiStateEvade:jumpEvasionForward(cmd)
+    self.jumpEvasionAngle:offset(0, 8)
+
+    cmd.in_left = true -- todo
+    cmd.sidemove = -450
+    cmd.in_forward = true
+    cmd.forwardmove = 450
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function AiStateEvade:jumpEvasionSimple(cmd)
+    cmd.in_back = true
+    cmd.forwardmove = -450
 end
 
 --- @return void

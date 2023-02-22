@@ -592,7 +592,7 @@ function Ai:render()
 	end
 
 	if MenuGroup.visualiseAiSense:get() then
-		local baseColor = Color:hsla(0, 0.8, 0.6)
+		local baseColor = Color:hsla(20, 0.8, 0.6)
 		local isEmpty = true
 
 		for _, enemy in pairs(AiUtility.enemies) do

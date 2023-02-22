@@ -32,7 +32,6 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field bomb Entity
 --- @field bombCarrier Player
 --- @field bombDetonationTime number
---- @field bombsitePlantAt string
 --- @field canDefuse boolean
 --- @field clientNodeOrigin Vector3
 --- @field clientThreatenedBy Player
@@ -72,8 +71,10 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field isPerformingCalculations boolean
 --- @field isRoundOver boolean
 --- @field lastPresenceTimers Timer[]
+--- @field lastThreatenedAgo Timer
 --- @field lastVisibleEnemyTimer Timer
 --- @field mapInfo MapInfo
+--- @field plantedAtBombsite string
 --- @field plantedBomb Entity
 --- @field position number
 --- @field randomBombsite string
@@ -89,10 +90,10 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field totalThreats number
 --- @field traceOptionsPathfinding TraceOptions
 --- @field traceOptionsVisible TraceOptions
+--- @field updateThreatsCache table
 --- @field updateThreatsIndex number
 --- @field visibleEnemies Player[]
 --- @field visibleFovThreshold number
---- @field updateThreatsCache table
 local AiUtility = {
     gamemodes = GamemodeInfo
 }
@@ -127,6 +128,7 @@ function AiUtility:initFields()
     AiUtility.visibleFovThreshold = 53
     AiUtility.updateThreatsIndex = 0
     AiUtility.updateThreatsCache = {}
+    AiUtility.lastThreatenedAgo = Timer:new():startThenElapse()
 
     for i = 1, 64 do
         AiUtility.lastPresenceTimers[i] = Timer:new():startThenElapse()
@@ -205,7 +207,7 @@ end
 --- @return void
 function AiUtility:initEvents()
     Callbacks.roundStart(function()
-        AiUtility.bombsitePlantAt = nil
+        AiUtility.plantedAtBombsite = nil
         AiUtility.canDefuse = nil
         AiUtility.visibleEnemies = {}
         AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
@@ -256,7 +258,7 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombBeginPlant(function(e)
-        AiUtility.bombsitePlantAt = AiUtility.getBombsiteFromIdx(e.site)
+        AiUtility.plantedAtBombsite = AiUtility.getBombsiteFromIdx(e.site)
 
         if e.player:isLocalPlayer() then
             AiUtility.isClientPlanting = true
@@ -269,7 +271,7 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombAbortPlant(function(e)
-        AiUtility.bombsitePlantAt = nil
+        AiUtility.plantedAtBombsite = nil
 
         if e.player:isLocalPlayer() then
             AiUtility.isClientPlanting = false
@@ -281,7 +283,7 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombPlanted(function(e)
-        AiUtility.bombsitePlantAt = AiUtility.getBombsiteFromIdx(e.site)
+        AiUtility.plantedAtBombsite = AiUtility.getBombsiteFromIdx(e.site)
         AiUtility.isClientPlanting = false
         AiUtility.isBombBeingPlantedByEnemy = false
         AiUtility.isBombBeingPlantedByTeammate = false
@@ -780,10 +782,20 @@ function AiUtility.updateThreats()
             AiUtility.clientThreatenedFromOrigin = clientThreatenedFromOrigin
             AiUtility.clientThreatenedFromOriginPlayer = clientThreatenedFromOriginPlayer
         end
+
+        -- If it's too close, we can end up looking at the position in a weird manner.
+        if eyeOrigin:getDistance(clientThreatenedFromOrigin) < 100 then
+            AiUtility.clientThreatenedFromOrigin = nil
+            AiUtility.clientThreatenedFromOriginPlayer = nil
+        end
     end
 
     AiUtility.closestThreat = closestThreat
     AiUtility.totalThreats = threats
+
+    if AiUtility.isClientThreatenedMinor or AiUtility.isClientThreatenedMajor then
+        AiUtility.lastThreatenedAgo:start()
+    end
 end
 
 --- @return boolean

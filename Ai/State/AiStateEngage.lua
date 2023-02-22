@@ -304,7 +304,6 @@ function AiStateEngage:initEvents()
         self.defendingLookAt = nil
         self.isIgnoringDormancy = true
         self.jiggleShootTime = Math.getRandomFloat(0.33, 0.66)
-
     end)
 
     Callbacks.runCommand(function()
@@ -410,6 +409,10 @@ function AiStateEngage:assess()
 
     local clientOrigin = LocalPlayer:getOrigin()
 
+    if AiUtility.gameRules:m_bFreezePeriod() == 1 then
+        return AiPriority.IGNORE
+    end
+
     -- Do not try to engage people from inside of a smoke.
     -- It looks really dumb.
     for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
@@ -450,7 +453,7 @@ function AiStateEngage:assess()
         return AiPriority.ENGAGE_ACTIVE
     end
 
-    if AiUtility.isBombBeingPlantedByEnemy and AiUtility.bombCarrier then
+    if AiUtility.isBombBeingPlantedByEnemy and AiUtility.bombCarrier and not AiUtility.bombCarrier:isDormant() then
         return AiPriority.ENGAGE_ACTIVE
     end
 
@@ -477,33 +480,20 @@ function AiStateEngage:assess()
 end
 
 --- @return void
-function AiStateEngage:activate()
-    if self.enemySpottedCooldown:isElapsedThenRestart(60) then
-        if AiUtility.bombCarrier and AiUtility.bombCarrier:is(self.bestTarget) and LocalPlayer:isCounterTerrorist() then
-            if not AiUtility.isLastAlive then
-               self.ai.voice.pack:speakNotifyTeamOfBombCarrier()
-            end
-        else
-            if not AiUtility.isLastAlive then
-               self.ai.voice.pack:speakHearNearbyEnemies()
-            end
-        end
-    end
-end
-
---- @return void
 function AiStateEngage:deactivate()
     self.isDefending = false
 end
 
 --- @return void
 function AiStateEngage:reset()
-    self.reactionTimer:stop()
-    self.sprayTimer:stop()
-    self.watchTimer:stop()
-    self.watchOrigin = nil
     self.bestTarget = nil
     self.lastBestTargetOrigin = nil
+    self.preAimAboutCornersAimOrigin = nil
+    self.preAimThroughCornersOrigin = nil
+    self.reactionTimer:stop()
+    self.sprayTimer:stop()
+    self.watchOrigin = nil
+    self.watchTimer:stop()
 
     self.lastSeenTimers = {}
 
@@ -587,7 +577,7 @@ function AiStateEngage:isStealthingTarget()
         end
     end
 
-    if LocalPlayer:isCounterTerrorist() then
+    if LocalPlayer:isCounterTerrorist() and AiUtility.mapInfo.gamemode ~= AiUtility.gamemodes.HOSTAGE then
         local _, distance = Nodegraph.getClosestBombsite(self.bestTarget:getOrigin())
 
         -- We shouldn't be stealthing enemies who are on the bombsite.
@@ -697,6 +687,20 @@ end
 function AiStateEngage:handleCommunications()
     if self.pingEnemyTimer:isElapsed(40) then
         self:pingEnemy()
+    end
+
+    if self.enemySpottedCooldown:isElapsedThenRestart(60)
+        and LocalPlayer:getOrigin():getDistance(self.bestTarget:getOrigin()) < 1400
+    then
+        if AiUtility.bombCarrier and AiUtility.bombCarrier:is(self.bestTarget) and LocalPlayer:isCounterTerrorist() then
+            if not AiUtility.isLastAlive then
+                self.ai.voice.pack:speakNotifyTeamOfBombCarrier()
+            end
+        else
+            if not AiUtility.isLastAlive then
+                self.ai.voice.pack:speakHearNearbyEnemies()
+            end
+        end
     end
 end
 
@@ -2354,6 +2358,10 @@ function AiStateEngage:attackingWallAndSmokeBang(cmd)
         end
     end
 
+    if LocalPlayer:getOrigin():getDistance(self.bestTarget:getOrigin()) > 650 then
+        isBangable = false
+    end
+
     local isShooting = false
     local isOccludedBySmoke = eyeOrigin:isRayIntersectingSmoke(bangOrigin)
     local trace = Trace.getLineToPosition(eyeOrigin, bangOrigin, AiUtility.traceOptionsVisible, "AiStateEngage.attackBestTarget<FindBangable>")
@@ -3639,7 +3647,7 @@ function AiStateEngage:setSkillLevel(skill)
         prefireReactionTime = 0.005,
         anticipateTime = 0.01,
         sprayTime = 0.3,
-        aimSpeed = 18,
+        aimSpeed = 16,
         recoilControl = 2,
         aimOffset = 0,
         aimInaccurateOffset = 64,

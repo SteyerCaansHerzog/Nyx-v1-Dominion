@@ -96,7 +96,10 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field directMovementAngle Angle
 --- @field goalConnectionCollisions table<number, NodeTypeBaseConnectionCollision[]>
 --- @field goalGapCollisions table<number, NodeTypeBaseGapCollision[]>
+--- @field isAirStrafeJump boolean
+--- @field isAirStrafeLeftSide boolean
 --- @field isAllowedToAvoidTeammates boolean
+--- @field isAllowedToCreateMove boolean
 --- @field isAllowedToDuck boolean
 --- @field isAllowedToJump boolean
 --- @field isAllowedToMove boolean
@@ -111,6 +114,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field isInsideSmoke boolean
 --- @field isJumping boolean
 --- @field isLoggingEnabled boolean
+--- @field isMovementBlocked boolean
 --- @field isObstructedByDoor boolean
 --- @field isObstructedByObstacle boolean
 --- @field isObstructedByTeammate boolean
@@ -118,6 +122,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field isReplayingMovementRecording boolean
 --- @field isWalking boolean
 --- @field jumpCooldown Timer
+--- @field lastCameraAngle Angle
 --- @field lastMovementAngle Angle
 --- @field lastRequest PathfinderRequest
 --- @field moveDuckTimer Timer
@@ -145,22 +150,23 @@ end
 
 --- @return void
 function Pathfinder.initFields()
-	Pathfinder.isLoggingEnabled = true
+	Pathfinder.goalConnectionCollisions = {}
+	Pathfinder.goalGapCollisions = {}
 	Pathfinder.isAllowedToDuck = true
 	Pathfinder.isAllowedToJump = true
 	Pathfinder.isAllowedToWalk = true
 	Pathfinder.isEnabled = true
+	Pathfinder.isLoggingEnabled = true
+	Pathfinder.isMovementBlocked = false
+	Pathfinder.jumpCooldown = Timer:new():startThenElapse()
 	Pathfinder.moveDuckTimer = Timer:new()
+	Pathfinder.movementRecorderTimer = Timer:new()
 	Pathfinder.moveObstructedTimer = Timer:new()
 	Pathfinder.moveOnGroundTimer = Timer:new()
 	Pathfinder.pathfindInterval = 0.2
 	Pathfinder.pathfindIntervalTimer = Timer:new():startThenElapse()
-	Pathfinder.goalConnectionCollisions = {}
-	Pathfinder.goalGapCollisions = {}
-	Pathfinder.movementRecorderTimer = Timer:new()
 	Pathfinder.randomJumpIntervalTime = Math.getRandomFloat(0, 160)
 	Pathfinder.randomJumpIntervalTimer = Timer:new():start()
-	Pathfinder.jumpCooldown = Timer:new():startThenElapse()
 end
 
 --- @return void
@@ -398,6 +404,11 @@ end
 --- @return void
 function Pathfinder.canRandomlyJump()
 	Pathfinder.isAllowedToRandomlyJump = true
+end
+
+--- @return void
+function Pathfinder.blockMovement()
+	Pathfinder.isMovementBlocked = true
 end
 
 --- @return void
@@ -1057,11 +1068,17 @@ function Pathfinder.getPath(start, goal, options)
 				return false
 			end
 
-			if node.isGoal and (zDelta > neighbor.zDeltaGoalThreshold) then
-				Pathfinder.pathDebug.nodes[idx].error = "IS OVER ZDELTA THRESHOLD"
+			if node:is(Node.goalEnd) then
+				Pathfinder.pathDebug.nodes[idx].error = "GOALS CANNOT CONNECT TO JUMP  NODES"
 
 				return false
 			end
+		end
+
+		if neighbor:is(Node.goalEnd) and node.isJump then
+			Pathfinder.pathDebug.nodes[idx].error = "GOALS CANNOT CONNECT TO JUMP  NODES"
+
+			return false
 		end
 
 		if node.isRecorder or neighbor.isRecorder then
@@ -1121,6 +1138,10 @@ function Pathfinder.traverseActivePath(cmd)
 		return
 	end
 
+	if Pathfinder.isMovementBlocked then
+		return
+	end
+
 	Pathfinder.isObstructedByObstacle = false
 	Pathfinder.isObstructedByDoor = false
 	Pathfinder.isObstructedByTeammate = false
@@ -1128,6 +1149,7 @@ function Pathfinder.traverseActivePath(cmd)
 	Pathfinder.isDescendingLadder = false
 	Pathfinder.isReplayingMovementRecording = false
 	Pathfinder.movementRecorderAngle = nil
+	Pathfinder.isAllowedToCreateMove = true
 
 	Pathfinder.handleMovementOptions(cmd)
 
@@ -1135,13 +1157,73 @@ function Pathfinder.traverseActivePath(cmd)
 		return
 	end
 
-	if LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND) then
+	Pathfinder.airDuck(cmd)
+
+	local isOnGround = LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND)
+
+	if isOnGround then
 		Pathfinder.moveOnGroundTimer:ifPausedThenStart()
+
+		Pathfinder.isAirStrafeJump = false
 	else
+		cmd.in_forward = true
+		cmd.forwardmove = 450
+
 		Pathfinder.moveOnGroundTimer:start()
 	end
 
-	Pathfinder.airDuck(cmd)
+	local isAirStrafing = not isOnGround and Pathfinder.isAirStrafeJump
+
+	if isAirStrafing then
+		local cameraAngles = LocalPlayer.getCameraAngles()
+
+		if not Pathfinder.lastCameraAngle then
+			Pathfinder.lastCameraAngle = cameraAngles
+		end
+
+		local delta = Pathfinder.lastCameraAngle:getDiff(cameraAngles).y
+		local isLeftSide = delta > 0
+
+		Pathfinder.lastCameraAngle = cameraAngles
+
+		if delta > -0.1 and delta < 0.1 then
+			isLeftSide = Pathfinder.isAirStrafeLeftSide
+		else
+			Pathfinder.isAirStrafeLeftSide = isLeftSide
+		end
+
+		if isLeftSide == nil then
+			return
+		end
+
+		if isLeftSide then
+			cmd.in_moveleft = true
+			cmd.sidemove = -450
+			cmd.in_forward = true
+			cmd.forwardmove = 450
+		else
+			cmd.in_moveright = true
+			cmd.sidemove = 450
+			cmd.in_forward = true
+			cmd.forwardmove = 450
+		end
+
+		Pathfinder.lastCameraAngle = cameraAngles
+
+		Client.debugCreateMove(cmd, {
+			"forwardmove",
+			"in_forward",
+			"in_left",
+			"in_moveleft",
+			"in_moveright",
+			"in_right",
+			"move_yaw",
+			"sidemove",
+			"yaw",
+		})
+
+		return
+	end
 
 	if Pathfinder.directMovementAngle then
 		Pathfinder.ejectFromLadder(cmd)
@@ -1208,104 +1290,8 @@ function Pathfinder.traverseActivePath(cmd)
 		Pathfinder.counterStrafe()
 	end
 
-	local isAllowedToCreateMove = true
-
 	if currentNode.isJump then
-		local jumpHandlers = {
-			[Node.traverseClamber.__classid] = function()
-				if distance2d > 20 then
-					return
-				end
-
-				if not Pathfinder.moveOnGroundTimer:isElapsed(0.33) then
-					return
-				end
-
-				if currentNode.origin.z - clientOrigin.z > 25 then
-					if Pathfinder.moveObstructedTimer:isElapsed(0.16) then
-						Pathfinder.duck()
-					end
-
-					if Pathfinder.moveObstructedTimer:isElapsed(0.3) and clientSpeed < 50 then
-						Pathfinder.jump()
-						Pathfinder.incrementPath("clamber")
-					end
-				else
-					Pathfinder.incrementPath("clamber too low)")
-				end
-			end,
-			[Node.traverseClimb.__classid] = function()
-				if distance2d > 50 then
-					return
-				end
-
-				if not Pathfinder.moveOnGroundTimer:isElapsed(0.33) then
-					return
-				end
-
-				if currentNode.origin.z - clientOrigin.z > 25 then
-					if Pathfinder.moveObstructedTimer:isElapsed(0.01) then
-						Pathfinder.duck()
-					end
-
-					if Pathfinder.moveObstructedTimer:isElapsed(0.05) and clientSpeed < 75 then
-						Pathfinder.jump()
-
-						Pathfinder.incrementPath("climb")
-					end
-				else
-					Pathfinder.incrementPath("climb too low")
-				end
-			end,
-			[Node.traverseVault.__classid] = function()
-				if distance2d > 25 then
-					return
-				end
-
-				if not Pathfinder.moveOnGroundTimer:isElapsed(0.33) then
-					return
-				end
-
-				Pathfinder.jump()
-				Pathfinder.incrementPath("vault")
-			end,
-			[Node.traverseGap.__classid] = function()
-				if distance2d < 40 then
-					Pathfinder.isWalking = false
-				end
-
-				local distance = 25
-
-				if not isClientOnGround then
-					distance = 64
-				end
-
-				if distance2d > distance then
-					return
-				end
-
-				isAllowedToCreateMove = false
-
-				Pathfinder.jump()
-				Pathfinder.incrementPath("gap")
-
-				-- Skip a double-gap node.
-				if previousNode and previousNode:is(Node.traverseGap) then
-					Pathfinder.incrementPath("gap next")
-				end
-			end,
-			[Node.traverseDrop.__classid] = function()
-				if distance2d > 20 then
-					return
-				end
-
-				Pathfinder.incrementPath("drop")
-			end
-		}
-
-		if Pathfinder.isAllowedToJump then
-			jumpHandlers[currentNode.__classid]()
-		end
+		Pathfinder.traverseJumps(currentNode, previousNode)
 	elseif currentNode:is(Node.traverseBreakObstacle) then
 		Pathfinder.detectObstacles(currentNode)
 
@@ -1319,125 +1305,11 @@ function Pathfinder.traverseActivePath(cmd)
 			Pathfinder.incrementPath("door open")
 		end
 	elseif currentNode:is(Node.traverseLadderBottom) then
-		if distance2d < 55 then
-			Pathfinder.isAscendingLadder = true
-		end
-
-		if distance2d < 20 then
-			isAllowedToCreateMove = false
-
-			if not LocalPlayer:isMoveType(Player.moveType.LADDER) then
-				Pathfinder.createMove(cmd, currentNode.direction)
-
-				cmd.in_jump = true
-			else
-				-- Set cmds manually to exactly the values needed to climb.
-				cmd.forwardmove = 450
-				cmd.in_forward = true
-				cmd.in_back = false
-				cmd.sidemove = 0
-				cmd.in_moveleft = false
-				cmd.in_moveright = false
-				cmd.in_speed = false
-				cmd.in_duck = false
-				cmd.in_use = false
-			end
-		end
-
-		local ladderTop = Pathfinder.path.nodes[Pathfinder.path.idx + 1]
-		local zDelta = clientOrigin.z - ladderTop.origin.z
-
-		if zDelta > 0 then
-			-- Pass over both ladder nodes as we held onto the bottom.
-			Pathfinder.incrementPath("ascend ladder")
-			Pathfinder.incrementPath("ascend ladder")
-		end
+		Pathfinder.traverseLadderBottom(cmd, currentNode)
 	elseif currentNode:is(Node.traverseLadderTop) then
-		if distance2d < 20 then
-			isAllowedToCreateMove = false
-
-			if not LocalPlayer:isMoveType(Player.moveType.LADDER) then
-				Pathfinder.createMove(cmd, currentNode.direction)
-			else
-				-- Set cmds manually to exactly the values needed to climb.
-				cmd.forwardmove = 450
-				cmd.in_forward = true
-				cmd.in_back = false
-				cmd.sidemove = 0
-				cmd.in_moveleft = false
-				cmd.in_moveright = false
-				cmd.in_speed = false
-				cmd.in_duck = false
-				cmd.in_use = false
-
-				Pathfinder.isDescendingLadder = true
-
-				local ladderBottom = Pathfinder.path.nodes[Pathfinder.path.idx + 1]
-				local zDelta = clientOrigin.z - ladderBottom.origin.z
-
-				if zDelta < 150 then
-					cmd.in_jump = true
-
-					-- Pass over both ladder nodes as we held onto the top.
-					Pathfinder.incrementPath("descend ladder")
-					Pathfinder.incrementPath("descend ladder")
-				end
-			end
-		end
+		Pathfinder.traverseLadderTop(cmd, currentNode)
 	elseif currentNode:is(Node.traverseRecorderStart) then
-		--- @type NodeTraverseRecorderStart
-		local recorderStart = currentNode
-		local nextNode = Pathfinder.path.nodes[Pathfinder.path.idx + 1]
-
-		-- We do not want to use a recorder if the next node is not the end of the recorder.
-		if nextNode and recorderStart.endPoint.id == nextNode.id then
-			if not Pathfinder.isReadyToReplayMovementRecording and distance2d > 20 then
-				Pathfinder.movementRecorderTimer:stop()
-			end
-
-			if not Pathfinder.isReadyToReplayMovementRecording and distance2d < 10 then
-				Pathfinder.counterStrafe()
-				Pathfinder.walk()
-			end
-
-			if distance2d < 2 then
-				Pathfinder.movementRecorderTimer:ifPausedThenStart()
-
-				if Pathfinder.movementRecorderTimer:isElapsed(0.2) then
-					Pathfinder.isReadyToReplayMovementRecording = true
-				end
-			else
-				Pathfinder.movementRecorderTimer:stop()
-			end
-
-			if distance2d < 70 then
-				Pathfinder.movementRecorderAngle = currentNode.direction
-			end
-
-			if Pathfinder.isReadyToReplayMovementRecording then
-				--- @type NodeTraverseRecorderStart
-				local node = currentNode
-				local tick = node:getNextTick()
-
-				if tick then
-					Pathfinder.isReplayingMovementRecording = true
-					Pathfinder.movementRecorderAngle = Angle:new(tick.pitch, tick.yaw)
-
-					for field, value in pairs(tick) do
-						cmd[field] = value
-					end
-				else
-					Pathfinder.isReadyToReplayMovementRecording = false
-
-					Pathfinder.incrementPath("finish recorder")
-					Pathfinder.incrementPath("finish recorder")
-				end
-
-				return
-			end
-		elseif distance2d < 20 then
-			Pathfinder.incrementPath("skip recorder")
-		end
+		Pathfinder.traverseRecorder(cmd, currentNode)
 	else
 		local clearDistance
 
@@ -1452,7 +1324,7 @@ function Pathfinder.traverseActivePath(cmd)
 		end
 	end
 
-	if isAllowedToCreateMove then
+	if Pathfinder.isAllowedToCreateMove then
 		Pathfinder.createMove(cmd, angleToNode)
 		Pathfinder.avoidGeometry(cmd)
 		Pathfinder.avoidTeammates(cmd)
@@ -1501,6 +1373,264 @@ function Pathfinder.traverseActivePath(cmd)
 	end
 end
 
+--- @param currentNode NodeTypeTraverse
+--- @param previousNode NodeTypeTraverse
+--- @return void
+function Pathfinder.traverseJumps(currentNode, previousNode)
+	local clientOrigin = LocalPlayer:getOrigin()
+	local isClientOnGround = LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND)
+	local clientSpeed = LocalPlayer:m_vecVelocity():getMagnitude()
+	local distance2d = clientOrigin:getDistance2(currentNode.pathOrigin)
+	local isAirStrafeJumping = true
+	local velocity2d = LocalPlayer:m_vecVelocity():set(nil, nil, 0):normalize()
+	local forward2d = LocalPlayer:getOrigin():getForward(currentNode.floorOrigin)
+	local absDiff = velocity2d:getAbsDiff(forward2d)
+
+	if clientSpeed < 130 or absDiff > 0.5 then
+		isAirStrafeJumping = false
+	end
+
+	if currentNode:is(Node.traverseClamber) then
+		if distance2d > 20 then
+			return
+		end
+
+		if not Pathfinder.moveOnGroundTimer:isElapsed(0.33) then
+			return
+		end
+
+		if currentNode.origin.z - clientOrigin.z > 25 then
+			if Pathfinder.moveObstructedTimer:isElapsed(0.16) then
+				Pathfinder.duck()
+			end
+
+			if Pathfinder.moveObstructedTimer:isElapsed(0.3) and clientSpeed < 50 then
+				Pathfinder.jump()
+				Pathfinder.incrementPath("clamber")
+			end
+		else
+			Pathfinder.incrementPath("clamber too low)")
+		end
+	elseif currentNode:is(Node.traverseClimb) then
+		if not Pathfinder.moveOnGroundTimer:isElapsed(0.33) then
+			return
+		end
+
+		if distance2d > 60 then
+			return
+		end
+
+		if currentNode.origin.z - clientOrigin.z < 25 then
+			Pathfinder.incrementPath("climb too low")
+
+			return
+		end
+
+		if isAirStrafeJumping then
+			Pathfinder.isAirStrafeJump = true
+
+			Pathfinder.jump()
+			Pathfinder.incrementPath("climb")
+		else
+			if Pathfinder.moveObstructedTimer:isElapsed(0.01) then
+				Pathfinder.duck()
+			end
+
+			if Pathfinder.moveObstructedTimer:isElapsed(0.05) and clientSpeed < 75 then
+				Pathfinder.jump()
+				Pathfinder.incrementPath("climb")
+			end
+		end
+	elseif currentNode:is(Node.traverseVault) then
+		if distance2d > 60 then
+			return
+		end
+
+		if not Pathfinder.moveOnGroundTimer:isElapsed(0.33) then
+			return
+		end
+
+		Pathfinder.jump()
+		Pathfinder.incrementPath("vault")
+	elseif currentNode:is(Node.traverseGap) then
+		if distance2d < 40 then
+			Pathfinder.isWalking = false
+		end
+
+		local distance = 25
+
+		if not isClientOnGround then
+			distance = 64
+		end
+
+		if distance2d > distance then
+			return
+		end
+
+		Pathfinder.isAllowedToCreateMove = false
+		Pathfinder.isAirStrafeJump = true
+		Pathfinder.isAirStrafeJump = true
+
+		Pathfinder.jump()
+		Pathfinder.incrementPath("gap")
+
+		-- Skip a double-gap node.
+		if previousNode and previousNode:is(Node.traverseGap) then
+			Pathfinder.incrementPath("gap next")
+		end
+	elseif currentNode:is(Node.traverseDrop) then
+		if distance2d > 20 then
+			return
+		end
+
+		Pathfinder.incrementPath("drop")
+	end
+end
+
+--- @param cmd SetupCommandEvent
+--- @param currentNode NodeTypeTraverse
+--- @return void
+function Pathfinder.traverseLadderTop(cmd, currentNode)
+	local clientOrigin = LocalPlayer:getOrigin()
+	local distance2d = clientOrigin:getDistance2(currentNode.pathOrigin)
+
+	if distance2d < 55 then
+		Pathfinder.isAscendingLadder = true
+	end
+
+	if distance2d < 20 then
+		Pathfinder.isAllowedToCreateMove = false
+
+		if not LocalPlayer:isMoveType(Player.moveType.LADDER) then
+			Pathfinder.createMove(cmd, currentNode.direction)
+
+			cmd.in_jump = true
+		else
+			-- Set cmds manually to exactly the values needed to climb.
+			cmd.forwardmove = 450
+			cmd.in_forward = true
+			cmd.in_back = false
+			cmd.sidemove = 0
+			cmd.in_moveleft = false
+			cmd.in_moveright = false
+			cmd.in_speed = false
+			cmd.in_duck = false
+			cmd.in_use = false
+		end
+	end
+
+	local ladderTop = Pathfinder.path.nodes[Pathfinder.path.idx + 1]
+	local zDelta = clientOrigin.z - ladderTop.origin.z
+
+	if zDelta > 0 then
+		-- Pass over both ladder nodes as we held onto the bottom.
+		Pathfinder.incrementPath("ascend ladder")
+		Pathfinder.incrementPath("ascend ladder")
+	end
+end
+
+--- @param cmd SetupCommandEvent
+--- @param currentNode NodeTypeTraverse
+--- @return void
+function Pathfinder.traverseLadderBottom(cmd, currentNode)
+	local clientOrigin = LocalPlayer:getOrigin()
+	local distance2d = clientOrigin:getDistance2(currentNode.pathOrigin)
+
+	if distance2d < 20 then
+		Pathfinder.isAllowedToCreateMove = false
+
+		if not LocalPlayer:isMoveType(Player.moveType.LADDER) then
+			Pathfinder.createMove(cmd, currentNode.direction)
+		else
+			-- Set cmds manually to exactly the values needed to climb.
+			cmd.forwardmove = 450
+			cmd.in_forward = true
+			cmd.in_back = false
+			cmd.sidemove = 0
+			cmd.in_moveleft = false
+			cmd.in_moveright = false
+			cmd.in_speed = false
+			cmd.in_duck = false
+			cmd.in_use = false
+
+			Pathfinder.isDescendingLadder = true
+
+			local ladderBottom = Pathfinder.path.nodes[Pathfinder.path.idx + 1]
+			local zDelta = clientOrigin.z - ladderBottom.origin.z
+
+			if zDelta < 150 then
+				cmd.in_jump = true
+
+				-- Pass over both ladder nodes as we held onto the top.
+				Pathfinder.incrementPath("descend ladder")
+				Pathfinder.incrementPath("descend ladder")
+			end
+		end
+	end
+end
+
+--- @param cmd SetupCommandEvent
+--- @param currentNode NodeTypeTraverse
+--- @return void
+function Pathfinder.traverseRecorder(cmd, currentNode)
+	local clientOrigin = LocalPlayer:getOrigin()
+	local distance2d = clientOrigin:getDistance2(currentNode.pathOrigin)
+
+	--- @type NodeTraverseRecorderStart
+	local recorderStart = currentNode
+	local nextNode = Pathfinder.path.nodes[Pathfinder.path.idx + 1]
+
+	-- We do not want to use a recorder if the next node is not the end of the recorder.
+	if nextNode and recorderStart.endPoint.id == nextNode.id then
+		if not Pathfinder.isReadyToReplayMovementRecording and distance2d > 20 then
+			Pathfinder.movementRecorderTimer:stop()
+		end
+
+		if not Pathfinder.isReadyToReplayMovementRecording and distance2d < 10 then
+			Pathfinder.counterStrafe()
+			Pathfinder.walk()
+		end
+
+		if distance2d < 2 then
+			Pathfinder.movementRecorderTimer:ifPausedThenStart()
+
+			if Pathfinder.movementRecorderTimer:isElapsed(0.2) then
+				Pathfinder.isReadyToReplayMovementRecording = true
+			end
+		else
+			Pathfinder.movementRecorderTimer:stop()
+		end
+
+		if distance2d < 70 then
+			Pathfinder.movementRecorderAngle = currentNode.direction
+		end
+
+		if Pathfinder.isReadyToReplayMovementRecording then
+			--- @type NodeTraverseRecorderStart
+			local node = currentNode
+			local tick = node:getNextTick()
+
+			if tick then
+				Pathfinder.isReplayingMovementRecording = true
+				Pathfinder.movementRecorderAngle = Angle:new(tick.pitch, tick.yaw)
+
+				for field, value in pairs(tick) do
+					cmd[field] = value
+				end
+			else
+				Pathfinder.isReadyToReplayMovementRecording = false
+
+				Pathfinder.incrementPath("finish recorder")
+				Pathfinder.incrementPath("finish recorder")
+			end
+
+			return
+		end
+	elseif distance2d < 20 then
+		Pathfinder.incrementPath("skip recorder")
+	end
+end
+
 --- @return void
 function Pathfinder.resetMoveParameters()
 	Pathfinder.directMovementAngle = nil
@@ -1512,6 +1642,7 @@ function Pathfinder.resetMoveParameters()
 	Pathfinder.isCounterStrafing = false
 	Pathfinder.isDucking = false
 	Pathfinder.isJumping = false
+	Pathfinder.isMovementBlocked = false
 	Pathfinder.isWalking = false
 end
 
@@ -1736,9 +1867,11 @@ function Pathfinder.airDuck(cmd)
 		return
 	end
 
-	if LocalPlayer:m_vecVelocity().z > 0 then
-		cmd.in_duck = true
+	if LocalPlayer:m_vecVelocity().z < 0 then
+		return
 	end
+
+	cmd.in_duck = true
 end
 
 --- @param cmd SetupCommandEvent

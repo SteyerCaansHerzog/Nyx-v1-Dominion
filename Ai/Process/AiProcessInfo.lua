@@ -167,7 +167,7 @@ function AiProcessInfo:renderSpectator()
 				local originB2 = originB:getVector2()
 
 				if originB2 and idA ~= idB then
-					local delta = originA2:getMaxDiff(originB2)
+					local delta = originA2:getAbsDiff(originB2)
 
 					if not stacks[idB] and delta < closestDistance then
 						closestId = idB
@@ -359,7 +359,7 @@ function AiProcessInfo:renderCompetitive()
 				local originB2 = originB:getVector2()
 
 				if originB2 and idA ~= idB then
-					local delta = originA2:getMaxDiff(originB2)
+					local delta = originA2:getAbsDiff(originB2)
 
 					if not stacks[idB] and delta < closestDistance then
 						closestId = idB
@@ -448,7 +448,7 @@ function AiProcessInfo:renderCompetitive()
 		local colorBg = ColorList.BACKGROUND_1
 		local alphaModDistance = Math.getClamped(Math.getInversedFloat(clientOrigin:getDistance(playerFoVOrigin), Math.getClamped(2500, 1500, 2500)), 0, 1)
 		local alphaModFovOuter = Math.getClamped(Math.getInversedFloat(cameraAngles:getFov(cameraOrigin, playerFoVOrigin), 60), 0.25, 1)
-		local alphaModFovInner = Math.getClamped(Math.getFloat(Client.getScreenDimensionsCenter():getMaxDiff(drawPosBottomAnimated:clone():offset(60, 22)) - 20, 225), 0, 1)
+		local alphaModFovInner = Math.getClamped(Math.getFloat(Client.getScreenDimensionsCenter():getAbsDiff(drawPosBottomAnimated:clone():offset(60, 22)) - 20, 225), 0, 1)
 		local alphaModStack = 1
 
 		if stacks[player.eid] then

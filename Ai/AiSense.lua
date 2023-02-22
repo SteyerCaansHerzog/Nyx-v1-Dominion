@@ -10,6 +10,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --}}}
 
 --{{{ Definitions
@@ -31,6 +32,7 @@ local AwarenessLevel = {
 --- @class AiSense : Class
 --- @field awareness AwarenessLevel
 --- @field awarenessLevels number[]
+--- @field lastAwarenessIsForcedOld boolean[]
 --- @field lastAwareIsOriginStale boolean[]
 --- @field lastAwareIsProxy boolean[]
 --- @field lastAwareOrigins Vector3[]
@@ -60,8 +62,9 @@ end
 --- @return void
 function AiSense.initFields()
 	AiSense.awarenessLevels = {}
-	AiSense.lastAwareIsProxy = {}
+	AiSense.lastAwarenessIsForcedOld = {}
 	AiSense.lastAwareIsOriginStale = {}
+	AiSense.lastAwareIsProxy = {}
 	AiSense.lastAwareOrigins = {}
 	AiSense.lastAwareReason = {}
 	AiSense.lastAwareTimers = {}
@@ -73,7 +76,7 @@ function AiSense.initEvents()
 		AiSense.initFields()
 	end)
 
-	Callbacks.roundStart(function()
+	Callbacks.roundPrestart(function()
 		AiSense.initFields()
 	end)
 
@@ -192,38 +195,40 @@ function AiSense.sense(player, maxRange, isSensedByProxy, reason)
 		return
 	end
 
-	if not AiSense.lastAwareTimers[player.eid] then
-		AiSense.lastAwareTimers[player.eid] = Timer:new()
+	local awarenessLevel = AiSense.awarenessLevels[player.eid]
+
+	if awarenessLevel then
+		-- Don't set sense as proxy if we already have an immediate awareness of the enemy.
+		if awarenessLevel <= AwarenessLevel.IMMEDIATE_DEEP_OCCLUDED then
+			isSensedByProxy = false
+		end
 	end
 
-	-- Don't set sense as proxy if we already have an immediate awareness of the enemy.
-	if AiSense.awarenessLevels[player.eid]
-		and AiSense.awarenessLevels[player.eid] <= AwarenessLevel.IMMEDIATE_DEEP_OCCLUDED
-	then
-		isSensedByProxy = false
-	end
 
+	-- We can sense enemies before the main think function has a change to begin.
+	AiSense.createTimer(player)
+
+	AiSense.lastAwareTimers[player.eid]:start()
 	AiSense.lastAwareIsOriginStale[player.eid] = false
 	AiSense.lastAwareIsProxy[player.eid] = isSensedByProxy
 	AiSense.lastAwareOrigins[player.eid] = playerOrigin
 	AiSense.lastAwareReason[player.eid] = reason
-	AiSense.lastAwareTimers[player.eid]:start()
 end
 
 --- @param player Player
 --- @return void
 function AiSense.unsense(player)
+	AiSense.lastAwarenessIsForcedOld[player.eid] = nil
 	AiSense.lastAwareIsOriginStale[player.eid] = nil
 	AiSense.lastAwareIsProxy[player.eid] = nil
 	AiSense.lastAwareOrigins[player.eid] = nil
 	AiSense.lastAwareReason[player.eid] = nil
 	AiSense.lastAwareTimers[player.eid] = nil
-	AiSense.lastAwareTimers[player.eid] = nil
 end
 
 --- @param player Player
 --- @return void
-function AiSense.ifOnScreenThenSense(player)
+function AiSense.senseOnScreen(player)
 	if not AiUtility.visibleEnemies[player.eid] then
 		return
 	end
@@ -239,7 +244,7 @@ end
 
 --- @param player Player
 --- @return void
-function AiSense.ifCarryingHostageThenSense(player)
+function AiSense.senseHostageCarrier(player)
 	-- Notice hostage carriers to intercept them.
 	if AiUtility.mapInfo.gamemode ~= AiUtility.gamemodes.HOSTAGE or not AiUtility.isHostageCarriedByEnemy then
 		return
@@ -254,12 +259,8 @@ end
 
 --- @param player Player
 --- @return void
-function AiSense.ifNearPlantedBombThenSense(player)
+function AiSense.senseNearBomb(player)
 	if not AiUtility.isBombPlanted() then
-		return
-	end
-
-	if not LocalPlayer:isCounterTerrorist() then
 		return
 	end
 
@@ -271,30 +272,70 @@ function AiSense.ifNearPlantedBombThenSense(player)
 end
 
 --- @param player Player
+--- @return void
+function AiSense.senseCounterTerroristsNearBombsite(player)
+	if AiUtility.isBombPlanted() then
+		return
+	end
+
+	if not player:isCounterTerrorist() then
+		return
+	end
+
+	local playerOrigin = player:getOrigin()
+
+	local _, distance = Nodegraph.getClosestBombsite(playerOrigin)
+
+	if distance > 1000 then
+		return
+	end
+
+	AiSense.lastAwarenessIsForcedOld[player.eid] = true
+	AiSense.lastAwareIsOriginStale[player.eid] = false
+	AiSense.lastAwareIsProxy[player.eid] = false
+	AiSense.lastAwareOrigins[player.eid] = playerOrigin
+	AiSense.lastAwareReason[player.eid] = "near bombsite"
+end
+
+--- @param player Player
 --- @param awarenessLevel number
 --- @return void
 function AiSense.setAwarenessLevel(player, awarenessLevel)
 	AiSense.awarenessLevels[player.eid] = awarenessLevel
 end
 
+--- @param player Player
+--- @return void
+function AiSense.createTimer(player)
+	if not AiSense.lastAwareTimers[player.eid] then
+		AiSense.lastAwareTimers[player.eid] = Timer:new():startThenElapse()
+	end
+end
+
 --- @return void
 function AiSense.think()
 	for _, enemy in pairs(AiUtility.enemies) do repeat
-		AiSense.ifOnScreenThenSense(enemy)
-		AiSense.ifCarryingHostageThenSense(enemy)
-		AiSense.ifNearPlantedBombThenSense(enemy)
+		AiSense.createTimer(enemy)
+
+		AiSense.lastAwarenessIsForcedOld[enemy.eid] = false
+
 		-- Sensing enemies inside pre-aims zones is handled by AiStateEngage.
+		AiSense.senseOnScreen(enemy)
+		AiSense.senseHostageCarrier(enemy)
+		AiSense.senseNearBomb(enemy)
+		AiSense.senseCounterTerroristsNearBombsite(enemy)
 
-		local lastAwareTimer = AiSense.lastAwareTimers[enemy.eid]
 		local lastAwareOrigin = AiSense.lastAwareOrigins[enemy.eid]
-		local lastAwareIsProxy = AiSense.lastAwareIsProxy[enemy.eid]
 
-		if not lastAwareTimer then
+		if not lastAwareOrigin then
 			-- The enemy has never been sensed.
 			AiSense.setAwarenessLevel(enemy, AwarenessLevel.UNKNOWN)
 
 			break
 		end
+
+		local lastAwareIsProxy = AiSense.lastAwareIsProxy[enemy.eid]
+		local lastAwareTimer = AiSense.lastAwareTimers[enemy.eid]
 
 		-- The enemy made sound very recently. We will assume that we know their exact location.
 		if not lastAwareTimer:isElapsed(4) then
@@ -343,7 +384,9 @@ function AiSense.think()
 			end
 		end
 
-		if not lastAwareTimer:isElapsed(25) then
+		local isForcedOld = AiSense.lastAwarenessIsForcedOld[enemy.eid]
+
+		if isForcedOld or not lastAwareTimer:isElapsed(25) then
 			-- We knew about the enemy sometime ago.
 			AiSense.setAwarenessLevel(enemy, AwarenessLevel.OLD)
 

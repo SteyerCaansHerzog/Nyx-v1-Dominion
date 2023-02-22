@@ -40,7 +40,7 @@ end
 
 --- @return void
 function AiStateBoostTeammate:__init()
-    Callbacks.roundStart(function()
+    Callbacks.roundFreezeEnd(function()
     	self:reset()
     end)
 end

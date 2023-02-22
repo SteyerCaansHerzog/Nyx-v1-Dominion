@@ -293,6 +293,8 @@ function AiStatePickupItems:think(cmd)
     end
 
     if AiUtility.isClientThreatenedMajor then
+        self.entityBlacklist[self.item.eid] = true
+
         self:reset()
 
         return

@@ -8,7 +8,7 @@ local NodeTypeGoal = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeG
 --}}}
 
 --{{{ NodeGoalStart
---- @class NodeGoalStart : NodeTypeTraverse
+--- @class NodeGoalStart : NodeTypeGoal
 local NodeGoalStart = {
     name = "Start",
     description = {},

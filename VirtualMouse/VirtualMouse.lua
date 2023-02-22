@@ -5,6 +5,7 @@ local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local PerlinNoise = require "gamesense/Nyx/v1/Api/PerlinNoise"
+local Player = require "gamesense/Nyx/v1/Api/Player"
 local SecondOrderDynamics = require "gamesense/Nyx/v1/Api/SecondOrderDynamics"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
@@ -79,6 +80,7 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMou
 --- @field watchCornerTimer Timer
 --- @field yawFine number
 --- @field yawSoft number
+--- @field isBlocked boolean
 local VirtualMouse = {
 	noise = ViewNoiseType
 }
@@ -179,6 +181,10 @@ function VirtualMouse.setViewAngles()
 		LocalPlayer.setCameraAngles(VirtualMouse.lookAtAngles)
 	end
 
+	if VirtualMouse.isBlocked then
+		return
+	end
+
 	-- Apply movement recorder angles.
 	-- Immediately exit this method, so that only the raw recorded angles are applied.
 	if Pathfinder.isReplayingMovementRecording then
@@ -202,8 +208,10 @@ function VirtualMouse.setViewAngles()
 
 	VirtualMouse.setDelayedLookSpeed()
 
-	-- Do not spin up mouse movement speed under some conditions.
-	if not VirtualMouse.isLookSpeedDelayed or Pathfinder.movementRecorderAngle then
+	local isAirStrafing = LocalPlayer:m_vecVelocity().z > -50 and not LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND) and Pathfinder.isAirStrafeJump
+
+	-- Do not delay mouse movement speed under some conditions.
+	if not VirtualMouse.isLookSpeedDelayed or Pathfinder.movementRecorderAngle or isAirStrafing then
 		VirtualMouse.lookSpeed = VirtualMouse.lookSpeedIdeal
 	end
 
@@ -213,7 +221,9 @@ function VirtualMouse.setViewAngles()
 	local idealViewAngles = LocalPlayer.getCameraAngles()
 	local smoothingCutoffThreshold = 0
 
-	if Pathfinder.isObstructedByObstacle or Pathfinder.isObstructedByDoor then
+	if isAirStrafing and Pathfinder.isOnValidPath() then
+		VirtualMouse.setAirStrafe(idealViewAngles)
+	elseif Pathfinder.isObstructedByObstacle or Pathfinder.isObstructedByDoor then
 		-- Remove obstructions in front of the player.
 		VirtualMouse.setIdealRemoveObstructions(idealViewAngles)
 	elseif Pathfinder.movementRecorderAngle then
@@ -294,9 +304,15 @@ function VirtualMouse.resetViewParameters()
 	VirtualMouse.passiveViewAngles = nil
 	VirtualMouse.isFiringWeapon = false
 	VirtualMouse.isInUse = false
+	VirtualMouse.isBlocked = false
 
 	-- Reset noise. Defaults to none at all.
 	VirtualMouse.setNoiseType(ViewNoiseType.none)
+end
+
+--- @return void
+function VirtualMouse.block()
+	VirtualMouse.isBlocked = true
 end
 
 --- @return void
@@ -534,6 +550,27 @@ end
 
 --- @param idealViewAngles Angle
 --- @return void
+function VirtualMouse.setAirStrafe(idealViewAngles)
+	local lookAheadNode = Pathfinder.path.nodes[Pathfinder.path.idx]
+
+	if not lookAheadNode then
+		return
+	end
+
+	-- Generate our look ahead view angles.
+	idealViewAngles.y = LocalPlayer.getEyeOrigin():getAngle(lookAheadNode.origin).y
+
+	-- Shake the mouse movement.
+	VirtualMouse.setNoiseType(ViewNoiseType.none)
+
+	VirtualMouse.lookState = "VirtualMouse generic"
+	VirtualMouse.lookSpeedIdeal = 10
+	VirtualMouse.lookSpeedDelayMin = 0.25
+	VirtualMouse.lookSpeedDelayMax = 0.5
+end
+
+--- @param idealViewAngles Angle
+--- @return void
 function VirtualMouse.setIdealLookAhead(idealViewAngles)
 	local currentNode = Pathfinder.path.node
 
@@ -647,8 +684,6 @@ function VirtualMouse.setIdealWatchCorner(idealViewAngles)
 	if VirtualMouse.watchCornerTimer:isElapsed(1.5) then
 		return
 	end
-
-	print("hello")
 
 	idealViewAngles:setFromAngle(LocalPlayer.getEyeOrigin():getAngle(VirtualMouse.watchCornerOrigin))
 

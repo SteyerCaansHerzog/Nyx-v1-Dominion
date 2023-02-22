@@ -85,7 +85,7 @@ function AiStatePick:assess()
     end
 
     -- We don't want to watch angles at bad times.
-    if AiUtility.bombsitePlantAt then
+    if AiUtility.plantedAtBombsite then
         return AiPriority.IGNORE
     end
 
@@ -165,7 +165,7 @@ function AiStatePick:think(cmd)
 
     self.activity = "Going to pick at area"
 
-    if AiUtility.bombsitePlantAt then
+    if AiUtility.plantedAtBombsite then
         self:reset()
 
         return

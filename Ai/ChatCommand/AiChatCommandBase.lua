@@ -2,6 +2,7 @@
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Messenger = require "gamesense/Nyx/v1/Api/Messenger"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
+local Server = require "gamesense/Nyx/v1/Api/Server"
 local Table = require "gamesense/Nyx/v1/Api/Table"
 --}}}
 
@@ -45,7 +46,7 @@ function AiChatCommandBase:invoke(ai, sender, args, isBot) end
 --- @vararg string
 --- @return void
 function AiChatCommandBase:bark(...)
-    if not MenuGroup.useChatCommands:get() then
+    if not MenuGroup.useChatCommands:get() or Config.isPlayingSolo then
         return
     end
 
@@ -66,7 +67,14 @@ function AiChatCommandBase:getRejectionError(ai, sender, args, isInvokedByConsol
     end
 
     local steamId64 = sender:getSteamId64()
-    local isSenderAdmin = Config.isAdministrator(steamId64)
+
+    local isSenderAdmin
+
+    if Server.isIngame() then
+        isSenderAdmin = Config.isAdministrator(steamId64)
+    elseif isInvokedByConsole then
+        isSenderAdmin = true
+    end
 
     if ai.reaper.isEnabled and ai.reaper.manifest.steamId64Map[steamId64] then
         return

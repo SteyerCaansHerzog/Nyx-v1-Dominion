@@ -248,7 +248,7 @@ function AiStateEvacuate:think(cmd)
     end
 
     if self.isPicking then
-        self.activity = string.format("Going to pick at %s", AiUtility.bombsitePlantedAt:upper())
+        self.activity = string.format("Going to pick at %s", AiUtility.plantedAtBombsite:upper())
     else
         self.activity = "Going to hide"
     end
@@ -304,7 +304,7 @@ function AiStateEvacuate:getNode()
         end
 
         if isAbleToPickEnemies then
-            potentialNodes = Nodegraph.getForBombsite(Node.spotLurkCt, AiUtility.bombsitePlantAt)
+            potentialNodes = Nodegraph.getForBombsite(Node.spotLurkCt, AiUtility.plantedAtBombsite)
 
             self.isPicking = true
         else
