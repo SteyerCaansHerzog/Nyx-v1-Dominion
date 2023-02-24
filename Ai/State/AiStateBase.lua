@@ -11,7 +11,7 @@ local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
-local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --}}}
 
@@ -147,7 +147,7 @@ function AiStateBase:getCoverNode(range, target, fov)
 
     fov = fov or 60
 
-    for _, node in pairs(Nodegraph.getOfType(NodeType.traverse)) do
+    for _, node in pairs(Nodegraph.get(Node.traverseGeneric)) do
         local distance = closestOrigin:getDistance(node.floorOrigin)
 
         if not node.isOccludedByInferno and distance > farthestDistance and clientOrigin:getDistance(node.floorOrigin) < range and coverAngle:getFov(clientOrigin, node.origin) > fov then

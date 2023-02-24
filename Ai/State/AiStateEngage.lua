@@ -106,6 +106,7 @@ local WeaponMovementVelocity =  {
 --- @field isIgnoringDormancy boolean
 --- @field isInJiggleHold boolean
 --- @field isJigglingOnDefend boolean
+--- @field isLockedOntoTarget boolean
 --- @field isOnBooster boolean
 --- @field isPassivelyInStealth boolean
 --- @field isPreAimingMapAngle boolean
@@ -177,7 +178,7 @@ local WeaponMovementVelocity =  {
 --- @field strafePeekTimer Timer
 --- @field tapFireTime number
 --- @field tapFireTimer Timer
---- @field visibleReactionTimer Timer
+--- @field bestTargetVisibleForTimer Timer
 --- @field visualizerCallbacks function[]
 --- @field visualizerExpiryTimers Timer[]
 --- @field waitForTargetVisibleTimer Timer
@@ -259,7 +260,7 @@ function AiStateEngage:initFields()
     self.strafePeekTimer = Timer:new():startThenElapse()
     self.tapFireTime = 0.2
     self.tapFireTimer = Timer:new():start()
-    self.visibleReactionTimer = Timer:new()
+    self.bestTargetVisibleForTimer = Timer:new()
     self.visualizerCallbacks = {}
     self.visualizerExpiryTimers = {}
     self.waitForTargetVisibleTimer = Timer:new():startThenElapse()
@@ -317,9 +318,9 @@ function AiStateEngage:initEvents()
         -- Determines how long an enemy has been visible for.
         if self.bestTarget then
             if AiUtility.visibleEnemies[self.bestTarget.eid] then
-                self.visibleReactionTimer:ifPausedThenStart()
+                self.bestTargetVisibleForTimer:ifPausedThenStart()
             else
-                self.visibleReactionTimer:stop()
+                self.bestTargetVisibleForTimer:stop()
             end
         end
     end)
@@ -423,6 +424,10 @@ function AiStateEngage:assess()
         end
     end
 
+    if self.bestTarget and (self.isBestTargetVisible or self.isVisibleToBestTarget) then
+        return AiPriority.ENGAGE_VISIBLE
+    end
+
     -- Panic fire while flashbanged.
     if LocalPlayer.isFlashed() and self.bestTarget and AiUtility.visibleEnemies[self.bestTarget.eid] then
         return AiPriority.ENGAGE_PANIC
@@ -461,7 +466,7 @@ function AiStateEngage:assess()
         return AiPriority.ENGAGE_ACTIVE
     end
 
-    -- Makes the AI faster when the bomb is down.
+    -- Makes the AI exit this state faster when the bomb is down.
     if not AiUtility.plantedBomb then
         if self.reactionTimer:isStarted() then
             return AiPriority.ENGAGE_PASSIVE
@@ -472,7 +477,7 @@ function AiStateEngage:assess()
         end
     end
 
-    if self:isAwareOfEnemies() then
+    if self.bestTarget then
         return AiPriority.ENGAGE_PASSIVE
     end
 
@@ -532,7 +537,10 @@ function AiStateEngage:handleStealthing()
         self.sprayTimer:elapse()
 
         Pathfinder.walk()
-        VirtualMouse.lookAtLocation(self.bestTarget:getEyeOrigin(), 6, VirtualMouse.noise.moving, "Engage look-at enemy while stealthing")
+
+        if self.isBestTargetVisible then
+            VirtualMouse.lookAtLocation(self.bestTarget:getEyeOrigin(), 6, VirtualMouse.noise.moving, "Engage look-at enemy while stealthing")
+        end
 
         self.isActivelyInStealth = true
 
@@ -685,28 +693,17 @@ end
 
 --- @return void
 function AiStateEngage:handleCommunications()
-    if self.pingEnemyTimer:isElapsed(40) then
-        self:pingEnemy()
-    end
-
-    if self.enemySpottedCooldown:isElapsedThenRestart(60)
-        and LocalPlayer:getOrigin():getDistance(self.bestTarget:getOrigin()) < 1400
-    then
-        if AiUtility.bombCarrier and AiUtility.bombCarrier:is(self.bestTarget) and LocalPlayer:isCounterTerrorist() then
-            if not AiUtility.isLastAlive then
-                self.ai.voice.pack:speakNotifyTeamOfBombCarrier()
-            end
-        else
-            if not AiUtility.isLastAlive then
-                self.ai.voice.pack:speakHearNearbyEnemies()
-            end
-        end
-    end
+    self:pingEnemy()
+    self:calloutEnemy()
 end
 
 --- @return void
 function AiStateEngage:pingEnemy()
     if not AiUtility.isClientThreatenedMinor then
+        return
+    end
+
+    if self.pingEnemyTimer:isElapsed(40) then
         return
     end
 
@@ -732,6 +729,27 @@ function AiStateEngage:pingEnemy()
     until true end
 end
 
+--- @return void
+function AiStateEngage:calloutEnemy()
+    if not self.bestTarget then
+        return
+    end
+
+    if self.enemySpottedCooldown:isElapsedThenRestart(60)
+        and LocalPlayer:getOrigin():getDistance(self.bestTarget:getOrigin()) < 1400
+    then
+        if AiUtility.bombCarrier and AiUtility.bombCarrier:is(self.bestTarget) and LocalPlayer:isCounterTerrorist() then
+            if not AiUtility.isLastAlive then
+                self.ai.voice.pack:speakNotifyTeamOfBombCarrier()
+            end
+        else
+            if not AiUtility.isLastAlive then
+                self.ai.voice.pack:speakHearNearbyEnemies()
+            end
+        end
+    end
+end
+
 --- @return boolean
 function AiStateEngage:isAwareOfEnemies()
     for _, enemy in pairs(AiUtility.enemies) do
@@ -748,7 +766,7 @@ end
 function AiStateEngage:isAwareOfEnemy(enemy)
     local awarenessThreshold = AiSense.awareness.RECENT_MOVED
 
-    if LocalPlayer.isCarryingBomb() and AiUtility.teammatesAlive == 0 then
+    if LocalPlayer.isCarryingBomb() then
         awarenessThreshold = AiSense.awareness.IMMEDIATE_DEEP_OCCLUDED
     end
 
@@ -770,7 +788,13 @@ function AiStateEngage:setBestTarget()
     local origin = LocalPlayer:getOrigin()
 
     for _, enemy in pairs(AiUtility.enemies) do
-        -- The first few if statements ignore the AI's sensing system.
+        local distance = origin:getDistance(enemy:getOrigin())
+
+        -- We can't handle enemies cross-map very well.
+        -- Dormant enemies cause dithering.
+        if not AiUtility.threats[enemy.eid] and distance > 1500 then
+            break
+        end
 
         -- Defuser.
         if enemy:m_bIsDefusing() == 1 then
@@ -801,8 +825,6 @@ function AiStateEngage:setBestTarget()
         end
 
         if self:isAwareOfEnemy(enemy) then
-            local distance = origin:getDistance(enemy:getOrigin())
-
             if distance < closestDistance then
                 closestDistance = distance
                 selectedEnemy = enemy
@@ -851,7 +873,11 @@ function AiStateEngage:setBestTarget()
         self.watchTimer:stop()
     end
 
-    if (not self.bestTarget or not self.bestTarget:isAlive()) or self.setBestTargetTimer:isElapsedThenRestart(1.5) or isUrgent then
+    -- If we have no target, or the target has died,
+    -- or: the timer has elapsed, or we urgently need to switch.
+    if (not self.bestTarget or not self.bestTarget:isAlive())
+        or self.setBestTargetTimer:isElapsedThenRestart(1.5) or isUrgent
+    then
         if self.bestTarget and selectedEnemy then
             -- Clear last valid origin as it's no longer for the same target.
             if selectedEnemy:is(self.bestTarget) then
@@ -864,6 +890,10 @@ function AiStateEngage:setBestTarget()
             if targetOrigin and not targetOrigin:isZero() then
                 self.lastBestTargetValidOrigin = targetOrigin
             end
+
+            if not self.bestTarget:is(selectedEnemy) or not AiUtility.visibleEnemies[self.bestTarget.eid] then
+                self.isLockedOntoTarget = false
+            end
         end
 
         self.bestTarget = selectedEnemy
@@ -875,8 +905,8 @@ function AiStateEngage:setBestTarget()
 
     local isAllowedToPreAim = true
 
-    if AiSense.getAwareness(selectedEnemy) >= AiSense.awareness.RECENT_MOVED
-        and lowestFov > 60
+    if AiSense.getAwareness(selectedEnemy) >= AiSense.awareness.OLD
+        and lowestFov > 90
     then
         isAllowedToPreAim = false
     end
@@ -1546,7 +1576,7 @@ function AiStateEngage:movementJiggleBait()
                 return false
             end
 
-            if AiUtility.plantedBomb and AiUtility.bombDetonationTime <= 15 then
+            if AiUtility.plantedBomb and AiUtility.bombDetonationTime <= 20 then
                 return false
             end
         elseif LocalPlayer:isTerrorist() then
@@ -1589,6 +1619,8 @@ function AiStateEngage:movementJiggleBait()
     if not self.jiggleHoldTimer:isElapsed(self.jiggleHoldTime) then
         self.activity = "Baiting enemy"
         self.isInJiggleHold = true
+
+        self.ai.routines.walk:block()
 
         Pathfinder.moveAtAngle(eyeOrigin:getAngle(self.jiggleHoldDirection))
 
@@ -1805,24 +1837,33 @@ function AiStateEngage:movementDefending()
     end
 
     if isAbleToDefend and not self.isDefending then
+        --- @type NodeTypeDefend[]
         local nodes = {}
+        local targetOrigin = self.bestTarget:getOrigin()
+        local bombsite = Nodegraph.getClosestBombsite(targetOrigin)
 
         if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
-            nodes = Nodegraph.getWithin(clientOrigin, 1750, defendNode)
+            nodes = Nodegraph.getWithin(clientOrigin, 1250, defendNode)
         else
-            nodes = Nodegraph.getForBombsite(defendNode, self.ai.states.defend.bombsite)
+            nodes = Nodegraph.getForBombsite(defendNode, bombsite.bombsite)
         end
 
         local targetEyeOrigin = self.bestTarget:getEyeOrigin()
         local selectedNodes = {}
 
-        for _, node in pairs(nodes) do
+        for _, node in pairs(nodes) do repeat
+            if targetOrigin:getDistance(node.origin) > 1500 then
+                break
+            end
+
             local fov = node.direction:getFov(node.lookFromOrigin, targetEyeOrigin)
 
-            if fov < 85 then
-                table.insert(selectedNodes, node)
+            if fov > 85 then
+                break
             end
-        end
+
+            table.insert(selectedNodes, node)
+        until true end
 
         local node = Table.getRandom(selectedNodes)
 
@@ -2044,14 +2085,14 @@ function AiStateEngage:handleAttacking(cmd)
         return
     end
 
-    if Table.isEmpty(AiUtility.visibleEnemies) then
-        self:actionWatchAngle()
-    end
-
     -- Pre-aim angle/hitbox when peeking.
     if self.reactionTimer:isElapsed(self.reactionTime) then
         self:preAimAboutCorners()
         self:preAimThroughCorners()
+    end
+
+    if Table.isEmpty(AiUtility.visibleEnemies) then
+        self:actionWatchAngle()
     end
 
     self:attackingBestTarget(cmd)
@@ -2486,7 +2527,7 @@ function AiStateEngage:attackingBestTarget(cmd)
     end
 
     -- React to visible enemy.
-    if not self.isInJiggleHold and self:isAwareOfEnemy(self.bestTarget) and self.visibleReactionTimer:isElapsed(self.currentReactionTime) and AiUtility.visibleEnemies[self.bestTarget.eid] then
+    if not self.isInJiggleHold and self:isAwareOfEnemy(self.bestTarget) and self.bestTargetVisibleForTimer:isElapsed(self.currentReactionTime) and AiUtility.visibleEnemies[self.bestTarget.eid] then
         self.sprayTimer:start()
         self.watchTimer:start()
         self.lastSeenTimers[self.bestTarget.eid]:start()
@@ -2883,7 +2924,7 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
 
     if self.isOnBooster then
         -- Stop action can incur ducking, which we probably don't want on boost spots.
-        Pathfinder.counterStrafe(true)
+        self:actionCounterStrafe()
     elseif distance > 1000 then
         self:actionStop(cmd)
 
@@ -2909,9 +2950,14 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
 
     VirtualMouse.lookAtLocation(aimAtOrigin, self:getAimSpeed(self.aimSpeed, aimAtOrigin), self.aimNoise, "Engage target")
 
+    if fov < 2 then
+        self.isLockedOntoTarget = true
+    end
+
     if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
         and isVelocityOk
+        and self.isLockedOntoTarget
     then
         self:fireWeapon(cmd)
     end
@@ -2929,7 +2975,7 @@ function AiStateEngage:shootLight(cmd, aimAtOrigin, fov, weapon)
 
     if self.isOnBooster then
         -- Stop action can incur ducking, which we probably don't want on boost spots.
-        Pathfinder.counterStrafe(true)
+        self:actionCounterStrafe()
     elseif distance > 800 then
         self:actionStrafe(cmd)
 
@@ -2951,11 +2997,16 @@ function AiStateEngage:shootLight(cmd, aimAtOrigin, fov, weapon)
         self:actionBackUp()
     end
 
+    if fov < 2 then
+        self.isLockedOntoTarget = true
+    end
+
     VirtualMouse.lookAtLocation(aimAtOrigin, self:getAimSpeed(self.aimSpeed, aimAtOrigin), self.aimNoise, "Engage target")
 
     if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
         and isVelocityOk
+        and self.isLockedOntoTarget
     then
         self:fireWeapon(cmd)
     end
@@ -2971,7 +3022,7 @@ function AiStateEngage:shootShotgun(cmd, aimAtOrigin, fov, weapon)
 
     if self.isOnBooster then
         -- Stop action can incur ducking, which we probably don't want on boost spots.
-        Pathfinder.counterStrafe(true)
+        self:actionCounterStrafe()
     elseif distance > 1000 then
         return
     elseif AiUtility.totalThreats > 1 then
@@ -2999,7 +3050,7 @@ function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
 
     if self.isOnBooster then
         -- Stop action can incur ducking, which we probably don't want on boost spots.
-        Pathfinder.counterStrafe(true)
+        self:actionCounterStrafe()
     elseif distance > 1000 then
         self:actionStop(cmd)
 
@@ -3016,11 +3067,16 @@ function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
         end
     end
 
+    if fov < 2 then
+        self.isLockedOntoTarget = true
+    end
+
     VirtualMouse.lookAtLocation(aimAtOrigin, self:getAimSpeed(self.aimSpeed, aimAtOrigin), self.aimNoise, "Engage target")
 
     if fov < self.shootWithinFov
         and self.tapFireTimer:isElapsedThenRestart(self.tapFireTime)
         and isVelocityOk
+        and self.isLockedOntoTarget
     then
         self:fireWeapon(cmd)
     end
@@ -3067,7 +3123,7 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
 
     if self.isOnBooster then
         -- Stop action can incur ducking, which we probably don't want on boost spots.
-        Pathfinder.counterStrafe(true)
+        self:actionCounterStrafe()
     else
         self:actionStop(cmd)
     end
@@ -3079,10 +3135,15 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
         fireUnderVelocity = weapon.max_player_speed / 4
     end
 
+    if fov < 2 then
+        self.isLockedOntoTarget = true
+    end
+
     if fov < self.shootWithinFov
+        and self.isLockedOntoTarget
         and (isNoscoping or (self.scopedTimer:isElapsed(fireDelay) and LocalPlayer:m_bIsScoped() == 1))
         and LocalPlayer:m_vecVelocity():getMagnitude() < fireUnderVelocity
-        and (self.visibleReactionTimer:isElapsed(fireDelay * 0.6))
+        and (self.bestTargetVisibleForTimer:isElapsed(fireDelay * 0.6))
     then
         self:fireWeapon(cmd)
     end
@@ -3204,14 +3265,14 @@ function AiStateEngage:actionStrafe(cmd)
     if self.isAbleToAttackDucked then
         cmd.in_duck = true
     else
-        Pathfinder.counterStrafe(true)
+        self:actionCounterStrafe()
 
         return
     end
 
     if LocalPlayer:m_flDuckSpeed() < 4 then
         if not self:isAllowedToStrafe() then
-            Pathfinder.counterStrafe(true)
+            self:actionCounterStrafe()
         end
 
         return
@@ -3235,7 +3296,7 @@ function AiStateEngage:actionStop(cmd)
         cmd.in_duck = true
     end
 
-    Pathfinder.counterStrafe(true)
+    self:actionCounterStrafe()
 end
 
 --- @return void
@@ -3365,6 +3426,17 @@ function AiStateEngage:actionStrafePeek()
             self.strafePeekDirection = moveDirection
         end
     end
+end
+
+--- @return void
+function AiStateEngage:actionCounterStrafe()
+    if not self.bestTargetVisibleForTimer:isElapsed(0.12) then
+        Pathfinder.counterStrafe(false)
+
+        return
+    end
+
+    Pathfinder.counterStrafe(true)
 end
 
 --- @return void
@@ -3622,7 +3694,7 @@ function AiStateEngage:setSkillLevel(skill)
         self.anticipateTime = 0.2
         self.sprayTime = 0.5
         self.aimSpeed = 6
-        self.recoilControl = 5
+        self.recoilControl = 2.45
         self.aimOffset = 128
         self.aimInaccurateOffset = 144
         self.blockTime = 0.4

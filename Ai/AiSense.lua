@@ -344,7 +344,12 @@ function AiSense.think()
 				AiSense.setAwarenessLevel(enemy, AwarenessLevel.IMMEDIATE_VISIBLE)
 
 				break
-			elseif not lastAwareIsProxy then
+			elseif lastAwareIsProxy then
+				-- The enemy is known by proxy, or the enemy is too far away to be a major threat.
+				AiSense.setAwarenessLevel(enemy, AwarenessLevel.IMMEDIATE_PROXY)
+
+				break
+			else
 				if AiUtility.threats[enemy.eid] then
 					-- The enemy is occluded by cover, but they could peek soon.
 					AiSense.setAwarenessLevel(enemy, AwarenessLevel.IMMEDIATE_SHALLOW_OCCLUDED)
@@ -352,11 +357,6 @@ function AiSense.think()
 					-- The enemy is occluded by cover, and they cannot peek soon.
 					AiSense.setAwarenessLevel(enemy, AwarenessLevel.IMMEDIATE_DEEP_OCCLUDED)
 				end
-
-				break
-			else
-				-- The enemy is known by proxy, or the enemy is too far away to be a major threat.
-				AiSense.setAwarenessLevel(enemy, AwarenessLevel.IMMEDIATE_PROXY)
 
 				break
 			end

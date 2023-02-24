@@ -46,7 +46,8 @@ function AiChatCommandBase:invoke(ai, sender, args, isBot) end
 --- @vararg string
 --- @return void
 function AiChatCommandBase:bark(...)
-    if not MenuGroup.useChatCommands:get() or Config.isPlayingSolo then
+    --if not MenuGroup.useChatCommands:get() or Config.isPlayingSolo then todo
+    if not MenuGroup.useChatCommands:get() then
         return
     end
 

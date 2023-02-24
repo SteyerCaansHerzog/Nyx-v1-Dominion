@@ -796,12 +796,6 @@ function Ai:selectState(cmd)
 			if isActivatable then
 				Logger.console(Logger.ALERT, Localization.aiStateChanged, currentState.name, highestPriority)
 
-				VirtualMouse.lookState = currentState.name
-				VirtualMouse.isLookSpeedDelayed = currentState.isMouseDelayAllowed
-				VirtualMouse.lookSpeedDelayMin = currentState.delayedMouseMin
-				VirtualMouse.lookSpeedDelayMax = currentState.delayedMouseMax
-				VirtualMouse.lookSpeedDelay = Math.getRandomFloat(currentState.delayedMouseMin, currentState.delayedMouseMax)
-
 				Pathfinder.flushRequest()
 
 				currentState:activate()
@@ -825,6 +819,14 @@ function Ai:selectState(cmd)
 	end
 
 	if self.currentState then
+		if VirtualMouse.activeViewAngles then
+			VirtualMouse.lookState = currentState.name
+			VirtualMouse.isLookSpeedDelayed = currentState.isMouseDelayAllowed
+			VirtualMouse.lookSpeedDelayMin = currentState.delayedMouseMin
+			VirtualMouse.lookSpeedDelayMax = currentState.delayedMouseMax
+			VirtualMouse.lookSpeedDelay = Math.getRandomFloat(currentState.delayedMouseMin, currentState.delayedMouseMax)
+		end
+
 		self.currentState:think(cmd)
 	end
 

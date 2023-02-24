@@ -1,6 +1,8 @@
 --{{{ Dependencies
 local Animate = require "gamesense/Nyx/v1/Api/Animate"
 local Callbacks = require "gamesense/Nyx/v1/Api/Callbacks"
+local Client = require "gamesense/Nyx/v1/Api/Client"
+local Color = require "gamesense/Nyx/v1/Api/Color"
 local LocalPlayer = require "gamesense/Nyx/v1/Api/LocalPlayer"
 local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
@@ -19,9 +21,11 @@ local AiSense = require "gamesense/Nyx/v1/Dominion/Ai/AiSense"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
+local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
+local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouseNoiseType"
 --}}}
@@ -38,6 +42,7 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMou
 --- @field currentNoise VirtualMouseNoise
 --- @field dynamic SecondOrderDynamics
 --- @field isAllowedToWatchCorners boolean
+--- @field isBlocked boolean
 --- @field isCrosshairLerpingToZero boolean
 --- @field isCrosshairUsingVelocity boolean
 --- @field isEnabled boolean
@@ -49,6 +54,7 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMou
 --- @field lastCameraAngles Angle
 --- @field lastIdleAngle Angle
 --- @field lastLookAtLocationOrigin Vector3
+--- @field lookAheadOrigin Vector3
 --- @field lookAtAngles Angle
 --- @field lookSpeed number
 --- @field lookSpeedDelay Timer
@@ -80,7 +86,6 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMou
 --- @field watchCornerTimer Timer
 --- @field yawFine number
 --- @field yawSoft number
---- @field isBlocked boolean
 local VirtualMouse = {
 	noise = ViewNoiseType
 }
@@ -131,6 +136,10 @@ end
 
 --- @return void
 function VirtualMouse.initEvents()
+	Callbacks.frame(function()
+		VirtualMouse.render()
+	end)
+
 	Callbacks.setupCommand(function(cmd)
 		if not MenuGroup.master:get() or not MenuGroup.enableMouseControl:get() or not MenuGroup.enableAi:get() then
 			return
@@ -158,6 +167,38 @@ function VirtualMouse.initMenu()
 	MenuGroup.enableMouseControl = MenuGroup.group:addCheckbox(" > Enable Mouse Control"):addCallback(function(item)
 		VirtualMouse.isEnabled = item:get()
 	end):setParent(MenuGroup.master)
+end
+
+--- @return void
+function VirtualMouse.render()
+	if not Debug.isRenderingVirtualMouse then
+		return
+	end
+
+	if not LocalPlayer:isAlive() then
+		return
+	end
+
+	if VirtualMouse.lookState then
+		Client.getScreenDimensionsCenter():offset(0, 20):drawSurfaceText(Font.SMALL_BOLD, Color.WHITE, "c", VirtualMouse.lookState)
+	end
+
+	if not VirtualMouse.lookAtAngles then
+		return
+	end
+
+	local lookAtOrigin = LocalPlayer.getEyeOrigin() + VirtualMouse.lookAtAngles:getForward() * 128
+
+	lookAtOrigin:drawCircleOutline(15, 10, Color:hsla(1, 1, 1, 100))
+
+	if VirtualMouse.lookAheadOrigin and not VirtualMouse.activeViewAngles then
+		VirtualMouse.lookAheadOrigin:drawCircleOutline(8, 4, Color:hsla(1, 1, 1, 255))
+		lookAtOrigin:drawLine(VirtualMouse.lookAheadOrigin, Color:hsla(1, 1, 1, 255))
+	end
+
+	if not VirtualMouse.buildupCooldownTimer:isElapsed(VirtualMouse.buildupCooldownTime) then
+		lookAtOrigin:drawCircleOutline(20, 4, Color:hsla(0, 0.8, 0.6, 255))
+	end
 end
 
 --- @return void
@@ -557,14 +598,22 @@ function VirtualMouse.setAirStrafe(idealViewAngles)
 		return
 	end
 
+	if LocalPlayer:getOrigin():getDistance2(lookAheadNode.origin) < 30 then
+		return
+	end
+
+	local angle = LocalPlayer.getEyeOrigin():getAngle(lookAheadNode.origin:clone():offset(0, 0, 46))
+
+	angle.p = Math.getClamped(angle.p, -15, 15)
+
 	-- Generate our look ahead view angles.
-	idealViewAngles.y = LocalPlayer.getEyeOrigin():getAngle(lookAheadNode.origin).y
+	idealViewAngles:setFromAngle(angle)
 
 	-- Shake the mouse movement.
 	VirtualMouse.setNoiseType(ViewNoiseType.none)
 
 	VirtualMouse.lookState = "VirtualMouse generic"
-	VirtualMouse.lookSpeedIdeal = 10
+	VirtualMouse.lookSpeedIdeal = 7
 	VirtualMouse.lookSpeedDelayMin = 0.25
 	VirtualMouse.lookSpeedDelayMax = 0.5
 end
@@ -639,9 +688,19 @@ function VirtualMouse.setIdealLookAhead(idealViewAngles)
 	-- We want to look roughly head height of the goal.
 	lookOrigin:offset(0, 0, 46)
 
-	local lookAngle = LocalPlayer.getEyeOrigin():getAngle(lookOrigin)
+	if not VirtualMouse.lookAheadOrigin then
+		VirtualMouse.lookAheadOrigin = lookOrigin
+	end
 
-	if currentNode.isJump then
+	local distance = LocalPlayer.getEyeOrigin():getDistance(VirtualMouse.lookAheadOrigin)
+	-- Causes the look at origin to move ahead faster when the AI is closer to it.
+	local speedBoost = Math.getClampedInversedFloat(distance, 1000, 0, 1000)
+
+	VirtualMouse.lookAheadOrigin = Animate.lerp(VirtualMouse.lookAheadOrigin, lookOrigin, (1.35 + speedBoost) * Time.delta)
+
+	local lookAngle = LocalPlayer.getEyeOrigin():getAngle(VirtualMouse.lookAheadOrigin)
+
+	if currentNode.isJump and not currentNode:is(Node.traverseDrop) then
 		lookAngle.p = 0
 	end
 

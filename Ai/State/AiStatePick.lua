@@ -79,14 +79,14 @@ function AiStatePick:assess()
         return AiPriority.IGNORE
     end
 
+    -- We don't want to watch angles at bad times.
+    if AiUtility.isBombPlanted() then
+        return AiPriority.IGNORE
+    end
+
     -- We have an active node.
     if self.node then
         return AiPriority.PICK
-    end
-
-    -- We don't want to watch angles at bad times.
-    if AiUtility.plantedAtBombsite then
-        return AiPriority.IGNORE
     end
 
     local node = self:getNode()
@@ -114,7 +114,7 @@ function AiStatePick:getNode()
         end
 
         -- Blacklist the node for now.
-        if not Math.getChance(node.chance * 0.01) then
+        if not Math.getChance((node.chance * 0.3) * 0.01) then
             self.blacklist[node.id] = true
 
             break
@@ -146,12 +146,12 @@ end
 
 --- @return void
 function AiStatePick:reset()
-    self.node = nil
-    self.isPicking = false
-
     if self.node then
         self.blacklist[self.node.id] = true
     end
+
+    self.node = nil
+    self.isPicking = false
 
     self.pickTimer:stop()
 end

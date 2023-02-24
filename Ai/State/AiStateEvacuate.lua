@@ -52,12 +52,6 @@ function AiStateEvacuate:__init()
     Callbacks.roundPrestart(function()
     	self:reset()
     end)
-
-    Callbacks.bombPlanted(function()
-        -- This has the side-effect of forcing the AI to reselect a hide node.
-        -- But it will also force the AI to determine if it's going to lurk outside bombsites.
-    	self:activate()
-    end)
 end
 
 --- @return void
@@ -264,7 +258,7 @@ function AiStateEvacuate:think(cmd)
 
     if not findSpotVisibleTrace.isIntersectingGeometry and distance < 200 then
         if self.isPicking then
-            self.activity = string.format("Picking at %s", AiUtility.bombsitePlantedAt:upper())
+            self.activity = string.format("Picking at %s", AiUtility.plantedAtBombsite:upper())
         else
             self.activity = "Hiding"
         end

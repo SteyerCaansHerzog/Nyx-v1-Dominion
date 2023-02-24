@@ -51,15 +51,11 @@ function AiStateBoostTeammate:assess()
         return AiPriority.IGNORE
     end
 
-    if self.boostPlayer then
-        if LocalPlayer:getOrigin():getDistance2(self.boostPlayer:getOrigin()) < 256 then
-            return AiPriority.BOOST_ACTIVE
-        end
-
-        return AiPriority.BOOST_PASSIVE
+    if not self.boostPlayer then
+        return AiPriority.IGNORE
     end
 
-    return AiPriority.IGNORE
+    return AiPriority.BOOST_TEAMMATE
 end
 
 --- @param player Player

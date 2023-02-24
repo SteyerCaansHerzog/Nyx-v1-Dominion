@@ -283,6 +283,12 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateFlashbangDynamic:think(cmd)
+    if not self.node then
+        self:reset()
+
+        return
+    end
+
     if not self.targetPlayer then
         self:reset()
 

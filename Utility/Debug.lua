@@ -1,15 +1,16 @@
 --{{{ Debug
 --- @class DominionDebug
 local Debug = {
-	isDisplayingNodeLookAngles = false,
-	isDisplayingNodeConnections = false,
+	highlightStates = {},
 	isDisplayingConnectionCollisions = false,
 	isDisplayingGapCollisions = false,
-	isLoggingLookState = false,
-	isLoggingStatePriorities = true,
+	isDisplayingNodeConnections = false,
+	isDisplayingNodeLookAngles = false,
 	isFilteringConsole = true,
+	isLoggingLookState = false,
 	isLoggingPathfinderMoveOntoNextNode = false,
-	highlightStates = {}
+	isLoggingStatePriorities = true,
+	isRenderingVirtualMouse = false,
 }
 
 return Debug

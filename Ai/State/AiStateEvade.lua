@@ -24,7 +24,6 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field changeAngleTime number
 --- @field changeAngleTimer Timer
 --- @field evadeLookAtAngles Vector3
---- @field holdTimer Timer
 --- @field hurtTimer Timer
 --- @field isFirstJumpEvasion boolean
 --- @field isHurt boolean
@@ -54,7 +53,6 @@ function AiStateEvade:__init()
     self.changeAngleTime = 1
     self.hurtTimer = Timer:new():startThenElapse()
     self.jumpEvasionCooldownTimer = Timer:new():startThenElapse()
-    self.holdTimer = Timer:new():startThenElapse()
 
     Callbacks.weaponFire(function(e)
         if e.player:isLocalPlayer() and e.player:isHoldingBoltActionRifle() then
@@ -76,10 +74,6 @@ function AiStateEvade:assess()
     -- No enemies to threaten us.
     if AiUtility.enemiesAlive == 0 then
         return AiPriority.IGNORE
-    end
-
-    if not AiUtility.isEnemyVisible and not self.holdTimer:isElapsed(1.5) then
-        return AiPriority.EVADE_ACTIVE
     end
 
     -- We can be peeked by an enemy.
@@ -142,8 +136,6 @@ function AiStateEvade:activate()
     self.jumpEvasionAngle = nil
     self.isFirstJumpEvasion = true
 
-    self.holdTimer:start()
-
     self:moveToCover()
 end
 
@@ -184,6 +176,23 @@ function AiStateEvade:moveJumpEvasion(cmd)
         return
     end
 
+    local isEnemyLookingAtClient = false
+    local eyeOrigin = LocalPlayer.getEyeOrigin()
+
+    for _, enemy in pairs(AiUtility.visibleEnemies) do
+        local fov = enemy:getCameraAngles():getFov(enemy:getEyeOrigin(), eyeOrigin)
+
+        if fov < AiUtility.visibleFovThreshold then
+            isEnemyLookingAtClient = true
+
+            break
+        end
+    end
+
+    if not isEnemyLookingAtClient then
+        return
+    end
+
     self.ai.routines.walk:block()
 
     if LocalPlayer:m_vecVelocity():getMagnitude() > 165 and self.jumpEvasionCooldownTimer:isElapsedThenRestart(0.75) then
@@ -196,16 +205,14 @@ function AiStateEvade:moveJumpEvasion(cmd)
                     AiStateEvade.jumpEvasionForward,
                     AiStateEvade.jumpEvasionForward,
                     AiStateEvade.jumpEvasionBackward,
-                    AiStateEvade.jumpEvasionBackward,
                     AiStateEvade.jumpEvasionSimple
                 })
             else
                 self.jumpEvasionMethod = AiStateEvade.jumpEvasionSimple
             end
-
-            self.isFirstJumpEvasion = false
         end
 
+        self.isFirstJumpEvasion = false
         cmd.in_jump = true
     end
 

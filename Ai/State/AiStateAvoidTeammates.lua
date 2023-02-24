@@ -34,6 +34,8 @@ end
 function AiStateAvoidTeammates:assess()
     if Pathfinder.isObstructedByTeammate and LocalPlayer:m_vecVelocity():getMagnitude() < 50 then
         self.timer:ifPausedThenStart()
+    else
+        self.timer:stop()
     end
 
     self.timer:isElapsedThenStop(3)

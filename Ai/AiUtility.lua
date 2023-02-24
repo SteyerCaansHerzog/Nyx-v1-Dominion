@@ -639,7 +639,7 @@ end
 --- @return void
 function AiUtility.updateThreats()
     -- Don't update the threat origin too often, or it'll be obvious this is effectively wallhacking.
-    if not AiUtility.threatUpdateTimer:isElapsedThenRestart(0.25) then
+    if not AiUtility.threatUpdateTimer:isElapsedThenRestart(0.15) then
         return
     end
 
