@@ -107,14 +107,14 @@ function AiRoutineHandleOccluderTraversal:think()
 
 	-- Find smokes.
 	for _, smoke in Entity.find("CSmokeGrenadeProjectile") do repeat
-		local smokeTick = smoke:m_nFireEffectTickBegin()
+		local smokeTick = smoke:m_nSmokeEffectTickBegin()
 
 		if not smokeTick or smokeTick == 0 then
 			break
 		end
 
 		local smokeOrigin = smoke:m_vecOrigin()
-		local smokeNearBounds = smokeOrigin:getBounds(Vector3.align.CENTER, 250, 250, 64)
+		local smokeNearBounds = smokeOrigin:getBounds(Vector3.align.CENTER, 400, 400, 64)
 
 		-- Determine if we're nearby a smoke.
 		if not Vector3.isBoundsIntersecting(clientBounds, smokeNearBounds) then
@@ -128,7 +128,7 @@ function AiRoutineHandleOccluderTraversal:think()
 
 		-- Are enemies watching the smoke?
 		for _, enemy in pairs(AiUtility.enemies) do if self.isSmokeWatchedByEnemy then break end repeat
-			if enemy:getOrigin():getDistance(smokeOrigin) < 400 then
+			if enemy:getOrigin():getDistance(smokeOrigin) < 600 then
 				self.isSmokeWatchedByEnemy = true
 
 				break
@@ -137,13 +137,7 @@ function AiRoutineHandleOccluderTraversal:think()
 			local eyeOrigin = enemy:getEyeOrigin()
 			local cameraAngles = enemy:getCameraAngles()
 
-			if cameraAngles:getFov(eyeOrigin, smokeOrigin) > AiUtility.visibleFovThreshold then
-				break
-			end
-
-			local trace = Trace.getLineAtAngle(eyeOrigin, cameraAngles, AiUtility.traceOptionsVisible, "AiRoutineHandleOccluderTraversal.think<FindEnemyWatchingSmoke>")
-
-			if not eyeOrigin:isRayIntersectingBounds(trace.endPosition, smokeMaxBounds) then
+			if cameraAngles:getFov(eyeOrigin, smokeOrigin) > 45 then
 				break
 			end
 
@@ -209,7 +203,7 @@ end
 
 --- @return void
 function AiRoutineHandleOccluderTraversal:handleSmoke()
-	if self.smokeInsideOf then
+	if not self.isNearSmoke then
 		return
 	end
 

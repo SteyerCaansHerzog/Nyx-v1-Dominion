@@ -99,21 +99,21 @@ function AiStateEvade:assess()
     end
 
     -- We're switching weapons.
-    if (Time.getCurtime() - LocalPlayer:m_flNextAttack()) <= 0
+    if LocalPlayer:getNextAttackProgress() > 1
         and LocalPlayer:getWeapon().classname ~= "CC4"
     then
         return AiPriority.EVADE_ACTIVE
     end
 
     -- We're avoiding a flash.
-    if self.ai.flashbang then
+    if self.ai.flashbang and AiUtility.isClientThreatenedMajor then
         return AiPriority.EVADE_ACTIVE
     end
 
     local eyeOrigin = LocalPlayer.getEyeOrigin()
 
     -- Retreat due to injury.
-    if not AiUtility.plantedBomb and not LocalPlayer.isCarryingBomb() and not self.hurtTimer:isElapsed(7.5) and AiUtility.timeData.roundtime_remaining > 40 then
+    if not AiUtility.plantedBomb and not LocalPlayer.isCarryingBomb() and not self.hurtTimer:isElapsed(4) and AiUtility.timeData.roundtime_remaining > 40 then
         self.isLookingAtPathfindingDirection = true
 
         return AiPriority.EVADE_PASSIVE

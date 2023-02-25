@@ -424,7 +424,7 @@ function AiStateEngage:assess()
         end
     end
 
-    if self.bestTarget and (self.isBestTargetVisible or self.isVisibleToBestTarget) then
+    if not LocalPlayer.isCarryingBomb() and self.bestTarget and (self.isBestTargetVisible or self.isVisibleToBestTarget) then
         return AiPriority.ENGAGE_VISIBLE
     end
 
@@ -1852,7 +1852,7 @@ function AiStateEngage:movementDefending()
         local selectedNodes = {}
 
         for _, node in pairs(nodes) do repeat
-            if targetOrigin:getDistance(node.origin) > 1500 then
+            if targetOrigin:getDistance(node.origin) > 1000 then
                 break
             end
 
@@ -2127,6 +2127,8 @@ end
 --- @return void
 function AiStateEngage:attackingDefending()
     if not self.isDefending then
+        self.defendingLookAt = nil
+
         return
     end
 
@@ -2179,7 +2181,7 @@ function AiStateEngage:attackingDefending()
     end
 
     -- We're allowed to update the defend angle.
-    if self.isUpdatingDefendingLookAt and targetOrigin and not targetOrigin:isZero() then
+    if self.isUpdatingDefendingLookAt then
         self.isUpdatingDefendingLookAt = false
         self.defendingLookAt = targetOrigin
     end
@@ -2950,7 +2952,7 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
 
     VirtualMouse.lookAtLocation(aimAtOrigin, self:getAimSpeed(self.aimSpeed, aimAtOrigin), self.aimNoise, "Engage target")
 
-    if fov < 2 then
+    if fov < 3.5 then
         self.isLockedOntoTarget = true
     end
 
@@ -2997,7 +2999,7 @@ function AiStateEngage:shootLight(cmd, aimAtOrigin, fov, weapon)
         self:actionBackUp()
     end
 
-    if fov < 2 then
+    if fov < 3.5 then
         self.isLockedOntoTarget = true
     end
 
@@ -3067,7 +3069,7 @@ function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
         end
     end
 
-    if fov < 2 then
+    if fov < 3.5 then
         self.isLockedOntoTarget = true
     end
 
@@ -3135,7 +3137,7 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
         fireUnderVelocity = weapon.max_player_speed / 4
     end
 
-    if fov < 2 then
+    if fov < 3.5 then
         self.isLockedOntoTarget = true
     end
 
@@ -3430,7 +3432,7 @@ end
 
 --- @return void
 function AiStateEngage:actionCounterStrafe()
-    if not self.bestTargetVisibleForTimer:isElapsed(0.12) then
+    if not self.bestTargetVisibleForTimer:isElapsed(0.15) then
         Pathfinder.counterStrafe(false)
 
         return
@@ -3539,6 +3541,10 @@ function AiStateEngage:preAimThroughCorners()
    VirtualMouse.lookAtLocation(self.preAimThroughCornersOrigin, 12, VirtualMouse.noise.moving, "Engage look through corner")
 
     self:addVisualizer("pre through", function()
+        if not self.preAimThroughCornersOrigin then
+            return
+        end
+
         self.preAimThroughCornersOrigin:drawCircleOutline(16, 2, Color:hsla(100, 1, 0.5, 150))
     end)
 end
@@ -3635,15 +3641,14 @@ function AiStateEngage:preAimAboutCorners()
 
             if not findWallCollideTrace.isIntersectingGeometry then
                 local findVisibleToClientTrace = Trace.getLineToPosition(eyeOrigin, vertex, AiUtility.traceOptionsVisible, "AiStateEngage.preAimAboutCorners<FindPointVisibleToClient>")
+
                 if not findVisibleToClientTrace.isIntersectingGeometry then
                     local distance = eyeOrigin:getDistance(vertex)
 
-                    if distance < closestVertexDistance then
+                    if distance > 200 and distance < closestVertexDistance then
                         closestVertex = vertex
                         closestVertexDistance = distance
-
                         isVisible = true
-
                         closestBand = id
                     end
                 end
