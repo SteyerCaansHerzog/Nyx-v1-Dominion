@@ -25,7 +25,7 @@ local AiChatCommandReport = {
 --- @param args string[]
 --- @return string|nil
 function AiChatCommandReport:invoke(ai, sender, args)
-    local targetString = Table.getImplodedTable(args, " ")
+    local targetString = Table.getStringFromTableWithDelimiter(args, " ")
     local targets = {}
     local targetNames = {}
 
@@ -64,7 +64,7 @@ function AiChatCommandReport:invoke(ai, sender, args)
         end)
     end
 
-    Messenger.send(true, "reported %s.", Table.getImplodedTable(targetNames, ", "))
+    Messenger.send(true, "reported %s.", Table.getStringFromTableWithDelimiter(targetNames, ", "))
 end
 
 return Nyx.class("AiChatCommandReport", AiChatCommandReport, AiChatCommandBase)

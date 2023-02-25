@@ -332,7 +332,7 @@ function Ai:processCommand(e, isInvokedByConsole)
 
 	local isOtherBot = cmdPrefix == " "
 
-	local args = Table.getExplodedString(e.text:sub(2), " ")
+	local args = Table.getTableFromStringByDelimiter(e.text:sub(2), " ")
 	local cmd = table.remove(args, 1)
 	--- @type AiChatCommandBase
 	local command = self.commands[cmd]
@@ -349,7 +349,7 @@ function Ai:processCommand(e, isInvokedByConsole)
 		return
 	end
 
-	local argsImploded = Table.getImplodedTable(args, ", ")
+	local argsImploded = Table.getStringFromTableWithDelimiter(args, ", ")
 	local errString = command:invoke(self, e.sender, args, isOtherBot)
 
 	if errString then

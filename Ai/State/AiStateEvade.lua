@@ -77,7 +77,7 @@ function AiStateEvade:assess()
     end
 
     -- We can be peeked by an enemy.
-    if not AiUtility.isClientThreatenedMinor then
+    if not AiUtility.isClientThreatenedMajor then
         return AiPriority.IGNORE
     end
 
@@ -106,7 +106,7 @@ function AiStateEvade:assess()
     end
 
     -- We're avoiding a flash.
-    if self.ai.flashbang and AiUtility.isClientThreatenedMajor then
+    if self.ai.flashbang then
         return AiPriority.EVADE_ACTIVE
     end
 

@@ -44,6 +44,8 @@ function AiChatCommandGo:invoke(ai, sender, args)
         return Localization.cmdRejectionNoValidSpawnOrBombsite
     end
 
+    ai.routines.handleRotates:cooldown()
+
     Client.fireAfterRandom(1, 2, function()
         ai.states.patrol:reset()
 

@@ -335,7 +335,7 @@ function AiChatbotGpt3:requestConversationalReply(sender, text, isTeamChat)
 		end
 
 		--- @type string[]
-		local messages = Table.getExplodedString(reply, ".")
+		local messages = Table.getTableFromStringByDelimiter(reply, ".")
 		local delay = 0
 
 		for _, message in pairs(messages) do

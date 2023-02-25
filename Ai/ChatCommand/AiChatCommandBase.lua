@@ -52,7 +52,7 @@ function AiChatCommandBase:bark(...)
     end
 
     local args = {...}
-    local argsFormatted = Table.getImplodedTable(args, " ")
+    local argsFormatted = Table.getStringFromTableWithDelimiter(args, " ")
 
     Messenger.send(true, " %s %s", self.cmd, argsFormatted)
 end

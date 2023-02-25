@@ -186,7 +186,7 @@ end
 
 --- @param itemNames string
 function AiRoutineBuyGear:setCustomItemList(itemNames)
-	self.customItemList = Table.getExplodedString(itemNames, ",")
+	self.customItemList = Table.getTableFromStringByDelimiter(itemNames, ",")
 end
 
 --- @return void

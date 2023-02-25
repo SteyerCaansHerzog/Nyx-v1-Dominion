@@ -73,6 +73,8 @@ function AiChatCommandRotate:invoke(ai, sender, args)
     ai.states.useBoost.isBlockedThisRound = true
     ai.states.useRunBoost.isBlockedThisRound = true
     ai.states.useOntoPositionBoost.isBlockedThisRound = true
+
+    ai.routines.handleRotates:cooldown()
 end
 
 return Nyx.class("AiChatCommandRotate", AiChatCommandRotate, AiChatCommandBase)

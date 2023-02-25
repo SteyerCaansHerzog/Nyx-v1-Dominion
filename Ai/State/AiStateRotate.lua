@@ -44,7 +44,7 @@ end
 
 --- @return void
 function AiStateRotate:__init()
-    Callbacks.roundFreezeEnd(function()
+    Callbacks.roundPrestart(function()
         self:reset()
     end)
 

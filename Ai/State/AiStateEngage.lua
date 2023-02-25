@@ -1598,6 +1598,10 @@ function AiStateEngage:movementJiggleBait()
         return false
     end
 
+    if LocalPlayer:isHoldingSniper() and LocalPlayer:m_bIsScoped() == 1 then
+        return false
+    end
+
     if self.bestTarget:isHoldingSniper() and self.bestTarget:m_bIsScoped() == 0 then
         return false
     end

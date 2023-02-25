@@ -322,7 +322,7 @@ function DominionClient:checkValidMapSelection()
         return
     end
 
-    local queuedMaps = Table.getExplodedString(queuedMapsStr, ",")
+    local queuedMaps = Table.getTableFromStringByDelimiter(queuedMapsStr, ",")
     local invalidMaps = {}
 
     for _, map in pairs(queuedMaps) do

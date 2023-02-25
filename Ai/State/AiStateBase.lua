@@ -74,7 +74,7 @@ function AiStateBase:getError()
         if not isValidGamemode then
             return string.format(
                 Localization.aiStateGamemodesRequired,
-                Table.getImplodedTable(self.requiredGamemodes, ", ")
+                Table.getStringFromTableWithDelimiter(self.requiredGamemodes, ", ")
             )
         end
     end
@@ -92,7 +92,7 @@ function AiStateBase:getError()
         if #unavailableNodes == totalRequiredNodes then
             return string.format(
                 Localization.aiStateNodesRequired,
-                Table.getImplodedTable(unavailableNodes, ", ")
+                Table.getStringFromTableWithDelimiter(unavailableNodes, ", ")
             )
         end
     end

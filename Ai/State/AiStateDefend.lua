@@ -79,7 +79,7 @@ function AiStateDefend:__init()
     self.teammateInTroubleTimer = Timer:new():startThenElapse()
     self.bombsite = AiUtility.randomBombsite
 
-    Callbacks.roundPrestart(function()
+    Callbacks.roundStart(function()
         self.getToSiteTimer:stop()
 
         local slot = 0
@@ -100,6 +100,10 @@ function AiStateDefend:__init()
         local bombsite = (operand % 2) == 0 and "A" or "B"
 
         self:invoke(bombsite)
+
+        if LocalPlayer:isCounterTerrorist() then
+            Client.execute("say %s", bombsite)
+        end
     end)
 
     Callbacks.roundEnd(function()
@@ -134,8 +138,11 @@ function AiStateDefend:__init()
         self.teammateInTroubleTimer:start()
     end)
 
-
     Callbacks.setupCommand(function()
+        if AiUtility.gameRules:m_bFreezePeriod() == 1 then
+            return
+        end
+
         if not AiUtility.bombCarrier then
             return
         end
@@ -154,7 +161,7 @@ function AiStateDefend:__init()
             return
         end
 
-        local distance = 1000
+        local distance = 1450
 
         if LocalPlayer:getOrigin():getDistance(nearestBombsite.origin) < distance then
             return
@@ -397,7 +404,9 @@ end
 --- @param bombsite string
 --- @return void
 function AiStateDefend:invoke(bombsite)
-    self.bombsite = bombsite
+    if bombsite then
+        self.bombsite = bombsite
+    end
 
     self:queueForReactivation()
 end

@@ -85,6 +85,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field isRecorder boolean
 --- @field isTransient boolean
 --- @field isTraversal boolean
+--- @field isUnused boolean
 --- @field lookAtOrigin Vector3
 --- @field lookDistanceThreshold number
 --- @field lookFromOrigin Vector3

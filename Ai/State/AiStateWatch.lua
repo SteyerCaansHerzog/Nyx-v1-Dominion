@@ -157,12 +157,12 @@ end
 
 --- @return void
 function AiStateWatch:reset()
-    self.node = nil
-    self.isWatching = false
-
     if self.node then
         self.blacklist[self.node.id] = true
     end
+
+    self.node = nil
+    self.isWatching = false
 
     self.watchTimer:stop()
 end

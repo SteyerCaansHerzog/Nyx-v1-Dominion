@@ -30,9 +30,11 @@ function AiRoutineHandleRotates:__init()
 	self.callRotateCooldownTimer = Timer:new():startThenElapse()
 	self.callGoCooldownTimer = Timer:new():startThenElapse()
 
-	Callbacks.roundStart(function()
+	Callbacks.roundPrestart(function()
 		self.lastCallRotateBombsite = nil
 		self.lastCallGoBombsite = nil
+
+		self:cooldown()
 	end)
 end
 
@@ -53,6 +55,12 @@ function AiRoutineHandleRotates:think(cmd)
 
 	self:calloutRotate()
 	self:calloutGo()
+end
+
+--- @return void
+function AiRoutineHandleRotates:cooldown()
+	self.callRotateCooldownTimer:start()
+	self.callGoCooldownTimer:start()
 end
 
 --- @return void

@@ -45,7 +45,7 @@ local AiChatCommandEval = {
 --- @param args string[]
 --- @return void
 function AiChatCommandEval:invoke(ai, sender, args)
-    local evalStr = Table.getImplodedTable(args, " ")
+    local evalStr = Table.getStringFromTableWithDelimiter(args, " ")
 
     local exposedModules = {
         env = self.environment,

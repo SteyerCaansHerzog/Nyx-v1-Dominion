@@ -16,7 +16,8 @@ local NodeGrenadeFlashbangDefendCt = {
         "Flashbang spot for the CT AI when defending the map."
     },
     colorPrimary = Color:hsla(200, 0.9, 0.85),
-    colorSecondary = ColorList.COUNTER_TERRORIST
+    colorSecondary = ColorList.COUNTER_TERRORIST,
+    isUnused = true
 }
 
 --- @param fields NodeGrenadeFlashbangDefendCt

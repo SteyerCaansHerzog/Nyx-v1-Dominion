@@ -293,7 +293,7 @@ function NodegraphEditor:initEvents()
     end)
 
     Callbacks.consoleInput(function(input)
-        local args = Table.getExplodedString(input, " ")
+        local args = Table.getTableFromStringByDelimiter(input, " ")
         local cmd = args[1]
 
         if cmd == "pathdebug" then
@@ -1268,11 +1268,13 @@ function NodegraphEditor:render()
 
 
     -- Selected node information.
-    height = 10 + #self.node.description * lineHeight
+    local description = self.node.description
+
+    height = 10 + #description * lineHeight
 
     UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_2, ColorList.BACKGROUND_3, height)
 
-    for _, line in pairs(self.node.description) do
+    for _, line in pairs(description) do
         UserInterface.drawText(drawPos, Font.SMALL, ColorList.FONT_MUTED, line)
 
         drawPos:offset(0, lineHeight)
@@ -1298,24 +1300,32 @@ function NodegraphEditor:render()
         drawPos:offset(0, height)
     end
 
+    -- Unused.
+    if self.node.isUnused then
+        drawPos:offset(0, margin)
+
+        UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, ColorList.WARNING, height)
+        UserInterface.drawText(drawPos, Font.SMALL, ColorList.WARNING, "[WARNING] This node is obsolete and is no longer used.")
+
+        drawPos:offset(0, height)
+    end
 
     -- Warning.
     if iProblems > 0 then
         drawPos:offset(0, margin)
 
         UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, ColorList.WARNING, height)
-        UserInterface.drawText(drawPos, Font.SMALL, ColorList.WARNING, "[WARNING] %i node(s) have problems (please fix them)", iProblems)
+        UserInterface.drawText(drawPos, Font.SMALL, ColorList.WARNING, "[WARNING] %i node(s) have problems (please fix them).", iProblems)
 
         drawPos:offset(0, height)
     end
-
 
     -- Error.
     if self.spawnError then
         drawPos:offset(0, margin)
 
         UserInterface.drawBackground(drawPos, ColorList.BACKGROUND_1, ColorList.ERROR, height)
-        UserInterface.drawText(drawPos, Font.SMALL, ColorList.ERROR, "[ERROR] %s", self.spawnError)
+        UserInterface.drawText(drawPos, Font.SMALL, ColorList.ERROR, "[ERROR] %s.", self.spawnError)
 
         drawPos:offset(0, height)
     end
