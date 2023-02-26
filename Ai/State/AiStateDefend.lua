@@ -100,10 +100,6 @@ function AiStateDefend:__init()
         local bombsite = (operand % 2) == 0 and "A" or "B"
 
         self:invoke(bombsite)
-
-        if LocalPlayer:isCounterTerrorist() then
-            Client.execute("say %s", bombsite)
-        end
     end)
 
     Callbacks.roundEnd(function()
