@@ -2207,7 +2207,7 @@ end
 --- @return void
 function AiStateEngage:attackingLookAtBackupOrigin()
     -- Look at occluded origin.
-    if self.lookAtBackingUpOrigin and not AiUtility.clientThreatenedFromOrigin then
+    if self.lookAtBackingUpOrigin and not AiThreats.highestThreatOrigin then
         VirtualMouse.lookAtLocation(self.lookAtBackingUpOrigin, 4, VirtualMouse.noise.moving, "Engage look-at backing up position")
     end
 end

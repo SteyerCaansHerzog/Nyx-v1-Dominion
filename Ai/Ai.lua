@@ -588,8 +588,8 @@ function Ai:render()
 	uiPos:clone():offset(-5, 5):drawSurfaceRectangle(spacerDimensions, spacerColor)
 	uiPos:offset(0, 10)
 
-	if MenuGroup.enableAi:get() and AiUtility.clientThreatenedFromOrigin then
-		Client.draw(Vector3.drawCircleOutline, AiUtility.clientThreatenedFromOrigin, 30, 3, Color:hsla(0, 1, 1, 75))
+	if MenuGroup.enableAi:get() and AiThreats.highestThreatOrigin then
+		Client.draw(Vector3.drawCircleOutline, AiThreats.highestThreatOrigin, 30, 3, Color:hsla(0, 1, 1, 75))
 	end
 
 	if MenuGroup.visualiseAiSense:get() then
