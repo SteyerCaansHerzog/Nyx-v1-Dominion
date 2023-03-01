@@ -1507,7 +1507,7 @@ end
 
 --- @return boolean
 function AiStateEngage:movementHoldAfterPlant()
-    if AiUtility.isClientThreatenedMajor
+    if AiThreats.threatLevel == AiThreats.threatLevels.EXTREME
         and not self.isVisibleToBestTarget
         and not self.blockMovementAfterPlantTimer:isElapsed(1.5)
     then
@@ -1522,7 +1522,7 @@ end
 
 --- @return boolean
 function AiStateEngage:movementPlantSpot()
-    if AiUtility.isClientThreatenedMajor then
+    if AiThreats.threatLevel >= AiThreats.threatLevels.HIGH then
         return false
     end
 
@@ -2275,11 +2275,11 @@ function AiStateEngage:attackingHandleWeaponSwitchAndReload(cmd)
     end
 
     if LocalPlayer:isHoldingPrimary() then
-        if ammoRatio == 0 and AiUtility.isClientThreatenedMajor and isAllowedToEquipPistol then
+        if ammoRatio == 0 and AiThreats.threatLevel == AiThreats.threatLevels.EXTREME and isAllowedToEquipPistol then
             LocalPlayer.equipPistol()
         end
     else
-        if ammoRatio == 0 and AiUtility.isClientThreatenedMajor then
+        if ammoRatio == 0 and AiThreats.threatLevel == AiThreats.threatLevels.EXTREME then
             cmd.in_reload = true
 
             return true
