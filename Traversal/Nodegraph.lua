@@ -102,7 +102,7 @@ function Nodegraph.setup()
 end
 
 --- @return void
-function Nodegraph.calculateNodeVisibility()
+function Nodegraph.computeVisgraph()
     local nodes = Nodegraph.getOfType(NodeType.traverse)
     local sortedNodes = Table.getSorted(nodes, function(a, b)
     	return a.id < b.id
@@ -907,7 +907,7 @@ function Nodegraph.loadFromString(data)
         node:onSetup(Nodegraph)
     end
 
-    Nodegraph.calculateNodeVisibility()
+    Nodegraph.computeVisgraph()
 
     Nodegraph.isLoaded = true
 end

@@ -7,8 +7,8 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
-local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
@@ -69,10 +69,6 @@ function AiStateDefendHostageCarrier:assess()
 
         if closestDistance > 500 then
             return AiPriority.DEFEND_HOSTAGE_CARRIER_ACTIVE
-        end
-
-        if AiUtility.isClientThreatenedMinor then
-            return AiPriority.IGNORE
         end
 
         return AiPriority.DEFEND_HOSTAGE_CARRIER_PASSIVE

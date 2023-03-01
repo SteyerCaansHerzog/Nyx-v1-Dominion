@@ -212,7 +212,7 @@ function AiStatePickupItems:assess()
 
         if not LocalPlayer:hasPrimary() then
             priority = AiPriority.PICKUP_WEAPON_URGENT
-        elseif AiUtility.isRoundOver and not AiUtility.isClientThreatenedMinor then
+        elseif AiUtility.isRoundOver and AiThreats.threatLevel <= AiThreats.threatLevels.HIGH then
             priority = AiPriority.PICKUP_WEAPON_ROUND_OVER
         end
 

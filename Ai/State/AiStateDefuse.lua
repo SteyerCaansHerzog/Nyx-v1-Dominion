@@ -129,7 +129,7 @@ function AiStateDefuse:assess()
     end
 
     -- We're not threatened, but time is running out.
-    if not AiUtility.isClientThreatenedMinor and AiUtility.bombDetonationTime < 15 then
+    if AiThreats.threatLevel <= AiThreats.threatLevels.MEDIUM and AiUtility.bombDetonationTime < 15 then
         return AiPriority.DEFUSE_ACTIVE
     end
 

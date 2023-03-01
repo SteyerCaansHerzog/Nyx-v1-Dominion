@@ -9,6 +9,7 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
@@ -70,7 +71,7 @@ function AiStateGraffiti:assess()
         self.killCount = 0
     end
 
-    if AiUtility.isClientThreatenedMinor then
+    if AiThreats.threatLevel >= AiThreats.threatLevels.HIGH then
         return AiPriority.IGNORE
     end
 

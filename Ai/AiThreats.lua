@@ -25,11 +25,11 @@ local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
 --{{{ Definitions
 --- @class ThreatLevel
 local ThreatLevel = {
-	NONE = 0,
-	LOW = 1,
-	MEDIUM = 2,
-	HIGH = 3,
-	EXTREME = 4,
+	NONE = 0, -- No threats.
+	LOW = 1, -- Threats far away.
+	MEDIUM = 2, -- Threats able to peek within 10-15 seconds.
+	HIGH = 3, -- Threats able to peek us within 5-10 seconds.
+	EXTREME = 4, -- Threats are able to peek us within 1-4 seconds, or are visible.
 }
 --}}}
 

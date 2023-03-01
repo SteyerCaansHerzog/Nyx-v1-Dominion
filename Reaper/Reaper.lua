@@ -23,6 +23,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
@@ -829,7 +830,7 @@ function Reaper:think()
 			isInGame = Server.isIngame(),
 			isLobbyHost = isLobbyHost,
 			isLobbyQueuing = isLobbyQueuing,
-			isThreatened = AiUtility.isClientThreatenedMinor,
+			isThreatened = AiThreats.threatLevel >= AiThreats.threatLevels.MEDIUM,
 			isWarmup = isWarmup,
 			lastKeepAliveAt = Time.getUnixTimestamp(),
 			lobbyMemberCount = lobbyMemberCount,

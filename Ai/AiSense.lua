@@ -9,6 +9,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 --}}}
@@ -354,7 +355,7 @@ function AiSense.think()
 
 				break
 			else
-				if AiUtility.threats[enemy.eid] then
+				if AiThreats.enemyThreatLevels[enemy.eid] <= AiThreats.threatLevels.MEDIUM then
 					-- The enemy is occluded by cover, but they could peek soon.
 					AiSense.setAwarenessLevel(enemy, AwarenessLevel.IMMEDIATE_SHALLOW_OCCLUDED)
 				else

@@ -17,6 +17,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AStar = require "gamesense/Nyx/v1/Dominion/Traversal/AStar"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
@@ -24,11 +25,11 @@ local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
+local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
-local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --}}}
 
 --{{{ Definitions
@@ -1330,7 +1331,7 @@ function Pathfinder.traverseActivePath(cmd)
 	-- Randomly jump, because humans do that sometimes.
 	if Pathfinder.randomJumpIntervalTimer:isElapsedThenRestart(Pathfinder.randomJumpIntervalTime)
 		and isAllowedToRandomlyJump
-		and not AiUtility.isClientThreatenedMinor
+		and AiThreats.threatLevel <= AiThreats.threatLevels.LOW
 		and distanceToGoal > 1000
 	then
 		Pathfinder.randomJumpIntervalTime = Math.getRandomFloat(1, 90)

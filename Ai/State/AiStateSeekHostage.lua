@@ -9,9 +9,10 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
 
 --{{{ Modules
-local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
@@ -66,7 +67,7 @@ function AiStateSeekHostage:assess()
         return AiPriority.IGNORE
     end
 
-    if AiUtility.isClientThreatenedMinor then
+    if AiThreats.threatLevel >= AiThreats.threatLevels.HIGH then
         return AiPriority.IGNORE
     end
 

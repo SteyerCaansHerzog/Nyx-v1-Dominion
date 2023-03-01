@@ -18,6 +18,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiSense = require "gamesense/Nyx/v1/Dominion/Ai/AiSense"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
@@ -651,7 +652,7 @@ function VirtualMouse.setIdealLookAhead(idealViewAngles)
 	local lookAheadNode
 	local lookAheadBy = 4
 
-	if AiUtility.isClientThreatenedMinor
+	if AiThreats.threatLevel == AiThreats.threatLevels.EXTREME
 		or (AiUtility.closestEnemy and LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) < 1250)
 	then
 		lookAheadBy = 2

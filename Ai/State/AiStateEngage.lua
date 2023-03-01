@@ -396,9 +396,6 @@ end
 
 --- @return void
 function AiStateEngage:assess()
-    if true then
-        return AiPriority.IGNORE
-    end
     self:setBestTarget()
     -- This is effectively a global behaviour, dependent on code inside this class.
     self:handlePreAimMapAngle()
@@ -703,7 +700,7 @@ end
 
 --- @return void
 function AiStateEngage:pingEnemy()
-    if not AiUtility.isClientThreatenedMinor then
+    if AiThreats.threatLevel <= AiThreats.threatLevels.LOW then
         return
     end
 
@@ -785,91 +782,74 @@ end
 
 --- @return Player
 function AiStateEngage:setBestTarget()
-    --- @type Player
-    local selectedEnemy
     local lowestFov = math.huge
-    local closestDistance = math.huge
+    local highestThreatLevel = AiThreats.threatLevels.NONE
     local origin = LocalPlayer:getOrigin()
 
+    --- @type Player
+    local tentativeOccludedTarget
+
+    --- @type Player
+    local tentativeVisibleTarget
+
+    --- @type Player
+    local importantTarget
+
+    --- @type Player
+    local selectedBestTarget
+
     for _, enemy in pairs(AiUtility.enemies) do
-        local distance = origin:getDistance(enemy:getOrigin())
+        local isTargetingPlanter = not AiUtility.isLastAlive and AiUtility.bombCarrier and AiUtility.bombCarrier:is(enemy) and AiUtility.isBombBeingPlantedByEnemy
 
-        -- We can't handle enemies cross-map very well.
-        -- Dormant enemies cause dithering.
-        if not AiUtility.threats[enemy.eid] and distance > 1500 then
-            break
-        end
+        -- We assume the enemy is known to us.
+        if enemy:m_bIsDefusing() == 1
+            or enemy:m_bIsGrabbingHostage() == 1
+            or isTargetingPlanter
+        then
+            importantTarget = enemy
 
-        -- Defuser.
-        if enemy:m_bIsDefusing() == 1 then
-            selectedEnemy = enemy
+            -- Ignore other targets.
+            if AiUtility.visibleEnemies[enemy.eid] then
+                tentativeVisibleTarget = enemy
 
-            break
-        end
-
-        -- Hostage carrier.
-        if AiUtility.hostageCarriers[enemy.eid] then
-            selectedEnemy = enemy
-
-            break
-        end
-
-        -- Picking up a hostage.
-        if enemy:m_bIsGrabbingHostage() == 1 then
-            selectedEnemy = enemy
-
-            break
-        end
-
-        -- Planter.
-        if AiUtility.bombCarrier and AiUtility.bombCarrier:is(enemy) and AiUtility.isBombBeingPlantedByEnemy then
-            selectedEnemy = enemy
-
-            break
+                break
+            end
         end
 
         if self:isAwareOfEnemy(enemy) then
-            if distance < closestDistance then
-                closestDistance = distance
-                selectedEnemy = enemy
+            if AiUtility.visibleEnemies[enemy.eid] then
+                -- Select visible enemies based on the crosshair field of view.
+                local fov = AiUtility.enemyFovs[enemy.eid]
+
+                if fov < lowestFov then
+                    lowestFov = fov
+                    tentativeVisibleTarget = enemy
+                end
+            else
+                -- Select occluded enemies based on their threat level.
+                local threatLevel = AiThreats.enemyThreatLevels[enemy.eid]
+
+                if threatLevel > highestThreatLevel then
+                    highestThreatLevel = highestThreatLevel
+                    tentativeOccludedTarget = enemy
+                end
             end
         end
     end
 
     local isUrgent = false
 
-    for _, enemy in pairs(AiUtility.visibleEnemies) do
-        -- We run these if statements again.
-        -- The AI will defer to attacking visible enemies, but if the visible enemy is doing any of the below,
-        -- then we want to focus on them instead.
-
-        -- Defuser.
-        if enemy:m_bIsDefusing() == 1 then
-            selectedEnemy = enemy
-
-            break
-        end
-
-        -- Hostage carrier.
-        if AiUtility.hostageCarriers[enemy.eid] then
-            selectedEnemy = enemy
-
-            break
-        end
-
-        -- Picking up a hostage.
-        if enemy:m_bIsGrabbingHostage() == 1 then
-            selectedEnemy = enemy
-
-            break
-        end
-
-        local fov = AiUtility.enemyFovs[enemy.eid]
-
-        if self:isAwareOfEnemy(enemy) and fov < lowestFov then
-            lowestFov = fov
-            selectedEnemy = enemy
-            isUrgent = true
+    -- Pick the best visible target if there is one.
+    -- Otherwise, pick the important target if there is one.
+    -- Otherwise, pick the best occluded target if there is one.
+    if tentativeVisibleTarget then
+        isUrgent = true
+        selectedBestTarget = tentativeVisibleTarget
+    elseif tentativeOccludedTarget then
+        if importantTarget then
+            selectedBestTarget = importantTarget
+        elseif origin:getDistance(tentativeOccludedTarget:getOrigin()) < 1500 then
+            selectedBestTarget = tentativeOccludedTarget
         end
     end
 
@@ -882,9 +862,9 @@ function AiStateEngage:setBestTarget()
     if (not self.bestTarget or not self.bestTarget:isAlive())
         or self.setBestTargetTimer:isElapsedThenRestart(1.5) or isUrgent
     then
-        if self.bestTarget and selectedEnemy then
+        if self.bestTarget and selectedBestTarget then
             -- Clear last valid origin as it's no longer for the same target.
-            if selectedEnemy:is(self.bestTarget) then
+            if selectedBestTarget:is(self.bestTarget) then
                 self.lastBestTargetValidOrigin = nil
             end
 
@@ -895,12 +875,12 @@ function AiStateEngage:setBestTarget()
                 self.lastBestTargetValidOrigin = targetOrigin
             end
 
-            if not self.bestTarget:is(selectedEnemy) or not AiUtility.visibleEnemies[self.bestTarget.eid] then
+            if not self.bestTarget:is(selectedBestTarget) or not AiUtility.visibleEnemies[self.bestTarget.eid] then
                 self.isLockedOntoTarget = false
             end
         end
 
-        self.bestTarget = selectedEnemy
+        self.bestTarget = selectedBestTarget
     end
 
     if self.bestTarget and AiUtility.visibleEnemies[self.bestTarget.eid] then
@@ -909,7 +889,7 @@ function AiStateEngage:setBestTarget()
 
     local isAllowedToPreAim = true
 
-    if AiSense.getAwareness(selectedEnemy) >= AiSense.awareness.OLD
+    if AiSense.getAwareness(selectedBestTarget) >= AiSense.awareness.OLD
         and lowestFov > 90
     then
         isAllowedToPreAim = false
@@ -917,7 +897,7 @@ function AiStateEngage:setBestTarget()
 
     self.isAllowedToPreAim = isAllowedToPreAim
 
-    self:setWeaponStats(selectedEnemy)
+    self:setWeaponStats(selectedBestTarget)
     self:setIsVisibleToBestTarget()
 end
 
@@ -2285,7 +2265,7 @@ function AiStateEngage:attackingHandleWeaponSwitchAndReload(cmd)
             return true
         end
 
-        if not AiUtility.isClientThreatenedMinor then
+        if AiThreats.threatLevel <= AiThreats.threatLevels.MEDIUM then
             LocalPlayer.equipPrimary()
         end
     end
