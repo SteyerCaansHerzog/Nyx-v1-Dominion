@@ -239,7 +239,7 @@ end
 function AiStateEvade:jumpEvasionBackward(cmd)
     self.jumpEvasionAngle:offset(0, 8)
 
-    cmd.in_right = true
+    cmd.in_right = true -- todo incorrect param
     cmd.sidemove = 450
     cmd.in_back = true
     cmd.forwardmove = -450
@@ -250,7 +250,7 @@ end
 function AiStateEvade:jumpEvasionForward(cmd)
     self.jumpEvasionAngle:offset(0, 8)
 
-    cmd.in_left = true -- todo
+    cmd.in_left = true -- todo incorrect param
     cmd.sidemove = -450
     cmd.in_forward = true
     cmd.forwardmove = 450
@@ -265,7 +265,7 @@ end
 
 --- @return void
 function AiStateEvade:moveToCover()
-    local cover = self:getCoverNode(800, AiUtility.clientThreatenedBy, 135)
+    local cover = self:getCoverNode(800, AiThreats.highestThreat, 135)
 
     if not cover then
         return

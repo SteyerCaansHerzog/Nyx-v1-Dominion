@@ -1662,7 +1662,7 @@ function AiStateEngage:movementAvoidSmokes()
         return
     end
 
-    if AiUtility.totalThreats == 0 then
+    if AiThreats.totalThreats == 0 then
         return
     end
 
@@ -1707,7 +1707,7 @@ function AiStateEngage:movementBackUpFromThreats()
     self.lookAtBackingUpOrigin = nil
 
     if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
-        if AiUtility.totalThreats < 2 then
+        if AiThreats.totalThreats < 2 then
             return
         elseif self.isStrafePeeking then
             return
@@ -1717,7 +1717,7 @@ function AiStateEngage:movementBackUpFromThreats()
             return
         end
     else
-        if AiUtility.totalThreats < 2 then
+        if AiThreats.totalThreats < 2 then
             return
         elseif self.isStrafePeeking then
             return
@@ -2920,7 +2920,7 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
         self:actionStop(cmd)
 
         isVelocityOk = speed < WeaponMovementVelocity.STANDING_STILL_CLOSE
-    elseif AiUtility.totalThreats > 1 then
+    elseif AiThreats.totalThreats > 1 then
         self:actionBackUp()
     end
 
@@ -2969,7 +2969,7 @@ function AiStateEngage:shootLight(cmd, aimAtOrigin, fov, weapon)
         self:actionStrafe(cmd)
 
         isVelocityOk = speed < WeaponMovementVelocity.DUCKING
-    elseif AiUtility.totalThreats > 1 then
+    elseif AiThreats.totalThreats > 1 then
         self:actionBackUp()
     end
 
@@ -3001,7 +3001,7 @@ function AiStateEngage:shootShotgun(cmd, aimAtOrigin, fov, weapon)
         self:actionCounterStrafe()
     elseif distance > 1000 then
         return
-    elseif AiUtility.totalThreats > 1 then
+    elseif AiThreats.totalThreats > 1 then
         self:actionBackUp()
     end
 

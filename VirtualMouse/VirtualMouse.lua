@@ -733,8 +733,8 @@ function VirtualMouse.setIdealWatchCorner(idealViewAngles)
 	-- Force the AI to look at the corner for 1.5 seconds to prevent dithering,
 	-- as AiUtility.clientThreatenedFromOrigin is rapidly set and unset.
 	if AiUtility.clientThreatenedFromOrigin then
-		VirtualMouse.watchCornerOrigin = AiUtility.clientThreatenedFromOrigin
-		VirtualMouse.watchCornerOriginPlayer = AiUtility.clientThreatenedFromOriginPlayer
+		VirtualMouse.watchCornerOriginPlayer = AiThreats.highestThreat
+		VirtualMouse.watchCornerOrigin = AiThreats.highestThreatOrigin
 
 		VirtualMouse.watchCornerTimer:start()
 	end

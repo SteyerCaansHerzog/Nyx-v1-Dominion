@@ -50,8 +50,11 @@ local ThreatLevel = {
 --- @field threatLevel number
 --- @field threatLevels ThreatLevel
 --- @field threats Player[]
+--- @field totalThreats number
 --- @field threatVisgraph NodeTypeTraverse[]
 --- @field visibleEnemyNodes table<number, NodeTypeTraverse[]>
+--- @field highestThreat Player
+--- @field highestThreatOrigin Vector3
 local AiThreats = {
 	threatLevels = ThreatLevel
 }
@@ -87,12 +90,12 @@ end
 function AiThreats.reset()
 	AiThreats.cacheRefreshRequired = {}
 	AiThreats.clientVisgraph = {}
+	AiThreats.clientVisgraphOrigin = nil
 	AiThreats.closestVisibleEnemyNodes = {}
 	AiThreats.determineThreatIndex = 0
 	AiThreats.enemyThreatLevels = {}
-	AiThreats.enemyVisgraphs = {}
-	AiThreats.clientVisgraphOrigin = nil
 	AiThreats.enemyVisgraphOrigins = {}
+	AiThreats.enemyVisgraphs = {}
 	AiThreats.lastUpdatedThreatTimers = {}
 	AiThreats.processEnemyIndex = 0
 	AiThreats.threatCount = 0
@@ -100,6 +103,7 @@ function AiThreats.reset()
 	AiThreats.threatLevel = ThreatLevel.NONE
 	AiThreats.threats = {}
 	AiThreats.threatVisgraph = {}
+	AiThreats.totalThreats = 0
 	AiThreats.visibleEnemyNodes = {}
 end
 
@@ -278,12 +282,13 @@ end
 --- @param player Player
 --- @return void
 function AiThreats.clearCachedEnemy(player)
+	AiThreats.closestVisibleEnemyNodes[player.eid] = nil
+	AiThreats.enemyThreatLevels[player.eid] = nil
 	AiThreats.enemyVisgraphOrigins[player.eid] = nil
 	AiThreats.enemyVisgraphs[player.eid] = nil
-	AiThreats.enemyThreatLevels[player.eid] = nil
-	AiThreats.cacheRefreshRequired[player.eid] = true
+	AiThreats.threats[player.eid] = nil
 	AiThreats.visibleEnemyNodes[player.eid] = nil
-	AiThreats.closestVisibleEnemyNodes[player.eid] = nil
+	AiThreats.cacheRefreshRequired[player.eid] = true
 end
 
 --- @return void
@@ -370,6 +375,30 @@ function AiThreats.updateThreatVisgraph()
 end
 
 --- @return void
+function AiThreats.updateClosestThreat()
+	local highestThreatLevel = ThreatLevel.NONE
+	local closestDistance = math.huge
+	local origin = LocalPlayer:getOrigin()
+	local closestThreat
+	local closestThreatOrigin
+
+	for eid, visgraphOrigin in pairs(AiThreats.enemyVisgraphOrigins) do
+		local threatLevel = AiThreats.enemyThreatLevels[eid]
+		local distance = origin
+
+		if threatLevel >= highestThreatLevel and distance < closestDistance then
+			closestDistance = distance
+			highestThreatLevel = threatLevel
+			closestThreat = eid
+			closestThreatOrigin = visgraphOrigin
+		end
+	end
+
+	AiThreats.highestThreat = closestThreat and Player:new(closestThreat)
+	AiThreats.highestThreatOrigin = closestThreatOrigin
+end
+
+--- @return void
 function AiThreats.determineThreats()
 	-- No visgraphs to process.
 	if Table.isEmpty(AiThreats.enemyVisgraphs) then
@@ -446,8 +475,6 @@ function AiThreats.determineThreats()
 			break
 		end
 
-		AiThreats.updateThreatVisgraph()
-
 		local isExtreme = AiThreats.isThreatExtremeAndUpdateVisibleEnemyVisgraph(eid, visgraph)
 
 		if isExtreme then
@@ -467,7 +494,13 @@ function AiThreats.determineThreats()
 
 		-- This is set to nil when the visgraph becomes invalid.
 		AiThreats.enemyThreatLevels[eid] = transientThreatLevel
+		AiThreats.threats[eid] = Player:new(eid)
 	until true end
+
+	AiThreats.totalThreats = Table.getCount(AiThreats.threats)
+
+	AiThreats.updateClosestThreat()
+	AiThreats.updateThreatVisgraph()
 end
 
 return Nyx.class("AiThreats", AiThreats)
