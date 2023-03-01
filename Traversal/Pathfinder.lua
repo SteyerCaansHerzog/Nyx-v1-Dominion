@@ -137,6 +137,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field pathfindIntervalTimer Timer
 --- @field randomJumpIntervalTime number
 --- @field randomJumpIntervalTimer Timer
+--- @field onNewPathCallbacks table<number, fun(): void>
 local Pathfinder = {}
 
 --- @return void
@@ -167,6 +168,7 @@ function Pathfinder.initFields()
 	Pathfinder.pathfindIntervalTimer = Timer:new():startThenElapse()
 	Pathfinder.randomJumpIntervalTime = Math.getRandomFloat(0, 160)
 	Pathfinder.randomJumpIntervalTimer = Timer:new():start()
+	Pathfinder.onNewPathCallbacks = {}
 end
 
 --- @return void
@@ -281,6 +283,12 @@ function Pathfinder.initMenu()
 	MenuGroup.enablePathfinder = MenuGroup.group:addCheckbox(" > Enable Pathfinder"):setParent(MenuGroup.master)
 	MenuGroup.enableMovement = MenuGroup.group:addCheckbox("    > Enable Movement"):setParent(MenuGroup.enablePathfinder)
 	MenuGroup.visualisePath = MenuGroup.group:addCheckbox("    > Visualise Path"):setParent(MenuGroup.enablePathfinder)
+end
+
+--- @param callback fun(): void
+--- @return void
+function Pathfinder.onNewPath(callback)
+	table.insert(Pathfinder.onNewPathCallbacks, callback)
 end
 
 --- @param bombsite NodeTypeObjective
@@ -896,6 +904,10 @@ function Pathfinder.createPath()
 
 	if Pathfinder.isLoggingEnabled then
 		Logger.console(Logger.INFO, Localization.pathfinderNewTask, pathfinderOptions.task)
+	end
+
+	for _, callback in pairs(Pathfinder.onNewPathCallbacks) do
+		callback()
 	end
 end
 

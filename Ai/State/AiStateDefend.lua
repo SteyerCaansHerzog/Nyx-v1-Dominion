@@ -319,10 +319,6 @@ function AiStateDefend:isEnemyHoldable()
         return false
     end
 
-    if AiUtility.isClientThreatenedMajor then
-        return false
-    end
-
     if Table.isEmpty(AiUtility.enemies) then
         return false
     end

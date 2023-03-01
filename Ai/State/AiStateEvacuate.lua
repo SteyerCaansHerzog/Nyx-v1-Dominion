@@ -12,6 +12,7 @@ local Trace = require "gamesense/Nyx/v1/Api/Trace"
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
@@ -129,14 +130,13 @@ function AiStateEvacuate:isRoundWinProbabilityLow()
 
     -- Prevent sitting in a corner and being murdered.
     -- This isn't actually part of "is round win probability low?".
-    if self.isAtDestination and AiUtility.isClientThreatenedMajor then
+    if self.isAtDestination and AiThreats.threatLevel == AiThreats.threatLevels.EXTREME then
         return false
     end
 
     local roundsPlayed = Entity.getGameRules():m_totalRoundsPlayed()
     local maxRounds = cvar.mp_maxrounds:get_int()
-    local halfTime = math.ceil(maxRounds / 2)
-    local clinch = halfTime
+    local halftimeRound = math.ceil(maxRounds / 2)
     local scoreData = Table.fromPanorama(Panorama.GameStateAPI.GetScoreDataJSO())
     local tWins = scoreData.teamdata.TERRORIST.score
     local ctWins = scoreData.teamdata.CT.score
@@ -148,8 +148,13 @@ function AiStateEvacuate:isRoundWinProbabilityLow()
         enemyWins = tWins
     end
 
-    -- First round, last round of half, last round of game.
-    if roundsPlayed == 0 or roundsPlayed == (maxRounds - 1) or roundsPlayed == (halfTime - 1) or roundsPlayed == halfTime or enemyWins == clinch then
+    local isFirstRoundFirstHalf = roundsPlayed == 0
+    local isLastRoundBeforeHalftime = roundsPlayed == (halftimeRound - 1)
+    local isFirstRoundSecondHalf = roundsPlayed == halftimeRound
+    local isMatchPointToEnemy = enemyWins == halftimeRound
+    local isLastRound = roundsPlayed == (maxRounds - 1)
+
+    if isFirstRoundFirstHalf or isLastRoundBeforeHalftime or isFirstRoundSecondHalf or isMatchPointToEnemy or isLastRound then
         return false
     end
 

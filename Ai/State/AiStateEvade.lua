@@ -12,9 +12,10 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
 
 --{{{ Modules
-local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
@@ -76,8 +77,8 @@ function AiStateEvade:assess()
         return AiPriority.IGNORE
     end
 
-    -- We can be peeked by an enemy.
-    if not AiUtility.isClientThreatenedMajor then
+    -- We can't be peeked by an enemy.
+    if AiThreats.threatLevel < AiThreats.threatLevels.EXTREME then
         return AiPriority.IGNORE
     end
 
@@ -264,7 +265,7 @@ end
 
 --- @return void
 function AiStateEvade:moveToCover()
-    local cover = self:getCoverNode(800, AiUtility.clientThreatenedBy)
+    local cover = self:getCoverNode(800, AiUtility.clientThreatenedBy, 135)
 
     if not cover then
         return

@@ -12,6 +12,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
@@ -92,16 +93,6 @@ function AiStateDefuse:assess()
     local isCovered = false
     local bombOrigin = AiUtility.plantedBomb:m_vecOrigin()
 
-    -- Safe to defuse.
-    if not AiUtility.closestEnemy then
-        return AiPriority.DEFUSE_ACTIVE
-    end
-
-    -- Enemy is far away and isn't a threat to us.
-    if not AiUtility.isClientThreatenedMajor and AiUtility.closestEnemy and AiUtility.closestEnemy:getOrigin():getDistance(bombOrigin) > 1500 then
-        return AiPriority.DEFUSE_ACTIVE
-    end
-
     for _, teammate in pairs(AiUtility.teammates) do
         local teammateOrigin = teammate:getOrigin()
 
@@ -120,6 +111,16 @@ function AiStateDefuse:assess()
     -- We're in a smoke.
     if clientDistanceToBomb < 100 and self.ai.routines.handleOccluderTraversal.smokeInsideOf then
         return AiPriority.DEFUSE_COVERED
+    end
+
+    -- Safe to defuse.
+    if not AiUtility.closestEnemy then
+        return AiPriority.DEFUSE_ACTIVE
+    end
+
+    -- Enemy is far away and isn't a threat to us.
+    if AiThreats.threatLevel < AiThreats.threatLevels.HIGH and AiUtility.closestEnemy and AiUtility.closestEnemy:getOrigin():getDistance(bombOrigin) > 1500 then
+        return AiPriority.DEFUSE_ACTIVE
     end
 
     -- We're close to the bomb and covered.

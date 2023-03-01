@@ -15,6 +15,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiSense = require "gamesense/Nyx/v1/Dominion/Ai/AiSense"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
@@ -78,7 +79,7 @@ function AiStateFlashbangDynamic:assess()
     end
 
     -- AI is threatened. Don't try to throw a flashbang.
-    if AiUtility.isClientThreatenedMajor or AiUtility.isEnemyVisible then
+    if AiThreats.threatLevel == AiThreats.threatLevels.EXTREME or AiUtility.isEnemyVisible then
         self.threatCooldownTimer:start()
     end
 

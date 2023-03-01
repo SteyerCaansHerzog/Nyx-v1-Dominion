@@ -97,7 +97,7 @@ function AiStateDrop:think(cmd)
     local isFreezeTime = AiUtility.gameRules:m_bFreezePeriod() == 1
 
     if isFreezeTime or distance < 300 then
-        VirtualMouse.lookAtLocation(hitbox, 9.5, VirtualMouse.noise.minor, "Drop look at requester")
+        VirtualMouse.lookAtLocation(hitbox, 9, VirtualMouse.noise.minor, "Drop look at requester")
     end
 
     if isFreezeTime or distance < 200 then

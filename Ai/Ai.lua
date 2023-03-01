@@ -27,6 +27,7 @@ local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 -- Other.
 local AiSense = require "gamesense/Nyx/v1/Dominion/Ai/AiSense"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiVoice = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoice"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"

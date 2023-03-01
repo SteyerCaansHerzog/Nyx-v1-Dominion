@@ -160,6 +160,10 @@ function VirtualMouse.initEvents()
 	Callbacks.roundPrestart(function()
 		VirtualMouse.blockMouseControlTimer:start()
 	end)
+
+	Pathfinder.onNewPath(function()
+		VirtualMouse.lookAheadOrigin = nil
+	end)
 end
 
 --- @return void
@@ -696,7 +700,7 @@ function VirtualMouse.setIdealLookAhead(idealViewAngles)
 	-- Causes the look at origin to move ahead faster when the AI is closer to it.
 	local speedBoost = Math.getClampedInversedFloat(distance, 1000, 0, 1000)
 
-	VirtualMouse.lookAheadOrigin = Animate.lerp(VirtualMouse.lookAheadOrigin, lookOrigin, (1.35 + speedBoost) * Time.delta)
+	VirtualMouse.lookAheadOrigin = Animate.lerp(VirtualMouse.lookAheadOrigin, lookOrigin, (1.95 + speedBoost) * Time.delta)
 
 	local lookAngle = LocalPlayer.getEyeOrigin():getAngle(VirtualMouse.lookAheadOrigin)
 

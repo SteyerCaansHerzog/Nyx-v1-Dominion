@@ -20,6 +20,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiSense = require "gamesense/Nyx/v1/Dominion/Ai/AiSense"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
@@ -73,6 +74,7 @@ local WeaponMovementVelocity =  {
 --- @field aimSpeed number
 --- @field anticipateTime number
 --- @field bestTarget Player
+--- @field bestTargetVisibleForTimer Timer
 --- @field blockMovementAfterPlantTimer Timer
 --- @field blockTime number
 --- @field blockTimer Timer
@@ -178,7 +180,6 @@ local WeaponMovementVelocity =  {
 --- @field strafePeekTimer Timer
 --- @field tapFireTime number
 --- @field tapFireTimer Timer
---- @field bestTargetVisibleForTimer Timer
 --- @field visualizerCallbacks function[]
 --- @field visualizerExpiryTimers Timer[]
 --- @field waitForTargetVisibleTimer Timer
@@ -395,6 +396,9 @@ end
 
 --- @return void
 function AiStateEngage:assess()
+    if true then
+        return AiPriority.IGNORE
+    end
     self:setBestTarget()
     -- This is effectively a global behaviour, dependent on code inside this class.
     self:handlePreAimMapAngle()
@@ -1695,7 +1699,7 @@ function AiStateEngage:movementAvoidSmokes()
     end
 
     if nearSmoke then
-        local cover = self:getCoverNode(800, self.bestTarget)
+        local cover = self:getCoverNode(800, self.bestTarget, 90)
 
         if cover then
             self.activity = "Backing up from smoke"
@@ -1761,7 +1765,7 @@ function AiStateEngage:movementBackUpFromThreats()
         end
     end
 
-    local cover = self:getCoverNode(500, self.bestTarget)
+    local cover = self:getCoverNode(500, self.bestTarget, 135)
 
     if cover then
         self.activity = "Backing up from enemies"
@@ -1917,73 +1921,57 @@ function AiStateEngage:movementToTarget()
         isEnemyDisplaced = true
     end
 
-    if not Pathfinder.isOnValidPath() or isEnemyDisplaced then
-        local targetEyeOrigin = targetOrigin:clone():offset(0, 0, 64)
+    if Pathfinder.isOnValidPath() and not isEnemyDisplaced then
+        return
+    end
 
-        --- @type NodeTypeTraverse[]
-        local selectedNodes = {}
-        --- @type NodeTypeTraverse
-        local closestNode
-        local closestNodeDistance = math.huge
-        local i = 0
+    --- @type NodeTypeTraverse[]
+    local selectedNodes = AiThreats.enemyVisgraphs[self.bestTarget.eid]
+    local visgraphOrigin = AiThreats.enemyVisgraphOrigins[self.bestTarget.eid]
 
-        -- Find a nearby node that is visible to the enemy.
-        for _, node in pairs(Nodegraph.get(Node.traverseGeneric)) do
-            local distance = targetOrigin:getDistance(node.floorOrigin)
+    --- @type NodeTypeTraverse
+    local closestNode
+    local closestDistance = math.huge
 
-            -- Determine closest node. This is our backup in case there's no visible nodes.
-            if distance < closestNodeDistance then
-                closestNodeDistance = distance
-                closestNode = node
-            end
+    for _, node in pairs(selectedNodes) do
+        local distance = visgraphOrigin:getDistance(node.floorOrigin)
 
-            -- Find a visible node nearby.
-            if distance < 1000 then
-                i = i + 1
-
-                if i > 50 then
-                    break
-                end
-
-                local trace = Trace.getLineToPosition(targetEyeOrigin, node.origin, AiUtility.traceOptionsPathfinding, "AiStateEngage.moveOnBestTarget<FindNodeVisibleToEnemy>")
-
-                if not trace.isIntersectingGeometry then
-                    table.insert(selectedNodes, node)
-                end
-            end
+        if distance < closestDistance then
+            closestDistance = distance
+            closestNode = node
         end
+    end
 
-        self.lastBestTargetOrigin = targetOrigin
+    self.lastBestTargetOrigin = targetOrigin
 
-        -- Move to bomb.
-        if LocalPlayer:isCounterTerrorist() and AiUtility.isBombBeingDefusedByEnemy then
-            Pathfinder.moveToLocation(AiUtility.plantedBomb:m_vecOrigin(), {
-                task = "Engage move to defuser",
-                isAllowedToTraverseInactives = true,
-                goalReachedRadius = 32
-            })
-        end
+    -- Move to bomb.
+    if LocalPlayer:isCounterTerrorist() and AiUtility.isBombBeingDefusedByEnemy then
+        Pathfinder.moveToLocation(AiUtility.plantedBomb:m_vecOrigin(), {
+            task = "Engage move to defuser",
+            isAllowedToTraverseInactives = true,
+            goalReachedRadius = 32
+        })
+    end
 
-        local isPushingToEnemyPosition = false
+    local isPushingToEnemyPosition = false
 
-        if AiUtility.isHostageCarriedByEnemy or AiUtility.isHostageBeingPickedUpByEnemy then
-            isPushingToEnemyPosition = true
-        end
+    if AiUtility.isHostageCarriedByEnemy or AiUtility.isHostageBeingPickedUpByEnemy then
+        isPushingToEnemyPosition = true
+    end
 
-        if AiUtility.isBombBeingPlantedByEnemy or AiUtility.plantedBomb then
-            isPushingToEnemyPosition = true
-        end
+    if AiUtility.isBombBeingPlantedByEnemy or AiUtility.plantedBomb then
+        isPushingToEnemyPosition = true
+    end
 
-        if LocalPlayer:isTerrorist() and AiUtility.mapInfo.gamemode ~= AiUtility.gamemodes.HOSTAGE and AiUtility.timeData.roundtime_remaining < 25 and not AiUtility.plantedBomb then
-            isPushingToEnemyPosition = true
-        end
+    if LocalPlayer:isTerrorist() and AiUtility.mapInfo.gamemode ~= AiUtility.gamemodes.HOSTAGE and AiUtility.timeData.roundtime_remaining < 25 and not AiUtility.plantedBomb then
+        isPushingToEnemyPosition = true
+    end
 
-        -- We can pathfind to a node visible to the enemy.
-        if isPushingToEnemyPosition then
-            self:moveToLocation(self.lastBestTargetValidOrigin)
-        else
-            self:moveToRandomNodeFrom(selectedNodes, closestNode)
-        end
+    -- We can pathfind to a node visible to the enemy.
+    if isPushingToEnemyPosition then
+        self:moveToLocation(self.lastBestTargetValidOrigin)
+    else
+        self:moveToRandomNodeFrom(selectedNodes, closestNode)
     end
 end
 
@@ -2931,11 +2919,13 @@ function AiStateEngage:shootPistol(cmd, aimAtOrigin, fov, weapon)
     if self.isOnBooster then
         -- Stop action can incur ducking, which we probably don't want on boost spots.
         self:actionCounterStrafe()
-    elseif distance > 1000 then
+    elseif distance > 1650 then
         self:actionStop(cmd)
 
         isVelocityOk = speed < WeaponMovementVelocity.STANDING_STILL
-    elseif distance > 500 then
+    elseif distance > 1000 then
+        self:actionStrafe(cmd)
+    elseif distance > 600 then
         if self.isTargetEasilyShotDelayed then
             local jiggle = 0.2  + Animate.sine(0.1, 0.05, 1.65)
             local angle = self.bestTarget and LocalPlayer:getOrigin():getAngle(self.bestTarget:getOrigin())
@@ -3057,7 +3047,7 @@ function AiStateEngage:shootHeavy(cmd, aimAtOrigin, fov, weapon)
     if self.isOnBooster then
         -- Stop action can incur ducking, which we probably don't want on boost spots.
         self:actionCounterStrafe()
-    elseif distance > 1000 then
+    elseif distance > 1650 then
         self:actionStop(cmd)
 
         isVelocityOk = speed < WeaponMovementVelocity.STANDING_STILL
@@ -3219,7 +3209,7 @@ function AiStateEngage:getTargetHitbox(enemy)
 
     self.isBestTargetVisible = visibleHitboxCount > 0
 
-    local duckOrigin = LocalPlayer:getOrigin():offset(0, 0, 46)
+    local duckOrigin = LocalPlayer:getOrigin():offset(0, 0, 40)
     local headOrigin = enemy:getHitboxPosition(Player.hitbox.HEAD)
     local trace = Trace.getLineToPosition(duckOrigin, headOrigin, AiUtility.traceOptionsVisible)
 
@@ -3436,7 +3426,7 @@ end
 
 --- @return void
 function AiStateEngage:actionCounterStrafe()
-    if not self.bestTargetVisibleForTimer:isElapsed(0.15) then
+    if not self.bestTargetVisibleForTimer:isElapsed(0.1) then
         Pathfinder.counterStrafe(false)
 
         return

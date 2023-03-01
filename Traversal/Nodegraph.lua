@@ -101,6 +101,34 @@ function Nodegraph.setup()
     end
 end
 
+--- @return void
+function Nodegraph.calculateNodeVisibility()
+    local nodes = Nodegraph.getOfType(NodeType.traverse)
+    local sortedNodes = Table.getSorted(nodes, function(a, b)
+    	return a.id < b.id
+    end)
+    local count = #sortedNodes
+
+    for i, from in pairs(sortedNodes) do
+        for j = i + 1, count do repeat
+            local to = sortedNodes[j]
+            local trace = Trace.getLineToPosition(
+                from.eyeOrigin,
+                to.eyeOrigin,
+                AiUtility.traceOptionsVisible,
+                "Nodegraph.calculateNodeVisibility<FindVisible>"
+            )
+
+            if trace.isIntersectingGeometry then
+                break
+            end
+
+            from.visgraph[to.id] = to
+            to.visgraph[from.id] = from
+        until true end
+    end
+end
+
 --- @param node NodeTypeBase
 --- @param isInvokingOnSetup boolean
 --- @return void
@@ -218,10 +246,12 @@ end
 function Nodegraph.find(node, filter)
     --- @type T[]
     local result = {}
+    local i = 0
 
     for _, search in pairs(Nodegraph.nodesByClass[node.__classname]) do
         if filter(search) then
-            table.insert(result, search)
+            i = i + 1
+            result[i] = search
         end
     end
 
@@ -235,10 +265,12 @@ end
 function Nodegraph.findRandom(node, filter)
     --- @type T[]
     local result = {}
+    local i = 0
 
     for _, search in pairs(Nodegraph.nodesByClass[node.__classname]) do
         if filter(search) then
-            table.insert(result, search)
+            i = i + 1
+            result[i] = search
         end
     end
 
@@ -563,12 +595,13 @@ function Nodegraph.getClosest(origin, node)
     local closest
     local closestDistance = math.huge
 
+    --- @param search NodeTypeBase
     for _, search in pairs(filter) do repeat
         if node and node.id and node.id == search.id then
             break
         end
 
-        local distance = origin:getDistance(search.origin)
+        local distance = origin:getDistance(search.floorOrigin)
 
         if distance < closestDistance then
             closestDistance = distance
@@ -592,12 +625,13 @@ function Nodegraph.getClosestOfType(origin, node)
     local closest
     local closestDistance = math.huge
 
+    --- @param search NodeTypeBase
     for _, search in pairs(Nodegraph.nodesByType[node.type]) do
         if node.id and node.id == search.id then
             break
         end
 
-        local distance = origin:getDistance(search.origin)
+        local distance = origin:getDistance(search.floorOrigin)
 
         if distance < closestDistance then
             closestDistance = distance
@@ -630,12 +664,13 @@ function Nodegraph.getWithin(origin, radius, node)
     --- @type NodeTypeBase[]
     local result = {}
 
+    --- @param search NodeTypeBase
     for _, search in pairs(filter) do repeat
         if node and node.id and node.id == search.id then
             break
         end
 
-        if origin:getDistance(search.origin) < radius then
+        if origin:getDistance(search.floorOrigin) < radius then
             table.insert(result, search)
         end
     until true end
@@ -656,12 +691,13 @@ function Nodegraph.getWithinOfType(origin, radius, node)
     --- @type NodeTypeBase[]
     local result = {}
 
+    --- @param search NodeTypeBase
     for _, search in pairs(Nodegraph.nodesByType[node.type]) do
         if node.id and node.id == search.id then
             break
         end
 
-        if origin:getDistance(search.origin) < radius then
+        if origin:getDistance(search.floorOrigin) < radius then
             table.insert(result, search)
         end
     end
@@ -870,6 +906,8 @@ function Nodegraph.loadFromString(data)
 
         node:onSetup(Nodegraph)
     end
+
+    Nodegraph.calculateNodeVisibility()
 
     Nodegraph.isLoaded = true
 end

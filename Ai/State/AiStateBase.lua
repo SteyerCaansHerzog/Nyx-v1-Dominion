@@ -9,6 +9,7 @@ local Trace = require "gamesense/Nyx/v1/Api/Trace"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
@@ -112,11 +113,11 @@ end
 
 --- @param range number
 --- @param target Player
---- @return NodeTypeBase
+--- @return NodeTypeTraverse
 function AiStateBase:getCoverNode(range, target, fov)
-    local clientOrigin = LocalPlayer:getOrigin()
     --- @type Angle
     local coverAngle
+    local clientOrigin = LocalPlayer:getOrigin()
 
     if target then
         coverAngle = clientOrigin:getAngle(target:getOrigin())
@@ -124,61 +125,23 @@ function AiStateBase:getCoverNode(range, target, fov)
         coverAngle = LocalPlayer.getCameraAngles()
     end
 
-    --- @type Vector3[]
-    local enemyEyeOrigins = {}
-
-    for _, enemy in pairs(AiUtility.enemies) do
-        table.insert(enemyEyeOrigins, enemy:getOrigin():offset(0, 0, 64))
-    end
-
-    --- @type NodeTypeTraverse
-    local farthestNode
-    local farthestDistance = -1
-    local closestOrigin
-    local i = 0
-
-    if AiUtility.closestThreat then
-        closestOrigin = AiUtility.closestThreat:getOrigin()
-    elseif AiUtility.closestEnemy then
-        closestOrigin = AiUtility.closestEnemy:getOrigin()
-    else
-        closestOrigin = clientOrigin
-    end
-
-    fov = fov or 60
-
-    for _, node in pairs(Nodegraph.get(Node.traverseGeneric)) do
-        local distance = closestOrigin:getDistance(node.floorOrigin)
-
-        if not node.isOccludedByInferno and distance > farthestDistance and clientOrigin:getDistance(node.floorOrigin) < range and coverAngle:getFov(clientOrigin, node.origin) > fov then
-            i = i + 1
-
-            if i > 50 then
-                break
-            end
-
-            farthestDistance = distance
-            farthestNode = node
-
-            local isVisibleToEnemy = false
-
-            for _, eyeOrigin in pairs(enemyEyeOrigins) do
-                local trace = Trace.getLineToPosition(eyeOrigin, node.origin, AiUtility.traceOptionsVisible, "AiStateBase.getCoverNode<FindNodeVisibleToEnemy>")
-
-                if not trace.isIntersectingGeometry then
-                    isVisibleToEnemy = true
-
-                    break
-                end
-            end
-
-            if not isVisibleToEnemy then
-                farthestNode = node
-            end
+    local nodes = Nodegraph.find(Node.traverseGeneric, function(node)
+        if AiThreats.threatVisgraph[node.id] then
+            return false
         end
-    end
 
-    return farthestNode
+        if clientOrigin:getDistance(node.floorOrigin) > range then
+            return false
+        end
+
+        if coverAngle:getFov(clientOrigin, node.floorOrigin) > fov then
+            return false
+        end
+
+        return true
+    end)
+
+    return Table.getRandom(nodes)
 end
 
 return Nyx.class("AiStateBase", AiStateBase)

@@ -26,6 +26,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiProcessBase = require "gamesense/Nyx/v1/Dominion/Ai/Process/AiProcessBase"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
@@ -140,8 +141,10 @@ function AiProcessInfo:renderSpectator()
 	local isDisplayingExtraInfo = MenuGroup.visualiseExtraInfo:get()
 	local threatLevelColors = {
 		[0] = ColorList.BACKGROUND_1,
-		[1] = Color:rgba(95, 40, 40, 255),
-		[2] = Color:rgba(95, 40, 40, 255),
+		[1] = Color:hsla(60, 0.8, 0.6, 30),
+		[2] = Color:hsla(40, 0.8, 0.6, 100),
+		[3] = Color:hsla(20, 0.8, 0.6, 150),
+		[4] = Color:hsla(0, 0.8, 0.6, 200),
 	}
 
 	--- @type Vector3[]
@@ -249,7 +252,8 @@ function AiProcessInfo:renderSpectator()
 		local colorNormal = ColorList.FONT_NORMAL:clone()
 		local colorName = colorBase:clone()
 		local colorError = ColorList.ERROR:clone()
-		local colorBg = threatLevelColors[info.threatLevel]
+		local colorBg = ColorList.BACKGROUND_1
+		local colorThreatLevel = threatLevelColors[info.threatLevel]
 		local alphaModStack = 1
 
 		if stacks[player.eid] then
@@ -272,6 +276,8 @@ function AiProcessInfo:renderSpectator()
 			colorBg:clone():setAlpha(0),
 			"h"
 		)
+
+		drawPosBottomAnimated:clone():offset(-6):drawSurfaceRectangleOutline(1, 2, Vector2:new(150, 35), colorThreatLevel)
 
 		drawPosBottomAnimated:offset(4)
 
@@ -560,12 +566,7 @@ function AiProcessInfo:think()
 			activity = self.ai.currentState.activity
 			behavior = self.ai.currentState.name
 			priority = self.ai.lastPriority
-
-			if AiUtility.isClientThreatenedMajor then
-				threatLevel = 2
-			elseif AiUtility.isClientThreatenedMinor then
-				threatLevel = 1
-			end
+			threatLevel = AiThreats.threatLevel
 
 			if self.ai.currentState.name == "Engage" and self.ai.states.engage.bestTarget then
 				currentTarget = self.ai.states.engage.bestTarget.eid

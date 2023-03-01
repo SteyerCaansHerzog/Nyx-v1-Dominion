@@ -32,6 +32,10 @@ end
 
 --- @return void
 function AiStateAvoidTeammates:assess()
+    if AiUtility.gameRules:m_bFreezePeriod() == 1 then
+        return AiPriority.IGNORE
+    end
+
     if Pathfinder.isObstructedByTeammate and LocalPlayer:m_vecVelocity():getMagnitude() < 50 then
         self.timer:ifPausedThenStart()
     else
@@ -67,7 +71,7 @@ end
 
 --- @return void
 function AiStateAvoidTeammates:move()
-    Pathfinder.moveToNode(self:getCoverNode(4096, AiUtility.closestTeammate, 20), {
+    Pathfinder.moveToNode(self:getCoverNode(4096, AiUtility.closestTeammate, 90), {
         task = "Get away from teammate",
         isAllowedToTraverseInactives = true,
         isPathfindingFromNearestNodeIfNoConnections = true,

@@ -12,6 +12,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiSense = require "gamesense/Nyx/v1/Dominion/Ai/AiSense"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
@@ -138,7 +139,7 @@ function AiStateGrenadeBase:assess()
     end
 
     -- We're threatened by an enemy.
-    if AiUtility.isClientThreatenedMajor then
+    if AiThreats.threatLevel == AiThreats.threatLevels.EXTREME then
         self.threatCooldownTimer:start()
 
         -- If we had a node, we're going to consider it used / unavailable.
@@ -398,7 +399,7 @@ function AiStateGrenadeBase:think(cmd)
     end
 
     -- Force AI to abort if majorly threatened, even when about to throw.
-    if AiUtility.isClientThreatenedMajor then
+    if AiThreats.threatLevel == AiThreats.threatLevels.EXTREME then
         self:reset()
 
         return
@@ -449,7 +450,7 @@ function AiStateGrenadeBase:think(cmd)
     if distance < 150 then
         self.ai.routines.walk:block()
 
-        VirtualMouse.lookAlongAngle(self.node.direction, 15, VirtualMouse.noise.none, "Grenade look at line-up")
+        VirtualMouse.lookAlongAngle(self.node.direction, 12, VirtualMouse.noise.none, "Grenade look at line-up")
     end
 
     if distance < 250 then

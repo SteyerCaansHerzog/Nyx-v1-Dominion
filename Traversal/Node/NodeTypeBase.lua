@@ -61,6 +61,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field description string[]
 --- @field direction Angle
 --- @field drawDistance number
+--- @field eyeOrigin Vector3
 --- @field floorOrigin Vector3
 --- @field gapCollisions NodeTypeBaseGapCollision[]
 --- @field id number
@@ -103,6 +104,7 @@ local PlanarTestList = require "gamesense/Nyx/v1/Dominion/Traversal/PlanarTestLi
 --- @field traversalCost number
 --- @field type string
 --- @field userdata table<string, any>
+--- @field visgraph NodeTypeTraverse[]
 --- @field zDeltaGoalThreshold number
 --- @field zDeltaThreshold number
 local NodeTypeBase = {
@@ -147,10 +149,21 @@ function NodeTypeBase:__init()
     self.connections = {}
     self.connectionCollisions = {}
     self.gapCollisions = {}
-    self.pathOrigin = self.origin
     self.iRenderTopLines = 0
     self.iRenderBottomLines = 0
     self.pathOffset = 0
+    self.visgraph = {}
+
+    self.pathOrigin = self.origin
+    self.floorOrigin = self.origin:clone():offset(0, 0, -18)
+
+    local height = 64
+
+    if self.isDuck then
+        height = 46
+    end
+
+    self.eyeOrigin = self.floorOrigin:clone():offset(0, 0, height)
 end
 
 --- @param node NodeTypeBase
@@ -481,9 +494,6 @@ end
 --- @param nodegraph Nodegraph
 --- @return void
 function NodeTypeBase:onSetup(nodegraph)
-    -- All nodes are always spawned approximately 18 units above the floor.
-    self.floorOrigin = self.origin:clone():offset(0, 0, -18)
-
     if self.isPlanar then
         -- We need to test from a higher position, to account for stairs or short ledges.
         local origin = self.origin:clone():offset(0, 0, 18)

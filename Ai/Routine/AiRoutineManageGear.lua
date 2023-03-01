@@ -10,6 +10,7 @@ local UserInput = require "gamesense/Nyx/v1/Api/UserInput"
 
 --{{{ Modules
 local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBase"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --}}}
@@ -64,36 +65,16 @@ end
 function AiRoutineManageGear:manageKnife(cmd)
 	local isKnifeEquippable = true
 
-	if AiUtility.isClientThreatenedMinor then
+	if AiThreats.threatLevel >= AiThreats.threatLevels.LOW then
 		isKnifeEquippable = false
-	end
-
-	local period = 3
-
-	if AiUtility.enemiesAlive == 0 then
-		period = 0.66
-	end
-
-	for _, dormantAt in pairs(AiUtility.dormantAt) do
-		local dormantTime = Time.getRealtime() - dormantAt
-
-		if dormantTime < period then
-			isKnifeEquippable = false
-
-			break
-		end
-	end
-
-	if Pathfinder.isReplayingMovementRecording then
-		isKnifeEquippable = true
-	end
-
-	if AiUtility.timeData.roundtime_elapsed < 6 then
-		isKnifeEquippable = true
 	end
 
 	if AiUtility.enemiesAlive > 0 and LocalPlayer:isReloading() then
 		isKnifeEquippable = false
+	end
+
+	if Pathfinder.isReplayingMovementRecording then
+		isKnifeEquippable = true
 	end
 
 	local isSwingingKnife = false
@@ -108,6 +89,9 @@ function AiRoutineManageGear:manageKnife(cmd)
 	if not self.swingKnifeDurationTimer:isElapsed(self.swingKnifeDurationTime) then
 		isSwingingKnife = true
 	end
+
+	local Color = require "gamesense/Nyx/v1/Api/Color"
+	Client.drawIndicatorTick(Color.WHITE, isKnifeEquippable and "knife" or "gun")
 
 	if isKnifeEquippable then
 		LocalPlayer.equipKnife()

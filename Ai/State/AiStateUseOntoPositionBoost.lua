@@ -150,7 +150,7 @@ end
 --- @return NodeTypeOntoPositionStartBoost
 function AiStateUseOntoPositionBoost:getNode()
     local clientOrigin = LocalPlayer:getOrigin()
-    local nodeClass = LocalPlayer:isTerrorist() and Node.spotOntoPositionBoostStartT or Node.spotOntoPositionBoostStartT
+    local nodeClass = LocalPlayer:isTerrorist() and Node.spotOntoPositionBoostStartT or Node.spotOntoPositionBoostStartCt
     -- Globally increase the weight of boost chances.
     local chanceMod = 1.25
 

@@ -1,3 +1,4 @@
+--- @type DominionConfig
 local Config = {
 	-- List of SteamID64 strings for accounts allowed to use admin chat commands.
 	administrators = {},

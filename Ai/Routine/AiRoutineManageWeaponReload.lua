@@ -7,6 +7,7 @@ local Table = require "gamesense/Nyx/v1/Api/Table"
 
 --{{{ Modules
 local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBase"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 --}}}
 
@@ -36,8 +37,10 @@ function AiRoutineManageWeaponReload:think(cmd)
 	-- Ratio at which the AI should reload its weapon.
 	local ratio = 0.9
 
-	if AiUtility.isClientThreatenedMinor then
-		ratio = 0.1
+	if AiThreats.threatLevel >= AiThreats.threatLevels.EXTREME then
+		ratio = 0
+	elseif AiThreats.threatLevel >= AiThreats.threatLevels.HIGH then
+		ratio = 0.15
 	elseif AiUtility.closestEnemy then
 		local distance = LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin())
 
@@ -49,7 +52,7 @@ function AiRoutineManageWeaponReload:think(cmd)
 			ratio = 0.25
 		elseif distance > 500 then
 			ratio = 0.2
-		elseif not AiUtility.isClientThreatenedMajor then
+		else
 			ratio = 0.15
 		end
 	end
@@ -65,6 +68,10 @@ function AiRoutineManageWeaponReload:think(cmd)
 	if LocalPlayer:isHoldingKnife() then
 		return
 	end
+
+	self.ai.routines.manageGear:block()
+
+	LocalPlayer.equipAvailableWeapon()
 
 	cmd.in_reload = true
 end

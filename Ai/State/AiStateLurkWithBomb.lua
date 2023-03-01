@@ -6,6 +6,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
@@ -116,7 +117,7 @@ end
 function AiStateLurkWithBomb:think(cmd)
 	self.activity = string.format("Lurking with bomb near %s", self.bombsite)
 
-	if AiUtility.isClientThreatenedMajor then
+	if AiThreats.threatLevel == AiThreats.threatLevels.EXTREME then
 		self.isSpotted = true
 	end
 

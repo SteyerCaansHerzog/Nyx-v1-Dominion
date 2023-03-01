@@ -274,6 +274,10 @@ end
 --- @param player Player
 --- @return void
 function AiSense.senseCounterTerroristsNearBombsite(player)
+	if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
+		return
+	end
+
 	if AiUtility.isBombPlanted() then
 		return
 	end

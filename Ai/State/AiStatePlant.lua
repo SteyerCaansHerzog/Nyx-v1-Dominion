@@ -9,9 +9,10 @@ local Timer = require "gamesense/Nyx/v1/Api/Timer"
 --}}}
 
 --{{{ Modules
-local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
+local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
@@ -172,7 +173,7 @@ function AiStatePlant:assess()
         return AiPriority.PLANT_COVERED
     end
 
-    if isAtPlantSpot and not AiUtility.isClientThreatenedMajor then
+    if isAtPlantSpot and AiThreats.threatLevel < AiThreats.threatLevels.EXTREME then
         return AiPriority.PLANT_COVERED
     end
 
