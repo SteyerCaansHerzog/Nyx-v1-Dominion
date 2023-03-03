@@ -14,6 +14,7 @@ local ConfigValuesDefault = require "gamesense/Nyx/v1/Dominion/Utility/ConfigVal
 --- @field clientConfigs AiProcessClientGsConfig
 --- @field clientFocusVolume number
 --- @field defaultSkillLevel number
+--- @field gptVersion string
 --- @field isClearingSteamFriends boolean
 --- @field isDebugging boolean
 --- @field isEmulatingRealUserInput boolean

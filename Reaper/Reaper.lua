@@ -304,7 +304,7 @@ function Reaper:initFields()
 
 	self.savedCommunicationStates = {
 		chatbotNormal = self.ai.chatbots.normal.isEnabled,
-		chatbotGpt3 = self.ai.chatbots.gpt3.isEnabled
+		chatbotGpt = self.ai.chatbots[Config.gptVersion].isEnabled
 	}
 
 	MenuGroup.disableHud:set(false)
@@ -1023,14 +1023,14 @@ function Reaper:think()
 
 			self.savedCommunicationStates = {
 				chatbotNormal = self.ai.chatbots.normal.isEnabled,
-				chatbotGpt3 = self.ai.chatbots.gpt3.isEnabled
+				chatbotGpt = self.ai.chatbots[Config.gptVersion].isEnabled
 			}
 
 			self.ai.chatbots.normal.isEnabled = false
-			self.ai.chatbots.gpt3.isEnabled = false
+			self.ai.chatbots[Config.gptVersion].isEnabled = false
 		else
 			self.ai.chatbots.normal.isEnabled = self.savedCommunicationStates.chatbotNormal
-			self.ai.chatbots.gpt3.isEnabled = self.savedCommunicationStates.chatbotGpt3
+			self.ai.chatbots[Config.gptVersion].isEnabled = self.savedCommunicationStates.chatbotGpt
 		end
 
 		Voice.isEnabled = not self.isActive

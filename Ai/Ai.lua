@@ -23,6 +23,7 @@ local AiChatbot = require "gamesense/Nyx/v1/Dominion/Ai/Chatbot/AiChatbot"
 local AiProcess = require "gamesense/Nyx/v1/Dominion/Ai/Process/AiProcess"
 local AiRoutine = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutine"
 local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 
 -- Other.
 local AiSense = require "gamesense/Nyx/v1/Dominion/Ai/AiSense"
@@ -133,11 +134,13 @@ function Ai:initFields()
 	-- Chatbots.
 	local chatbots = {}
 
-	for id, chatbot in pairs(AiChatbot) do
-		chatbots[id] = chatbot:new({
-			ai = self
-		})
-	end
+	chatbots.normal = AiChatbot.normal:new({
+		ai = self
+	})
+
+	chatbots[Config.gptVersion] = AiChatbot[Config.gptVersion]:new({
+		ai = self
+	})
 
 	self.chatbots = chatbots
 

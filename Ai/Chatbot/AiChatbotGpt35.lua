@@ -19,8 +19,8 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --}}}
 
---{{{ AiChatbotGpt3
---- @class AiChatbotGpt3 : AiChatbotBase
+--{{{ AiChatbotGpt35
+--- @class AiChatbotGpt35 : AiChatbotBase
 --- @field clearHistoryTimer Timer
 --- @field cooldownTimer Timer
 --- @field headers string[]
@@ -32,10 +32,10 @@ local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
 --- @field replyChance number
 --- @field url string
 --- @field validCharacters boolean[]
-local AiChatbotGpt3 = {
+local AiChatbotGpt35 = {
 	replyChance = 4,
 	isEnabled = false,
-	url = "https://api.openai.com/v1/completions",
+	url = "https://api.openai.com/v1/chat/completions",
 	headers = {["Content-Type"] = "application/json", ["Authorization"] = "Bearer " .. Config.openAiApiKey},
 	validCharacters = {
 		["1"] = true,
@@ -103,24 +103,18 @@ local AiChatbotGpt3 = {
 		["ø"] = true,
 	},
 	personas = {
-		Friendly = "You are friendly, and reply to the user with brief, kind responses:",
-		Abrasive = "You are abrasive and mildly condescending, and like chocolate. You reply with very short responses:",
-		Rude = "You are rude and you must swear at people if they are rude to you. Your text is written as if it were Reddit:",
-		Edgy =  "You are an edgy teenaged video game player. You must reply with sarcastic responses which are partially abbreviated with text-talk:",
-		Gamer = "You are a gamer and reply with gamer-talk:",
-		Condescending = "Are you condescending. You must reply with long-winded text:",
-		PassiveAggressive = "You are passive aggressive and often gaslight people. You must reply with brief text:",
+		Friendly = "You are a friendly person, who gives brief responses to the user. You are capable of replying only in English."
 	}
 }
 
---- @param fields AiChatbotGpt3
---- @return AiChatbotGpt3
-function AiChatbotGpt3:new(fields)
+--- @param fields AiChatbotGpt35
+--- @return AiChatbotGpt35
+function AiChatbotGpt35:new(fields)
 	return Nyx.new(self, fields)
 end
 
 --- @return void
-function AiChatbotGpt3:__init()
+function AiChatbotGpt35:__init()
 	if Config.openAiApiKey == "" then
 		Logger.console(Logger.WARNING, Localization.chatbotGpt3NoApiKey)
 
@@ -160,7 +154,7 @@ end
 
 --- @param e PlayerChatEvent
 --- @return void
-function AiChatbotGpt3:processChatMessage(e)
+function AiChatbotGpt35:processChatMessage(e)
 	-- We must be enabled via chat command.
 	if not self.isEnabled then
 		return
@@ -227,28 +221,24 @@ end
 --- @param text string
 --- @param isTeamChat boolean
 --- @return void
-function AiChatbotGpt3:reply(sender, text, isTeamChat)
+function AiChatbotGpt35:reply(sender, text, isTeamChat)
 	self:requestConversationalReply(sender, text, isTeamChat)
-
-	if Config.isResolvingTextToCommands then
-		self:requestCommandReply(sender, text, isTeamChat)
-	end
 end
 
 --- @param sender Player
 --- @param text string
 --- @param isTeamChat boolean
 --- @return void
-function AiChatbotGpt3:requestConversationalReply(sender, text, isTeamChat)
+function AiChatbotGpt35:requestConversationalReply(sender, text, isTeamChat)
 	-- Do not reply to all messages sent in a short timespan.
 	if not self.cooldownTimer:isElapsed(5) then
 		return
 	end
 
 	-- Don't reply to every message ever sent.
-	-- Set AiChatbotGpt3.replyChance to 1 to always reply.
+	-- Set AiChatbotGpt35.replyChance to 1 to always reply.
 	if not Math.getChance(self.replyChance) then
-		--return
+		return
 	end
 
 	-- Clear out all of our chat history after 60 seconds of inactivity.
@@ -271,47 +261,35 @@ function AiChatbotGpt3:requestConversationalReply(sender, text, isTeamChat)
 		table.remove(self.history[steamId64], 1)
 	end
 
-	local botName = String.getNormalized(Panorama.MyPersonaAPI.GetName())
-	local targetName = String.getNormalized(sender:getName())
-
 	-- Remember what the sender has said.
 	table.insert(self.history[steamId64], {
-		id = targetName,
+		id = "user",
 		text = text
 	})
 
-	local history = self.history[steamId64]
-
-	-- Create the prompt to submit to OpenAI.
-	-- Set a default prompt here.
-	local prompt = self.persona
-
-	if not prompt then
-		return
-	end
-
-	for _, item in pairs(history) do
-		prompt = prompt .. string.format("\n%s: %s", item.id, item.text)
-	end
-
-	prompt = string.format("%s\n%s:", prompt, botName)
-
 	-- HTTP POST data.
 	local data = {
-		prompt = prompt,
-		temperature = 0.6,
-		max_tokens = 48,
-		top_p = 1,
-		stop = {"\n", "...", ". . .", ":"},
-		model = "text-davinci-003"
+		model = "gpt-3.5-turbo",
+		messages = {
+			{role = "system", content = self.persona}
+		},
+		user = sender:getName()
 	}
+
+	for _, entry in pairs(self.history[steamId64]) do
+		table.insert(data.messages, {
+			role = entry.id,
+			content = entry.text
+		})
+	end
 
 	Http.post(self.url, {headers = self.headers, body = json.stringify(data)}, function(_, response)
 		--- @type string
-		local reply = json.parse(response.body).choices[1].text:sub(2)
+		local reply = json.parse(response.body).choices[1].message.content
 
 		-- Lowercase and escape % characters.
 		reply = reply:lower():gsub("%%", "%%%%")
+		reply = reply:gsub("\n", "")
 
 		-- The AI is just repeating the sender.
 		if reply == text then
@@ -319,7 +297,7 @@ function AiChatbotGpt3:requestConversationalReply(sender, text, isTeamChat)
 		end
 
 		--- @type string[]
-		local messages = Table.getTableFromStringByDelimiter(reply, ".")
+		local messages = Table.getTableFromStringByMaxLengthRespectSpaces(reply, 100)
 		local delay = 0
 
 		for _, message in pairs(messages) do
@@ -339,7 +317,7 @@ function AiChatbotGpt3:requestConversationalReply(sender, text, isTeamChat)
 
 			-- Remember what we have replied.
 			table.insert(self.history[steamId64], {
-				id = botName,
+				id = "assistant",
 				text = message
 			})
 
@@ -353,59 +331,5 @@ function AiChatbotGpt3:requestConversationalReply(sender, text, isTeamChat)
 	end)
 end
 
---- @param sender Player
---- @param text string
---- @param isTeamChat boolean
---- @return void
-function AiChatbotGpt3:requestCommandReply(sender, text, isTeamChat)
-	if not isTeamChat then
-		return
-	end
-
-	local prompt = [[Classify the following text and match it to the following commands by their description, which are formatted as "/command_name = description". Only respond with the command's name and nothing else:
-
-Text: "%s"
-
-Commands:
-/rot a = we have been asked to go/come/rotate to the A bombsite, or the text is asking for help there. "A" can be in lowercase as "a".
-/rot b = we have been asked to go/come/rotate to the B bombsite, or the text is asking for help there.
-/follow = we have been asked to follow/come with our teammate.
-/bomb = we have been asked to drop the C4/bomb to our teammate.
-/eco = we have been asked to "eco", which means to "save" our money and buy nothing.
-/force = we have been asked to "force buy", which means to use our low money supply and buy cheap weapons.
-/wait - we have been asked to wait at the person's location.
-/drop = we have been asked to drop/give our gun/weapon or purchase/buy a gun/weapon to give.
-/assist = we have been asked to help/assist and go to the person's location.
-
-Classification:]]
-
-	prompt = string.format(prompt, text)
-
-	-- HTTP POST data.
-	local data = {
-		prompt = prompt,
-		temperature = 0.6,
-		max_tokens = 64,
-		top_p = 1,
-		stop = {"\n"},
-		model = "text-davinci-003"
-	}
-
-	Http.post(self.url, {headers = self.headers, body = json.stringify(data)}, function(_, response)
-		--- @type string
-		local reply = json.parse(response.body).choices[1].text:sub(2)
-
-		-- Lowercase and escape % characters.
-		reply = reply:lower():gsub("%%", "%%%%")
-
-		self.ai:processCommand({
-			sender = sender,
-			text = reply,
-			teamonly = true,
-			name = sender:getName()
-		})
-	end)
-end
-
-return Nyx.class("AiChatbotGpt3", AiChatbotGpt3, AiChatbotBase)
+return Nyx.class("AiChatbotGpt35", AiChatbotGpt35, AiChatbotBase)
 --}}}

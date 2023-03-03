@@ -148,8 +148,10 @@ function AiStateEvade:think(cmd)
     self.ai.routines.manageGear:block()
 
     if not self.isLookingAtPathfindingDirection then
-        if AiThreats.highestThreatOrigin then
-            VirtualMouse.lookAtLocation(AiThreats.highestThreatOrigin, 2.5, VirtualMouse.noise.minor, "Evade look at threat origin")
+        local crosshairPlacement = AiThreats.crosshairPlacements[AiThreats.highestThreat.eid]
+
+        if crosshairPlacement then
+            VirtualMouse.lookAtLocation(crosshairPlacement, 2.5, VirtualMouse.noise.minor, "Evade look at threat origin")
         elseif VirtualMouse.lastLookAtLocationOrigin then
             VirtualMouse.lookAtLocation( VirtualMouse.lastLookAtLocationOrigin, 2.5, VirtualMouse.noise.minor, "Evade look at last spot")
         end

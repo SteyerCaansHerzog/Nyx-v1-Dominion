@@ -18,6 +18,9 @@ local Config = {
 	-- The skill level to set the AI to by default.
 	defaultSkillLevel = 4,
 
+	-- The GPT version to use for the chatbot. "gpt3", "gpt35".
+	gptVersion = "gpt3",
+
 	-- Clear the AI's Steam friend list and any requests.
 	isClearingSteamFriends = false,
 

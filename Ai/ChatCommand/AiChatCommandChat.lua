@@ -4,6 +4,7 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 
 --{{{ Modules
 local AiChatCommandBase = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommandBase"
+local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 --}}}
 
 --{{{ AiChatCommandChat
@@ -24,22 +25,22 @@ function AiChatCommandChat:invoke(ai, sender, args)
 
     if state == "off" then
         ai.chatbots.normal.isEnabled = false
-        ai.chatbots.gpt3.isEnabled = false
+        ai.chatbots[Config.gptVersion].isEnabled = false
 
         isChanged = true
     elseif state == "normal" then
         ai.chatbots.normal.isEnabled = true
-        ai.chatbots.gpt3.isEnabled = false
+        ai.chatbots[Config.gptVersion].isEnabled = false
 
         isChanged = true
     elseif state == "gpt3" then
         ai.chatbots.normal.isEnabled = false
-        ai.chatbots.gpt3.isEnabled = true
+        ai.chatbots[Config.gptVersion].isEnabled = true
 
         isChanged = true
     elseif state == "both" then
         ai.chatbots.normal.isEnabled = true
-        ai.chatbots.gpt3.isEnabled = true
+        ai.chatbots[Config.gptVersion].isEnabled = true
 
         isChanged = true
     end
@@ -52,11 +53,11 @@ function AiChatCommandChat:invoke(ai, sender, args)
     if ai.reaper.isActive then
         ai.reaper.savedCommunicationStates = {
             chatbotNormal = ai.chatbots.normal.isEnabled,
-            chatbotGpt3 = ai.chatbots.gpt3.isEnabled
+            chatbotGpt = ai.chatbots[Config.gptVersion].isEnabled
         }
 
         ai.chatbots.normal.isEnabled = false
-        ai.chatbots.gpt3.isEnabled = false
+        ai.chatbots[Config.gptVersion].isEnabled = false
     end
 end
 

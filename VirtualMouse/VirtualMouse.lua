@@ -11,6 +11,7 @@ local Player = require "gamesense/Nyx/v1/Api/Player"
 local SecondOrderDynamics = require "gamesense/Nyx/v1/Api/SecondOrderDynamics"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
+local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
 
 local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
@@ -71,6 +72,7 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMou
 --- @field nodegraph Nodegraph
 --- @field noise VirtualMouseNoiseType
 --- @field passiveViewAngles Angle
+--- @field pathCrosshairPlacement Vector3
 --- @field pitchFine number
 --- @field pitchSoft number
 --- @field recoilControl number
@@ -82,9 +84,6 @@ local ViewNoiseType = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMou
 --- @field velocityResetSpeed number
 --- @field viewAngles Angle
 --- @field viewPitchOffset number
---- @field watchCornerOrigin Vector3
---- @field watchCornerOriginPlayer Player
---- @field watchCornerTimer Timer
 --- @field yawFine number
 --- @field yawSoft number
 local VirtualMouse = {
@@ -123,7 +122,6 @@ function VirtualMouse.initFields()
 	VirtualMouse.yawFine = 0
 	VirtualMouse.yawSoft = 0
 	VirtualMouse.lookSpeedIdeal = 10
-	VirtualMouse.watchCornerTimer = Timer:new():startThenElapse()
 	VirtualMouse.buildup = 0
 	VirtualMouse.buildupThreshold = 90
 	VirtualMouse.buildupCooldownTime = 0
@@ -164,6 +162,7 @@ function VirtualMouse.initEvents()
 
 	Pathfinder.onNewPath(function()
 		VirtualMouse.lookAheadOrigin = nil
+		VirtualMouse.pathCrosshairPlacement = nil
 	end)
 end
 
@@ -295,7 +294,8 @@ function VirtualMouse.setViewAngles()
 
 		if VirtualMouse.buildupCooldownTimer:isElapsed(VirtualMouse.buildupCooldownTime) then
 			-- Perform generic look behaviour.
-			VirtualMouse.setIdealLookAhead(idealViewAngles)
+			VirtualMouse.setIdealPathCrosshairPlacement(idealViewAngles)
+
 			-- Watch corners enemies are actually occluded by.
 			VirtualMouse.setIdealWatchCorner(idealViewAngles)
 		else
@@ -625,6 +625,111 @@ end
 
 --- @param idealViewAngles Angle
 --- @return void
+function VirtualMouse.setIdealPathCrosshairPlacement(idealViewAngles)
+	local currentNode = Pathfinder.path.node
+
+	if Pathfinder.isAscendingLadder then
+		idealViewAngles:setFromAngle(currentNode.direction:clone():set(-75))
+
+		VirtualMouse.lookState = "VirtualMouse generic"
+		VirtualMouse.lookSpeedIdeal = 6
+		VirtualMouse.lookSpeedDelayMin = 0
+		VirtualMouse.lookSpeedDelayMax = 0
+
+		return
+	elseif Pathfinder.isDescendingLadder then
+		idealViewAngles:setFromAngle(currentNode.direction:clone():set(89))
+
+		VirtualMouse.lookState = "VirtualMouse generic"
+		VirtualMouse.lookSpeedIdeal = 6
+		VirtualMouse.lookSpeedDelayMin = 0
+		VirtualMouse.lookSpeedDelayMax = 0
+
+		return
+	end
+
+	--- @type Vector3
+	local lastVisibleOrigin
+	local eyeOrigin = LocalPlayer.getEyeOrigin()
+	local isOk = true
+	local tr = 0
+	local occludedCount = 0
+	local occludedThreshold = 4
+
+	if AiThreats.threatLevel >= AiThreats.threatLevels.LOW then
+		occludedCount = 1
+	end
+
+	for pathIdx = Pathfinder.path.idx + 1, Pathfinder.path.finalIdx do
+		local source = Pathfinder.path.nodes[pathIdx]
+		local target = Pathfinder.path.nodes[pathIdx + 1]
+
+		if not source or not target then
+			local lastNode = Pathfinder.path.endGoal
+
+			lastVisibleOrigin = lastNode.eyeOrigin:clone():offset(0, 0, -25)
+
+			break
+		end
+
+		local float = Math.getClampedFloat(source.eyeOrigin:getDistance(target.eyeOrigin), 350, 0, 350)
+		local steps = math.ceil(float * 5)
+		local scalar = 1 / steps
+
+		for i = 1, steps do
+			local offsetOrigin = source.eyeOrigin:getLerp(target.eyeOrigin, i * scalar)
+
+			tr = tr + 1
+			local trace = Trace.getLineToPosition(
+				eyeOrigin,
+				offsetOrigin,
+				AiUtility.traceOptionsVisible,
+				"VirtualMouse.setIdealPathCrosshairPlacement<FindVisibleNode>"
+			)
+
+			if trace.isIntersectingGeometry then
+				occludedCount = occludedCount + 1
+
+				if occludedCount >= occludedThreshold then
+					isOk = false
+
+					break
+				end
+			end
+
+			lastVisibleOrigin = offsetOrigin
+
+			Client.draw(Vector3.drawScaledCircle, offsetOrigin, 10, Color:hsla(200, 0.8, 0.6, 60))
+		end
+
+		if not isOk then
+			break
+		end
+	end
+
+	if not lastVisibleOrigin then
+		return
+	end
+
+	if not VirtualMouse.pathCrosshairPlacement then
+		VirtualMouse.pathCrosshairPlacement = lastVisibleOrigin
+	end
+
+	VirtualMouse.pathCrosshairPlacement:lerp(lastVisibleOrigin, 10 * Time.delta)
+
+	idealViewAngles:setFromAngle(eyeOrigin:getAngle(VirtualMouse.pathCrosshairPlacement))
+
+	-- Shake the mouse movement.
+	VirtualMouse.setNoiseType(ViewNoiseType.moving)
+
+	VirtualMouse.lookState = "VirtualMouse generic"
+	VirtualMouse.lookSpeedIdeal = 6
+	VirtualMouse.lookSpeedDelayMin = 0.25
+	VirtualMouse.lookSpeedDelayMax = 0.5
+end
+
+--- @param idealViewAngles Angle
+--- @return void
 function VirtualMouse.setIdealLookAhead(idealViewAngles)
 	local currentNode = Pathfinder.path.node
 
@@ -732,24 +837,23 @@ function VirtualMouse.setIdealWatchCorner(idealViewAngles)
 
 	-- Force the AI to look at the corner for 1.5 seconds to prevent dithering,
 	-- as AiUtility.clientThreatenedFromOrigin is rapidly set and unset.
-	if AiThreats.highestThreat then
-		VirtualMouse.watchCornerOriginPlayer = AiThreats.highestThreat
-		VirtualMouse.watchCornerOrigin = AiThreats.highestThreatOrigin
-
-		VirtualMouse.watchCornerTimer:start()
+	if not AiThreats.highestThreat then
+		return
 	end
 
-	if VirtualMouse.watchCornerOriginPlayer
-		and AiSense.getAwareness(VirtualMouse.watchCornerOriginPlayer) >= AiSense.awareness.RECENT_MOVED
+	local threatOrigin = AiThreats.crosshairPlacements[AiThreats.highestThreat.eid]
+
+	if not threatOrigin then
+		return
+	end
+
+	if AiThreats.highestThreat
+		and AiSense.getAwareness(AiThreats.highestThreat) >= AiSense.awareness.RECENT_MOVED
 	then
 		return
 	end
 
-	if VirtualMouse.watchCornerTimer:isElapsed(1.5) then
-		return
-	end
-
-	idealViewAngles:setFromAngle(LocalPlayer.getEyeOrigin():getAngle(VirtualMouse.watchCornerOrigin))
+	idealViewAngles:setFromAngle(LocalPlayer.getEyeOrigin():getAngle(threatOrigin))
 
 	VirtualMouse.setNoiseType(ViewNoiseType.moving)
 

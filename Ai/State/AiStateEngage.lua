@@ -119,7 +119,6 @@ local WeaponMovementVelocity =  {
 --- @field isStrafePeeking boolean
 --- @field isTargetEasilyShot boolean
 --- @field isTargetEasilyShotDelayed boolean
---- @field isUpdatingDefendingLookAt boolean
 --- @field isVisibleToBestTarget boolean
 --- @field jiggleHoldCooldownTimer Timer
 --- @field jiggleHoldCount number
@@ -142,10 +141,6 @@ local WeaponMovementVelocity =  {
 --- @field patienceCooldownTimer Timer
 --- @field patienceTimer Timer
 --- @field pingEnemyTimer Timer
---- @field preAimAboutCornersAimOrigin Vector3
---- @field preAimAboutCornersCenterOrigin Vector3
---- @field preAimAboutCornersCenterOriginZ number
---- @field preAimAboutCornersLastOrigin Vector3
 --- @field preAimMapAngleNode NodeHintPreAim
 --- @field preAimMapAngleTimer Timer
 --- @field preAimTarget Player
@@ -494,7 +489,6 @@ end
 function AiStateEngage:reset()
     self.bestTarget = nil
     self.lastBestTargetOrigin = nil
-    self.preAimAboutCornersAimOrigin = nil
     self.preAimThroughCornersOrigin = nil
     self.reactionTimer:stop()
     self.sprayTimer:stop()
@@ -783,7 +777,7 @@ end
 --- @return Player
 function AiStateEngage:setBestTarget()
     local lowestFov = math.huge
-    local highestThreatLevel = AiThreats.threatLevels.NONE
+    local highestThreatLevel = -1
     local origin = LocalPlayer:getOrigin()
 
     --- @type Player
@@ -798,7 +792,9 @@ function AiStateEngage:setBestTarget()
     --- @type Player
     local selectedBestTarget
 
-    for _, enemy in pairs(AiUtility.enemies) do
+    -- todo possibly check if dormant.
+    for eid, _ in pairs(AiThreats.enemyVisgraphs) do
+        local enemy = Player:new(eid)
         local isTargetingPlanter = not AiUtility.isLastAlive and AiUtility.bombCarrier and AiUtility.bombCarrier:is(enemy) and AiUtility.isBombBeingPlantedByEnemy
 
         -- We assume the enemy is known to us.
@@ -1858,7 +1854,6 @@ function AiStateEngage:movementDefending()
         if node then
             self.isDefending = true
             self.defendingAtNode = node
-            self.isUpdatingDefendingLookAt = true
 
             Pathfinder.moveToNode(node, {
                 task = "Engage enemy via defensive position",
@@ -1905,7 +1900,6 @@ function AiStateEngage:movementToTarget()
         return
     end
 
-    --- @type NodeTypeTraverse[]
     local selectedNodes = AiThreats.enemyVisgraphs[self.bestTarget.eid]
     local visgraphOrigin = AiThreats.enemyVisgraphOrigins[self.bestTarget.eid]
 
@@ -1965,9 +1959,7 @@ function AiStateEngage:moveToRandomNodeFrom(nodes, closest)
         return
     end
 
-    local node, idx = Table.getRandom(nodes)
-
-    table.remove(nodes, idx)
+    local node = Table.getRandomFromNonIndexed(nodes)
 
     Pathfinder.moveToNode(node, {
         task = "Engage enemy via random position",
@@ -2009,6 +2001,10 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:handleAttacking(cmd)
+    if not self.bestTarget then
+        return
+    end
+
     if self:attackingKnife(cmd) then
         return
     end
@@ -2019,7 +2015,7 @@ function AiStateEngage:handleAttacking(cmd)
     self:attackingLookAtBackupOrigin()
     self:attackingSprayWeapon(cmd)
 
-    -- Update recoil control skill level.
+    -- Update recoil control with skill level.
     VirtualMouse.recoilControl = self.recoilControl
 
     -- Reset reaction delay.
@@ -2039,12 +2035,7 @@ function AiStateEngage:handleAttacking(cmd)
     end
 
     -- Watch last known position.
-    if not self.bestTarget then
-        self:actionWatchAngle()
-
-        return
-    end
-
+    self:actionWatchAngle()
     self:actionStrafePeek()
     self:attackingSetReactionTime()
     self:attackingSetAimOffset()
@@ -2061,10 +2052,6 @@ function AiStateEngage:handleAttacking(cmd)
     if self.reactionTimer:isElapsed(self.reactionTime) then
         self:preAimAboutCorners()
         self:preAimThroughCorners()
-    end
-
-    if Table.isEmpty(AiUtility.visibleEnemies) then
-        self:actionWatchAngle()
     end
 
     self:attackingBestTarget(cmd)
@@ -2105,8 +2092,6 @@ function AiStateEngage:attackingDefending()
     end
 
     local clientOrigin = LocalPlayer:getOrigin()
-    --- @type Vector3
-    local targetOrigin
     local distance = clientOrigin:getDistance(self.defendingAtNode.origin)
 
     if distance < 150 then
@@ -2127,40 +2112,27 @@ function AiStateEngage:attackingDefending()
         LocalPlayer.equipAvailableWeapon()
     end
 
-    -- If we can pre-aim, we should do that.
-    if self.watchOrigin then
-        self.isUpdatingDefendingLookAt = true
+    local crosshairPlacement = AiThreats.crosshairPlacements[self.bestTarget.eid]
 
-        targetOrigin = self.preAimAboutCornersAimOrigin
-    elseif self.preAimAboutCornersAimOrigin then
-        self.isUpdatingDefendingLookAt = true
+    if crosshairPlacement then
+        self.defendingLookAt = crosshairPlacement
+        self.watchOrigin = crosshairPlacement
 
-        targetOrigin = self.preAimAboutCornersAimOrigin
-    elseif self.bestTarget then
-        -- We need to update the look at because we're too close to it.
-        if self.defendingLookAt and clientOrigin:getDistance(self.defendingLookAt) < 450 then
-            self.isUpdatingDefendingLookAt = true
+        self.watchTimer:start()
+    elseif distance < 350 then
+        local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), self.defendingAtNode.origin, AiUtility.traceOptionsVisible)
+
+        if not trace.isIntersectingGeometry then
+            self.defendingLookAt = self.defendingAtNode.lookAtOrigin
+            self.watchOrigin = crosshairPlacement
+
+            self.watchTimer:start()
         end
-
-        -- We can look along the defend node's angles.
-        if distance < 300 then
-            local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), self.defendingAtNode.origin, AiUtility.traceOptionsVisible)
-
-            if not trace.isIntersectingGeometry then
-                self.defendingLookAt = self.defendingAtNode.lookAtOrigin
-            end
-        end
-    end
-
-    -- We're allowed to update the defend angle.
-    if self.isUpdatingDefendingLookAt then
-        self.isUpdatingDefendingLookAt = false
-        self.defendingLookAt = targetOrigin
     end
 
     -- Look at the defend angle.
     if self.defendingLookAt then
-        VirtualMouse.lookAtLocation(self.defendingLookAt, 6, VirtualMouse.noise.moving, "Engage defend against enemy")
+        VirtualMouse.lookAtLocation(self.defendingLookAt, 8, VirtualMouse.noise.moving, "Engage defend against enemy")
 
         self:addVisualizer("defending", function()
             if not self.defendingLookAt then
@@ -3526,17 +3498,6 @@ end
 --- @return void
 function AiStateEngage:preAimAboutCorners()
     if not self.bestTarget or not self.bestTarget:isAlive() then
-
-        return
-    end
-
-    self.preAimAboutCornersCenterOrigin = self.bestTarget:getOrigin():offset(0, 0, 60)
-
-    if self.bestTarget:isFlagActive(Player.flags.FL_ONGROUND) then
-        self.preAimAboutCornersCenterOriginZ = self.preAimAboutCornersCenterOrigin.z
-    end
-
-    if not self.preAimAboutCornersCenterOrigin then
         return
     end
 
@@ -3544,121 +3505,18 @@ function AiStateEngage:preAimAboutCorners()
         return
     end
 
-    if self.preAimAboutCornersAimOrigin and self.isAllowedToPreAim then
+    local crosshairPlacement = AiThreats.crosshairPlacements[self.bestTarget.eid]
+
+    if crosshairPlacement and self.isAllowedToPreAim then
         self.ai.routines.manageWeaponScope:block()
 
-        VirtualMouse.lookAtLocation(self.preAimAboutCornersAimOrigin, self.aimSpeed, VirtualMouse.noise.moving, "Engage look at corner")
+        VirtualMouse.lookAtLocation(crosshairPlacement, 15, VirtualMouse.noise.moving, "Engage look at corner")
 
         self:addVisualizer("pre about", function()
-            if self.preAimAboutCornersAimOrigin then
-                self.preAimAboutCornersAimOrigin:drawCircleOutline(12, 2, Color:hsla(200, 1, 0.5, 200))
+            if crosshairPlacement then
+                crosshairPlacement:drawCircleOutline(12, 2, Color:hsla(200, 1, 0.5, 200))
             end
         end)
-    end
-
-    local enemyOrigin = self.bestTarget:getOrigin()
-
-    if not self.preAimAboutCornersLastOrigin then
-        self.preAimAboutCornersLastOrigin = enemyOrigin
-    elseif enemyOrigin:getDistance(self.preAimAboutCornersLastOrigin) < 60 then
-        return
-    end
-
-    self.preAimAboutCornersLastOrigin = enemyOrigin
-
-    if not self.bestTarget:isFlagActive(Player.flags.FL_ONGROUND) and self.preAimAboutCornersCenterOriginZ then
-        self.preAimAboutCornersCenterOrigin.z = self.preAimAboutCornersCenterOriginZ
-    end
-
-    local eyeOrigin = LocalPlayer.getEyeOrigin()
-    local bands = {
-        {
-            distance = 50,
-            points = 2
-        },
-        {
-            distance = 75,
-            points = 4
-        },
-        {
-            distance = 125,
-            points = 6
-        },
-        {
-            distance = 150,
-            points = 8
-        },
-        {
-            distance = 200,
-            points = 16
-        }
-    }
-
-    local bandDirection = eyeOrigin:getAngle(self.preAimAboutCornersCenterOrigin):set(0):offset(nil, 90)
-    local isVisible = false
-    --- @type Vector3
-    local closestVertex
-    local closestVertexDistance = math.huge
-    local closestBand
-
-    for id, band in pairs(bands) do
-        if isVisible then
-            break
-        end
-
-        local vertexInterval = 180 / band.points
-
-        for i = 1, band.points do
-            local direction = Angle:new(0, vertexInterval * i) + (bandDirection)
-            local vertex = self.preAimAboutCornersCenterOrigin + (direction:getForward() * band.distance)
-            local findWallCollideTrace = Trace.getLineToPosition(self.preAimAboutCornersCenterOrigin, vertex, AiUtility.traceOptionsVisible, "AiStateEngage.preAimAboutCorners<FindWallCollidePoint>")
-
-            if not findWallCollideTrace.isIntersectingGeometry then
-                local findVisibleToClientTrace = Trace.getLineToPosition(eyeOrigin, vertex, AiUtility.traceOptionsVisible, "AiStateEngage.preAimAboutCorners<FindPointVisibleToClient>")
-
-                if not findVisibleToClientTrace.isIntersectingGeometry then
-                    local distance = eyeOrigin:getDistance(vertex)
-
-                    if distance > 200 and distance < closestVertexDistance then
-                        closestVertex = vertex
-                        closestVertexDistance = distance
-                        isVisible = true
-                        closestBand = id
-                    end
-                end
-            end
-        end
-    end
-
-    if closestVertex then
-        local findFloorTrace = Trace.getLineInDirection(closestVertex, Vector3.align.DOWN, AiUtility.traceOptionsPathfinding)
-        local newClosestVertex = findFloorTrace.endPosition:offset(0, 0, 60)
-        local deltaZ = closestVertex.z - newClosestVertex.z
-
-        if deltaZ > 0 and deltaZ < 128 then
-            closestVertex = newClosestVertex
-        end
-    end
-
-    -- Only select the closest point to look at.
-    if self.preAimAboutCornersAimOrigin and closestVertex
-        and closestVertex:getDistance2(enemyOrigin) > self.preAimAboutCornersAimOrigin:getDistance2(enemyOrigin)
-    then
-        return
-    end
-
-    self.preAimAboutCornersAimOrigin = closestVertex
-
-    if not closestVertex then
-        self.isPreAimViableForHoldingAngle = false
-
-        return
-    end
-
-    if closestBand == 2 or closestBand == 3 then
-        self.isPreAimViableForHoldingAngle = true
-    else
-        self.isPreAimViableForHoldingAngle = false
     end
 end
 

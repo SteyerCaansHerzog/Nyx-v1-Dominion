@@ -907,8 +907,6 @@ function Nodegraph.loadFromString(data)
         node:onSetup(Nodegraph)
     end
 
-    Nodegraph.computeVisgraph()
-
     Nodegraph.isLoaded = true
 end
 
@@ -940,6 +938,7 @@ function Nodegraph.loadFromFile(filename)
     local data = json.parse(filedata)
 
     Nodegraph.loadFromString(data)
+    Nodegraph.computeVisgraph()
 
     Logger.console(Logger.OK, Localization.nodegraphLoaded, filename)
 end

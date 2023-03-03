@@ -29,6 +29,7 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --- @field swingKnifeDurationTimer Timer
 --- @field swingKnifeIntervalTime number
 --- @field swingKnifeIntervalTimer Timer
+--- @field holdGunTimer Timer
 local AiRoutineManageGear = {}
 
 --- @param fields AiRoutineManageGear
@@ -49,6 +50,7 @@ function AiRoutineManageGear:__init()
 	self.jiggleInspectState = false
 	self.jiggleInspectDurationTimer = Timer:new():startThenElapse()
 	self.jiggleIspectHoldTimer = Timer:new():startThenElapse()
+	self.holdGunTimer = Timer:new():startThenElapse()
 	self.jiggleInspectDurationTime = Math.getRandomFloat(1, 6)
 	self.jiggleIspectHoldTime = Math.getRandomFloat(0.2, 0.24)
 end
@@ -90,10 +92,11 @@ function AiRoutineManageGear:manageKnife(cmd)
 		isSwingingKnife = true
 	end
 
-	local Color = require "gamesense/Nyx/v1/Api/Color"
-	Client.drawIndicatorTick(Color.WHITE, isKnifeEquippable and "knife" or "gun")
+	if not isKnifeEquippable then
+		self.holdGunTimer:start()
+	end
 
-	if isKnifeEquippable then
+	if isKnifeEquippable and self.holdGunTimer:isElapsed(1) then
 		LocalPlayer.equipKnife()
 
 		if isSwingingKnife and LocalPlayer:isHoldingKnife() and AiUtility.closestTeammate and AiUtility.closestTeammateDistance > 150 then

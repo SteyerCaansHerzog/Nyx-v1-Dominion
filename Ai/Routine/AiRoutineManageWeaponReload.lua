@@ -35,7 +35,7 @@ function AiRoutineManageWeaponReload:think(cmd)
 	end
 
 	-- Ratio at which the AI should reload its weapon.
-	local ratio = 0.9
+	local ratio = AiThreats.threatLevel < AiThreats.threatLevels.MEDIUM and 0.99 or 0.9
 
 	if AiThreats.threatLevel >= AiThreats.threatLevels.EXTREME then
 		ratio = 0
@@ -65,13 +65,17 @@ function AiRoutineManageWeaponReload:think(cmd)
 		return
 	end
 
-	if LocalPlayer:isHoldingKnife() then
-		return
+	if LocalPlayer:isReloading() then
+		self.ai.routines.manageGear:block()
+		LocalPlayer.equipAvailableWeapon()
 	end
 
-	self.ai.routines.manageGear:block()
-
-	LocalPlayer.equipAvailableWeapon()
+	if LocalPlayer:isHoldingKnife()
+		or LocalPlayer:isHoldingBomb()
+		or LocalPlayer:isHoldingGrenade()
+	then
+		return
+	end
 
 	cmd.in_reload = true
 end
