@@ -1388,7 +1388,7 @@ function Pathfinder.traverseJumps(currentNode, previousNode)
 		return
 	end
 
-	if clientSpeed < 200 or absDiff > 0.5 then
+	if clientSpeed < 200 or absDiff > 1 then
 		isAirStrafeJumping = false
 	end
 

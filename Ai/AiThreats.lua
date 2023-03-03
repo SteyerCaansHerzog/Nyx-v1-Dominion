@@ -97,7 +97,9 @@ function AiThreats.reset()
 	AiThreats.determineThreatIndex = 0
 	AiThreats.crosshairPlacements = {}
 	AiThreats.crosshairPlacementsIdeal = {}
-	AiThreats.enemyThreatLevels = {}
+	AiThreats.enemyThreatLevels = Table.populateForMaxPlayers(function()
+		return ThreatLevel.NONE
+	end)
 	AiThreats.enemyVisgraphOrigins = {}
 	AiThreats.enemyVisgraphs = {}
 	AiThreats.lastClosestVisibleEnemyNodes = {}
@@ -302,7 +304,7 @@ function AiThreats.clearCachedEnemy(player)
 	AiThreats.closestVisibleEnemyNodes[player.eid] = nil
 	AiThreats.crosshairPlacements[player.eid] = nil
 	AiThreats.crosshairPlacementsIdeal[player.eid] = nil
-	AiThreats.enemyThreatLevels[player.eid] = nil
+	AiThreats.enemyThreatLevels[player.eid] = ThreatLevel.NONE
 	AiThreats.enemyVisgraphOrigins[player.eid] = nil
 	AiThreats.enemyVisgraphs[player.eid] = nil
 	AiThreats.lastClosestVisibleEnemyNodes[player.eid] = nil
@@ -409,9 +411,10 @@ function AiThreats.updateClosestThreat()
 	local closestThreat
 	local closestThreatOrigin
 
-	for eid, visgraphOrigin in pairs(AiThreats.enemyVisgraphOrigins) do
+	for eid, _ in pairs(AiThreats.threats) do
+		local visgraphOrigin = AiThreats.enemyVisgraphOrigins[eid]
 		local threatLevel = AiThreats.enemyThreatLevels[eid]
-		local distance = origin
+		local distance = origin:getDistance(visgraphOrigin)
 
 		if threatLevel >= highestThreatLevel and distance < closestDistance then
 			closestDistance = distance

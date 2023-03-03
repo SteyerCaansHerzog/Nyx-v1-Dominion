@@ -473,7 +473,7 @@ function AiStateEngage:assess()
         end
     end
 
-    if self.bestTarget then
+    if self.bestTarget and not self.bestTarget:getOrigin():isZero() then
         return AiPriority.ENGAGE_PASSIVE
     end
 
@@ -792,9 +792,7 @@ function AiStateEngage:setBestTarget()
     --- @type Player
     local selectedBestTarget
 
-    -- todo possibly check if dormant.
-    for eid, _ in pairs(AiThreats.enemyVisgraphs) do
-        local enemy = Player:new(eid)
+    for _, enemy in pairs(AiUtility.enemies) do
         local isTargetingPlanter = not AiUtility.isLastAlive and AiUtility.bombCarrier and AiUtility.bombCarrier:is(enemy) and AiUtility.isBombBeingPlantedByEnemy
 
         -- We assume the enemy is known to us.
@@ -823,7 +821,7 @@ function AiStateEngage:setBestTarget()
                 end
             else
                 -- Select occluded enemies based on their threat level.
-                local threatLevel = AiThreats.enemyThreatLevels[enemy.eid]
+                local threatLevel = AiThreats.enemyThreatLevels[enemy.eid] or AiThreats.threatLevels.NONE
 
                 if threatLevel > highestThreatLevel then
                     highestThreatLevel = highestThreatLevel

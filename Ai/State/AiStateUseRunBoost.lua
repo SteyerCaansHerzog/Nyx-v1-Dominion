@@ -211,6 +211,12 @@ end
 function AiStateUseRunBoost:think(cmd)
     self.activity = "Waiting to be run-boosted"
 
+    if self.isJumped and LocalPlayer:isFlagActive(Player.flags.FL_ONGROUND) then
+        self:reset()
+
+        return
+    end
+
     self.ai.states.flashbangDynamic:block()
 
     if not self.boostNode then

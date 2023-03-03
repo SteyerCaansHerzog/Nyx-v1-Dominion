@@ -355,7 +355,7 @@ function AiSense.think()
 
 				break
 			else
-				if AiThreats.enemyThreatLevels[enemy.eid] <= AiThreats.threatLevels.MEDIUM then
+				if (AiThreats.enemyThreatLevels[enemy.eid] or AiThreats.threatLevels.NONE) <= AiThreats.threatLevels.MEDIUM then
 					-- The enemy is occluded by cover, but they could peek soon.
 					AiSense.setAwarenessLevel(enemy, AwarenessLevel.IMMEDIATE_SHALLOW_OCCLUDED)
 				else

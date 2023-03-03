@@ -264,6 +264,7 @@ function AiProcessInfo:renderSpectator()
 		colorMuted.a = colorTeam.a * 0.25
 		colorNormal.a = colorTeam.a
 		colorName.a = colorTeam.a
+		colorThreatLevel.a = colorThreatLevel.a * alphaModStack
 
 		drawPosBottom:drawCircle(2, colorMuted)
 		drawPosBottom:drawLine(drawPosBottomAnimated, colorMuted)
@@ -277,7 +278,7 @@ function AiProcessInfo:renderSpectator()
 			"h"
 		)
 
-		drawPosBottomAnimated:clone():offset(-6):drawSurfaceRectangleOutline(1, 2, Vector2:new(150, 35), colorThreatLevel)
+		drawPosBottomAnimated:clone():offset(-2, 36):drawSurfaceRectangle(Vector2:new(150, 2), colorThreatLevel)
 
 		drawPosBottomAnimated:offset(4)
 

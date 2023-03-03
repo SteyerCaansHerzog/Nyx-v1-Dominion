@@ -52,7 +52,7 @@ function AiRoutineManageGear:__init()
 	self.jiggleIspectHoldTimer = Timer:new():startThenElapse()
 	self.holdGunTimer = Timer:new():startThenElapse()
 	self.jiggleInspectDurationTime = Math.getRandomFloat(1, 6)
-	self.jiggleIspectHoldTime = Math.getRandomFloat(0.2, 0.24)
+	self.jiggleIspectHoldTime = Math.getRandomFloat(0.45, 0.6)
 end
 
 --- @param cmd SetupCommandEvent
@@ -129,7 +129,7 @@ function AiRoutineManageGear:manageWeaponInspection(cmd)
 	if self.isJiggleInspecting then
 		if not self.jiggleInspectDurationTimer:isElapsed(self.jiggleInspectDurationTime) then
 			if self.jiggleIspectHoldTimer:isElapsedThenRestart(self.jiggleIspectHoldTime) then
-				self.jiggleIspectHoldTime = Math.getRandomFloat(0.2, 0.24)
+				self.jiggleIspectHoldTime = Math.getRandomFloat(0.45, 0.6)
 				self.jiggleInspectState = not self.jiggleInspectState
 
 				if self.jiggleInspectState then
