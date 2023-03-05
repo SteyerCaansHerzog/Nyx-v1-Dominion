@@ -850,6 +850,8 @@ function AiStateEngage:setBestTarget()
             -- Clear last valid origin as it's no longer for the same target.
             if selectedBestTarget:is(self.bestTarget) then
                 self.lastBestTargetValidOrigin = nil
+            else
+                self.preAimThroughCornersHoldTimer:elapse()
             end
 
             local targetOrigin = self.bestTarget:getOrigin()
