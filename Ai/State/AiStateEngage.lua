@@ -145,7 +145,6 @@ local WeaponMovementVelocity =  {
 --- @field preAimMapAngleTimer Timer
 --- @field preAimTarget Player
 --- @field preAimThroughCornersBlockTimer Timer
---- @field preAimThroughCornersHoldTimer Timer
 --- @field preAimThroughCornersOrigin Vector3
 --- @field preAimThroughCornersTargetOrigin Vector3
 --- @field preAimThroughCornersUpdateTimer Timer
@@ -263,7 +262,6 @@ function AiStateEngage:initFields()
     self.waitForTargetVisibleTimer = Timer:new():startThenElapse()
     self.watchTime = 2
     self.watchTimer = Timer:new()
-    self.preAimThroughCornersHoldTimer = Timer:new():startThenElapse()
 
     self.lastSeenTimers = {}
 
@@ -850,8 +848,6 @@ function AiStateEngage:setBestTarget()
             -- Clear last valid origin as it's no longer for the same target.
             if selectedBestTarget:is(self.bestTarget) then
                 self.lastBestTargetValidOrigin = nil
-            else
-                self.preAimThroughCornersHoldTimer:elapse()
             end
 
             local targetOrigin = self.bestTarget:getOrigin()
@@ -3387,10 +3383,6 @@ end
 
 --- @return void
 function AiStateEngage:preAimThroughCorners()
-    if self.isBestTargetVisible then
-        self.preAimThroughCornersHoldTimer:start()
-    end
-
     local target = self.bestTarget
 
     if not target then
@@ -3398,24 +3390,21 @@ function AiStateEngage:preAimThroughCorners()
     end
 
     local clientVelocity = LocalPlayer:m_vecVelocity()
-    local isInHold = not self.preAimThroughCornersHoldTimer:isElapsed(1.5)
 
-    if not isInHold then
-        if not self.isAllowedToPreAim then
-            return
-        end
+    if not self.isAllowedToPreAim then
+        return
+    end
 
-        if Pathfinder.isAscendingLadder or Pathfinder.isDescendingLadder then
-            return
-        end
+    if Pathfinder.isAscendingLadder or Pathfinder.isDescendingLadder then
+        return
+    end
 
-        if clientVelocity:getMagnitude() < 50 then
-            return
-        end
+    if clientVelocity:getMagnitude() < 50 then
+        return
+    end
 
-        if not self.preAimThroughCornersBlockTimer:isElapsed(0.8) then
-            return
-        end
+    if not self.preAimThroughCornersBlockTimer:isElapsed(0.8) then
+        return
     end
 
     local playerOrigin = LocalPlayer:getOrigin()
@@ -3441,7 +3430,7 @@ function AiStateEngage:preAimThroughCorners()
         end
     end
 
-    if not isInHold and not isPeeking then
+    if not isPeeking then
         return
     end
 
