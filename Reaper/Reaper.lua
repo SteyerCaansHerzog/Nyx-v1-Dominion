@@ -837,7 +837,7 @@ function Reaper:think()
 			map = map,
 			name = Panorama.MyPersonaAPI.GetName(),
 			phase = phase,
-			priority = self.ai.lastPriority,
+			priority = self.ai.currentHighestPriority,
 			skill = self.ai.states.engage.skill,
 			team = team,
 		}

@@ -53,7 +53,7 @@ function AiStatePick:__init()
 end
 
 --- @return void
-function AiStatePick:assess()
+function AiStatePick:getAssessment()
     if not LocalPlayer:isCounterTerrorist() then
         return AiPriority.IGNORE
     end

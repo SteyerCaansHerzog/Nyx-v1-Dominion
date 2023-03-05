@@ -295,7 +295,7 @@ function AiRoutineManageEconomy:determineForceBuyOrDrop()
 
 	Client.fireAfter(barkDelay, function()
 		self.ai.routines.buyGear:receiveDrop()
-		self.ai.commands.drop:bark(target.eid, target:getName())
+		self.ai.commands.drop:bark(target:getName())
 	end)
 end
 

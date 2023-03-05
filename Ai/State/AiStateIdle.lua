@@ -23,7 +23,7 @@ end
 function AiStateIdle:__init() end
 
 --- @return void
-function AiStateIdle:assess()
+function AiStateIdle:getAssessment()
     return AiPriority.IDLE
 end
 

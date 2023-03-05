@@ -51,7 +51,7 @@ function AiStateLurkT:__init()
 end
 
 --- @return void
-function AiStateLurkT:assess()
+function AiStateLurkT:getAssessment()
 	if not self.isActive then
 		return AiPriority.IGNORE
 	end

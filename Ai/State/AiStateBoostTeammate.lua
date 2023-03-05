@@ -46,7 +46,7 @@ function AiStateBoostTeammate:__init()
 end
 
 --- @return number
-function AiStateBoostTeammate:assess()
+function AiStateBoostTeammate:getAssessment()
     if AiUtility.isBombPlanted() then
         return AiPriority.IGNORE
     end

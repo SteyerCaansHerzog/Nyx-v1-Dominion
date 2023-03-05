@@ -66,7 +66,7 @@ function AiStateWait:wait(player, origin)
 end
 
 --- @return void
-function AiStateWait:assess()
+function AiStateWait:getAssessment()
     if self.isWaiting then
         return AiPriority.FOLLOW
     end

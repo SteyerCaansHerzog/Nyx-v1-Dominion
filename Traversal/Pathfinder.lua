@@ -85,6 +85,10 @@ local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
 --- @field startOrigin Vector3
 --- @field endOrigin Vector3
 --- @field dateTimeFormatted string
+
+--- @class PathfinderFullRequest
+--- @field path PathfinderPath
+--- @field request PathfinderRequest
 --}}}
 
 --{{{ Pathfinder
@@ -1388,7 +1392,7 @@ function Pathfinder.traverseJumps(currentNode, previousNode)
 		return
 	end
 
-	if clientSpeed < 200 or absDiff > 1 then
+	if clientSpeed < 200 or absDiff > 0.2 then
 		isAirStrafeJumping = false
 	end
 
@@ -1454,21 +1458,44 @@ function Pathfinder.traverseJumps(currentNode, previousNode)
 			end
 		end
 	elseif currentNode:is(Node.traverseVault) then
-		if distance2d > 65 then
-			return
-		end
-
 		if not Pathfinder.moveOnGroundTimer:isElapsed(0.33) then
 			return
 		end
 
-		local nextNode = Pathfinder.path.nodes[Pathfinder.path.idx + 1]
+		if distance2d > 75 then
+			return
+		end
 
-		Pathfinder.jump()
-		Pathfinder.incrementPath("vault")
+		if currentNode.origin.z - clientOrigin.z < 25 then
+			Pathfinder.incrementPath("vault too low")
 
-		if nextNode and not nextNode.isJump and currentNode.origin:getDistance2(nextNode.origin) < 200 then
-			Pathfinder.incrementPath("climb skip")
+			return
+		end
+
+		if isAirStrafeJumping then
+			Pathfinder.isAirStrafeJump = true
+
+			local nextNode = Pathfinder.path.nodes[Pathfinder.path.idx + 1]
+
+			Pathfinder.jump()
+			Pathfinder.incrementPath("vault")
+
+			if nextNode and not nextNode.isJump and currentNode.origin:getDistance2(nextNode.origin) < 200 then
+				Pathfinder.incrementPath("vault skip")
+			end
+		else
+			if distance2d > 25 then
+				return
+			end
+
+			if Pathfinder.moveObstructedTimer:isElapsed(0.01) then
+				Pathfinder.duck()
+			end
+
+			if Pathfinder.moveObstructedTimer:isElapsed(0.05) and clientSpeed < 75 then
+				Pathfinder.jump()
+				Pathfinder.incrementPath("vault")
+			end
 		end
 	elseif currentNode:is(Node.traverseGap) then
 		if distance2d < 40 then

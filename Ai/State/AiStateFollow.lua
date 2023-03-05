@@ -60,7 +60,7 @@ function AiStateFollow:follow(player)
 end
 
 --- @return void
-function AiStateFollow:assess()
+function AiStateFollow:getAssessment()
     if self.isFollowing then
         return AiPriority.FOLLOW
     end

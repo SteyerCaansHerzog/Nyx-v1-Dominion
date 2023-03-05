@@ -70,7 +70,7 @@ function AiStateFreezetime:__init()
 end
 
 --- @return void
-function AiStateFreezetime:assess()
+function AiStateFreezetime:getAssessment()
     -- Handle the AI being restarted.
     if not self.freezeTimer:isStarted() then
         return AiPriority.IGNORE

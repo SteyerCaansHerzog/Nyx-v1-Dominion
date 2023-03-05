@@ -37,8 +37,10 @@ function Config:__setup()
 		Config[k] = v
 	end
 
-	for k, v in pairs(ConfigValues) do
-		Config[k] = v
+	if ConfigValues then
+		for k, v in pairs(ConfigValues) do
+			Config[k] = v
+		end
 	end
 
 	Config.administrators = Table.getMap(Config.administrators)

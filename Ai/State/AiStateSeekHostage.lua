@@ -54,7 +54,7 @@ function AiStateSeekHostage:__init()
 end
 
 --- @return void
-function AiStateSeekHostage:assess()
+function AiStateSeekHostage:getAssessment()
     if AiUtility.isRoundOver then
         return AiPriority.IGNORE
     end

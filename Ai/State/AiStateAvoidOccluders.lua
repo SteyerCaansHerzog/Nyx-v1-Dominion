@@ -33,7 +33,7 @@ end
 function AiStateAvoidOccluders:__init() end
 
 --- @return void
-function AiStateAvoidOccluders:assess()
+function AiStateAvoidOccluders:getAssessment()
     if self.ai.routines.handleOccluderTraversal.infernoInsideOf then
         return AiPriority.AVOID_INFERNO
     end

@@ -38,7 +38,7 @@ end
 function AiStateZombie:__init() end
 
 --- @return void
-function AiStateZombie:assess()
+function AiStateZombie:getAssessment()
     if not LocalPlayer:isTerrorist() then
         return AiPriority.IGNORE
     end

@@ -62,7 +62,7 @@ function AiStateGraffiti:__init()
 end
 
 --- @return void
-function AiStateGraffiti:assess()
+function AiStateGraffiti:getAssessment()
     if not self.isEnabled then
         return AiPriority.IGNORE
     end

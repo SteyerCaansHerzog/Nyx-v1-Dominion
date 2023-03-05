@@ -652,12 +652,11 @@ function VirtualMouse.setIdealPathCrosshairPlacement(idealViewAngles)
 	local lastVisibleOrigin
 	local eyeOrigin = LocalPlayer.getEyeOrigin()
 	local isOk = true
-	local tr = 0
 	local occludedCount = 0
 	local occludedThreshold = 4
 
 	if AiThreats.threatLevel >= AiThreats.threatLevels.LOW then
-		occludedCount = 1
+		occludedThreshold = 2
 	end
 
 	for pathIdx = Pathfinder.path.idx + 1, Pathfinder.path.finalIdx do
@@ -679,7 +678,6 @@ function VirtualMouse.setIdealPathCrosshairPlacement(idealViewAngles)
 		for i = 1, steps do
 			local offsetOrigin = source.eyeOrigin:getLerp(target.eyeOrigin, i * scalar)
 
-			tr = tr + 1
 			local trace = Trace.getLineToPosition(
 				eyeOrigin,
 				offsetOrigin,
@@ -698,8 +696,6 @@ function VirtualMouse.setIdealPathCrosshairPlacement(idealViewAngles)
 			end
 
 			lastVisibleOrigin = offsetOrigin
-
-			Client.draw(Vector3.drawScaledCircle, offsetOrigin, 10, Color:hsla(200, 0.8, 0.6, 60))
 		end
 
 		if not isOk then
@@ -718,104 +714,6 @@ function VirtualMouse.setIdealPathCrosshairPlacement(idealViewAngles)
 	VirtualMouse.pathCrosshairPlacement:lerp(lastVisibleOrigin, 10 * Time.delta)
 
 	idealViewAngles:setFromAngle(eyeOrigin:getAngle(VirtualMouse.pathCrosshairPlacement))
-
-	-- Shake the mouse movement.
-	VirtualMouse.setNoiseType(ViewNoiseType.moving)
-
-	VirtualMouse.lookState = "VirtualMouse generic"
-	VirtualMouse.lookSpeedIdeal = 6
-	VirtualMouse.lookSpeedDelayMin = 0.25
-	VirtualMouse.lookSpeedDelayMax = 0.5
-end
-
---- @param idealViewAngles Angle
---- @return void
-function VirtualMouse.setIdealLookAhead(idealViewAngles)
-	local currentNode = Pathfinder.path.node
-
-	if Pathfinder.isAscendingLadder then
-		idealViewAngles:setFromAngle(currentNode.direction:clone():set(-75))
-
-		VirtualMouse.lookState = "VirtualMouse generic"
-		VirtualMouse.lookSpeedIdeal = 6
-		VirtualMouse.lookSpeedDelayMin = 0
-		VirtualMouse.lookSpeedDelayMax = 0
-
-		return
-	elseif Pathfinder.isDescendingLadder then
-		idealViewAngles:setFromAngle(currentNode.direction:clone():set(89))
-
-		VirtualMouse.lookState = "VirtualMouse generic"
-		VirtualMouse.lookSpeedIdeal = 6
-		VirtualMouse.lookSpeedDelayMin = 0
-		VirtualMouse.lookSpeedDelayMax = 0
-
-		return
-	end
-
-	--- @type NodeTypeBase
-	local lookAheadNode
-	local lookAheadBy = 4
-
-	if AiThreats.threatLevel == AiThreats.threatLevels.EXTREME
-		or (AiUtility.closestEnemy and LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) < 1250)
-	then
-		lookAheadBy = 2
-	end
-
-	-- How far in the path to look ahead.
-	local lookAheadTo = lookAheadBy
-
-	local i = 0
-
-	-- Select a node ahead in the path, and look closer until we find a valid node.
-	while not lookAheadNode and lookAheadTo do
-		lookAheadNode = Pathfinder.path.nodes[Pathfinder.path.idx + lookAheadTo]
-
-		lookAheadTo = lookAheadTo - 1
-
-		i = i + 1
-
-		if i > 50 then
-			Logger.console(Logger.ERROR, Localization.viewFreezePrevention)
-
-			return
-		end
-	end
-
-	-- A valid node was found.
-	if not lookAheadNode then
-		return
-	end
-
-	-- Do not look at last node.
-	if lookAheadTo == 0 then
-		return
-	end
-
-	local lookOrigin = lookAheadNode.origin:clone()
-
-	-- We want to look roughly head height of the goal.
-	lookOrigin:offset(0, 0, 46)
-
-	if not VirtualMouse.lookAheadOrigin then
-		VirtualMouse.lookAheadOrigin = lookOrigin
-	end
-
-	local distance = LocalPlayer.getEyeOrigin():getDistance(VirtualMouse.lookAheadOrigin)
-	-- Causes the look at origin to move ahead faster when the AI is closer to it.
-	local speedBoost = Math.getClampedInversedFloat(distance, 1000, 0, 1000)
-
-	VirtualMouse.lookAheadOrigin = Animate.lerp(VirtualMouse.lookAheadOrigin, lookOrigin, (1.95 + speedBoost) * Time.delta)
-
-	local lookAngle = LocalPlayer.getEyeOrigin():getAngle(VirtualMouse.lookAheadOrigin)
-
-	if currentNode.isJump and not currentNode:is(Node.traverseDrop) then
-		lookAngle.p = 0
-	end
-
-	-- Generate our look ahead view angles.
-	idealViewAngles:setFromAngle(lookAngle)
 
 	-- Shake the mouse movement.
 	VirtualMouse.setNoiseType(ViewNoiseType.moving)

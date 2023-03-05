@@ -63,7 +63,11 @@ function AiStateUseRunBoost:__init()
 end
 
 --- @return void
-function AiStateUseRunBoost:assess()
+function AiStateUseRunBoost:getAssessment()
+    if true then
+        return AiPriority.IGNORE
+    end
+
     if self.isJumped then
         return AiPriority.USE_RUN_BOOST_COMMIT
     end

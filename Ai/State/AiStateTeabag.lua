@@ -89,7 +89,7 @@ function AiStateTeabag:__init()
 end
 
 --- @return void
-function AiStateTeabag:assess()
+function AiStateTeabag:getAssessment()
     return self.teabagOrigin and AiPriority.TEABAG_CORPSE or AiPriority.IGNORE
 end
 

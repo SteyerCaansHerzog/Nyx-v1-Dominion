@@ -72,7 +72,7 @@ function AiStateUseOntoPositionBoost:__init()
 end
 
 --- @return void
-function AiStateUseOntoPositionBoost:assess()
+function AiStateUseOntoPositionBoost:getAssessment()
     if Config.isPlayingSolo then
         return AiPriority.IGNORE
     end

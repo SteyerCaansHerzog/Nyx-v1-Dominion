@@ -145,7 +145,7 @@ function AiStatePlant:__init()
 end
 
 --- @return void
-function AiStatePlant:assess()
+function AiStatePlant:getAssessment()
     if AiUtility.gameRules:m_bFreezePeriod() == 1 or not LocalPlayer.isCarryingBomb() then
         return AiPriority.IGNORE
     end

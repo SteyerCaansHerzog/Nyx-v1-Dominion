@@ -26,7 +26,7 @@ function AiStateGoToRandomLocation:new(fields)
 end
 
 --- @return void
-function AiStateGoToRandomLocation:assess()
+function AiStateGoToRandomLocation:getAssessment()
     if not AiUtility.isRoundOver then
         return AiPriority.IGNORE
     end

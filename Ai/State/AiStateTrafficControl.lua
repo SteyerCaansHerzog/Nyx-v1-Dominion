@@ -37,7 +37,7 @@ end
 function AiStateTrafficControl:__init() end
 
 --- @return void
-function AiStateTrafficControl:assess()
+function AiStateTrafficControl:getAssessment()
     if self.isWaiting then
         return AiPriority.TRAFFIC_CONTROL
     end

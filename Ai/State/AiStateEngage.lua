@@ -145,6 +145,7 @@ local WeaponMovementVelocity =  {
 --- @field preAimMapAngleTimer Timer
 --- @field preAimTarget Player
 --- @field preAimThroughCornersBlockTimer Timer
+--- @field preAimThroughCornersHoldTimer Timer
 --- @field preAimThroughCornersOrigin Vector3
 --- @field preAimThroughCornersTargetOrigin Vector3
 --- @field preAimThroughCornersUpdateTimer Timer
@@ -262,6 +263,7 @@ function AiStateEngage:initFields()
     self.waitForTargetVisibleTimer = Timer:new():startThenElapse()
     self.watchTime = 2
     self.watchTimer = Timer:new()
+    self.preAimThroughCornersHoldTimer = Timer:new():startThenElapse()
 
     self.lastSeenTimers = {}
 
@@ -390,9 +392,8 @@ function AiStateEngage:initEvents()
 end
 
 --- @return void
-function AiStateEngage:assess()
+function AiStateEngage:getAssessment()
     self:setBestTarget()
-    -- This is effectively a global behaviour, dependent on code inside this class.
     self:handlePreAimMapAngle()
 
     self.sprayRealTime = self.sprayTime
@@ -460,17 +461,6 @@ function AiStateEngage:assess()
 
     if AiUtility.isHostageCarriedByEnemy and not Table.isEmpty(AiUtility.hostageCarriers) then
         return AiPriority.ENGAGE_ACTIVE
-    end
-
-    -- Makes the AI exit this state faster when the bomb is down.
-    if not AiUtility.plantedBomb then
-        if self.reactionTimer:isStarted() then
-            return AiPriority.ENGAGE_PASSIVE
-        end
-
-        if self.watchTimer:isStarted() then
-            return AiPriority.ENGAGE_PASSIVE
-        end
     end
 
     if self.bestTarget and not self.bestTarget:getOrigin():isZero() then
@@ -810,7 +800,7 @@ function AiStateEngage:setBestTarget()
             end
         end
 
-        if self:isAwareOfEnemy(enemy) then
+        if self:isAwareOfEnemy(enemy) and AiThreats.threats[enemy.eid] then
             if AiUtility.visibleEnemies[enemy.eid] then
                 -- Select visible enemies based on the crosshair field of view.
                 local fov = AiUtility.enemyFovs[enemy.eid]
@@ -1091,8 +1081,8 @@ function AiStateEngage:setWeaponStats(enemy)
             },
             firerates = {
                 long = 0.65,
-                medium = 0.33,
-                short = 0.15
+                medium = 0.4,
+                short = 0.24
             },
             isRcsEnabled = {
                 long = true,
@@ -1357,6 +1347,7 @@ function AiStateEngage:handleMovement()
         return
     end
 
+    -- This code assumes that if we're on top of a teammate, that they are boosting us.
     if AiUtility.closestTeammate then
         local boosterBounds = AiUtility.closestTeammate:getBounds()
         local onBoosterBounds = LocalPlayer:getOrigin():clone():offset(0, 0, -4):getBounds(Vector3.align.UP, 12, 12, 32)
@@ -1365,6 +1356,7 @@ function AiStateEngage:handleMovement()
         self.isOnBooster = isOnBooster
     end
 
+    -- Prevent the AI moving if it's standing on top of a teammate.
     if self.isOnBooster then
         Pathfinder.standStill()
 
@@ -1999,6 +1991,13 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:handleAttacking(cmd)
+    -- Update recoil control with skill level.
+    VirtualMouse.recoilControl = self.recoilControl
+
+    self:attackingBlockRoutines()
+    self:attackingEquipWeapon()
+    self:attackingSprayWeapon(cmd)
+
     if not self.bestTarget then
         return
     end
@@ -2007,23 +2006,18 @@ function AiStateEngage:handleAttacking(cmd)
         return
     end
 
-    self:attackingBlockRoutines()
-    self:attackingEquipWeapon()
     self:attackingDefending()
     self:attackingLookAtBackupOrigin()
-    self:attackingSprayWeapon(cmd)
-
-    -- Update recoil control with skill level.
-    VirtualMouse.recoilControl = self.recoilControl
 
     -- Reset reaction delay.
-    if not self.bestTarget or not self:isAwareOfEnemy(self.bestTarget) then
+    if not self:isAwareOfEnemy(self.bestTarget) then
         self.reactionTimer:stop()
     end
 
-    -- Block overpowered spray transfers.
+    -- Block spray transfers based on skill level.
+    -- Forces AI to lock-in next target, rather than doing a perfect spray-transfer.
     if not self.blockTimer:isElapsed(self.blockTime) then
-        self.ai.routines.manageWeaponReload:block()
+        VirtualMouse.lookAtLocation(self.shootAtOrigin, 6, VirtualMouse.noise.special, "Engage look at dead target")
 
         return
     end
@@ -2185,26 +2179,30 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateEngage:attackingSprayWeapon(cmd)
-    if self.sprayTimer:isStarted() and not self.sprayTimer:isElapsed(self.sprayRealTime) then
-        self.ai.routines.manageWeaponReload:block()
+    if not self.sprayTimer:isStarted() or self.sprayTimer:isElapsed(self.sprayRealTime) then
+        return
+    end
 
-        if self.bestTarget and not AiUtility.visibleEnemies[self.bestTarget.eid] then
-            self:shootAtTarget(cmd, self.watchOrigin, self.bestTarget)
-        elseif not self.bestTarget then
-            self:shootAtTarget(cmd, self.watchOrigin)
-        end
+    self.ai.routines.manageWeaponReload:block()
+
+    if self.bestTarget and not AiUtility.visibleEnemies[self.bestTarget.eid] then
+        self:shootAtTarget(cmd, self.watchOrigin, self.bestTarget)
+    elseif not self.bestTarget then
+        self:shootAtTarget(cmd, self.watchOrigin)
     end
 end
 
 --- @return void
 function AiStateEngage:attackingEquipWeapon()
     -- Ensure player is holding weapon.
-    if not LocalPlayer:isHoldingGun() then
-        if LocalPlayer:hasPrimary() then
-            LocalPlayer.equipPrimary()
-        else
-            LocalPlayer.equipPistol()
-        end
+    if LocalPlayer:isHoldingGun() then
+        return
+    end
+
+    if LocalPlayer:hasPrimary() then
+        LocalPlayer.equipPrimary()
+    else
+        LocalPlayer.equipPistol()
     end
 end
 
@@ -3387,32 +3385,35 @@ end
 
 --- @return void
 function AiStateEngage:preAimThroughCorners()
+    if self.isBestTargetVisible then
+        self.preAimThroughCornersHoldTimer:start()
+    end
+
     local target = self.bestTarget
 
     if not target then
         return
     end
 
-    if self.isBestTargetVisible then
-        return
-    end
-
-    if not self.isAllowedToPreAim then
-        return
-    end
-
-    if Pathfinder.isAscendingLadder or Pathfinder.isDescendingLadder then
-        return
-    end
-
     local clientVelocity = LocalPlayer:m_vecVelocity()
+    local isInHold = not self.preAimThroughCornersHoldTimer:isElapsed(1.5)
 
-    if clientVelocity:getMagnitude() < 50 then
-        return
-    end
+    if not isInHold then
+        if not self.isAllowedToPreAim then
+            return
+        end
 
-    if not self.preAimThroughCornersBlockTimer:isElapsed(0.8) then
-        return
+        if Pathfinder.isAscendingLadder or Pathfinder.isDescendingLadder then
+            return
+        end
+
+        if clientVelocity:getMagnitude() < 50 then
+            return
+        end
+
+        if not self.preAimThroughCornersBlockTimer:isElapsed(0.8) then
+            return
+        end
     end
 
     local playerOrigin = LocalPlayer:getOrigin()
@@ -3438,7 +3439,7 @@ function AiStateEngage:preAimThroughCorners()
         end
     end
 
-    if not isPeeking then
+    if not isInHold and not isPeeking then
         return
     end
 

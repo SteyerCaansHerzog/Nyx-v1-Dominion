@@ -91,7 +91,7 @@ function AiStateGrenadeBase:__init()
 end
 
 --- @return void
-function AiStateGrenadeBase:assess()
+function AiStateGrenadeBase:getAssessment()
     -- They suck at throwing nade lineups during retakes. We're just going to ban it as a quick fix.
     if AiUtility.plantedBomb then
         return AiPriority.IGNORE
@@ -139,7 +139,7 @@ function AiStateGrenadeBase:assess()
     end
 
     -- We're threatened by an enemy.
-    if AiThreats.threatLevel == AiThreats.threatLevels.EXTREME then
+    if AiThreats.threatLevel >= AiThreats.threatLevels.HIGH then
         self.threatCooldownTimer:start()
 
         -- If we had a node, we're going to consider it used / unavailable.
@@ -399,7 +399,7 @@ function AiStateGrenadeBase:think(cmd)
     end
 
     -- Force AI to abort if majorly threatened, even when about to throw.
-    if AiThreats.threatLevel == AiThreats.threatLevels.EXTREME then
+    if AiThreats.threatLevel >= AiThreats.threatLevels.HIGH then
         self:reset()
 
         return

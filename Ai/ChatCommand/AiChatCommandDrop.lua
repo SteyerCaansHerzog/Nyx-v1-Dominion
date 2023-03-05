@@ -39,24 +39,24 @@ function AiChatCommandDrop:invoke(ai, sender, args)
         return self.SENDER_IS_NOT_TEAMMATE
     end
 
-    local eid = args[1]
+    local name = args[1]
 
     -- Handle being asked directly by entity-index to drop a weapon.
     -- This is used by the Manage Economy routine to handle AI-to-AI economy management.
-    if eid then
-        eid = tonumber(eid)
+    if name then
+        local player = Player.getOne(function(p)
+        	return p:getName() == name
+        end)
 
-        if not eid then
+        if not player then
             return self.NO_VALID_ARGUMENTS
         end
 
-        if eid == LocalPlayer.eid then
+        if player.eid == LocalPlayer.eid then
             ai.states.drop:dropGear(sender, "weapon")
 
             return
         else
-            local player = Player:new(eid)
-
             if not player:isValid() then
                 return self.NO_VALID_ARGUMENTS
             end

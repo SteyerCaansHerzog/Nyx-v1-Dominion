@@ -51,7 +51,7 @@ function AiStateWatch:__init()
 end
 
 --- @return void
-function AiStateWatch:assess()
+function AiStateWatch:getAssessment()
     -- Handle hostage gamemode.
     if AiUtility.mapInfo.gamemode == AiUtility.gamemodes.HOSTAGE then
         -- Only CTs should watch.

@@ -54,7 +54,7 @@ function AiStateDefuse:__init()
 end
 
 --- @return void
-function AiStateDefuse:assess()
+function AiStateDefuse:getAssessment()
     -- Only CTs can defuse.
     if not LocalPlayer:isCounterTerrorist() then
         return AiPriority.IGNORE

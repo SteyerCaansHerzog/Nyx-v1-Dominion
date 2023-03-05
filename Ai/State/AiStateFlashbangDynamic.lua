@@ -72,14 +72,14 @@ function AiStateFlashbangDynamic:__init()
 end
 
 --- @return void
-function AiStateFlashbangDynamic:assess()
+function AiStateFlashbangDynamic:getAssessment()
     -- Do not waste time with nades when bomb is close to detonation.
     if AiUtility.plantedBomb and AiUtility.bombDetonationTime <= 18 and LocalPlayer:isCounterTerrorist() then
         return AiPriority.IGNORE
     end
 
     -- AI is threatened. Don't try to throw a flashbang.
-    if AiThreats.threatLevel == AiThreats.threatLevels.EXTREME or AiUtility.isEnemyVisible then
+    if AiThreats.threatLevel >= AiThreats.threatLevels.HIGH or AiUtility.isEnemyVisible then
         self.threatCooldownTimer:start()
     end
 
@@ -284,6 +284,12 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateFlashbangDynamic:think(cmd)
+    if AiThreats.threatLevel >= AiThreats.threatLevels.HIGH then
+        self:reset()
+
+        return
+    end
+
     if not self.node then
         self:reset()
 

@@ -39,7 +39,7 @@ function AiStateCheck:__init()
 end
 
 --- @return void
-function AiStateCheck:assess()
+function AiStateCheck:getAssessment()
     if AiUtility.plantedBomb then
         return AiPriority.IGNORE
     end

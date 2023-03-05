@@ -50,7 +50,7 @@ function AiStatePushDemolition:__init()
 end
 
 --- @return void
-function AiStatePushDemolition:assess()
+function AiStatePushDemolition:getAssessment()
     if not LocalPlayer:isTerrorist() then
         return AiPriority.IGNORE
     end

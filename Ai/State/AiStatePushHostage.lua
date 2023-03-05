@@ -44,7 +44,7 @@ function AiStatePushHostage:__init()
 end
 
 --- @return void
-function AiStatePushHostage:assess()
+function AiStatePushHostage:getAssessment()
     if not LocalPlayer:isCounterTerrorist() then
         return AiPriority.IGNORE
     end

@@ -69,7 +69,7 @@ function AiStateEvade:__init()
 end
 
 --- @return void
-function AiStateEvade:assess()
+function AiStateEvade:getAssessment()
     self.isLookingAtPathfindingDirection = false
 
     -- No enemies to threaten us.
@@ -267,7 +267,7 @@ end
 
 --- @return void
 function AiStateEvade:moveToCover()
-    local cover = self:getCoverNode(800, AiThreats.highestThreat, 135)
+    local cover = self:getCoverNode(300, AiThreats.highestThreat, 135)
 
     if not cover then
         return

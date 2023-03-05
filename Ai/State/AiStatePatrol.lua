@@ -72,7 +72,7 @@ function AiStatePatrol:invoke(origin, player)
 end
 
 --- @return void
-function AiStatePatrol:assess()
+function AiStatePatrol:getAssessment()
     if AiUtility.isRoundOver then
         return AiPriority.IGNORE
     end

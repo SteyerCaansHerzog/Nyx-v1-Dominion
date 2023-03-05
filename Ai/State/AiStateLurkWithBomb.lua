@@ -45,7 +45,7 @@ function AiStateLurkWithBomb:__init()
 end
 
 --- @return void
-function AiStateLurkWithBomb:assess()
+function AiStateLurkWithBomb:getAssessment()
 	if not self.bombsite then
 		return AiPriority.IGNORE
 	end

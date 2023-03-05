@@ -60,7 +60,7 @@ function AiStateRotate:__init()
 end
 
 --- @return void
-function AiStateRotate:assess()
+function AiStateRotate:getAssessment()
     return self.isActive and AiPriority.ROTATE or AiPriority.IGNORE
 end
 

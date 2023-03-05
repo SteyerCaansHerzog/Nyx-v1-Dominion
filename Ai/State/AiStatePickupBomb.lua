@@ -53,7 +53,7 @@ function AiStatePickupBomb:__init()
 end
 
 --- @return void
-function AiStatePickupBomb:assess()
+function AiStatePickupBomb:getAssessment()
     if self.ignorePickup then
         return AiPriority.IGNORE
     end

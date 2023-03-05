@@ -32,7 +32,7 @@ function AiStateRescueHostage:new(fields)
 end
 
 --- @return void
-function AiStateRescueHostage:assess()
+function AiStateRescueHostage:getAssessment()
     if LocalPlayer:m_hCarriedHostage() == nil then
         return AiPriority.IGNORE
     end

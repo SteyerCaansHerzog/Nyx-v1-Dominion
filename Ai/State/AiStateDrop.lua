@@ -63,7 +63,7 @@ function AiStateDrop:dropGear(player, requestedGear, isBuyingAfterDrop)
 end
 
 --- @return number
-function AiStateDrop:assess()
+function AiStateDrop:getAssessment()
     return self.isDroppingGear and AiPriority.DROP or AiPriority.IGNORE
 end
 

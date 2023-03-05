@@ -566,7 +566,7 @@ function AiProcessInfo:think()
 		if self.ai.currentState then
 			activity = self.ai.currentState.activity
 			behavior = self.ai.currentState.name
-			priority = self.ai.lastPriority
+			priority = self.ai.currentHighestPriority
 			threatLevel = AiThreats.threatLevel
 
 			if self.ai.currentState.name == "Engage" and self.ai.states.engage.bestTarget then

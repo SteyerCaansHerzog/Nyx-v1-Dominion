@@ -14,7 +14,7 @@ local English = {
 	aiNoPriority = "AI state '%s' does not return a priority.", -- state name
 	aiNotInGame = "Not in-game. Waiting to join a server before initialising AI states.",
 	aiReady = "AI Controller is ready.",
-	aiStateChanged = "Changed AI state to '%s' [%i].", -- state name
+	aiStateTransitioned = "Transitioned AI state to '%s' [%i].", -- state name
 	aiStateGamemodesRequired = "The following gamemodes are required: %s", -- gamemode names
 	aiStateLoaded = "AI state '%s' successfully loaded.", -- state name
 	aiStateNodesRequired =  "The following nodes are required in the map: %s", -- node names
@@ -119,7 +119,7 @@ local Languages = {
 --- @field aiNoPriority string
 --- @field aiNotInGame string
 --- @field aiReady string
---- @field aiStateChanged string
+--- @field aiStateTransitioned string
 --- @field aiStateGamemodesRequired string
 --- @field aiStateLoaded string
 --- @field aiStateNodesRequired string

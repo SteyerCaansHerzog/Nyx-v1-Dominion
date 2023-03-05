@@ -31,7 +31,7 @@ function AiStateAvoidTeammates:__init()
 end
 
 --- @return void
-function AiStateAvoidTeammates:assess()
+function AiStateAvoidTeammates:getAssessment()
     if AiUtility.gameRules:m_bFreezePeriod() == 1 then
         return AiPriority.IGNORE
     end

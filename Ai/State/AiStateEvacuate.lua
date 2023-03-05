@@ -56,7 +56,7 @@ function AiStateEvacuate:__init()
 end
 
 --- @return void
-function AiStateEvacuate:assess()
+function AiStateEvacuate:getAssessment()
     self.isSaving = false
 
     -- A human has told us to save this round.

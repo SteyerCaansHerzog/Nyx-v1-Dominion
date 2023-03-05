@@ -28,8 +28,10 @@ function Debug:__setup()
 		Debug[k] = v
 	end
 
-	for k, v in pairs(DebugValues) do
-		Debug[k] = v
+	if DebugValues then
+		for k, v in pairs(DebugValues) do
+			Debug[k] = v
+		end
 	end
 end
 

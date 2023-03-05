@@ -55,6 +55,7 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field chatbots AiChatbot
 --- @field client DominionClient
 --- @field commands AiChatCommand
+--- @field currentHighestPriority number
 --- @field currentState AiStateBase
 --- @field debugPriorities table<string, string>
 --- @field ditherHistories AiStateDitherHistory[]
@@ -64,8 +65,6 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field isAllowedToBuyGear boolean
 --- @field isAntiAfkEnabled boolean
 --- @field isEnabled boolean
---- @field lastPriority number
---- @field lockStateTimer Timer
 --- @field processes AiProcess
 --- @field routines AiRoutine
 --- @field sense AiSense
@@ -94,7 +93,6 @@ function Ai:initFields()
 	AiUtility.ai = self
 
 	self.isAntiAfkEnabled = false
-	self.lockStateTimer = Timer:new():startThenElapse()
 	self.ditherHistories = {}
 	self.ditherHistoryMax = 16
 	self.ditherThreshold = 8
@@ -189,6 +187,10 @@ function Ai:initFields()
 	until true end
 
 	self.states = states
+	self.currentState = AiState.idle
+	self.currentHighestPriority = 0
+
+	self:validateFsmStates()
 end
 
 --- @return void
@@ -199,7 +201,7 @@ function Ai:initMenu()
 		Pathfinder.isEnabled = bool
 		AiUtility.isPerformingCalculations = bool
 		self.isEnabled = bool
-		self.lastPriority = nil
+		self.currentHighestPriority = nil
 		self.currentState = nil
 
 		Pathfinder.clearActivePathAndLastRequest()
@@ -289,7 +291,7 @@ function Ai:initEvents()
 			return
 		end
 
-		self.lastPriority = nil
+		self.currentHighestPriority = nil
 		self.currentState = nil
 	end)
 
@@ -541,8 +543,8 @@ function Ai:render()
 
 		uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(
 			"Priority: %s [%i]",
-			AiStateBase.priorityMap[self.lastPriority],
-			self.lastPriority
+			AiStateBase.priorityMap[self.currentHighestPriority],
+			self.currentHighestPriority
 		))
 
 		uiPos:offset(0, offset)
@@ -596,6 +598,28 @@ function Ai:render()
 	end
 
 	if MenuGroup.visualiseAiSense:get() then
+		if AiThreats.threatLevel then
+			local map = {
+				[AiThreats.threatLevels.NONE] = "No Threats",
+				[AiThreats.threatLevels.LOW] = "Low",
+				[AiThreats.threatLevels.MEDIUM] = "Medium",
+				[AiThreats.threatLevels.HIGH] = "High",
+				[AiThreats.threatLevels.EXTREME] = "Extreme"
+			}
+
+			local mod = Math.getInversedFloat(AiThreats.threatLevel, 4) * 80
+			local color = Color:hsla(mod, 0.8, 0.6, 255)
+
+			uiPos:drawSurfaceText(Font.EXTRA_TINY, color, "l", string.format(
+				"Threat Level: %s",
+				map[AiThreats.threatLevel]
+			))
+			uiPos:offset(0, 14)
+
+			uiPos:clone():offset(-5, 5):drawSurfaceRectangle(spacerDimensions, spacerColor)
+			uiPos:offset(0, 10)
+		end
+
 		local baseColor = Color:hsla(20, 0.8, 0.6)
 		local isEmpty = true
 
@@ -674,8 +698,7 @@ function Ai:think(cmd)
 		return
 	end
 
-	self:preventDithering()
-	self:selectState(cmd)
+	self:processFiniteStateMachine(cmd)
 end
 
 --- @param cmd SetupCommandEvent
@@ -686,8 +709,19 @@ function Ai:debugPre(cmd) end
 --- @return void
 function Ai:debugPost(cmd) end
 
+--- @param cmd SetupCommandEvent
 --- @return void
-function Ai:preventDithering()
+function Ai:processFiniteStateMachine(cmd)
+	self:handleFsmStateDithering()
+
+	local state, priority = self:getHighestFsmState()
+
+	self:setFsmState(state, priority, cmd)
+	self:handleFsmRoutines(cmd)
+end
+
+--- @return void
+function Ai:handleFsmStateDithering()
 	-- Cap the histories.
 	if #self.ditherHistories >= self.ditherHistoryMax then
 		table.remove(self.ditherHistories, 1)
@@ -722,11 +756,10 @@ function Ai:preventDithering()
 	Logger.console(Logger.ERROR, Localization.aiDitherLocked, currentState.state.name)
 end
 
---- @param cmd SetupCommandEvent
---- @return void
-function Ai:selectState(cmd)
+--- @return AiStateBase, number
+function Ai:getHighestFsmState()
 	--- @type AiStateBase
-	local currentState
+	local targetState
 	local highestPriority = -1
 	local debugPriorities = {}
 
@@ -734,26 +767,19 @@ function Ai:selectState(cmd)
 	for _, state in pairs(self.states) do repeat
 		state.isCurrentState = false
 
+		if not state.isEnabled then
+			break
+		end
+
 		if state.isBlocked then
 			state.isBlocked = false
 
 			break
 		end
 
-		if not state.isEnabled then
-			break
-		end
+		local priority = state:getAssessment()
 
-		if state.abuseLockTimer:isNotElapsed(15) then
-			break
-		end
-
-		if not state.assess then
-			error(string.format(Localization.aiNoAssessMethod, state.name))
-		end
-
-		local priority = state:assess()
-
+		-- If a state yields no priority, we assume the programmer has made a mistake.
 		if not priority then
 			error(string.format(Localization.aiNoPriority, state.name))
 		end
@@ -762,78 +788,85 @@ function Ai:selectState(cmd)
 			debugPriorities[state.name] = priority
 		end
 
-		if priority > highestPriority then
-			currentState = state
-			highestPriority = priority
+		if priority <= highestPriority then
+			break
 		end
+
+		highestPriority = priority
+		targetState = state
 	until true end
 
 	self.debugPriorities = debugPriorities
 
-	if currentState and ((self.lastPriority and self.lastPriority > highestPriority) or self.lockStateTimer:isElapsed(0.15))then
-		local isReactivated = false
+	return targetState, highestPriority
+end
 
-		if currentState.isQueuedForReactivation then
-			currentState.isQueuedForReactivation = false
+--- @param state AiStateBase
+--- @param priority number
+--- @param cmd SetupCommandEvent
+--- @return void
+function Ai:setFsmState(state, priority, cmd)
+	-- No state to be in, so transition to idle.
+	if not state then
+		self.currentState = AiState.idle
+		self.currentHighestPriority = 0
 
-			currentState:activate()
-
-			Logger.console(Logger.ALERT, Localization.aiStateReactivating, currentState.name, highestPriority)
-		end
-
-		if self.lastPriority ~= highestPriority then
-			self.lastPriority = highestPriority
-
-			currentState.priority = highestPriority
-			currentState.isCurrentState = true
-
-			local isActivatable = true
-
-			if not currentState.activate then
-				isActivatable = false
-			elseif self.currentState and Nyx.is(currentState, self.currentState) then
-				isActivatable = false
-			elseif isReactivated then
-				isActivatable = false
-			end
-
-			if isActivatable then
-				Logger.console(Logger.ALERT, Localization.aiStateChanged, currentState.name, highestPriority)
-
-				Pathfinder.flushRequest()
-
-				currentState:activate()
-
-				table.insert(self.ditherHistories, {
-					state = currentState,
-					timer = Timer:new():start()
-				})
-			end
-		end
-
-		if currentState ~= self.currentState then
-			if self.currentState and self.currentState.deactivate then
-				self.currentState:deactivate()
-			end
-
-			self.lockStateTimer:start()
-		end
-
-		self.currentState = currentState
+		return
 	end
 
-	if self.currentState then
-		if VirtualMouse.activeViewAngles then
-			VirtualMouse.lookState = currentState.name
-			VirtualMouse.isLookSpeedDelayed = currentState.isMouseDelayAllowed
-			VirtualMouse.lookSpeedDelayMin = currentState.delayedMouseMin
-			VirtualMouse.lookSpeedDelayMax = currentState.delayedMouseMax
-			VirtualMouse.lookSpeedDelay = Math.getRandomFloat(currentState.delayedMouseMin, currentState.delayedMouseMax)
-		end
-
-		self.currentState:think(cmd)
+	-- Sync virtual mouse parameters.
+	if VirtualMouse.activeViewAngles then
+		VirtualMouse.lookState = state.name
+		VirtualMouse.isLookSpeedDelayed = state.isMouseDelayAllowed
+		VirtualMouse.lookSpeedDelayMin = state.delayedMouseMin
+		VirtualMouse.lookSpeedDelayMax = state.delayedMouseMax
+		VirtualMouse.lookSpeedDelay = Math.getRandomFloat(state.delayedMouseMin, state.delayedMouseMax)
 	end
 
+	-- We do not transition states whose priority is the same.
+	if priority == self.currentHighestPriority then
+		state:think(cmd)
+
+		return
+	end
+
+	local isCurrentStateValid = self.currentState ~= nil
+	local isDifferentState = not isCurrentStateValid or not Nyx.is(state, self.currentState)
+
+	-- Run the deactivate method.
+	if isCurrentStateValid and isDifferentState and self.currentState.deactivate then
+		self.currentState:deactivate()
+	end
+
+	-- Run the activate method on the state.
+	if state.activate and (isDifferentState or state.isQueuedForReactivation) then
+		Pathfinder.flushRequest()
+
+		state:activate()
+
+		table.insert(self.ditherHistories, {
+			state = state,
+			timer = Timer:new():start()
+		})
+
+		if state.isQueuedForReactivation then
+			Logger.console(Logger.ALERT, Localization.aiStateReactivating, state.name, priority)
+		else
+			Logger.console(Logger.ALERT, Localization.aiStateTransitioned, state.name, priority)
+		end
+
+		state.isQueuedForReactivation = false
+	end
+
+	self.currentHighestPriority = priority
+	self.currentState = state
+
+	state:think(cmd)
+end
+
+--- @param cmd SetupCommandEvent
+--- @return void
+function Ai:handleFsmRoutines(cmd)
 	--- @param routine AiRoutineBase
 	for _, routine in pairs(self.routines) do repeat
 		if routine.isBlocked then
@@ -848,6 +881,16 @@ function Ai:selectState(cmd)
 			routine:think(cmd)
 		end
 	until true end
+end
+
+--- @return void
+function Ai:validateFsmStates()
+	--- @param state AiStateBase
+	for _, state in pairs(self.states) do
+		if not state.getAssessment then
+			error(string.format(Localization.aiNoAssessMethod, state.name))
+		end
+	end
 end
 
 return Nyx.class("Ai", Ai)

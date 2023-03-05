@@ -68,7 +68,7 @@ function AiStateUseBoost:__init()
 end
 
 --- @return void
-function AiStateUseBoost:assess()
+function AiStateUseBoost:getAssessment()
     if Config.isPlayingSolo then
         return AiPriority.IGNORE
     end

@@ -169,7 +169,7 @@ function AiStateDefend:__init()
 end
 
 --- @return number
-function AiStateDefend:assess()
+function AiStateDefend:getAssessment()
     if AiUtility.enemiesAlive == 0 then
         return AiPriority.IGNORE
     end

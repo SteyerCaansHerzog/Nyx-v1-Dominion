@@ -113,7 +113,7 @@ function AiStatePickupItems:__init()
 end
 
 --- @return void
-function AiStatePickupItems:assess()
+function AiStatePickupItems:getAssessment()
     if self.item then
         return self.currentPriority
     end

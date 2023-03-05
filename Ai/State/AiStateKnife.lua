@@ -78,7 +78,7 @@ function AiStateKnife:__init()
 end
 
 --- @return void
-function AiStateKnife:assess()
+function AiStateKnife:getAssessment()
     if AiUtility.plantedBomb then
         return AiPriority.IGNORE
     end

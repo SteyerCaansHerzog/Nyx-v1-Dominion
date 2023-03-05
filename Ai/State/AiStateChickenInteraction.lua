@@ -77,7 +77,7 @@ function AiStateChickenInteraction:__init()
 end
 
 --- @return void
-function AiStateChickenInteraction:assess()
+function AiStateChickenInteraction:getAssessment()
     if AiUtility.gameRules:m_bFreezePeriod() == 1 then
         return AiPriority.IGNORE
     end

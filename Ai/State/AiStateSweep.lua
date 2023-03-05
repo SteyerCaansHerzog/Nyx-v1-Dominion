@@ -26,7 +26,7 @@ function AiStateSweep:new(fields)
 end
 
 --- @return void
-function AiStateSweep:assess()
+function AiStateSweep:getAssessment()
     return AiPriority.SWEEP
 end
 

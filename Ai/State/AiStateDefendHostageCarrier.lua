@@ -50,7 +50,7 @@ function AiStateDefendHostageCarrier:__init()
 end
 
 --- @return void
-function AiStateDefendHostageCarrier:assess()
+function AiStateDefendHostageCarrier:getAssessment()
     if AiUtility.isHostageCarriedByTeammate and not LocalPlayer:m_hCarriedHostage() then
         local clientOrigin = LocalPlayer:getOrigin()
 

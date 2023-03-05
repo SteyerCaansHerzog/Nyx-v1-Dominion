@@ -25,6 +25,7 @@ local AiVoicePack = require "gamesense/Nyx/v1/Dominion/Ai/Voice/AiVoicePack"
 --- @field packNone AiVoicePackBase
 --- @field packs AiVoicePack
 --- @field packsListboxMap table<string, boolean>
+--- @field bombCooldownTimer Timer
 local AiVoice = {
     isEnabled = true
 }
@@ -70,6 +71,7 @@ function AiVoice:__init()
     end):setParent(MenuGroup.enableMicrophone)
 
     self.flashbangTimer = Timer:new():startThenElapse()
+    self.bombCooldownTimer = Timer:new():startThenElapse()
 
     Callbacks.runCommand(function()
         if LocalPlayer.isFlashed() and self.flashbangTimer:isElapsedThenRestart(10) then
@@ -285,6 +287,12 @@ function AiVoice:__init()
     end)
 
     Callbacks.bombBeginDefuse(function(e)
+        if not self.bombCooldownTimer:isElapsed(10) then
+            return
+        end
+
+        self.bombCooldownTimer:start()
+
         if AiUtility.isLastAlive then
             return
         end
@@ -299,6 +307,12 @@ function AiVoice:__init()
     end)
 
     Callbacks.bombBeginPlant(function(e)
+        if not self.bombCooldownTimer:isElapsed(10) then
+            return
+        end
+
+        self.bombCooldownTimer:start()
+
         if AiUtility.isLastAlive then
             return
         end
