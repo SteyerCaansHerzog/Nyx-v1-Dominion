@@ -258,8 +258,6 @@ function AiUtility:initEvents()
     end)
 
     Callbacks.bombAbortPlant(function(e)
-        AiUtility.plantedAtBombsite = nil
-
         if e.player:isLocalPlayer() then
             AiUtility.isClientPlanting = false
         elseif e.player:isTeammate() then

@@ -46,7 +46,6 @@ function AiChatCommandBase:invoke(ai, sender, args, isBot) end
 --- @vararg string
 --- @return void
 function AiChatCommandBase:bark(...)
-    --if not MenuGroup.useChatCommands:get() or Config.isPlayingSolo then todo
     if not MenuGroup.useChatCommands:get() then
         return
     end
@@ -93,7 +92,7 @@ function AiChatCommandBase:getRejectionError(ai, sender, args, isInvokedByConsol
         return Localization.cmdRejectionSelfInvoked
     end
 
-    if self.isAdminOnly and not isSenderAdmin then
+    if not isInvokedByConsole and self.isAdminOnly and not isSenderAdmin then
         return Localization.cmdRejectionNotAdmin
     end
 

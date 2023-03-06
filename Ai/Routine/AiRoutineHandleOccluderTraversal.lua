@@ -12,6 +12,7 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 
 --{{{ Modules
 local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBase"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
@@ -212,6 +213,10 @@ function AiRoutineHandleOccluderTraversal:handleSmoke()
 	end
 
 	if not Pathfinder.isOnValidPath() then
+		return
+	end
+
+	if AiThreats.threatLevel < AiThreats.threatLevels.HIGH then
 		return
 	end
 

@@ -143,6 +143,7 @@ local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
 --- @field randomJumpIntervalTime number
 --- @field randomJumpIntervalTimer Timer
 --- @field onNewPathCallbacks table<number, fun(): void>
+--- @field counterStrafeForTimer Timer
 local Pathfinder = {}
 
 --- @return void
@@ -156,6 +157,7 @@ end
 
 --- @return void
 function Pathfinder.initFields()
+	Pathfinder.counterStrafeForTimer = Timer:new():startThenElapse()
 	Pathfinder.goalConnectionCollisions = {}
 	Pathfinder.goalGapCollisions = {}
 	Pathfinder.isAllowedToDuck = true
@@ -169,11 +171,11 @@ function Pathfinder.initFields()
 	Pathfinder.movementRecorderTimer = Timer:new()
 	Pathfinder.moveObstructedTimer = Timer:new()
 	Pathfinder.moveOnGroundTimer = Timer:new()
+	Pathfinder.onNewPathCallbacks = {}
 	Pathfinder.pathfindInterval = 0.2
 	Pathfinder.pathfindIntervalTimer = Timer:new():startThenElapse()
 	Pathfinder.randomJumpIntervalTime = Math.getRandomFloat(0, 160)
 	Pathfinder.randomJumpIntervalTimer = Timer:new():start()
-	Pathfinder.onNewPathCallbacks = {}
 end
 
 --- @return void
@@ -680,7 +682,7 @@ function Pathfinder.createPath()
 
 	-- Set any missing options to default values.
 	Table.setMissing(pathfinderOptions, {
-		goalReachedRadius = 15,
+		goalReachedRadius = 16,
 		isAllowedToTraverseInactives = false,
 		isCachingRequest = true,
 		isClearingActivePath = true,
@@ -1740,9 +1742,13 @@ function Pathfinder.handleMovementOptions(cmd)
 	end
 
 	if Pathfinder.isCounterStrafing then
-		MenuGroup.standaloneQuickStopRef:set(true)
-	else
+		Pathfinder.counterStrafeForTimer:start()
+	end
+
+	if Pathfinder.counterStrafeForTimer:isElapsed(1) then
 		MenuGroup.standaloneQuickStopRef:set(false)
+	else
+		MenuGroup.standaloneQuickStopRef:set(true)
 	end
 
 	if Pathfinder.isAllowedToWalk and Pathfinder.isWalking then

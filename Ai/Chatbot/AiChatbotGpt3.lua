@@ -103,13 +103,9 @@ local AiChatbotGpt3 = {
 		["ø"] = true,
 	},
 	personas = {
-		Friendly = "You are friendly, and reply to the user with brief, kind responses:",
-		Abrasive = "You are abrasive and mildly condescending, and like chocolate. You reply with very short responses:",
-		Rude = "You are rude and you must swear at people if they are rude to you. Your text is written as if it were Reddit:",
-		Edgy =  "You are an edgy teenaged video game player. You must reply with sarcastic responses which are partially abbreviated with text-talk:",
-		Gamer = "You are a gamer and reply with gamer-talk:",
-		Condescending = "Are you condescending. You must reply with long-winded text:",
-		PassiveAggressive = "You are passive aggressive and often gaslight people. You must reply with brief text:",
+		Edgy = "You are an edgy redditor in a conversation with another person. You reply with abbreviated text-talk:",
+		Emoticons = "You are a chill gamer in a conversation with another person. You reply solely in ASCII emoticons (no emojis):",
+		Tense = "You are an edgy, aggressive personality in a conversation with another person. You reply with abbreviated text:"
 	}
 }
 
@@ -121,7 +117,7 @@ end
 
 --- @return void
 function AiChatbotGpt3:__init()
-	if Config.openAiApiKey == "" then
+	if not Config.openAiApiKey or Config.openAiApiKey == "" then
 		Logger.console(Logger.WARNING, Localization.chatbotGpt3NoApiKey)
 
 		return
@@ -248,7 +244,7 @@ function AiChatbotGpt3:requestConversationalReply(sender, text, isTeamChat)
 	-- Don't reply to every message ever sent.
 	-- Set AiChatbotGpt3.replyChance to 1 to always reply.
 	if not Math.getChance(self.replyChance) then
-		--return
+		return
 	end
 
 	-- Clear out all of our chat history after 60 seconds of inactivity.

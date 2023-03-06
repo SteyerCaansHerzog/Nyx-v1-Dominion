@@ -55,7 +55,6 @@ local AiStateGrenadeBase = {
     name = "GrenadeBase",
     delayedMouseMin = 0,
     delayedMouseMax = 0.15,
-    usedNodes = {},
     rangeThreshold = 2000
 }
 
@@ -73,13 +72,14 @@ function AiStateGrenadeBase:__init()
     self.threatCooldownTimer = Timer:new():startThenElapse()
     self.cooldownTimer = Timer:new():startThenElapse()
     self.throwHoldTimer = Timer:new()
+    self.usedNodes = {}
 
     Callbacks.roundStart(function()
         self:reset()
     end)
 
     Callbacks.runCommand(function()
-    	self:watchForOccupiedNodes()
+    	self:handleOccupiedNodes()
     end)
 
     Callbacks.grenadeThrown(function(e)
@@ -92,11 +92,6 @@ end
 
 --- @return void
 function AiStateGrenadeBase:getAssessment()
-    -- They suck at throwing nade lineups during retakes. We're just going to ban it as a quick fix.
-    if AiUtility.plantedBomb then
-        return AiPriority.IGNORE
-    end
-
     -- Stick to the selected lineup and not select another one prematurely.
     if self.selectedLineup and self.selectedLineup ~= self.__classid then
         return AiPriority.IGNORE
@@ -169,7 +164,7 @@ function AiStateGrenadeBase:getAssessment()
     -- Only exit here if we're in throw, because we need to ensure teammates don't occupy our line-up
     -- after we've picked it.
     if self.node then
-        if AiStateGrenadeBase.usedNodes[self.node.id] and not AiStateGrenadeBase.usedNodes[self.node.id]:isElapsed(15) then
+        if not self.usedNodes[self.node.id]:isElapsed(15) then
             self:reset()
 
             return AiPriority.IGNORE
@@ -230,9 +225,9 @@ function AiStateGrenadeBase:getBestLineup(nodes)
             break
         end
 
-        local usedNodeTimer = AiStateGrenadeBase.usedNodes[node.id]
+        local usedNodeTimer = self.usedNodes[node.id]
 
-        -- A teammate has already used this node.
+        -- This node has been consumed by us or a teammate.
         if usedNodeTimer and not usedNodeTimer:isElapsed(15) then
             break
         end
@@ -262,6 +257,8 @@ function AiStateGrenadeBase:getBestLineup(nodes)
     return closestNode
 end
 
+--- This is a general test. For a more specific test, see "isAllowedToThrow".
+---
 --- @param node NodeTypeGrenade
 --- @return boolean
 function AiStateGrenadeBase:isEnemyThreatenedByNode(node)
@@ -299,7 +296,7 @@ function AiStateGrenadeBase:isEnemyThreatenedByNode(node)
 end
 
 --- @return void
-function AiStateGrenadeBase:watchForOccupiedNodes()
+function AiStateGrenadeBase:handleOccupiedNodes()
     -- Find all possible line-ups.
     local nodes = self:getNodes()
 
@@ -316,8 +313,8 @@ function AiStateGrenadeBase:watchForOccupiedNodes()
             break
         end
 
-        if not AiStateGrenadeBase.usedNodes[node.id] then
-            AiStateGrenadeBase.usedNodes[node.id] = Timer:new():startThenElapse()
+        if not self.usedNodes[node.id] then
+            self.usedNodes[node.id] = Timer:new():startThenElapse()
         end
 
         local isOccupied = false
@@ -331,47 +328,35 @@ function AiStateGrenadeBase:watchForOccupiedNodes()
         end
 
         if isOccupied then
-           AiStateGrenadeBase.usedNodes[node.id]:start()
+           self.usedNodes[node.id]:start()
         end
     until true end
 end
 
 --- @return void
 function AiStateGrenadeBase:activate()
-    if not self:isAllowedToThrow() then
-        AiStateGrenadeBase.usedNodes[self.node.id]:start()
-
-        return
-    end
-
-    local bounds = self.node.origin:getBounds(Vector3.align.BOTTOM, 500, 500, 64)
-
-    -- The AI can cling onto lineups since we select the node in assess, but may not run the think afterwards.
-    -- This just checks if we're within the bounds when we try to run this state. If not we probably don't want to run this at all.
-    if not LocalPlayer:getOrigin():offset(0, 0, 48):isInBounds(bounds) then
-        AiStateGrenadeBase.usedNodes[self.node.id]:start()
-
-        return
-    end
-
     self.isAtDestination = false
     self.selectedLineup = self.__classid
 
-   Pathfinder.moveToNode(self.node, {
-       task = string.format("Throw %s [%i]", self.name:lower(), self.node.id),
-       onReachedGoal = function()
-           self.isAtDestination = true
-           self.startThrowTimer:start()
-       end,
-       goalReachedRadius = 8,
-       isCounterStrafingOnGoal = true,
-       isPathfindingToNearestNodeIfNoConnections = false,
-       isPathfindingToNearestNodeOnFailure = false,
-   })
+    Pathfinder.moveToNode(self.node, {
+        task = string.format("Throw %s [%i]", self.name:lower(), self.node.id),
+        onReachedGoal = function()
+            self.isAtDestination = true
+            self.startThrowTimer:start()
+        end,
+        goalReachedRadius = 10,
+        isCounterStrafingOnGoal = true,
+        isPathfindingToNearestNodeIfNoConnections = false,
+        isPathfindingToNearestNodeOnFailure = false,
+    })
 end
 
 --- @return void
-function AiStateGrenadeBase:reset()
+function AiStateGrenadeBase:reset(isBlacklistingNode)
+    if isBlacklistingNode and self.node then
+        self.usedNodes[self.node.id]:start()
+    end
+
     self.isInThrow = false
     self.node = nil
     self.isAtDestination = false
@@ -391,16 +376,24 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateGrenadeBase:think(cmd)
-    -- Don't know why we are running with a nil node.
+    -- Activate can reset the state, but the FSM will still run this method once.
     if not self.node then
-        self:deactivate()
+        return
+    end
+
+    local bounds = self.node.origin:getBounds(Vector3.align.BOTTOM, 500, 500, 64)
+
+    -- The AI can cling onto lineups since we select the node in assess, but may not run the think afterwards.
+    -- This just checks if we're within the bounds when we try to run this state. If not we probably don't want to run this at all.
+    if not LocalPlayer:getOrigin():offset(0, 0, 48):isInBounds(bounds) then
+        self:reset(true)
 
         return
     end
 
     -- Force AI to abort if majorly threatened, even when about to throw.
     if AiThreats.threatLevel >= AiThreats.threatLevels.HIGH then
-        self:reset()
+        self:reset(true)
 
         return
     end
@@ -415,13 +408,13 @@ function AiStateGrenadeBase:think(cmd)
     local distance = clientOrigin:getDistance(self.node.floorOrigin)
     local distance2 = clientOrigin:getDistance2(self.node.origin)
 
+    if distance2 < 150 and not self:isAllowedToThrow() then
+        self:reset(true)
+
+        return
+    end
+
     if distance2 < 60 then
-        if not self:isAllowedToThrow() then
-            AiStateGrenadeBase.usedNodes[self.node.id]:start()
-
-            return
-        end
-
         self.inBehaviorTimer:ifPausedThenStart()
     end
 
@@ -430,7 +423,7 @@ function AiStateGrenadeBase:think(cmd)
     if self.inBehaviorTimer:isElapsedThenStop(5) then
         self.cooldownTimer:start()
 
-        self:deactivate()
+        self:reset(true)
 
         return
     end
@@ -527,6 +520,7 @@ function AiStateGrenadeBase:think(cmd)
     end
 end
 
+--- @return boolean
 function AiStateGrenadeBase:isAllowedToThrow()
     local predictor = GrenadePrediction.create()
 
@@ -539,31 +533,56 @@ function AiStateGrenadeBase:isAllowedToThrow()
 
     local prediction = predictor:predict()
 
-    if prediction then
-        local predictionEndPosition = Vector3:new(prediction.end_pos.x, prediction.end_pos.y, prediction.end_pos.z)
+    -- No prediction available. This is technically an error.
+    if not prediction then
+        return true
+    end
 
-        if self.isDamaging then
-            -- We're most likely going to annoy our teammates if we throw this lineup right now.
-            -- See: https://en.wikipedia.org/wiki/Griefer
-            for _, teammate in pairs(AiUtility.teammates) do
-                local teammatePredictedOrigin = teammate:getOrigin() + teammate:m_vecVelocity() * 0.4
+    local predictionEndPosition = Vector3:new(prediction.end_pos.x, prediction.end_pos.y, prediction.end_pos.z)
 
-                if teammatePredictedOrigin:getDistance(predictionEndPosition) < 300 then
-                    self.usedNodes[self.node.id]:start()
+    if self.isDamaging then
+        -- We're most likely going to annoy our teammates if we throw this lineup right now.
+        -- See: https://en.wikipedia.org/wiki/Griefer
+        for _, teammate in pairs(AiUtility.teammates) do
+            local teammatePredictedOrigin = teammate:getOrigin() + teammate:m_vecVelocity() * 0.25
 
-                    return false
-                end
+            if teammatePredictedOrigin:getDistance(predictionEndPosition) < 300 then
+                self.usedNodes[self.node.id]:start()
+
+                return false
             end
         end
 
-        -- Do not throw molotovs onto smokes, or resmoke a smoked spot.
-        if self.isInferno or self.isSmoke then
-            for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
-                if predictionEndPosition:getDistance(smoke:m_vecOrigin()) < 350 then
-                    self.usedNodes[self.node.id]:start()
+        local isEnemyNearby = false
 
-                    return false
+        for _, visgraph in pairs(AiThreats.enemyVisgraphs) do
+            for _, node in pairs(visgraph) do
+                if node.eyeOrigin:getDistance(predictionEndPosition) < 500 then
+                    isEnemyNearby = true
+
+                    break
                 end
+            end
+
+            if isEnemyNearby then
+                break
+            end
+        end
+
+        if not isEnemyNearby then
+            self.usedNodes[self.node.id]:start()
+
+            return false
+        end
+    end
+
+    -- Do not throw molotovs onto smokes, or resmoke a smoked spot.
+    if self.isInferno or self.isSmoke then
+        for _, smoke in Entity.find("CSmokeGrenadeProjectile") do
+            if predictionEndPosition:getDistance(smoke:m_vecOrigin()) < 300 then
+                self.usedNodes[self.node.id]:start()
+
+                return false
             end
         end
     end

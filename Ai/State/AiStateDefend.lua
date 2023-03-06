@@ -43,7 +43,6 @@ local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMous
 --- @field jiggleTime number
 --- @field jiggleTimer Timer
 --- @field node NodeTypeDefend
---- @field priority number
 --- @field teammateInTroubleTimer Timer
 --- @field isSpecificNodeSet boolean
 local AiStateDefend = {
@@ -388,8 +387,8 @@ function AiStateDefend:move()
 
     Pathfinder.moveToNode(self.node, {
         task = task,
+        goalReachedRadius = 15,
         isCounterStrafingOnGoal = true,
-        goalReachedRadius = 8
     })
 end
 
@@ -433,16 +432,8 @@ function AiStateDefend:think(cmd)
     local distance = AiUtility.clientNodeOrigin:getDistance(self.node.floorOrigin)
     local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), self.node.lookFromOrigin, AiUtility.traceOptionsVisible, "AiStateDefend.think<FindIfVisibleNode>")
 
-    if not trace.isIntersectingGeometry then
-        if AiUtility.closestEnemy and LocalPlayer:getOrigin():getDistance(AiUtility.closestEnemy:getOrigin()) < 1250 then
-            if distance < 750 then
-                VirtualMouse.lookAtLocation(self.node.lookAtOrigin, 5.5, VirtualMouse.noise.moving, "Defend look at angle")
-            end
-        else
-            if distance < 500 then
-                VirtualMouse.lookAtLocation(self.node.lookAtOrigin, 5, VirtualMouse.noise.moving, "Defend look at angle")
-            end
-        end
+    if distance < 450 or (not trace.isIntersectingGeometry and distance < 750) then
+        VirtualMouse.lookAtLocation(self.node.lookAtOrigin, 5.5, VirtualMouse.noise.moving, "Defend look at angle")
     end
 
     -- Walk.

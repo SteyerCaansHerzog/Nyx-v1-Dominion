@@ -62,6 +62,8 @@ function AiChatCommandRotate:invoke(ai, sender, args)
     ai.states.patrol:reset()
     ai.states.useBoost:resetIfOtherBombsite(objective)
     ai.states.useOntoPositionBoost:resetIfOtherBombsite(objective)
+    ai.states.useRunBoost:reset()
+    ai.states.boostTeammate:reset()
     ai.states.rotate:invoke(objective)
 
     ai.states.defend.defendingSite = objective

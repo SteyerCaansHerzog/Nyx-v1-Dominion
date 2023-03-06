@@ -78,7 +78,7 @@ function AiStateEvade:getAssessment()
     end
 
     -- We can't be peeked by an enemy.
-    if AiThreats.threatLevel < AiThreats.threatLevels.EXTREME then
+    if AiThreats.threatLevel < AiThreats.threatLevels.EXTREME and not AiUtility.isEnemyVisible then
         return AiPriority.IGNORE
     end
 
@@ -267,7 +267,7 @@ end
 
 --- @return void
 function AiStateEvade:moveToCover()
-    local cover = self:getCoverNode(300, AiThreats.highestThreat, 135)
+    local cover = self:getCoverNode(500, AiThreats.highestThreat, 135)
 
     if not cover then
         return

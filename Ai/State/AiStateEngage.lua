@@ -68,6 +68,7 @@ local WeaponMovementVelocity =  {
 --{{{ AiStateEngage
 --- @class AiStateEngage : AiStateBase
 --- @field activeWeapon string
+--- @field aimAtOrigin Vector3
 --- @field aimInaccurateOffset number
 --- @field aimNoise VirtualMouseNoise
 --- @field aimOffset number
@@ -164,7 +165,6 @@ local WeaponMovementVelocity =  {
 --- @field skill number
 --- @field skillLevelMax number
 --- @field skillLevelMin number
---- @field smokeWallBangHoldTimer Timer
 --- @field sprayRealTime number
 --- @field sprayTime number
 --- @field sprayTimer Timer
@@ -249,7 +249,6 @@ function AiStateEngage:initFields()
     self.scopedTimer = Timer:new()
     self.seekCoverTimer = Timer:new():startThenElapse()
     self.setBestTargetTimer = Timer:new():startThenElapse()
-    self.smokeWallBangHoldTimer = Timer:new():startThenElapse()
     self.sprayTimer = Timer:new()
     self.stealthingTimer = Timer:new():startThenElapse()
     self.strafePeekIndex = 1
@@ -396,7 +395,9 @@ function AiStateEngage:getAssessment()
 
     self.sprayRealTime = self.sprayTime
 
-    if LocalPlayer.isFlashed() then
+    if LocalPlayer:isHoldingBoltActionRifle() then
+        self.sprayRealTime = 0.1
+    elseif LocalPlayer.isFlashed() then
         self.sprayRealTime = 1.5
     end
 
@@ -444,7 +445,7 @@ function AiStateEngage:getAssessment()
         end
     end
 
-    if self.sprayTimer:isStarted() or not self.smokeWallBangHoldTimer:isElapsed(1.5) then
+    if self.sprayTimer:isStarted() then
         return AiPriority.ENGAGE_ACTIVE
     end
 
@@ -842,7 +843,7 @@ function AiStateEngage:setBestTarget()
     -- If we have no target, or the target has died,
     -- or: the timer has elapsed, or we urgently need to switch.
     if (not self.bestTarget or not self.bestTarget:isAlive())
-        or self.setBestTargetTimer:isElapsedThenRestart(1.5) or isUrgent
+        or self.setBestTargetTimer:isElapsedThenRestart(2) or isUrgent
     then
         if self.bestTarget and selectedBestTarget then
             -- Clear last valid origin as it's no longer for the same target.
@@ -1847,7 +1848,9 @@ function AiStateEngage:movementDefending()
                 task = "Engage enemy via defensive position",
                 isAllowedToTraverseInactives = true,
                 isPathfindingToNearestNodeIfNoConnections = true,
-                isPathfindingToNearestNodeOnFailure = true
+                isPathfindingToNearestNodeOnFailure = true,
+                goalReachedRadius = 15,
+                isCounterStrafingOnGoal = true
             })
         end
     end
@@ -1888,21 +1891,7 @@ function AiStateEngage:movementToTarget()
         return
     end
 
-    local selectedNodes = AiThreats.enemyVisgraphs[self.bestTarget.eid]
-    local visgraphOrigin = AiThreats.enemyVisgraphOrigins[self.bestTarget.eid]
-
-    --- @type NodeTypeTraverse
-    local closestNode
-    local closestDistance = math.huge
-
-    for _, node in pairs(selectedNodes) do
-        local distance = visgraphOrigin:getDistance(node.floorOrigin)
-
-        if distance < closestDistance then
-            closestDistance = distance
-            closestNode = node
-        end
-    end
+    local selectedNodes = AiThreats.enemyTraversableVisgraphs[self.bestTarget.eid]
 
     self.lastBestTargetOrigin = targetOrigin
 
@@ -1913,40 +1902,32 @@ function AiStateEngage:movementToTarget()
             isAllowedToTraverseInactives = true,
             goalReachedRadius = 32
         })
+
+        return
     end
 
     local isPushingToEnemyPosition = false
 
     if AiUtility.isHostageCarriedByEnemy or AiUtility.isHostageBeingPickedUpByEnemy then
         isPushingToEnemyPosition = true
-    end
-
-    if AiUtility.isBombBeingPlantedByEnemy or AiUtility.plantedBomb then
+    elseif AiUtility.isBombBeingPlantedByEnemy or AiUtility.plantedBomb then
+        isPushingToEnemyPosition = true
+    elseif LocalPlayer:isTerrorist() and AiUtility.mapInfo.gamemode ~= AiUtility.gamemodes.HOSTAGE and AiUtility.timeData.roundtime_remaining < 25 and not AiUtility.plantedBomb then
+        isPushingToEnemyPosition = true
+    elseif Table.isEmpty(selectedNodes) then
         isPushingToEnemyPosition = true
     end
 
-    if LocalPlayer:isTerrorist() and AiUtility.mapInfo.gamemode ~= AiUtility.gamemodes.HOSTAGE and AiUtility.timeData.roundtime_remaining < 25 and not AiUtility.plantedBomb then
-        isPushingToEnemyPosition = true
-    end
-
-    -- We can pathfind to a node visible to the enemy.
     if isPushingToEnemyPosition then
         self:moveToLocation(self.lastBestTargetValidOrigin)
     else
-        self:moveToRandomNodeFrom(selectedNodes, closestNode)
+        self:moveToRandomNodeFrom(selectedNodes)
     end
 end
 
 --- @param nodes NodeTypeTraverse[]
---- @param closest NodeTypeTraverse
 --- @return void
-function AiStateEngage:moveToRandomNodeFrom(nodes, closest)
-    if Table.isEmpty(nodes) then
-        self:moveToClosestNode(closest)
-
-        return
-    end
-
+function AiStateEngage:moveToRandomNodeFrom(nodes)
     local node = Table.getRandomFromNonIndexed(nodes)
 
     Pathfinder.moveToNode(node, {
@@ -2109,7 +2090,7 @@ function AiStateEngage:attackingDefending()
         self.watchOrigin = crosshairPlacement
 
         self.watchTimer:start()
-    elseif distance < 350 then
+    elseif distance < 300 then
         local trace = Trace.getLineToPosition(LocalPlayer.getEyeOrigin(), self.defendingAtNode.origin, AiUtility.traceOptionsVisible)
 
         if not trace.isIntersectingGeometry then
@@ -2283,121 +2264,86 @@ end
 --- @param cmd SetupCommandEvent
 --- @return boolean
 function AiStateEngage:attackingWallAndSmokeBang(cmd)
+    if true then return end -- todo
+    if AiUtility.isInsideSmoke then
+        return false
+    end
+
+    if AiUtility.visibleEnemies[self.bestTarget.eid] then
+        return false
+    end
+
+    if AiSense.getAwareness(self.bestTarget) >= AiSense.awareness.IMMEDIATE_PROXY then
+        return false
+    end
+
+    --- @type Vector3
+    local aimAtOrigin
     local weapon = Entity:create(LocalPlayer:m_hActiveWeapon())
     local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
     local ammo = weapon:m_iClip1()
     local maxAmmo = csgoWeapon.primary_clip_size
     local ammoRatio = ammo / maxAmmo
     local eyeOrigin = LocalPlayer.getEyeOrigin()
-    local wallbangNodes = Nodegraph.get(Node.hintWallbang)
-
-    -- Wallbang and smokebang.
-    if AiUtility.visibleEnemies[self.bestTarget.eid] then
-        return false
-    end
-
-    if AiSense.getAwareness(self.bestTarget) >= AiSense.awareness.IMMEDIATE_PROXY then
-        return
-    end
-
     local bangOrigin = self.bestTarget:getOrigin():offset(0, 0, 46)
-    local _, traceDamage = eyeOrigin:getTraceBullet(bangOrigin, LocalPlayer.eid)
-    local isBangable = true
-    local isCriticallyBangable = true
-
-    if AiUtility.isInsideSmoke then
-        isBangable = false
-    end
-
-    if LocalPlayer:hasSniper() then
-        if ammoRatio < 1 then
-            -- Banging with AWP is often not a great idea.
-            -- So we're only going to allow it if the AI has a full mag.
-            isBangable = false
-        elseif traceDamage < 40 then
-            -- We should only wallbang on high damage bangs.
-            isBangable = false
-        end
-
-        if traceDamage < 33 then
-            isCriticallyBangable = false
-        end
-    else
-        if ammo < 0.25 then
-            -- Low ammo.
-            isBangable = false
-        elseif ammoRatio < 0.4 and traceDamage < 25 then
-            -- Mid-ammo so spare our shots more.
-            isBangable = false
-        elseif traceDamage < 15 then
-            -- At least try to damage the enemy.
-            isBangable = false
-        end
-
-        if traceDamage < 10 then
-            isCriticallyBangable = false
-        end
-    end
-
-    if LocalPlayer:getOrigin():getDistance(self.bestTarget:getOrigin()) > 650 then
-        isBangable = false
-    end
-
-    local isShooting = false
-    local isOccludedBySmoke = eyeOrigin:isRayIntersectingSmoke(bangOrigin)
+    local _, damage = eyeOrigin:getTraceBullet(bangOrigin, LocalPlayer.eid)
+    local isInsideWallbangZone = false
     local trace = Trace.getLineToPosition(eyeOrigin, bangOrigin, AiUtility.traceOptionsVisible, "AiStateEngage.attackBestTarget<FindBangable>")
+    local isOccludedBySmoke = eyeOrigin:isRayIntersectingSmoke(bangOrigin)
     local isOccludedByWall = trace.isIntersectingGeometry
 
-    if isOccludedByWall then
-        -- Wallbang, but only if there isn't a smoke in the way.
-        if self.canWallbang and not isOccludedBySmoke and isBangable then
-            isShooting = true
-        end
-    elseif isOccludedBySmoke and isBangable then
-        -- Smokebang.
-        isShooting = true
-    elseif not self.smokeWallBangHoldTimer:isElapsed(1.5) then
-        -- Hold our spray. Prevents dithering.
-        isShooting = true
-    end
+    for _, node in pairs(Nodegraph.get(Node.hintWallbang)) do
+        if bangOrigin:getDistance(node.origin) < node.radius then
+            isInsideWallbangZone = true
 
-    local isDirectlyWallbanging = false
-
-    -- Enemy is in a common wallbang spot and the AI is immediately aware of the enemy.
-    local enemyOrigin = self.bestTarget:getOrigin()
-
-    if isCriticallyBangable then
-        for _, wallbangNode in pairs(wallbangNodes) do
-            if enemyOrigin:getDistance(wallbangNode.floorOrigin) < wallbangNode.radius then
-                isShooting = true
-                isDirectlyWallbanging = true
-
-                break
-            end
+            break
         end
     end
 
-    if not isDirectlyWallbanging and AiSense.lastAwareTimers[self.bestTarget.eid]:isElapsed(1.5) then
-        return
-    end
+    if isInsideWallbangZone then
+        if AiSense.lastAwareTimers[self.bestTarget.eid]:isElapsed(3) then
+            return false
+        end
 
-    if not isShooting then
-        return false
-    end
+        if (LocalPlayer:isHoldingBoltActionRifle() and damage < 25) then
+            return false
+        elseif damage < 6 then
+            return false
+        end
 
-    self.smokeWallBangHoldTimer:start()
-
-    self:addVisualizer("bang", function()
-        self.shootAtOrigin:drawCircleOutline(12, 2, Color:hsla(30, 1, 0.5, 200))
-    end)
-
-    local aimAtOrigin
-
-    if isDirectlyWallbanging then
         aimAtOrigin = self.bestTarget:getEyeOrigin()
     else
+        if isOccludedByWall and (not self.canWallbang or isOccludedBySmoke) then
+            return false
+        end
+
+        if AiSense.lastAwareTimers[self.bestTarget.eid]:isElapsed(2) then
+            return false
+        end
+
+        if LocalPlayer:isHoldingBoltActionRifle() then
+            if ammoRatio < 1 or damage < 40 then
+                return false
+            end
+        else
+            if ammoRatio < 0.25
+                or (ammoRatio < 0.5 and damage < 25)
+                or (damage < 15)
+            then
+                return false
+            end
+        end
+
         aimAtOrigin = self.shootAtOrigin
     end
+
+    self:addVisualizer("bang", function()
+        if not aimAtOrigin then
+            return
+        end
+
+        aimAtOrigin:drawCircleOutline(12, 2, Color:hsla(30, 1, 0.5, 200))
+    end)
 
     self:shootAtTarget(cmd, aimAtOrigin)
 
@@ -2459,11 +2405,7 @@ function AiStateEngage:attackingBestTarget(cmd)
 
     -- Make sure the default mouse movement isn't active while the enemy is visible but the reaction timer hasn't elapsed.
     if AiUtility.visibleEnemies[self.bestTarget.eid] and shootFov < 60 then
-        VirtualMouse.lookAtLocation(hitbox, 2, VirtualMouse.noise.moving, "Engage prepare to react")
-
-        self:addVisualizer("hold", function()
-            hitbox:drawCircleOutline(12, 2, Color:hsla(50, 1, 0.5, 200))
-        end)
+        VirtualMouse.lookAlongAngle(LocalPlayer.getCameraAngles(), 2, VirtualMouse.noise.moving, "Engage prepare to react")
     end
 
     -- React to visible enemy.
@@ -2714,6 +2656,8 @@ function AiStateEngage:shootAtTarget(cmd, aimAtBaseOrigin, enemy)
     -- Real origin to shoot at.
     local aimAtOrigin = aimAtBaseOrigin + self.hitboxOffset
 
+    self.aimAtOrigin = aimAtOrigin
+
     -- Draw debugging visualisers.
     self:addVisualizer("shoot",function()
         aimAtBaseOrigin:drawCircle(3, Color:hsla(0, 1, 0.5, 150))
@@ -2732,11 +2676,6 @@ function AiStateEngage:shootAtTarget(cmd, aimAtBaseOrigin, enemy)
         if self.sprayTimer:isElapsed(self.sprayTime) and trace.isIntersectingGeometry then
             return
         end
-    end
-
-    -- Don't shoot teammates.
-    if self:isTeammateInCrosshair(aimAtOrigin) then
-        return
     end
 
     local fov = self:getShootFov(LocalPlayer.getCameraAngles(), LocalPlayer.getEyeOrigin(), aimAtOrigin)
@@ -2775,6 +2714,11 @@ end
 --- @return void
 function AiStateEngage:fireWeapon(cmd)
     if not self.isAimEnabled or not MenuGroup.enableAimbot:get() then
+        return
+    end
+
+    -- Don't shoot teammates.
+    if self:isTeammateInCrosshair(self.aimAtOrigin) then
         return
     end
 
@@ -2818,14 +2762,13 @@ function AiStateEngage:isTeammateInCrosshair(aimAtOrigin)
         end
 
         local velocity = teammate:m_vecVelocity() * 0.075
-        local a = teammate:getHitboxPositions()
-        local b = teammate:getHitboxPositions()
+        local hitboxes = teammate:getHitboxPositions()
 
-        for _, hitbox in pairs(b) do
-            table.insert(a, hitbox + velocity)
+        for _, hitbox in pairs(teammate:getHitboxPositions()) do
+            table.insert(hitboxes, hitbox + velocity)
         end
 
-        for _, hitbox in pairs(a) do
+        for _, hitbox in pairs(hitboxes) do
             local fovToHitbox = cameraAngles:getFov(eyeOrigin, hitbox)
             local correctedFovToHitbox = self:getDangerFov(cameraAngles, eyeOrigin, hitbox)
             local realFov = math.min(fovToHitbox, correctedFovToHitbox)

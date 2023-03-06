@@ -17,16 +17,12 @@ local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, Vect
 --}}}
 
 --{{{ Modules
--- Components.
-local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommand"
 local AiChatbot = require "gamesense/Nyx/v1/Dominion/Ai/Chatbot/AiChatbot"
+local AiChatCommand = require "gamesense/Nyx/v1/Dominion/Ai/ChatCommand/AiChatCommand"
 local AiProcess = require "gamesense/Nyx/v1/Dominion/Ai/Process/AiProcess"
 local AiRoutine = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutine"
-local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
-local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
-
--- Other.
 local AiSense = require "gamesense/Nyx/v1/Dominion/Ai/AiSense"
+local AiState = require "gamesense/Nyx/v1/Dominion/Ai/State/AiState"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
 local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
@@ -39,8 +35,10 @@ local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
+local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
+local Version = require "gamesense/Nyx/v1/Dominion/Version"
 local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
@@ -461,13 +459,13 @@ function Ai:render()
 	end
 
 	uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(
-		"%s: %i:%i | KD %i/%i (%.2f)",
+		"v%s | %s %i:%i (KD %i/%i)",
+		Version.number,
 		roundType,
 		teamWins,
 		enemyWins,
 		LocalPlayer:m_iKills(),
-		LocalPlayer:m_iDeaths(),
-		LocalPlayer:getKdRatio()
+		LocalPlayer:m_iDeaths()
 	))
 
 	uiPos:offset(0, offset)
@@ -592,10 +590,6 @@ function Ai:render()
 
 	uiPos:clone():offset(-5, 5):drawSurfaceRectangle(spacerDimensions, spacerColor)
 	uiPos:offset(0, 10)
-
-	if MenuGroup.enableAi:get() and AiThreats.highestThreatOrigin then
-		Client.draw(Vector3.drawCircleOutline, AiThreats.highestThreatOrigin, 30, 3, Color:hsla(0, 1, 1, 75))
-	end
 
 	if MenuGroup.visualiseAiSense:get() then
 		if AiThreats.threatLevel then
@@ -830,18 +824,24 @@ function Ai:setFsmState(state, priority, cmd)
 		return
 	end
 
+	state.priority = priority
+
 	local isCurrentStateValid = self.currentState ~= nil
 	local isDifferentState = not isCurrentStateValid or not Nyx.is(state, self.currentState)
+	local isValidTransition = isDifferentState or state.isQueuedForReactivation
 
 	-- Run the deactivate method.
 	if isCurrentStateValid and isDifferentState and self.currentState.deactivate then
 		self.currentState:deactivate()
 	end
 
-	-- Run the activate method on the state.
-	if state.activate and (isDifferentState or state.isQueuedForReactivation) then
+	-- Completely clear the Pathfinder if we're transitioning or reactivating.
+	if isValidTransition then
 		Pathfinder.flushRequest()
+	end
 
+	-- Run the activate method on the state.
+	if state.activate and isValidTransition then
 		state:activate()
 
 		table.insert(self.ditherHistories, {

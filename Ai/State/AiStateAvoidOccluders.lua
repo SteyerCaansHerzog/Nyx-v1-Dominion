@@ -7,19 +7,17 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --{{{ Modules
 local AiPriority = require "gamesense/Nyx/v1/Dominion/Ai/State/AiPriority"
 local AiStateBase = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBase"
+local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Node = require "gamesense/Nyx/v1/Dominion/Traversal/Node/Node"
 local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
-local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiStateAvoidOccluders
 --- @class AiStateAvoidOccluders : AiStateBase
---- @field inferno Entity
---- @field isInsideInferno boolean
 local AiStateAvoidOccluders = {
-    name = "Avoid Infernos",
+    name = "Avoid Occluders",
     isLockable = false
 }
 
@@ -38,7 +36,10 @@ function AiStateAvoidOccluders:getAssessment()
         return AiPriority.AVOID_INFERNO
     end
 
-    if self.ai.routines.handleOccluderTraversal.smokeInsideOf then
+    if AiThreats.threatLevel >= AiThreats.threatLevels.HIGH
+        and self.ai.routines.handleOccluderTraversal.smokeInsideOf
+        and (not AiUtility.isBombPlanted() or AiUtility.bombDetonationTime > 20)
+    then
         return AiPriority.AVOID_SMOKE
     end
 

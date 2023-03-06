@@ -38,10 +38,12 @@ local ThreatLevel = {
 --- @field clientVisgraph NodeTypeTraverse[]
 --- @field clientVisgraphOrigin Vector3
 --- @field closestVisibleEnemyNodes NodeTypeTraverse[]
---- @field determineThreatIndex number
 --- @field crosshairPlacements Vector3[]
 --- @field crosshairPlacementsIdeal Vector3[]
+--- @field determineThreatIndex number
+--- @field enemyDormantForTimers Timer[]
 --- @field enemyThreatLevels number[]
+--- @field enemyTraversableVisgraphs table<number, NodeTraverseGeneric[]>
 --- @field enemyVisgraphOrigins Vector3[]
 --- @field enemyVisgraphs table<number, NodeTypeTraverse[]>
 --- @field highestThreat Player
@@ -56,6 +58,7 @@ local ThreatLevel = {
 --- @field threats Player[]
 --- @field threatVisgraph NodeTypeTraverse[]
 --- @field totalThreats number
+--- @field traversableThreatVisgraph NodeTraverseGeneric[]
 --- @field visibleEnemyNodes table<number, NodeTypeTraverse[]>
 local AiThreats = {
 	threatLevels = ThreatLevel
@@ -100,6 +103,8 @@ function AiThreats.reset()
 	AiThreats.enemyThreatLevels = Table.populateForMaxPlayers(function()
 		return ThreatLevel.NONE
 	end)
+	AiThreats.enemyDormantForTimers = {}
+	AiThreats.enemyTraversableVisgraphs = {}
 	AiThreats.enemyVisgraphOrigins = {}
 	AiThreats.enemyVisgraphs = {}
 	AiThreats.lastClosestVisibleEnemyNodes = {}
@@ -110,6 +115,7 @@ function AiThreats.reset()
 	AiThreats.threatLevel = ThreatLevel.NONE
 	AiThreats.threats = {}
 	AiThreats.threatVisgraph = {}
+	AiThreats.traversableThreatVisgraph = {}
 	AiThreats.totalThreats = 0
 	AiThreats.visibleEnemyNodes = {}
 end
@@ -203,7 +209,7 @@ end
 --- @param maxNodes number
 --- @param maxTraces number
 --- @param maxRange number
---- @return void
+--- @return NodeTypeTraverse[],  NodeTraverseGeneric[]
 function AiThreats.getPlayerVisgraph(player, maxNodes, maxTraces, maxRange)
 	maxNodes = maxNodes or 8
 	maxTraces = maxTraces or 8
@@ -214,7 +220,8 @@ function AiThreats.getPlayerVisgraph(player, maxNodes, maxTraces, maxRange)
 	local nodes = Nodegraph.getWithinOfType(origin, maxRange, NodeType.traverse)
 	local i = 0
 	local count = 0
-	local visibility = {}
+	local visgraph = {}
+	local traversableVisgraph = {}
 
 	for _, node in Table.sortedPairs(nodes, function(a, b)
 		return origin:getDistance(a.floorOrigin) < origin:getDistance(b.floorOrigin)
@@ -241,12 +248,16 @@ function AiThreats.getPlayerVisgraph(player, maxNodes, maxTraces, maxRange)
 		end
 
 		count = count + 1
-		visibility[node.id] = node
+		visgraph[node.id] = node
+
+		if node:is(Node.traverseGeneric) then
+			traversableVisgraph[node.id] = node
+		end
 	until true end
 
 	::exitGetVisgraph::
 
-	return visibility
+	return visgraph, traversableVisgraph
 end
 
 --- @return void
@@ -276,10 +287,19 @@ function AiThreats.processEnemies()
 
 	local index = 0
 
+	--- @param enemy Player
 	for _, enemy in Table.sortedPairs(AiUtility.enemies, function(a, b)
 		return a.eid < b.eid
 	end) do repeat
 		index = index + 1
+
+		if not AiThreats.enemyDormantForTimers[enemy.eid] then
+			AiThreats.enemyDormantForTimers[enemy.eid] = Timer:new()
+		end
+
+		if not enemy:isDormant() then
+			AiThreats.enemyDormantForTimers[enemy.eid]:start()
+		end
 
 		if index ~= AiThreats.processEnemyIndex then
 			break
@@ -292,8 +312,11 @@ function AiThreats.processEnemies()
 			break
 		end
 
+		local visgraph, traversableVisgraph = AiThreats.getPlayerVisgraph(enemy, 8, 15, 600)
+
 		AiThreats.enemyVisgraphOrigins[enemy.eid] = enemyOrigin
-		AiThreats.enemyVisgraphs[enemy.eid] = AiThreats.getPlayerVisgraph(enemy, 8, 15, 600)
+		AiThreats.enemyVisgraphs[enemy.eid] = visgraph
+		AiThreats.enemyTraversableVisgraphs[enemy.eid] = traversableVisgraph
 		AiThreats.cacheRefreshRequired[enemy.eid] = true
 	until true end
 end
@@ -301,16 +324,17 @@ end
 --- @param player Player
 --- @return void
 function AiThreats.clearCachedEnemy(player)
+	AiThreats.cacheRefreshRequired[player.eid] = true
 	AiThreats.closestVisibleEnemyNodes[player.eid] = nil
 	AiThreats.crosshairPlacements[player.eid] = nil
 	AiThreats.crosshairPlacementsIdeal[player.eid] = nil
 	AiThreats.enemyThreatLevels[player.eid] = ThreatLevel.NONE
+	AiThreats.enemyTraversableVisgraphs[player.eid] = nil
 	AiThreats.enemyVisgraphOrigins[player.eid] = nil
 	AiThreats.enemyVisgraphs[player.eid] = nil
 	AiThreats.lastClosestVisibleEnemyNodes[player.eid] = nil
 	AiThreats.threats[player.eid] = nil
 	AiThreats.visibleEnemyNodes[player.eid] = nil
-	AiThreats.cacheRefreshRequired[player.eid] = true
 end
 
 --- @return void
@@ -389,18 +413,28 @@ end
 --- @return void
 function AiThreats.updateThreatVisgraph()
 	local threatVisgraph = {}
+	local traversableThreatVisgraph = {}
 
 	for _, enemyVisgraph in pairs(AiThreats.enemyVisgraphs) do
 		for _, visibleToEnemy in pairs(enemyVisgraph) do
 			threatVisgraph[visibleToEnemy.id] = visibleToEnemy
 
+			if visibleToEnemy:is(Node.traverseGeneric) then
+				traversableThreatVisgraph[visibleToEnemy.id] = visibleToEnemy
+			end
+
 			for _, visibleToEnemyProxy in pairs(visibleToEnemy.visgraph) do
 				threatVisgraph[visibleToEnemyProxy.id] = visibleToEnemyProxy
+
+				if visibleToEnemyProxy:is(Node.traverseGeneric) then
+					traversableThreatVisgraph[visibleToEnemyProxy.id] = visibleToEnemyProxy
+				end
 			end
 		end
 	end
 
 	AiThreats.threatVisgraph = threatVisgraph
+	AiThreats.traversableThreatVisgraph = traversableThreatVisgraph
 end
 
 --- @return void
@@ -411,7 +445,12 @@ function AiThreats.updateClosestThreat()
 	local closestThreat
 	local closestThreatOrigin
 
-	for eid, _ in pairs(AiThreats.threats) do
+	for eid, _ in pairs(AiThreats.threats) do repeat
+		-- Data is unreliable.
+		if AiThreats.enemyDormantForTimers[eid]:isElapsed(6) then
+			break
+		end
+
 		local visgraphOrigin = AiThreats.enemyVisgraphOrigins[eid]
 		local threatLevel = AiThreats.enemyThreatLevels[eid]
 		local distance = origin:getDistance(visgraphOrigin)
@@ -422,9 +461,9 @@ function AiThreats.updateClosestThreat()
 			closestThreat = eid
 			closestThreatOrigin = visgraphOrigin
 		end
-	end
+	until true end
 
-	AiThreats.highestThreat = closestThreat and Player:new(closestThreat)
+	AiThreats.highestThreat = closestThreat and Player:new(closestThreat) or nil
 	AiThreats.highestThreatOrigin = closestThreatOrigin
 end
 
@@ -456,7 +495,7 @@ function AiThreats.updateCrosshairPlacements()
 
 		for i = 0, 16 do
 			local distanceToStep = i * 16
-			local offsetOrigin = node.eyeOrigin +  direction * distanceToStep
+			local offsetOrigin = node.eyeOrigin + direction * distanceToStep
 
 			local trace = Trace.getLineToPosition(
 				eyeOrigin,
@@ -534,6 +573,10 @@ function AiThreats.determineThreats()
 			if not AiThreats.cacheRefreshRequired[eid] then
 				break
 			end
+		end
+
+		if not entity.is_alive(eid) then
+			break
 		end
 
 		AiThreats.cacheRefreshRequired[eid] = false
