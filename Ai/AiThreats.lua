@@ -301,6 +301,10 @@ function AiThreats.processEnemies()
 			AiThreats.enemyDormantForTimers[enemy.eid]:start()
 		end
 
+		if AiThreats.enemyDormantForTimers[enemy.eid]:isElapsed(10) then
+			break
+		end
+
 		if index ~= AiThreats.processEnemyIndex then
 			break
 		end
@@ -560,6 +564,7 @@ function AiThreats.determineThreats()
 		index = index + 1
 
 		local eid = eids[index]
+		local player = Player:new(eid)
 		local isProcessed = AiThreats.enemyThreatLevels[eid] ~= nil
 
 		-- Do this every tick.
@@ -575,7 +580,9 @@ function AiThreats.determineThreats()
 			end
 		end
 
-		if not entity.is_alive(eid) then
+		if not player:isAlive() or AiThreats.enemyDormantForTimers[eid]:isElapsed(10) then
+			AiThreats.clearCachedEnemy(player)
+
 			break
 		end
 

@@ -42,7 +42,7 @@ local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 --- @field closestTeammate Player
 --- @field closestTeammateDistance number
 --- @field defuseTimer Timer
---- @field dormantAt number[]
+--- @field dormantFor number[]
 --- @field enemies Player[]
 --- @field enemiesAlive number
 --- @field enemiesTotal number
@@ -122,7 +122,7 @@ function AiUtility:initFields()
     AiUtility.updateThreatsCache = {}
     AiUtility.lastThreatenedAgo = Timer:new():startThenElapse()
     AiUtility.defuseTimer = Timer:new()
-    AiUtility.dormantAt = {}
+    AiUtility.dormantFor = {}
     AiUtility.enemies = {}
     AiUtility.teammates = {}
     AiUtility.teammatesAndClient = {}
@@ -199,7 +199,7 @@ function AiUtility:initEvents()
         AiUtility.visibleEnemies = {}
         AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
         AiUtility.enemyFovs = Table.populateForMaxPlayers(math.huge)
-        AiUtility.dormantAt = {}
+        AiUtility.dormantFor = {}
 
         AiUtility.defuseTimer:stop()
     end)
@@ -324,7 +324,7 @@ function AiUtility:initEvents()
             AiUtility.visibleEnemies = {}
             AiUtility.enemyDistances = Table.populateForMaxPlayers(math.huge)
             AiUtility.enemyFovs = Table.populateForMaxPlayers(math.huge)
-            AiUtility.dormantAt = {}
+            AiUtility.dormantFor = {}
         end
 
         if e.attacker:isEnemy() then
@@ -539,7 +539,7 @@ function AiUtility.updateEnemies()
         AiUtility.enemies[enemy.eid] = enemy
 
         if not enemy:isDormant() then
-            AiUtility.dormantAt[enemy.eid] = Time.getRealtime()
+            AiUtility.dormantFor[enemy.eid] = Time.getRealtime()
         end
 
         local enemyOrigin = enemy:getOrigin()

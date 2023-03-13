@@ -155,12 +155,10 @@ function AiStatePickupItems:getAssessment()
     local closestDistance = math.huge
 
     for _, weapon in Entity.find(WeaponInfo.classnames) do repeat
-        -- Item is blacklisted.
         if self.entityBlacklist[weapon.eid] then
             break
         end
 
-        -- Entity isn't valid anymore.
         if not weapon:isValid() then
             break
         end
@@ -185,12 +183,8 @@ function AiStatePickupItems:getAssessment()
         end
 
         if priority < highestPriority then
-            -- Item is lower priority than the best item we've found.
-
             break
         elseif priority == highestPriority then
-            -- Item is the same priority as the best item we've found.
-
             -- Item is closer to us, so it's better to want this one instead. Otherwise ignore it.
             if distance < closestDistance then
                 closestDistance = distance
@@ -292,8 +286,6 @@ function AiStatePickupItems:think(cmd)
     end
 
     if AiThreats.threatLevel == AiThreats.threatLevels.EXTREME then
-        self.entityBlacklist[self.item.eid] = true
-
         self:reset()
 
         return

@@ -601,7 +601,8 @@ function NodeTypeBase:setConnection(node)
     node.connections[self.id] = self
 end
 
---- Set up all connections for the node.
+--- Set up all connections for the node. Never, ever, edit this. It's not worth the bugs that will be made.
+--- This code is written exactly as intended, after months of trial by error.
 ---
 --- @param nodegraph Nodegraph
 --- @param options NodeTypeBaseConnectionOptions

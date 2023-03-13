@@ -116,7 +116,7 @@ function Nodegraph.computeVisgraph()
                 from.eyeOrigin,
                 to.eyeOrigin,
                 AiUtility.traceOptionsVisible,
-                "Nodegraph.calculateNodeVisibility<FindVisible>"
+                "Nodegraph.computeVisgraph<FindVisible>"
             )
 
             if trace.isIntersectingGeometry then

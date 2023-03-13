@@ -127,7 +127,6 @@ function VirtualMouse.initFields()
 	VirtualMouse.buildupCooldownTime = 0
 	VirtualMouse.buildupCooldownTimer = Timer:new():startThenElapse()
 	VirtualMouse.blockMouseControlTimer = Timer:new():startThenElapse()
-
 	VirtualMouse.dynamic = SecondOrderDynamics:new(2, 4.4, 0, 0.22, Angle, LocalPlayer.getCameraAngles() or Angle:new())
 
 	VirtualMouse.setNoiseType(ViewNoiseType.none)
@@ -617,10 +616,10 @@ function VirtualMouse.setAirStrafe(idealViewAngles)
 	-- Shake the mouse movement.
 	VirtualMouse.setNoiseType(ViewNoiseType.none)
 
-	VirtualMouse.lookState = "VirtualMouse generic"
+	VirtualMouse.lookState = "VirtualMouse air-strafe"
 	VirtualMouse.lookSpeedIdeal = 7
-	VirtualMouse.lookSpeedDelayMin = 0.25
-	VirtualMouse.lookSpeedDelayMax = 0.5
+	VirtualMouse.lookSpeedDelayMin = 0.05
+	VirtualMouse.lookSpeedDelayMax = 0.1
 end
 
 --- @param idealViewAngles Angle
@@ -631,7 +630,7 @@ function VirtualMouse.setIdealPathCrosshairPlacement(idealViewAngles)
 	if Pathfinder.isAscendingLadder then
 		idealViewAngles:setFromAngle(currentNode.direction:clone():set(-75))
 
-		VirtualMouse.lookState = "VirtualMouse generic"
+		VirtualMouse.lookState = "VirtualMouse ladder-up"
 		VirtualMouse.lookSpeedIdeal = 6
 		VirtualMouse.lookSpeedDelayMin = 0
 		VirtualMouse.lookSpeedDelayMax = 0
@@ -640,7 +639,7 @@ function VirtualMouse.setIdealPathCrosshairPlacement(idealViewAngles)
 	elseif Pathfinder.isDescendingLadder then
 		idealViewAngles:setFromAngle(currentNode.direction:clone():set(89))
 
-		VirtualMouse.lookState = "VirtualMouse generic"
+		VirtualMouse.lookState = "VirtualMouse ladder-down"
 		VirtualMouse.lookSpeedIdeal = 6
 		VirtualMouse.lookSpeedDelayMin = 0
 		VirtualMouse.lookSpeedDelayMax = 0
@@ -718,10 +717,10 @@ function VirtualMouse.setIdealPathCrosshairPlacement(idealViewAngles)
 	-- Shake the mouse movement.
 	VirtualMouse.setNoiseType(ViewNoiseType.moving)
 
-	VirtualMouse.lookState = "VirtualMouse generic"
+	VirtualMouse.lookState = "VirtualMouse path"
 	VirtualMouse.lookSpeedIdeal = 6
-	VirtualMouse.lookSpeedDelayMin = 0.25
-	VirtualMouse.lookSpeedDelayMax = 0.5
+	VirtualMouse.lookSpeedDelayMin = 0.05
+	VirtualMouse.lookSpeedDelayMax = 0.1
 end
 
 --- @param idealViewAngles Angle
@@ -733,8 +732,6 @@ function VirtualMouse.setIdealWatchCorner(idealViewAngles)
 		return
 	end
 
-	-- Force the AI to look at the corner for 1.5 seconds to prevent dithering,
-	-- as AiUtility.clientThreatenedFromOrigin is rapidly set and unset.
 	if not AiThreats.highestThreat then
 		return
 	end
@@ -745,9 +742,7 @@ function VirtualMouse.setIdealWatchCorner(idealViewAngles)
 		return
 	end
 
-	if AiThreats.highestThreat
-		and AiSense.getAwareness(AiThreats.highestThreat) >= AiSense.awareness.RECENT_MOVED
-	then
+	if AiSense.getAwareness(AiThreats.highestThreat) >= AiSense.awareness.RECENT_MOVED then
 		return
 	end
 
@@ -755,10 +750,10 @@ function VirtualMouse.setIdealWatchCorner(idealViewAngles)
 
 	VirtualMouse.setNoiseType(ViewNoiseType.moving)
 
-	VirtualMouse.lookState = "VirtualMouse generic"
+	VirtualMouse.lookState = "VirtualMouse watch-corner"
 	VirtualMouse.lookSpeedIdeal = 6.5
-	VirtualMouse.lookSpeedDelayMin = 0.25
-	VirtualMouse.lookSpeedDelayMax = 0.5
+	VirtualMouse.lookSpeedDelayMin = 0
+	VirtualMouse.lookSpeedDelayMax = 0
 end
 
 --- @param idealViewAngles Angle
@@ -775,7 +770,7 @@ function VirtualMouse.setIdealRemoveObstructions(idealViewAngles)
 
 	idealViewAngles:setFromAngle(node.direction)
 
-	VirtualMouse.lookState = "VirtualMouse generic"
+	VirtualMouse.lookState = "VirtualMouse obstructions"
 	VirtualMouse.lookSpeedIdeal = 6
 	VirtualMouse.lookSpeedDelayMin = 0
 	VirtualMouse.lookSpeedDelayMax = 0
@@ -792,11 +787,11 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function VirtualMouse.think(cmd)
-	if not VirtualMouse.blockMouseControlTimer:isElapsed(1) then
+	if not VirtualMouse.isEnabled then
 		return
 	end
 
-	if not VirtualMouse.isEnabled then
+	if not VirtualMouse.blockMouseControlTimer:isElapsed(1) then
 		return
 	end
 
@@ -813,10 +808,10 @@ function VirtualMouse.think(cmd)
 	if VirtualMouse.isInUse then
 		cmd.in_use = true
 	end
-
-	local aimPunchAngles = LocalPlayer:m_aimPunchAngle() * VirtualMouse.recoilControl
-
+	
 	if VirtualMouse.isRcsEnabled then
+		local aimPunchAngles = LocalPlayer:m_aimPunchAngle() * VirtualMouse.recoilControl
+
 		correctedViewAngles = ((correctedViewAngles - aimPunchAngles)):normalize()
 	end
 

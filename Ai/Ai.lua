@@ -566,6 +566,18 @@ function Ai:render()
 		uiPos:offset(0, offset)
 	end
 
+	if VirtualMouse.lookState and VirtualMouse.lookState ~= "None" then
+		uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(
+			"VMouse: %s",
+			VirtualMouse.lookState
+		))
+
+		uiPos:offset(0, offset)
+	else
+		uiPos:drawSurfaceText(Font.TINY, ColorList.FONT_MUTED_EXTRA, "l", "VMouse: NONE")
+		uiPos:offset(0, offset)
+	end
+
 	if Pathfinder.path then
 		if Pathfinder.isOnValidPath() then
 			uiPos:drawSurfaceText(Font.TINY, fontColor, "l", string.format(

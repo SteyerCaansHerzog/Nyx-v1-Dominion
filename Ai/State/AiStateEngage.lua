@@ -2264,7 +2264,6 @@ end
 --- @param cmd SetupCommandEvent
 --- @return boolean
 function AiStateEngage:attackingWallAndSmokeBang(cmd)
-    if true then return end -- todo
     if AiUtility.isInsideSmoke then
         return false
     end
@@ -2279,14 +2278,14 @@ function AiStateEngage:attackingWallAndSmokeBang(cmd)
 
     --- @type Vector3
     local aimAtOrigin
-    local weapon = Entity:create(LocalPlayer:m_hActiveWeapon())
-    local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
-    local ammo = weapon:m_iClip1()
-    local maxAmmo = csgoWeapon.primary_clip_size
-    local ammoRatio = ammo / maxAmmo
     local eyeOrigin = LocalPlayer.getEyeOrigin()
     local bangOrigin = self.bestTarget:getOrigin():offset(0, 0, 46)
     local _, damage = eyeOrigin:getTraceBullet(bangOrigin, LocalPlayer.eid)
+    local weapon = Entity:create(LocalPlayer:m_hActiveWeapon())
+    local ammo = weapon:m_iClip1()
+    local csgoWeapon = CsgoWeapons[weapon:m_iItemDefinitionIndex()]
+    local maxAmmo = csgoWeapon.primary_clip_size
+    local ammoRatio = ammo / maxAmmo
     local isInsideWallbangZone = false
     local trace = Trace.getLineToPosition(eyeOrigin, bangOrigin, AiUtility.traceOptionsVisible, "AiStateEngage.attackBestTarget<FindBangable>")
     local isOccludedBySmoke = eyeOrigin:isRayIntersectingSmoke(bangOrigin)
@@ -2305,7 +2304,7 @@ function AiStateEngage:attackingWallAndSmokeBang(cmd)
             return false
         end
 
-        if (LocalPlayer:isHoldingBoltActionRifle() and damage < 25) then
+        if LocalPlayer:isHoldingBoltActionRifle() and damage < 25 then
             return false
         elseif damage < 6 then
             return false
@@ -2657,6 +2656,12 @@ function AiStateEngage:shootAtTarget(cmd, aimAtBaseOrigin, enemy)
     local aimAtOrigin = aimAtBaseOrigin + self.hitboxOffset
 
     self.aimAtOrigin = aimAtOrigin
+
+    if not LocalPlayer:isAbleToAttack() or LocalPlayer:isReloading() then
+        VirtualMouse.lookAtLocation(aimAtOrigin, 6, self.aimNoise, "Engage target but unable-to-fire")
+
+        return
+    end
 
     -- Draw debugging visualisers.
     self:addVisualizer("shoot",function()
