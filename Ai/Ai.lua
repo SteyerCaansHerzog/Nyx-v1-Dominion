@@ -314,12 +314,12 @@ function Ai:initEvents()
 			name = LocalPlayer:getName()
 		}
 
-		self:processCommand(params, true)
+		return self:processCommand(params, true)
 	end)
 end
 
 --- @param e PlayerChatEvent
---- @return void
+--- @return boolean
 function Ai:processCommand(e, isInvokedByConsole)
 	local validPrefixes = {
 		["/"] = true,
@@ -331,7 +331,7 @@ function Ai:processCommand(e, isInvokedByConsole)
 	local cmdPrefix = e.text:sub(1, 1)
 
 	if not validPrefixes[cmdPrefix] then
-		return
+		return false
 	end
 
 	local isOtherBot = cmdPrefix == " "
@@ -342,7 +342,7 @@ function Ai:processCommand(e, isInvokedByConsole)
 	local command = self.commands[cmd]
 
 	if not command then
-		return
+		return false
 	end
 
 	local rejection = command:getRejectionError(self, e.sender, args, isInvokedByConsole)
@@ -350,7 +350,7 @@ function Ai:processCommand(e, isInvokedByConsole)
 	if rejection then
 		Logger.console(Logger.ALERT, Localization.chatCommandRejected, cmd, e.sender:getName(), rejection)
 
-		return
+		return true
 	end
 
 	local argsImploded = Table.getStringFromTableWithDelimiter(args, ", ")
@@ -359,7 +359,7 @@ function Ai:processCommand(e, isInvokedByConsole)
 	if errString then
 		Logger.console(Logger.ALERT, Localization.chatCommandIgnored, cmd, e.sender:getName(), errString)
 
-		return
+		return true
 	end
 
 	if argsImploded == "" then
@@ -367,6 +367,8 @@ function Ai:processCommand(e, isInvokedByConsole)
 	else
 		Logger.console(Logger.OK, Localization.chatCommandExecutedArgs, cmd, e.sender:getName(), argsImploded)
 	end
+	
+	return true
 end
 
 --- @return void
