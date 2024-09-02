@@ -1,6 +1,7 @@
 --{{{ AiStateList
 --- @class AiStateList
 local AiStateList = {
+	aggressiveLurkT = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateAggressiveLurkT",
 	avoidOccluders = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateAvoidOccluders",
 	avoidTeammates = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateAvoidTeammates",
 	boostTeammate = require "gamesense/Nyx/v1/Dominion/Ai/State/AiStateBoostTeammate",

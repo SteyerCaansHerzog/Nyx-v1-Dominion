@@ -34,6 +34,7 @@ local Node = {
     objectiveCtSpawn = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeObjectiveCtSpawn",
     objectiveMiddle = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeObjectiveMiddle",
     objectiveTSpawn = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeObjectiveTSpawn",
+    spotAggressiveLurkT = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeSpotAggressiveLurkT",
     spotBoostCt = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeSpotBoostCt",
     spotBoostT = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeSpotBoostT",
     spotHideCt = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeSpotHideCt",

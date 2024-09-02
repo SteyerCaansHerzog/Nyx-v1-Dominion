@@ -1009,6 +1009,21 @@ function NodegraphEditor:render()
         end
     end
 
+    -- Influence map heatmap.
+    Pathfinder.processInfluenceMaps()
+
+    local heatmap = {}
+
+    for _, influenceMap in pairs(Pathfinder.influenceMaps) do
+        for id, weight in pairs(influenceMap.weights) do
+            if not heatmap[id] then
+                heatmap[id] = 0
+            end
+
+            heatmap[id] = heatmap[id] + weight
+        end
+    end
+
     -- Nodes.
     local iProblems = 0
     local iNodes = 0
@@ -1020,6 +1035,10 @@ function NodegraphEditor:render()
 
         if self.visibleGroups[node.type] then
             node:render(Nodegraph, true)
+
+            if heatmap[node.id] and heatmap[node.id] > 0 then
+                node:renderTopText(ColorList.WARNING, string.format("HEAT = %.2f", heatmap[node.id]))
+            end
         end
 
         if self.pathfindTestNodes[node.id] then

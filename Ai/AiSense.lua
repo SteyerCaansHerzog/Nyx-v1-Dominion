@@ -23,8 +23,8 @@ local AwarenessLevel = {
 	IMMEDIATE_PROXY = 3, -- Sensed by (or related to) a teammate, or is far away.
 	RECENT_NEARBY = 4, -- Known about recently, but hasn't moved outside of sensed area.
 	RECENT_MOVED = 5, -- Known about recently, and has moved outside of sensed area.
-	OLD = 6, -- Known about sometime ago. Position is not reliable.
-	STALE = 7, -- Was known about sometime ago, but is now stale, and position cannot be known.
+	OLD = 6, -- Known about some time ago. Position is not reliable.
+	STALE = 7, -- Was known about some time ago, but is now stale, and position cannot be known.
 	UNKNOWN = 8, -- Not yet known. No information on the player.
 }
 --}}}
@@ -206,7 +206,7 @@ function AiSense.sense(player, maxRange, isSensedByProxy, reason)
 	end
 
 
-	-- We can sense enemies before the main think function has a change to begin.
+	-- We can sense enemies before the main think function has a chance to begin.
 	AiSense.createTimer(player)
 
 	AiSense.lastAwareTimers[player.eid]:start()
@@ -288,13 +288,13 @@ function AiSense.senseCounterTerroristsNearBombsite(player)
 	end
 
 	local playerOrigin = player:getOrigin()
-
 	local _, distance = Nodegraph.getClosestBombsite(playerOrigin)
 
 	if distance > 1000 then
 		return
 	end
 
+	-- Forces the enemy to be sensed as "old".
 	AiSense.lastAwarenessIsForcedOld[player.eid] = true
 	AiSense.lastAwareIsOriginStale[player.eid] = false
 	AiSense.lastAwareIsProxy[player.eid] = false

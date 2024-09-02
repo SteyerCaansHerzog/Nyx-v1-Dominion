@@ -24,6 +24,7 @@ local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local Config = require "gamesense/Nyx/v1/Dominion/Utility/Config"
 local Debug = require "gamesense/Nyx/v1/Dominion/Utility/Debug"
 local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
+local InfluenceMap = require "gamesense/Nyx/v1/Dominion/Traversal/InfluenceMap/InfluenceMap"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
@@ -35,6 +36,7 @@ local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
 --{{{ Definitions
 --- @class PathfinderOptions
 --- @field goalReachedRadius number
+--- @field influenceMaps InfluenceMapBase[]
 --- @field isAllowedToTraverseInactives boolean
 --- @field isCachingRequest boolean
 --- @field isClearingActivePath boolean
@@ -144,6 +146,7 @@ local NodeType = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeType"
 --- @field randomJumpIntervalTimer Timer
 --- @field onNewPathCallbacks table<number, fun(): void>
 --- @field counterStrafeForTimer Timer
+--- @field influenceMaps InfluenceMapBase[]
 local Pathfinder = {}
 
 --- @return void
@@ -157,6 +160,7 @@ end
 
 --- @return void
 function Pathfinder.initFields()
+	Pathfinder.influenceMaps = InfluenceMap
 	Pathfinder.counterStrafeForTimer = Timer:new():startThenElapse()
 	Pathfinder.goalConnectionCollisions = {}
 	Pathfinder.goalGapCollisions = {}
@@ -185,6 +189,7 @@ function Pathfinder.initEvents()
 			return
 		end
 
+		Pathfinder.processInfluenceMaps()
 		Pathfinder.traverseActivePath(cmd)
 		Pathfinder.handleRecorders()
 
@@ -407,6 +412,15 @@ function Pathfinder.render()
 		local endPos = clientOrigin + Pathfinder.avoidTeammatesNewMovementAngle:getForward() * 32
 
 		clientOrigin:drawLine(endPos, Color.BLUE)
+	end
+end
+
+--- @return void
+function Pathfinder.processInfluenceMaps()
+	local nodes = Nodegraph.getOfType(NodeType.traverse)
+
+	for _, influenceMap in pairs(Pathfinder.influenceMaps) do
+		influenceMap:think(nodes)
 	end
 end
 
@@ -683,6 +697,7 @@ function Pathfinder.createPath()
 	-- Set any missing options to default values.
 	Table.setMissing(pathfinderOptions, {
 		goalReachedRadius = 16,
+		influenceMaps = Pathfinder.influenceMaps,
 		isAllowedToTraverseInactives = false,
 		isCachingRequest = true,
 		isClearingActivePath = true,
@@ -1056,9 +1071,21 @@ function Pathfinder.getPath(start, goal, options)
 		nodes = {}
 	}
 
+	local heatmap = {}
+
+	for _, influenceMap in pairs(options.influenceMaps) do
+		for id, weight in pairs(influenceMap.weights) do
+			if not heatmap[id] then
+				heatmap[id] = 0
+			end
+
+			heatmap[id] = heatmap[id] + weight
+		end
+	end
+
 	local idx = 0
 
-	return AStar.findPath(start, goal, Nodegraph.pathableNodes, true, function(node, neighbor)
+	return AStar.findPath(start, goal, Nodegraph.pathableNodes, true, heatmap, function(node, neighbor)
 		idx = neighbor.id
 
 		--- @type PathfinderPathDebugNode

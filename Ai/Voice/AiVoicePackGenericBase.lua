@@ -42,7 +42,10 @@ function AiVoicePackGenericBase:speakEnemyKilledByClient(event)
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0.33,
-		maxDelay = 1
+		maxDelay = 1,
+		condition = function()
+			return not AiUtility.isRoundOver and LocalPlayer:isAlive()
+		end
 	})
 end
 
@@ -86,7 +89,10 @@ function AiVoicePackGenericBase:speakClientKilledByEnemy(event)
 		lock = true,
 		ignoreLock = false,
 		minDelay = 0.33,
-		maxDelay = 1
+		maxDelay = 1,
+		condition = function()
+			return not AiUtility.isRoundOver and LocalPlayer:isAlive()
+		end
 	})
 end
 
@@ -117,7 +123,7 @@ function AiVoicePackGenericBase:speakEnemyHurtByClient(event)
 			minDelay = 1,
 			maxDelay = 1.5,
 			condition = function()
-				return event.victim:isAlive()
+				return event.victim:isAlive() and not AiUtility.isRoundOver and LocalPlayer:isAlive()
 			end
 		})
 	end

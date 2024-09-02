@@ -204,6 +204,8 @@ end
 
 --- @return void
 function AiRoutineHandleOccluderTraversal:handleSmoke()
+	if true then return end -- todo
+
 	if not self.isNearSmoke then
 		return
 	end

@@ -40,7 +40,7 @@ function AiStateAvoidOccluders:getAssessment()
         and self.ai.routines.handleOccluderTraversal.smokeInsideOf
         and (not AiUtility.isBombPlanted() or AiUtility.bombDetonationTime > 20)
     then
-        return AiPriority.AVOID_SMOKE
+        -- todo return AiPriority.AVOID_SMOKE
     end
 
     return AiPriority.IGNORE

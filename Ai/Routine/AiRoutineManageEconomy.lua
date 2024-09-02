@@ -139,7 +139,6 @@ function AiRoutineManageEconomy:handleEconomy()
 	local scoreData = Table.fromPanorama(Panorama.GameStateAPI.GetScoreDataJSO())
 	local tWins = scoreData.teamdata.TERRORIST.score
 	local ctWins = scoreData.teamdata.CT.score
-
 	local isCounterTerroristMatchPoint = ctWins == halftime
 	local isTerroristMatchPoint = tWins == halftime
 	local isOurMatchPoint = false
@@ -188,7 +187,7 @@ function AiRoutineManageEconomy:handleEconomy()
 		end
 	end
 
-	-- This comes out to 2 full buys + 3 force buys in a standard 5v5 to trigger the AI unable to full-buy to force-buy.
+	-- This comes out to 2 full buys + 3 force buys in a standard 5v5 to trigger the AI that is unable to full-buy to force-buy.
 	-- How many full buys are required when force buying.
 	local forceBuyThresholdFullCriterion = math.floor(totalPlayers / 2)
 	-- How many force buys are required when force buying.

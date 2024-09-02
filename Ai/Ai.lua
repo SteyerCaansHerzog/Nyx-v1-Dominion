@@ -807,6 +807,8 @@ function Ai:getHighestFsmState()
 	return targetState, highestPriority
 end
 
+--- This is a suboptimal state machine. Should have enter *and* exit conditions for states.
+---
 --- @param state AiStateBase
 --- @param priority number
 --- @param cmd SetupCommandEvent

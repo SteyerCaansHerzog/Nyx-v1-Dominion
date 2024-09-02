@@ -378,6 +378,8 @@ end
 function AiStateGrenadeBase:think(cmd)
     -- Activate can reset the state, but the FSM will still run this method once.
     if not self.node then
+        self:reset()
+
         return
     end
 

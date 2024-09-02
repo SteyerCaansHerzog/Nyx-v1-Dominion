@@ -3,8 +3,8 @@ local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
 --{{{ Modules
-local NodeTypeBoost = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeBoost"
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
+local NodeTypeBoost = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeBoost"
 --}}}
 
 --{{{ NodeSpotBoostCt

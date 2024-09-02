@@ -66,7 +66,9 @@ end
 
 --- @return void
 function AiStateRotate:activate()
-    self:move()
+    Pathfinder.moveToNode(self.node, {
+        task = string.format("Rotate to bombsite %s", self.site)
+    })
 end
 
 --- @return void
@@ -105,13 +107,6 @@ function AiStateRotate:invoke(site)
     Pathfinder.blockRoute(self.node)
 
     self:queueForReactivation()
-end
-
---- @return void
-function AiStateRotate:move()
-    Pathfinder.moveToNode(self.node, {
-        task = string.format("Rotate to bombsite %s", self.site)
-    })
 end
 
 return Nyx.class("AiStateRotate", AiStateRotate, AiStateBase)

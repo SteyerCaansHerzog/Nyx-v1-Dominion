@@ -742,7 +742,13 @@ function VirtualMouse.setIdealWatchCorner(idealViewAngles)
 		return
 	end
 
-	if AiSense.getAwareness(AiThreats.highestThreat) >= AiSense.awareness.RECENT_MOVED then
+	local isAllowedToForceCheck = false
+
+	if LocalPlayer:isTerrorist() and AiUtility.isBombPlanted() and LocalPlayer:getOrigin():getDistance(AiUtility.plantedBomb:m_vecOrigin()) < 1250 then
+		isAllowedToForceCheck = true
+	end
+
+	if not isAllowedToForceCheck and AiSense.getAwareness(AiThreats.highestThreat) >= AiSense.awareness.RECENT_MOVED then
 		return
 	end
 

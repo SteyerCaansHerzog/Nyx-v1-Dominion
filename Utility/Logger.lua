@@ -110,7 +110,7 @@ function Logger.message(code, ...)
 
 	local codeData = LoggerCode[code]
 
-	Chat.sendMessage(string.format("%s[Dominion]%s %s%s %s", Chat.LIME, Chat.WHITE, codeData.chatColor, codeData.text, message))
+	Chat.display(string.format("%s[Dominion]%s %s%s %s", Chat.LIME, Chat.WHITE, codeData.chatColor, codeData.text, message))
 end
 
 --- @param code number

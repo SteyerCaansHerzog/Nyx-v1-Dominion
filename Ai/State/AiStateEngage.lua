@@ -182,6 +182,10 @@ local WeaponMovementVelocity =  {
 --- @field watchTime number
 --- @field watchTimer Timer
 --- @field weaponMode number
+--- @field isPreAimingThroughCorners boolean
+--- @field cautiousApproachTimer Timer
+--- @field cautiousApproachMainInterval number
+--- @field cautiousApproachJiggleInterval number
 local AiStateEngage = {
     name = "Engage",
     isMouseDelayAllowed = false,
@@ -261,6 +265,9 @@ function AiStateEngage:initFields()
     self.waitForTargetVisibleTimer = Timer:new():startThenElapse()
     self.watchTime = 2
     self.watchTimer = Timer:new()
+    self.cautiousApproachTimer = Timer:new():start()
+    self.cautiousApproachMainInterval = Math.getRandomFloat(0.5, 3)
+    self.cautiousApproachJiggleInterval = Math.getRandomFloat(0.5, 3)
 
     self.lastSeenTimers = {}
 
@@ -687,7 +694,7 @@ function AiStateEngage:pingEnemy()
         return
     end
 
-    if self.pingEnemyTimer:isElapsed(40) then
+    if not self.pingEnemyTimer:isElapsed(40) then
         return
     end
 
@@ -1401,7 +1408,34 @@ function AiStateEngage:handleMovement()
         return
     end
 
+    self:movementCautiousApproach()
     self:movementToTarget()
+end
+
+--- @return void
+function AiStateEngage:movementCautiousApproach()
+    if self.isBestTargetVisible or self.isVisibleToBestTarget then
+        return
+    end
+
+    local crosshairPlacement = AiThreats.crosshairPlacements[self.bestTarget.eid]
+
+    if not crosshairPlacement or not self.isAllowedToPreAim then
+        return
+    end
+
+    local totalTime = self.cautiousApproachMainInterval + self.cautiousApproachJiggleInterval
+
+    if self.cautiousApproachTimer:isElapsedThenRestart(totalTime) then
+        self.cautiousApproachJiggleInterval = Math.getRandomFloat(0.6, 1.2)
+        self.cautiousApproachMainInterval = Math.getRandomFloat(0.33, 1.25)
+    end
+
+    if not self.cautiousApproachTimer:isElapsed(self.cautiousApproachMainInterval) then
+        return
+    end
+
+    self:actionJiggle(self.cautiousApproachJiggleInterval)
 end
 
 --- @return boolean
@@ -1631,6 +1665,8 @@ end
 
 --- @return void
 function AiStateEngage:movementAvoidSmokes()
+    if true then return end -- todo
+
     if AiUtility.timeData.roundtime_remaining < 30 then
         return
     end
@@ -3033,7 +3069,7 @@ function AiStateEngage:shootSniper(cmd, aimAtOrigin, fov, weapon)
         and self.isLockedOntoTarget
         and (isNoscoping or (self.scopedTimer:isElapsed(fireDelay) and LocalPlayer:m_bIsScoped() == 1))
         and LocalPlayer:m_vecVelocity():getMagnitude() < fireUnderVelocity
-        and (self.bestTargetVisibleForTimer:isElapsed(fireDelay * 0.6))
+        and self.bestTargetVisibleForTimer:isElapsed(fireDelay * 0.6)
     then
         self:fireWeapon(cmd)
     end
@@ -3331,6 +3367,8 @@ end
 
 --- @return void
 function AiStateEngage:preAimThroughCorners()
+    self.isPreAimingThroughCorners = false
+
     local target = self.bestTarget
 
     if not target then
@@ -3413,18 +3451,20 @@ function AiStateEngage:preAimThroughCorners()
     end
 
     local distance = playerOrigin:getDistance(self.preAimThroughCornersTargetOrigin)
-    local offsetRange = Math.getFloat(Math.getClamped(distance, 0, 1024), 1024) * 50
+    local offsetRange = Math.getFloat(Math.getClamped(distance, 0, 500), 500) * 50
     local sine = Animate.sine(0, offsetRange, 0.6)
 
     self.preAimThroughCornersOrigin = self.preAimThroughCornersTargetOrigin:clone():offset(
         sine, sine, 0
-    ) - (clientVelocity:clone():set(nil, nil, 0) * 0.15)
+    ) - (clientVelocity:clone():set(nil, nil, 0) * 0.2)
 
     self.preAimTarget = self.bestTarget
 
+    self.isPreAimingThroughCorners = true
+
    VirtualMouse.lookAtLocation(self.preAimThroughCornersOrigin, 12, VirtualMouse.noise.moving, "Engage look through corner")
 
-    self:addVisualizer("pre through", function()
+    self:addVisualizer("pre-aim through", function()
         if not self.preAimThroughCornersOrigin then
             return
         end
@@ -3439,23 +3479,25 @@ function AiStateEngage:preAimAboutCorners()
         return
     end
 
-    if self.isBestTargetVisible then
+    if self.isBestTargetVisible or not self.isAllowedToPreAim then
         return
     end
 
     local crosshairPlacement = AiThreats.crosshairPlacements[self.bestTarget.eid]
 
-    if crosshairPlacement and self.isAllowedToPreAim then
-        self.ai.routines.manageWeaponScope:block()
-
-        VirtualMouse.lookAtLocation(crosshairPlacement, 15, VirtualMouse.noise.moving, "Engage look at corner")
-
-        self:addVisualizer("pre about", function()
-            if crosshairPlacement then
-                crosshairPlacement:drawCircleOutline(12, 2, Color:hsla(200, 1, 0.5, 200))
-            end
-        end)
+    if not crosshairPlacement then
+        return
     end
+
+    self.ai.routines.manageWeaponScope:block()
+
+    VirtualMouse.lookAtLocation(crosshairPlacement, 15, VirtualMouse.noise.moving, "Engage look at corner")
+
+    self:addVisualizer("pre-aim about", function()
+        if crosshairPlacement then
+            crosshairPlacement:drawCircleOutline(12, 2, Color:hsla(200, 1, 0.5, 200))
+        end
+    end)
 end
 
 --- @param skill number

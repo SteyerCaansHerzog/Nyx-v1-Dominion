@@ -240,7 +240,7 @@ function AiThreats.getPlayerVisgraph(player, maxNodes, maxTraces, maxRange)
 			eyeOrigin,
 			node.eyeOrigin,
 			AiUtility.traceOptionsVisible,
-			"AiThreats.getVisGraph<FindVisible>"
+			"AiThreats.getPlayerVisgraph<FindVisible>"
 		)
 
 		if trace.isIntersectingGeometry then

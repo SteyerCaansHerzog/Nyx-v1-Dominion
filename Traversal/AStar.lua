@@ -65,7 +65,7 @@ local function unwindPath(flat_path, map, current_node)
     end
 end
 
-local function getPath(start, goal, nodes, valid_node_func)
+local function getPath(start, goal, nodes, heatmap, valid_node_func)
     local closedset = {}
     local openset = { start }
     local cameFrom = {}
@@ -98,7 +98,7 @@ local function getPath(start, goal, nodes, valid_node_func)
 
         for _, neighbor in pairs(neighbors) do
             if isNotIn(closedset, neighbor) then
-                local tentativeGScore = gScore[current] + current.origin:getDistance(neighbor.origin) + neighbor.traversalCost
+                local tentativeGScore = gScore[current] + current.origin:getDistance(neighbor.origin) + neighbor.traversalCost + (heatmap[neighbor.id] or 0)
 
                 if isNotIn(openset, neighbor) or tentativeGScore < gScore[neighbor] then
                     cameFrom[neighbor] = current
@@ -120,9 +120,10 @@ end
 --- @param goal NodeTypeGoal
 --- @param nodes NodeTypeBase[]
 --- @param ignoreCache boolean
+--- @param heatmap number[]
 --- @param validNodeFunc fun(node: NodeTypeBase, neighbour: NodeTypeBase): boolean
 --- @return NodeTypeBase[]
-function AStar.findPath(start, goal, nodes, ignoreCache, validNodeFunc)
+function AStar.findPath(start, goal, nodes, ignoreCache, heatmap, validNodeFunc)
     if nodes then
         if not cachedPaths then
             cachedPaths = {}
@@ -134,7 +135,7 @@ function AStar.findPath(start, goal, nodes, ignoreCache, validNodeFunc)
             return cachedPaths[start][goal]
         end
 
-        local resPath = getPath(start, goal, nodes, validNodeFunc)
+        local resPath = getPath(start, goal, nodes, heatmap, validNodeFunc)
 
         if not cachedPaths[start][goal] and not ignoreCache then
             cachedPaths[start][goal] = resPath
