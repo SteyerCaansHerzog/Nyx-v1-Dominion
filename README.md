@@ -1,3 +1,5 @@
+*Please see Dominion's v2 tree for the latest versions. The default, v1, is a legacy version.*
+
 # Nyx.to Dominion AI
 Competitive matchmaking bot for CS:GO.
 
