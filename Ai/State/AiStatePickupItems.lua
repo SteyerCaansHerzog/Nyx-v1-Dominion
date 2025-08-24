@@ -282,6 +282,7 @@ function AiStatePickupItems:think(cmd)
     -- Why are we here?
     if not self.item then
         -- It's one of life's greatest mysteries.
+        -- Not really. Culprit is probably one of my init game callbacks.
         return
     end
 

@@ -694,6 +694,8 @@ function Pathfinder.createPath()
 	-- Get pathfind request options.
 	local pathfinderOptions = Pathfinder.lastRequest.options or {}
 
+	Pathfinder.processInfluenceMaps()
+
 	-- Set any missing options to default values.
 	Table.setMissing(pathfinderOptions, {
 		goalReachedRadius = 16,
@@ -1115,14 +1117,14 @@ function Pathfinder.getPath(start, goal, options)
 			end
 
 			if node:is(Node.goalEnd) then
-				Pathfinder.pathDebug.nodes[idx].error = "GOALS CANNOT CONNECT TO JUMP  NODES"
+				Pathfinder.pathDebug.nodes[idx].error = "GOALS CANNOT CONNECT TO JUMP NODES"
 
 				return false
 			end
 		end
 
 		if neighbor:is(Node.goalEnd) and node.isJump then
-			Pathfinder.pathDebug.nodes[idx].error = "GOALS CANNOT CONNECT TO JUMP  NODES"
+			Pathfinder.pathDebug.nodes[idx].error = "GOALS CANNOT CONNECT TO JUMP NODES"
 
 			return false
 		end

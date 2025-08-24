@@ -138,15 +138,11 @@ end
 
 --- @return void
 function AiStateDefuse:activate()
-    local bomb = AiUtility.plantedBomb
-
-    if not bomb then
+    if not AiUtility.plantedBomb then
         return
     end
 
-    local bombOrigin = bomb:m_vecOrigin()
-
-    Pathfinder.moveToLocation(bombOrigin, {
+    Pathfinder.moveToLocation(AiUtility.plantedBomb:m_vecOrigin(), {
         task = "Defuse the bomb",
     })
 end
@@ -157,16 +153,15 @@ function AiStateDefuse:deactivate() end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateDefuse:think(cmd)
-    local bomb = AiUtility.plantedBomb
-    local bombsite = Nodegraph.getClosestBombsiteName(AiUtility.plantedBomb:m_vecOrigin())
+	if not AiUtility.plantedBomb then
+		return
+	end
 
-    if not bomb then
-        return
-    end
+	local bombsite = Nodegraph.getClosestBombsiteName(AiUtility.plantedBomb:m_vecOrigin())
 
     self.activity = string.format("Retaking bombsite %s", bombsite)
 
-    local bombOrigin = bomb:m_vecOrigin()
+    local bombOrigin = AiUtility.plantedBomb:m_vecOrigin()
     local distance = LocalPlayer:getOrigin():getDistance(bombOrigin)
 
     if distance < 64 then
@@ -225,12 +220,10 @@ end
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiStateDefuse:dropGrenade(cmd)
-    local bombOrigin = AiUtility.plantedBomb:m_vecOrigin()
-
     self.ai.routines.manageGear:block()
     self.ai.states.evade:block()
 
-    VirtualMouse.lookAtLocation(bombOrigin:clone():offset(5, -3, -64), 6, VirtualMouse.noise.moving, "Defuse look to drop smoke")
+    VirtualMouse.lookAtLocation(AiUtility.plantedBomb:m_vecOrigin():clone():offset(5, -3, -64), 6, VirtualMouse.noise.moving, "Defuse look to drop smoke")
 
     if LocalPlayer:isAbleToAttack() then
         if LocalPlayer.getCameraAngles().p > 22 then

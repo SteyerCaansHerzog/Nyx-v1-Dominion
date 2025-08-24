@@ -3,6 +3,10 @@ local Color = require "gamesense/Nyx/v1/Api/Color"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 --}}}
 
+local a = Color:hexa("#ff0000ff")
+
+a:__setup()
+
 --{{{ Modules
 local ColorList = require "gamesense/Nyx/v1/Dominion/Utility/ColorList"
 local NodeTypeDefend = require "gamesense/Nyx/v1/Dominion/Traversal/Node/NodeTypeDefend"

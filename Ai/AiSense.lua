@@ -324,7 +324,7 @@ function AiSense.think()
 
 		AiSense.lastAwarenessIsForcedOld[enemy.eid] = false
 
-		-- Sensing enemies inside pre-aims zones is handled by AiStateEngage.
+		-- Sensing enemies inside pre-aim zones is handled by AiStateEngage.
 		AiSense.senseOnScreen(enemy)
 		AiSense.senseHostageCarrier(enemy)
 		AiSense.senseNearBomb(enemy)
