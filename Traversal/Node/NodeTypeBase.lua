@@ -332,6 +332,10 @@ end
 ---
 --- @return boolean
 function NodeTypeBase:isRenderable()
+	if (Debug.isDisplayingConnectionCollisions or Debug.isDisplayingGapCollisions) and self.isGoal then
+		return false
+	end
+
     return self.renderAlpha >= 1
 end
 

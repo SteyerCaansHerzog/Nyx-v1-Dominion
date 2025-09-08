@@ -5,7 +5,11 @@ local Math = require "gamesense/Nyx/v1/Api/Math"
 local Nyx = require "gamesense/Nyx/v1/Api/Nyx"
 local Time = require "gamesense/Nyx/v1/Api/Time"
 local Timer = require "gamesense/Nyx/v1/Api/Timer"
+local Trace = require "gamesense/Nyx/v1/Api/Trace"
 local UserInput = require "gamesense/Nyx/v1/Api/UserInput"
+local VectorsAngles = require "gamesense/Nyx/v1/Api/VectorsAngles"
+
+local Angle, Vector2, Vector3 = VectorsAngles.Angle, VectorsAngles.Vector2, VectorsAngles.Vector3
 --}}}
 
 --{{{ Modules
@@ -13,6 +17,7 @@ local AiRoutineBase = require "gamesense/Nyx/v1/Dominion/Ai/Routine/AiRoutineBas
 local AiThreats = require "gamesense/Nyx/v1/Dominion/Ai/AiThreats"
 local AiUtility = require "gamesense/Nyx/v1/Dominion/Ai/AiUtility"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
+local VirtualMouse = require "gamesense/Nyx/v1/Dominion/VirtualMouse/VirtualMouse"
 --}}}
 
 --{{{ AiRoutineManageGear
@@ -30,6 +35,9 @@ local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 --- @field swingKnifeIntervalTime number
 --- @field swingKnifeIntervalTimer Timer
 --- @field holdGunTimer Timer
+--- @field isAllowedToKnifeWalls boolean
+--- @field knifeWallsCooldownTimer Timer
+--- @field knifeWallsCooldownDuration number
 local AiRoutineManageGear = {}
 
 --- @param fields AiRoutineManageGear
@@ -48,18 +56,56 @@ function AiRoutineManageGear:__init()
 	self.swingKnifeDurationTime = Math.getRandomFloat(0.1, 2)
 	self.isJiggleInspecting = true
 	self.jiggleInspectState = false
+	self.isAllowedToKnifeWalls = true
 	self.jiggleInspectDurationTimer = Timer:new():startThenElapse()
 	self.jiggleIspectHoldTimer = Timer:new():startThenElapse()
 	self.holdGunTimer = Timer:new():startThenElapse()
 	self.jiggleInspectDurationTime = Math.getRandomFloat(1, 6)
 	self.jiggleIspectHoldTime = Math.getRandomFloat(0.45, 0.6)
+	self.knifeWallsCooldownTimer = Timer:new():startThenElapse()
+	self.knifeWallsCooldownDuration = Math.getRandomFloat(0.33, 12)
 end
 
 --- @param cmd SetupCommandEvent
 --- @return void
 function AiRoutineManageGear:think(cmd)
 	self:manageKnife(cmd)
+	self:manageKnifeWalls()
 	self:manageWeaponInspection(cmd)
+end
+
+--- @return void
+function AiRoutineManageGear:manageKnifeWalls()
+	if not self.isAllowedToKnifeWalls then
+		self.isAllowedToKnifeWalls = true
+
+		return
+	end
+
+	if not LocalPlayer:isHoldingKnife() then
+		return
+	end
+
+	if AiUtility.closestTeammateDistance < 75 then
+		return
+	end
+
+	if not self.knifeWallsCooldownTimer:isElapsedThenRestart(self.knifeWallsCooldownDuration) then
+		return
+	end
+
+	local trace = Trace.getHullAlongCrosshair(Vector3:newBounds(Vector3.align.CENTER, 24, 24, 24), {
+		skip = LocalPlayer.eid,
+		distance = 24
+	})
+
+	if not trace.isIntersectingGeometry then
+		return
+	end
+
+	self.knifeWallsCooldownDuration = Math.getRandomFloat(0.33, 12)
+
+	VirtualMouse.fireWeapon()
 end
 
 --- @param cmd SetupCommandEvent

@@ -209,11 +209,11 @@ function AiVoice:__init()
     end)
 
     Callbacks.playerDeath(function(e)
-        Client.fireAfter(0.1, function()
-            if Entity.getGameRules():m_bWarmupPeriod() == 1 then
-                return
-            end
+		if Entity.getGameRules():m_bWarmupPeriod() == 1 then
+			return
+		end
 
+        Client.fireAfter(0.1, function()
             if AiUtility.isLastAlive then
                 self.pack:speakLastAlive()
 

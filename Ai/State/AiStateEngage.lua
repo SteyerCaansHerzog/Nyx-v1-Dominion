@@ -2071,6 +2071,8 @@ function AiStateEngage:attackingKnife(cmd)
         return false
     end
 
+	self.ai.routines.manageGear.isAllowedToKnifeWalls = false
+
     local clientOrigin = LocalPlayer:getOrigin()
     local targetBounds = self.bestTarget:getBounds()
     local equipKnifeBounds = clientOrigin:getBounds(Vector3.align.UP, 100, 100, 72)

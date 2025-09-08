@@ -35,7 +35,6 @@ local Font = require "gamesense/Nyx/v1/Dominion/Utility/Font"
 local Localization = require "gamesense/Nyx/v1/Dominion/Utility/Localization"
 local Logger = require "gamesense/Nyx/v1/Dominion/Utility/Logger"
 local MenuGroup = require "gamesense/Nyx/v1/Dominion/Utility/MenuGroup"
-local Nodegraph = require "gamesense/Nyx/v1/Dominion/Traversal/Nodegraph"
 local Pathfinder = require "gamesense/Nyx/v1/Dominion/Traversal/Pathfinder"
 local Reaper = require "gamesense/Nyx/v1/Dominion/Reaper/Reaper"
 local Version = require "gamesense/Nyx/v1/Dominion/Version"
@@ -381,7 +380,7 @@ function Ai:render()
 
 	local uiPos = Vector2:new(20, 20)
 	local fontColor = ColorList.FONT_NORMAL
-	local spacerColor = ColorList.FONT_MUTED
+	local spacerColor = ColorList.FONT_MUTED_EXTRA
 	local spacerDimensions = Vector2:new(200, 1)
 	local offset = 18
 
@@ -765,7 +764,7 @@ end
 --- @return AiStateBase, number
 function Ai:getHighestFsmState()
 	--- @type AiStateBase
-	local targetState
+	local bestState
 	local highestPriority = -1
 	local debugPriorities = {}
 
@@ -799,12 +798,16 @@ function Ai:getHighestFsmState()
 		end
 
 		highestPriority = priority
-		targetState = state
+		bestState = state
 	until true end
 
 	self.debugPriorities = debugPriorities
 
-	return targetState, highestPriority
+	if highestPriority == self.currentHighestPriority then
+		bestState = self.currentState
+	end
+
+	return bestState, highestPriority
 end
 
 --- This is a suboptimal state machine. Should have enter *and* exit conditions for states.

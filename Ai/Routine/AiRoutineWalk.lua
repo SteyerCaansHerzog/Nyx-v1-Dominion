@@ -116,6 +116,8 @@ function AiRoutineWalk:think(cmd)
 		return
 	end
 
+	self.ai.routines.manageGear.isAllowedToKnifeWalls = false
+
 	Pathfinder.walk()
 end
 

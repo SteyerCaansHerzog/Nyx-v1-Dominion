@@ -63,6 +63,11 @@ end
 
 --- @return void
 function AiStateGraffiti:getAssessment()
+	-- Disabled because skins are disabled in legacy.
+	if true then
+		return AiPriority.IGNORE
+	end
+
     if not self.isEnabled then
         return AiPriority.IGNORE
     end
